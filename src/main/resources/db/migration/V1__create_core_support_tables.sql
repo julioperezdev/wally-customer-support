@@ -1,4 +1,6 @@
-create table conversations (
+create schema if not exists wcs;
+
+create table wcs.conversations (
     id uuid primary key,
     channel varchar(32) not null,
     external_conversation_id varchar(128) not null,
@@ -9,9 +11,9 @@ create table conversations (
     constraint uq_conversations_channel_external unique (channel, external_conversation_id)
 );
 
-create table messages (
+create table wcs.messages (
     id uuid primary key,
-    conversation_id uuid not null references conversations(id),
+    conversation_id uuid not null references wcs.conversations(id),
     external_message_id varchar(128) not null,
     direction varchar(16) not null,
     message_type varchar(32) not null,
@@ -22,11 +24,11 @@ create table messages (
 );
 
 create index ix_messages_conversation_occurred
-    on messages (conversation_id, occurred_at desc);
+    on wcs.messages (conversation_id, occurred_at desc);
 
-create table processing_attempts (
+create table wcs.processing_attempts (
     id uuid primary key,
-    message_id uuid not null references messages(id),
+    message_id uuid not null references wcs.messages(id),
     status varchar(32) not null,
     attempt_count integer not null,
     last_error varchar(1000),
@@ -35,7 +37,7 @@ create table processing_attempts (
     constraint uq_processing_attempts_message unique (message_id)
 );
 
-create table outbox_messages (
+create table wcs.outbox_messages (
     id uuid primary key,
     aggregate_id uuid not null,
     event_type varchar(64) not null,
@@ -55,4 +57,4 @@ create table outbox_messages (
 );
 
 create index ix_outbox_status_available
-    on outbox_messages (status, available_at, created_at);
+    on wcs.outbox_messages (status, available_at, created_at);

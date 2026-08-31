@@ -6,6 +6,15 @@ Last reviewed: 2026-08-30
 Related Jira: `WCS-13`, `WCS-14`, `WCS-15`, `WCS-16`  
 Related repository paths: `src/main/java/.../adapter/out/persistence`, `src/main/resources/db/migration`
 
+## Aislamiento en el RDS compartido
+
+WCS utiliza la instancia PostgreSQL existente de `tesis-dev`, pero no comparte
+tablas con ella. La configuración fija `wcs` y la migración inicial crean el
+schema `wcs`; las entidades JPA y los nombres de las tablas están
+calificados explícitamente con ese schema. Terraform sólo referencia el RDS y
+su secret existente: no declara `aws_db_instance`, subnet groups ni cambios de
+red en este repositorio.
+
 ## Entidades mínimas
 
 ### `conversations` — implementada en `V1__create_core_support_tables.sql`

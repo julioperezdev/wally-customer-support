@@ -1,0 +1,120 @@
+name: Backend
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: "Deploy an immutable image to the configured App Runner service"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  verify:
+    name: Maven Verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      - name: Run backend verification
+        run: mvn -B verify
+
+  deploy:
+    name: Deploy Backend Image
+    needs: verify
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment: production
+    env:
+      AWS_BACKEND_DEPLOY_ROLE_ARN: ${{ secrets.AWS_BACKEND_DEPLOY_ROLE_ARN }}
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      BACKEND_ECR_REPOSITORY: ${{ vars.BACKEND_ECR_REPOSITORY }}
+      BACKEND_APPRUNNER_SERVICE_ARN: ${{ vars.BACKEND_APPRUNNER_SERVICE_ARN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check backend deploy configuration
+        run: |
+          set -euo pipefail
+          missing=()
+          [ -n "$AWS_BACKEND_DEPLOY_ROLE_ARN" ] || missing+=("AWS_BACKEND_DEPLOY_ROLE_ARN")
+          [ -n "$AWS_REGION" ] || missing+=("AWS_REGION")
+          [ -n "$BACKEND_ECR_REPOSITORY" ] || missing+=("BACKEND_ECR_REPOSITORY")
+          [ -n "$BACKEND_APPRUNNER_SERVICE_ARN" ] || missing+=("BACKEND_APPRUNNER_SERVICE_ARN")
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::Backend deploy configuration is incomplete: ${missing[*]}"
+            exit 1
+          fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_BACKEND_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify backend deploy target
+        run: |
+          set -euo pipefail
+          aws ecr describe-repositories \
+            --repository-names "$BACKEND_ECR_REPOSITORY" \
+            --query 'repositories[0].repositoryUri' \
+            --output text
+          aws apprunner describe-service \
+            --service-arn "$BACKEND_APPRUNNER_SERVICE_ARN" \
+            --query 'Service.{status:Status,serviceUrl:ServiceUrl}' \
+            --output table
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push immutable backend image
+        id: backend-image
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          image="$ECR_REGISTRY/$BACKEND_ECR_REPOSITORY:$IMAGE_TAG"
+          docker build -t "$image" .
+          docker push "$image"
+
+          image_digest="$(aws ecr describe-images \
+            --repository-name "$BACKEND_ECR_REPOSITORY" \
+            --image-ids "imageTag=$IMAGE_TAG" \
+            --query 'imageDetails[0].imageDigest' \
+            --output text)"
+          [ -n "$image_digest" ] && [ "$image_digest" != "None" ]
+          image_reference="$ECR_REGISTRY/$BACKEND_ECR_REPOSITORY@$image_digest"
+          echo "image_reference=$image_reference" >> "$GITHUB_OUTPUT"
+          echo "Deploying immutable image $image_reference"
+
+      - name: Deploy and health-check backend
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          IMAGE_REFERENCE: ${{ steps.backend-image.outputs.image_reference }}
+        run: |
+          chmod +x ci/backend-deploy.sh
+          ./ci/backend-deploy.sh

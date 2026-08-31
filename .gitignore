@@ -21,3 +21,13 @@ dist/
 artifacts/
 logs/
 *.log
+
+# Terraform local state and provider cache
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+terraform.tfvars
+*.auto.tfvars
+*.auto.tfvars.json
+!terraform.tfvars.example

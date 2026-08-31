@@ -21,6 +21,7 @@ El repositorio contiene la documentación y la base técnica del producto. La im
 - [`docs/ai.md`](docs/ai.md): registro de modelos, prompts, guardrails y evaluación.
 - [`docs/testing-strategy.md`](docs/testing-strategy.md): estrategia y evidencia de testing.
 - [`docs/operations.md`](docs/operations.md): CI/CD, observabilidad, seguridad y operación.
+- [`infra/README.md`](infra/README.md): base Terraform de AWS, state separado y servicios preparados.
 - [`docs/queries.md`](docs/queries.md): consultas SQL y CloudWatch sanitizadas.
 - [`docs/agents/playbook.md`](docs/agents/playbook.md): reglas para agentes de IA.
 - [`planning/jira-backlog.md`](planning/jira-backlog.md): backlog inicial listo para crear en Jira.
@@ -62,3 +63,14 @@ El adapter Meta soporta texto y templates aprobados con parámetros de body. La 
 **Fundación técnica — en implementación:** arquitectura, operación y modelo de datos describen la fundación modular, AppConfig/Secrets Manager, JPA/PostgreSQL, Bedrock y RAG desacoplados. Las páginas canónicas siguen en `Proposed` hasta la aceptación funcional correspondiente.
 
 La branch de trabajo es `feature/WCS-13-product-foundation` y está asociada al repositorio GitHub `julioperezdev/wally-customer-support`. No contiene credenciales productivas.
+
+La infraestructura base sigue el patrón de `tesis-dev`, pero WCS no crea otro
+RDS: consume el existente y usa el schema `wcs`. El stack Terraform deja
+App Runner desactivado hasta completar la configuración AWS y la conectividad
+privada. La validación local se ejecuta sin backend remoto:
+
+```bash
+terraform -chdir=infra/environments/prod init -backend=false
+terraform -chdir=infra/environments/prod fmt -check -recursive
+terraform -chdir=infra/environments/prod validate
+```

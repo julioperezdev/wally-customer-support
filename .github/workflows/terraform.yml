@@ -1,0 +1,125 @@
+name: Terraform
+
+on:
+  pull_request:
+    paths:
+      - "infra/**"
+  push:
+    branches:
+      - main
+    paths:
+      - "infra/**"
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Run a plan or apply the reviewed plan"
+        required: true
+        default: plan
+        type: choice
+        options:
+          - plan
+          - apply
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+env:
+  TF_WORKING_DIR: infra/environments/prod
+  TF_IN_AUTOMATION: "true"
+
+jobs:
+  validate:
+    name: Terraform Validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.15"
+
+      - name: Terraform Init without backend
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init -backend=false -input=false
+
+      - name: Terraform Format Check
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Validate
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform validate
+
+  plan-or-apply:
+    name: Terraform ${{ inputs.action }}
+    needs: validate
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      AWS_TERRAFORM_ROLE_ARN: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
+      TERRAFORM_VARS: ${{ secrets.TERRAFORM_VARS }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check Terraform deployment configuration
+        run: |
+          set -euo pipefail
+          [ -n "$AWS_TERRAFORM_ROLE_ARN" ] || {
+            echo "::error::Configure AWS_TERRAFORM_ROLE_ARN in the production environment"
+            exit 1
+          }
+          [ -n "$TERRAFORM_VARS" ] || {
+            echo "::error::Configure TERRAFORM_VARS with reviewed non-secret Terraform variables"
+            exit 1
+          }
+
+      - name: Write reviewed Terraform variables
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: printf '%s' "$TERRAFORM_VARS" > terraform.auto.tfvars
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_TERRAFORM_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.15"
+
+      - name: Terraform Init with reviewed backend
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init -input=false
+
+      - name: Terraform Plan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform plan -input=false -out=tfplan -no-color 2>&1 | tee plan.txt
+
+      - name: Block destructive plan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          set -euo pipefail
+          if grep -Eq 'Plan: [0-9]+ to add, [0-9]+ to change, [1-9][0-9]* to destroy\.' plan.txt; then
+            echo "::error::Terraform plan contains resource destruction; review state, account and variables before continuing."
+            exit 1
+          fi
+
+      - name: Apply reviewed plan
+        if: inputs.action == 'apply'
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform apply -input=false -auto-approve tfplan

@@ -45,6 +45,33 @@ Message Processor
 PostgreSQL + Flyway + observabilidad
 ```
 
+## Topología AWS base
+
+La primera base de infraestructura sigue la separación de `tesis-dev` sin
+duplicar su base de datos:
+
+```text
+GitHub Actions
+    │ OIDC, sin access keys
+    ▼
+ECR ──► App Runner (creación desactivada hasta completar los gates)
+                         │
+                         ├── AppConfig: configuración no sensible
+                         ├── Secrets Manager: secrets de WCS
+                         │                    + referencia al secret del RDS
+                         ├── VPC connector existente
+                         │        ▼
+                         │   RDS PostgreSQL de tesis-dev
+                         │        └── schema wcs, administrado por Flyway
+                         └── Bedrock (permiso IAM opcional)
+```
+
+Terraform administra ECR, AppConfig, el contenedor de secrets de WCS, roles
+IAM/OIDC y la configuración opcional de App Runner. No administra la instancia
+RDS, la VPC ni sus security groups. El consumo del RDS se hace con data sources
+y una key de state separada; el schema `wcs` es la frontera de ownership de la
+aplicación.
+
 ## Módulos y responsabilidades
 
 | Módulo | Responsabilidad | Dependencias permitidas |

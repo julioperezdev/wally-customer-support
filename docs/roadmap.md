@@ -28,9 +28,13 @@ Fuera de alcance inicial: audio, imágenes, stickers, ubicación, grupos, pagos,
 
 **Salida:** actores, políticas de atención, catálogo de preguntas respondibles, fallback, escalamiento humano, privacidad, retención, horarios y matriz de casos de uso.
 
-### Fase 2 — Fundación de producto y mock vertical slice
+### Fase 2 — Fundación de producto, mock vertical slice e infraestructura base
 
-**Salida:** Spring Boot modular, PostgreSQL/JPA/Flyway, puertos y adapters, configuración local/producción, persistencia, deduplicación, outbox/dispatcher durable, Mock WhatsApp, Mock LLM, Mock Knowledge Retriever, endpoint interno y tests.
+**Salida:** Spring Boot modular, PostgreSQL/JPA/Flyway, schema `wcs` sobre el
+RDS compartido, puertos y adapters, configuración local/producción,
+persistencia, deduplicación, outbox/dispatcher durable, Mock WhatsApp, Mock
+LLM, Mock Knowledge Retriever, endpoint interno, tests e infraestructura base
+con ECR, AppConfig, Secrets Manager, OIDC y App Runner opcional.
 
 ### Fase 3 — Integración real con Meta
 
@@ -46,7 +50,9 @@ Fuera de alcance inicial: audio, imágenes, stickers, ubicación, grupos, pagos,
 
 ### Fase 6 — Producción y operación
 
-**Salida:** ambientes, secrets, CI/CD, health/readiness, CloudWatch, alertas, runbooks, rollback y smoke E2E.
+**Salida:** activación controlada de ambientes, secrets, CI/CD, health/readiness,
+CloudWatch, alertas, runbooks, rollback y smoke E2E. La base IaC no implica por
+sí misma la activación productiva.
 
 ### Fase 7 — Piloto y evolución
 

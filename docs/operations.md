@@ -32,6 +32,33 @@ main
 
 No se debe declarar un release operativo sólo por tener el PR verde.
 
+## Base de infraestructura y pipelines
+
+La base versionada en el repositorio está organizada así:
+
+```text
+infra/bootstrap/                  límites y verificaciones del state
+infra/environments/prod/          composición del entorno WCS
+infra/modules/appconfig/          application, environment y profile
+infra/modules/runtime-secrets/    contenedor de Secrets Manager sin valores
+infra/modules/backend-apprunner/  ECR, IAM, App Runner opcional
+infra/modules/github-backend-deploy/  OIDC y permisos de despliegue
+ci/backend-deploy.sh              despliegue por digest y health-check
+.github/workflows/backend.yml     verify; deploy manual
+.github/workflows/terraform.yml   validate; plan/apply manual
+```
+
+La validación de Terraform corre en pull requests y en cambios a `main` sin
+acceder al backend remoto. El plan y el apply requieren `workflow_dispatch`,
+un rol AWS con OIDC y variables revisadas en `TERRAFORM_VARS`; el workflow
+bloquea planes con destrucciones. El deploy de backend también es manual y usa
+una imagen identificada por digest.
+
+La base de datos existente se configura como `shared_rds_*` y el runtime recibe
+referencias a AppConfig/Secrets Manager. La carga efectiva de esos valores en
+Spring sigue siendo el alcance de WCS-22; por eso App Runner queda desactivado
+por defecto y esta base no constituye un deployment productivo.
+
 ## Configuración productiva
 
 La configuración productiva se divide deliberadamente:
