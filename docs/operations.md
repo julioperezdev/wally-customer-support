@@ -162,6 +162,13 @@ AppConfig puede versionarse porque sólo contiene referencias no sensibles.
 
 Las únicas variables de entorno productivas son bootstrap del runtime, por ejemplo `AWS_REGION`, `AWS_APPCONFIG_APPLICATION`, `AWS_APPCONFIG_ENVIRONMENT`, `AWS_APPCONFIG_PROFILE` y referencias no secretas a Secrets Manager. El perfil `local-mock` puede usar `.env` ignorado y valores sintéticos.
 
+El entorno prod incluye por defecto una configuración hosted y versiones
+bootstrap falsas para `wcs/{environment}/database` y
+`wcs/{environment}/whatsapp`. Los valores se deben reemplazar desde la consola
+antes de habilitar App Runner. Las versiones iniciales de Terraform ignoran
+cambios posteriores hechos en consola para no revertir una rotación manual;
+Terraform no debe recibir valores reales.
+
 ## Observabilidad mínima
 
 - correlation/request ID;

@@ -57,6 +57,18 @@ variable "runtime_secret_name" {
   default     = null
 }
 
+variable "database_secret_name" {
+  type        = string
+  description = "WCS bootstrap database secret name. To use shared RDS, update the AppConfig reference and IAM ARN instead of renaming this secret."
+  default     = null
+}
+
+variable "whatsapp_secret_name" {
+  type        = string
+  description = "WCS WhatsApp secret name."
+  default     = null
+}
+
 variable "appconfig_configuration_content" {
   type        = string
   nullable    = true

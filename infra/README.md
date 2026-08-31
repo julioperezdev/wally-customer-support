@@ -26,12 +26,36 @@ El usuario de base de datos que ejecute Flyway debe poder crear el schema
 ownership/permisos necesarios. Terraform no intenta modificar permisos del
 RDS compartido.
 
-El módulo `appconfig` admite `appconfig_configuration_content` opcional. Al
-proveerlo crea una versión hosted JSON y un deployment all-at-once; el JSON
-debe contener configuración no sensible y referencias a Secrets Manager, nunca
-tokens o passwords. Si queda en `null`, Terraform crea únicamente la
-application, environment y profile para que el contenido pueda cargarse por
-otro proceso aprobado.
+Terraform crea además secretos separados para `wcs/{environment}/database` y
+`wcs/{environment}/whatsapp`, con valores explícitamente falsos para bootstrap.
+Esos valores tienen `ignore_changes` para que puedas reemplazarlos en la
+consola de Secrets Manager sin que el siguiente `terraform apply` los restaure.
+No se debe habilitar App Runner mientras sigan presentes.
+
+El módulo `appconfig` recibe por defecto un JSON hosted falso con las claves
+Spring y referencias a esos dos secrets, y crea un deployment all-at-once.
+`appconfig_configuration_content` permite reemplazar ese documento por otro
+que contenga sólo configuración no sensible y referencias a Secrets Manager,
+nunca tokens o passwords. La versión hosted y el deployment también ignoran
+cambios posteriores hechos en la consola, por lo que una operación manual no
+será revertida por Terraform.
+
+El flujo posterior al primer `apply` es:
+
+1. En Secrets Manager, editar `wcs/prod/database` con `jdbc_url`, `username` y
+   `password` reales, o cambiar en AppConfig la referencia al secret existente
+   de `tesis-dev`.
+2. En Secrets Manager, editar `wcs/prod/whatsapp` con `access-token`,
+   `verify-token` y `app-secret` reales.
+3. En AppConfig, reemplazar los valores `REPLACE_ME_*`, cambiar
+   `wcs.whatsapp.adapter` a `meta` cuando corresponda y desplegar una nueva
+   versión.
+4. Verificar que `backend_create_service` siga en `false` hasta completar
+   conectividad al RDS, permisos IAM, imagen y smoke test.
+
+Los valores fake son deliberados y no permiten una operación productiva. La
+configuración manual de consola queda preservada por `ignore_changes`; no
+agregar valores reales a `terraform.tfvars`, al repositorio o a los outputs.
 
 ## Estado remoto
 

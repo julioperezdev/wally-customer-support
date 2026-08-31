@@ -24,8 +24,10 @@ backend_create_service    = false
 backend_vpc_connector_arn = null
 backend_image_tag         = "bootstrap"
 
-# Optional AppConfig document. This contains only non-secret values and
-# references to Secrets Manager; do not put tokens/passwords here.
+# By default Terraform creates a safe fake AppConfig document plus fake
+# database/WhatsApp secret versions. Replace the values in the AWS console
+# before enabling App Runner. This content override is optional and must only
+# contain non-secret values and references to Secrets Manager.
 # appconfig_configuration_content = <<-JSON
 # {
 #   "wcs.whatsapp.graph-api-version": "v25.0",

@@ -19,6 +19,34 @@ locals {
     ManagedBy   = "terraform"
   }
 
+  fake_database_secret_json = jsonencode({
+    jdbc_url = "jdbc:postgresql://REPLACE_ME:5432/wcs"
+    username = "REPLACE_ME_DATABASE_USERNAME"
+    password = "REPLACE_ME_DATABASE_PASSWORD"
+  })
+
+  fake_whatsapp_secret_json = jsonencode({
+    "access-token" = "REPLACE_ME_WHATSAPP_ACCESS_TOKEN"
+    "verify-token" = "REPLACE_ME_WHATSAPP_VERIFY_TOKEN"
+    "app-secret"   = "REPLACE_ME_META_APP_SECRET"
+  })
+
+  fake_appconfig_configuration = jsonencode({
+    "wcs.whatsapp.adapter"                                   = "mock"
+    "wcs.whatsapp.graph-api-version"                         = "v25.0"
+    "wcs.whatsapp.graph-api-base-url"                        = "https://graph.facebook.com"
+    "wcs.whatsapp.phone-number-id"                           = "REPLACE_ME_PHONE_NUMBER_ID"
+    "wcs.whatsapp.business-account-id"                       = "REPLACE_ME_BUSINESS_ACCOUNT_ID"
+    "wcs.whatsapp.allowed-recipient"                         = ""
+    "wcs.ai.provider"                                        = "mock"
+    "wcs.ai.model"                                           = "llm.mock.v1"
+    "wcs.rag.provider"                                       = "mock"
+    "wcs.rag.max-results"                                    = 5
+    "wcs.outbox.max-attempts"                                = 3
+    "wcs.external-config.secrets-manager.database-secret-id" = module.database_secrets.secret_name
+    "wcs.external-config.secrets-manager.whatsapp-secret-id" = module.whatsapp_secrets.secret_name
+  })
+
   runtime_environment_variables = merge(
     {
       AWS_REGION                    = var.aws_region
@@ -38,9 +66,28 @@ locals {
   runtime_secret_arns = setunion(
     toset(values(var.backend_runtime_environment_secrets)),
     toset([module.runtime_secrets.secret_arn]),
+    toset([module.database_secrets.secret_arn, module.whatsapp_secrets.secret_arn]),
     var.shared_rds_secret_arn == null ? toset([]) : toset([var.shared_rds_secret_arn]),
     var.appconfig_secret_arns
   )
+}
+
+module "database_secrets" {
+  source = "../../modules/runtime-secrets"
+
+  name                = coalesce(var.database_secret_name, "wcs/${var.environment}/database")
+  description         = "WCS database credentials. Replace the fake bootstrap JSON in Secrets Manager before enabling the runtime."
+  initial_secret_json = local.fake_database_secret_json
+  tags                = local.common_tags
+}
+
+module "whatsapp_secrets" {
+  source = "../../modules/runtime-secrets"
+
+  name                = coalesce(var.whatsapp_secret_name, "wcs/${var.environment}/whatsapp")
+  description         = "WCS WhatsApp credentials. Replace the fake bootstrap JSON in Secrets Manager before enabling Meta."
+  initial_secret_json = local.fake_whatsapp_secret_json
+  tags                = local.common_tags
 }
 
 module "appconfig" {
@@ -49,7 +96,7 @@ module "appconfig" {
   application_name      = "${var.project_name}-${var.environment}"
   environment_name      = var.environment
   profile_name          = "runtime"
-  configuration_content = var.appconfig_configuration_content
+  configuration_content = coalesce(var.appconfig_configuration_content, local.fake_appconfig_configuration)
   tags                  = local.common_tags
 }
 

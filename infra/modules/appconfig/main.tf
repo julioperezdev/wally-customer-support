@@ -28,6 +28,10 @@ resource "aws_appconfig_hosted_configuration_version" "this" {
   content                  = var.configuration_content
   content_type             = "application/json"
   description              = "Versioned WCS runtime configuration managed by Terraform."
+
+  lifecycle {
+    ignore_changes = [content]
+  }
 }
 
 resource "aws_appconfig_deployment_strategy" "this" {
@@ -51,4 +55,8 @@ resource "aws_appconfig_deployment" "this" {
   deployment_strategy_id   = aws_appconfig_deployment_strategy.this[0].id
   environment_id           = aws_appconfig_environment.this.environment_id
   description              = "Deploy WCS runtime configuration."
+
+  lifecycle {
+    ignore_changes = [configuration_version]
+  }
 }

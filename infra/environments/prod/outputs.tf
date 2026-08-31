@@ -45,6 +45,16 @@ output "runtime_secret_arn" {
   value       = module.runtime_secrets.secret_arn
 }
 
+output "database_secret_arn" {
+  description = "WCS database secret ARN; replace its fake value before enabling the runtime."
+  value       = module.database_secrets.secret_arn
+}
+
+output "whatsapp_secret_arn" {
+  description = "WCS WhatsApp secret ARN; replace its fake value before enabling Meta."
+  value       = module.whatsapp_secrets.secret_arn
+}
+
 output "backend_ecr_repository_name" {
   value = module.backend_apprunner.ecr_repository_name
 }
