@@ -26,8 +26,11 @@ locals {
       AWS_APPCONFIG_APPLICATION     = module.appconfig.application_id
       AWS_APPCONFIG_ENVIRONMENT     = module.appconfig.environment_id
       AWS_APPCONFIG_PROFILE         = module.appconfig.configuration_profile_id
+      AWS_APPCONFIG_ENABLED         = "true"
+      AWS_APPCONFIG_FAIL_FAST       = "true"
       AWS_SECRETS_MANAGER_SECRET_ID = module.runtime_secrets.secret_name
-      AWS_SHARED_RDS_SECRET_ID      = coalesce(var.shared_rds_secret_arn, "")
+      AWS_SECRETS_MANAGER_ENABLED   = "true"
+      AWS_SECRETS_MANAGER_FAIL_FAST = "true"
     },
     var.backend_runtime_environment_variables
   )
@@ -35,17 +38,19 @@ locals {
   runtime_secret_arns = setunion(
     toset(values(var.backend_runtime_environment_secrets)),
     toset([module.runtime_secrets.secret_arn]),
-    var.shared_rds_secret_arn == null ? toset([]) : toset([var.shared_rds_secret_arn])
+    var.shared_rds_secret_arn == null ? toset([]) : toset([var.shared_rds_secret_arn]),
+    var.appconfig_secret_arns
   )
 }
 
 module "appconfig" {
   source = "../../modules/appconfig"
 
-  application_name = "${var.project_name}-${var.environment}"
-  environment_name = var.environment
-  profile_name     = "runtime"
-  tags             = local.common_tags
+  application_name      = "${var.project_name}-${var.environment}"
+  environment_name      = var.environment
+  profile_name          = "runtime"
+  configuration_content = var.appconfig_configuration_content
+  tags                  = local.common_tags
 }
 
 module "runtime_secrets" {

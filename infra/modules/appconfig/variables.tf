@@ -13,6 +13,13 @@ variable "profile_name" {
   description = "AWS AppConfig configuration profile name."
 }
 
+variable "configuration_content" {
+  type        = string
+  nullable    = true
+  description = "Optional JSON configuration. It may contain secret references, never secret values."
+  default     = null
+}
+
 variable "tags" {
   type        = map(string)
   description = "Tags applied to AppConfig resources."
