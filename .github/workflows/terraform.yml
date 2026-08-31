@@ -62,7 +62,7 @@ jobs:
         run: terraform validate
 
   plan-or-apply:
-    name: Terraform ${{ inputs.action }}
+    name: Terraform Plan / Apply (manual)
     needs: validate
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
