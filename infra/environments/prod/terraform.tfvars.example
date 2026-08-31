@@ -1,0 +1,35 @@
+# Copy to terraform.tfvars locally. The file is gitignored and must never be committed.
+# Do not put passwords, tokens, private keys or secret values here.
+
+aws_region      = "us-east-1"
+project_name    = "wally-customer-support"
+environment     = "prod"
+github_repository = "julioperezdev/wally-customer-support"
+
+# Confirm these values from the AWS account that owns tesis-dev.
+shared_rds_instance_identifier = "REPLACE_WITH_EXISTING_RDS_INSTANCE_IDENTIFIER"
+shared_rds_secret_arn          = "arn:aws:secretsmanager:us-east-1:ACCOUNT_ID:secret:REPLACE_WITH_EXISTING_RDS_SECRET"
+existing_github_oidc_provider_arn = "arn:aws:iam::ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com"
+
+# Flyway creates and owns this schema inside the existing database.
+database_schema = "wcs"
+
+# Keep App Runner disabled until the image, VPC connector and AWS config loader
+# are verified. This flag is intentionally not a production default.
+backend_create_service    = false
+backend_vpc_connector_arn = null
+backend_image_tag         = "bootstrap"
+
+backend_runtime_environment_variables = {
+  # Add only non-secret project configuration here.
+  WCS_WHATSAPP_ADAPTER = "mock"
+  WCS_LLM_PROVIDER     = "mock"
+  WCS_RAG_PROVIDER     = "mock"
+}
+
+# These values are Secret Manager ARNs, not secret values. Leave empty until
+# App Runner secret mappings are explicitly approved.
+backend_runtime_environment_secrets = {}
+
+enable_bedrock_access = false
+bedrock_model_arns    = []

@@ -32,6 +32,33 @@ main
 
 No se debe declarar un release operativo sólo por tener el PR verde.
 
+## Base de infraestructura y pipelines
+
+La base versionada en el repositorio está organizada así:
+
+```text
+infra/bootstrap/                  límites y verificaciones del state
+infra/environments/prod/          composición del entorno WCS
+infra/modules/appconfig/          application, environment y profile
+infra/modules/runtime-secrets/    contenedor de Secrets Manager sin valores
+infra/modules/backend-apprunner/  ECR, IAM, App Runner opcional
+infra/modules/github-backend-deploy/  OIDC y permisos de despliegue
+ci/backend-deploy.sh              despliegue por digest y health-check
+.github/workflows/backend.yml     verify; deploy manual
+.github/workflows/terraform.yml   validate; plan/apply manual
+```
+
+La validación de Terraform corre en pull requests y en cambios a `main` sin
+acceder al backend remoto. El plan y el apply requieren `workflow_dispatch`,
+un rol AWS con OIDC y variables revisadas en `TERRAFORM_VARS`; el workflow
+bloquea planes con destrucciones. El deploy de backend también es manual y usa
+una imagen identificada por digest.
+
+La base de datos existente se configura como `shared_rds_*` y el runtime recibe
+referencias a AppConfig/Secrets Manager. La carga efectiva de esos valores en
+Spring sigue siendo el alcance de WCS-22; por eso App Runner queda desactivado
+por defecto y esta base no constituye un deployment productivo.
+
 ## Configuración productiva
 
 La configuración productiva se divide deliberadamente:
@@ -74,6 +101,8 @@ wcs/{environment}/providers
 ```
 
 Bedrock debe autenticarse preferentemente con IAM Role del workload; no se crea una API key para Bedrock. Los valores de Secrets Manager no se pasan a Jira, Confluence, la base de datos ni los logs.
+
+La primera entrega deja `ExternalConfigurationProperties` como contrato de bootstrap y usa placeholders locales. La carga efectiva desde AWS AppConfig y Secrets Manager es WCS-22: debe incorporarse como fuente de configuración del runtime sin cambiar los puertos de aplicación ni introducir secretos en `application.properties`.
 
 Las únicas variables de entorno productivas son bootstrap del runtime, por ejemplo `AWS_REGION`, `AWS_APPCONFIG_APPLICATION`, `AWS_APPCONFIG_ENVIRONMENT`, `AWS_APPCONFIG_PROFILE` y referencias no secretas a Secrets Manager. El perfil `local-mock` puede usar `.env` ignorado y valores sintéticos.
 

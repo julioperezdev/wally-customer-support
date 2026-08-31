@@ -6,18 +6,26 @@ Last reviewed: 2026-08-30
 Related Jira: `WCS-13`, `WCS-14`, `WCS-15`, `WCS-16`  
 Related repository paths: `src/main/java/.../adapter/out/persistence`, `src/main/resources/db/migration`
 
+## Aislamiento en el RDS compartido
+
+WCS utiliza la instancia PostgreSQL existente de `tesis-dev`, pero no comparte
+tablas con ella. La configuración fija `wcs` y la migración inicial crean el
+schema `wcs`; las entidades JPA y los nombres de las tablas están
+calificados explícitamente con ese schema. Terraform sólo referencia el RDS y
+su secret existente: no declara `aws_db_instance`, subnet groups ni cambios de
+red en este repositorio.
+
 ## Entidades mínimas
 
-### `conversation`
+### `conversations` — implementada en `V1__create_core_support_tables.sql`
 
 - `id` UUID interno.
-- `wa_id` identificador de WhatsApp, único.
-- `last_inbound_at`.
-- `service_window_expires_at`.
-- `status` (`OPEN`, `ESCALATED`, `CLOSED`).
+- `channel` y `external_conversation_id`, únicos como par.
+- `customer_wa_id`, aislado del ownership futuro por tienda.
+- `status` (`OPEN`, `CLOSED`).
 - timestamps.
 
-### `message`
+### `messages` — implementada en `V1__create_core_support_tables.sql`
 
 - `id` UUID interno.
 - `conversation_id` FK.
@@ -25,37 +33,31 @@ Related repository paths: `src/main/java/.../adapter/out/persistence`, `src/main
 - `direction` (`INBOUND`, `OUTBOUND`).
 - `message_type` (`TEXT` en el MVP).
 - `body` con política de retención definida.
-- `processing_status` (`RECEIVED`, `QUEUED`, `PROCESSING`, `SENT`, `FAILED`, `IGNORED`).
-- `attempt_count`.
-- `provider_message_id`.
-- `error_code` sin secretos.
+- `message_type` (`TEXT` en la primera entrega).
 - timestamps.
 
-### `message_processing_attempt`
+### `processing_attempts` — implementada en `V1__create_core_support_tables.sql`
 
 - `id` UUID.
 - `message_id` FK.
-- `attempt_number`.
-- `processor` (`LLM`, `WHATSAPP`).
-- `status`, duración y código de error.
-- `request_id`.
+- `attempt_count` y `status`.
+- error sanitizado.
 - timestamps.
 
 Esta entidad permite auditar reintentos sin sobrecargar la fila principal del mensaje.
 
-### `message_outbox`
+### `outbox_messages` — implementada en `V1__create_core_support_tables.sql`
 
 Permite confirmar el webhook después de una transacción local y despachar el trabajo de forma durable.
 
 * `id` UUID.
-* `aggregate_type`, `aggregate_id`.
-* `event_type` (`MESSAGE_RECEIVED`, `MESSAGE_PROCESS` o equivalente).
-* `payload_reference` sin payload sensible completo.
+* `aggregate_id` y `event_type`.
+* campos de entrega tipados, sin payload Meta completo.
 * `status` (`PENDING`, `PROCESSING`, `SENT`, `FAILED`).
-* `attempt_count`, `next_attempt_at` y `locked_until`.
+* `attempts`, `available_at`, `version` y `sent_at`.
 * timestamps.
 
-La unicidad del `external_message_id` y el estado del outbox deben sobrevivir a reinicios. `@Async` sin persistencia no es el mecanismo productivo.
+La unicidad del `external_message_id` y el estado del outbox sobreviven a reinicios. `@Async` sin persistencia no es el mecanismo productivo.
 
 ### `knowledge_source` y `knowledge_document_version`
 

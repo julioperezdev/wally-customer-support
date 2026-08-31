@@ -12,10 +12,10 @@
     </parent>
 
     <groupId>dev.wally</groupId>
-    <artifactId>wally-customer-support-whatsapp-poc</artifactId>
+    <artifactId>wally-customer-support</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>Wally Customer Support WhatsApp PoC</name>
-    <description>Disposable WhatsApp Cloud API and Spring Boot proof of concept</description>
+    <name>Wally Customer Support</name>
+    <description>Modular customer support platform with WhatsApp, AI and knowledge retrieval adapters</description>
 
     <properties>
         <java.version>25</java.version>
@@ -29,8 +29,34 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-configuration-processor</artifactId>
             <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

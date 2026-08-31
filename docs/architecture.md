@@ -45,6 +45,33 @@ Message Processor
 PostgreSQL + Flyway + observabilidad
 ```
 
+## Topología AWS base
+
+La primera base de infraestructura sigue la separación de `tesis-dev` sin
+duplicar su base de datos:
+
+```text
+GitHub Actions
+    │ OIDC, sin access keys
+    ▼
+ECR ──► App Runner (creación desactivada hasta completar los gates)
+                         │
+                         ├── AppConfig: configuración no sensible
+                         ├── Secrets Manager: secrets de WCS
+                         │                    + referencia al secret del RDS
+                         ├── VPC connector existente
+                         │        ▼
+                         │   RDS PostgreSQL de tesis-dev
+                         │        └── schema wcs, administrado por Flyway
+                         └── Bedrock (permiso IAM opcional)
+```
+
+Terraform administra ECR, AppConfig, el contenedor de secrets de WCS, roles
+IAM/OIDC y la configuración opcional de App Runner. No administra la instancia
+RDS, la VPC ni sus security groups. El consumo del RDS se hace con data sources
+y una key de state separada; el schema `wcs` es la frontera de ownership de la
+aplicación.
+
 ## Módulos y responsabilidades
 
 | Módulo | Responsabilidad | Dependencias permitidas |
@@ -64,24 +91,24 @@ El dominio no importa Spring, Meta, Graph API, Bedrock, SDKs de LLM ni JPA. Los 
 
 ```java
 interface InboundMessagePort {
-    void accept(InboundMessageCommand command);
+    InboundMessageResult accept(InboundMessageCommand command);
 }
 
 interface OutboundMessagePort {
-    SendMessageResult send(OutboundMessage message);
+    void send(OutboundMessage message);
 }
 
 interface LlmClient {
-    LlmReply generateReply(ConversationContext context);
+    String generateReply(ConversationContext context);
 }
 
 interface KnowledgeRetriever {
-    RetrievedContext retrieve(KnowledgeQuery query);
+    List<KnowledgeChunk> retrieve(KnowledgeQuery query);
 }
 
 interface ConversationRepository { /* load/save aggregate */ }
 interface MessageRepository { /* idempotency and state */ }
-interface MessageDispatchPort { /* durable outbox dispatch */ }
+interface OutboxRepository { /* durable outbox and retry state */ }
 ```
 
 Los nombres y contratos son internos de WCS; ningún adapter debe filtrarlos con tipos de Meta o AWS.
@@ -103,10 +130,10 @@ Las variables de entorno quedan limitadas al bootstrap del runtime (`AWS_REGION`
 1. El adapter de canal recibe el evento.
 2. Se valida la firma sobre el body original antes de parsear.
 3. Se transforma a un comando interno y se persiste de forma idempotente.
-4. Se confirma el webhook rápidamente después de persistir y publicar el trabajo durable.
-5. El processor carga contexto limitado, consulta conocimiento y genera una respuesta.
-6. `ResponsePolicy` valida grounding, privacidad, ventana de atención y fallback.
-7. El adapter de canal envía la respuesta y se registra el resultado.
+4. La primera fundación genera la respuesta mediante puertos y deja el envío en un outbox durable; la separación del processor asíncrono completo queda en la siguiente iteración.
+5. El contexto consulta conocimiento y genera una respuesta detrás de `KnowledgeRetriever` y `LlmClient`.
+6. `ResponsePolicy` validará grounding, privacidad, ventana de atención y fallback antes de habilitar producción.
+7. El dispatcher envía la respuesta y registra el resultado/reintento.
 8. Logs, métricas y trazas usan correlación y metadatos sanitizados, nunca payloads completos.
 
 ## Decisiones abiertas antes de producción

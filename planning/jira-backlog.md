@@ -119,6 +119,12 @@ El Space Jira `WCS` fue creado el 2026-08-29 y el backlog inicial fue cargado. L
 
 **Tipo:** Task · **Priority:** High · **Estimate:** 6d · **Depends on:** WCS-18, WCS-21
 
+La base inicial de Terraform, ECR, AppConfig, Secrets Manager, OIDC y los
+workflows de validación/deploy queda versionada en `infra/`, `.github/` y
+`ci/`. Esto no reemplaza la implementación del loader AWS ni autoriza un
+`apply`; la activación productiva requiere completar la issue y adjuntar plan,
+deploy, health y smoke como evidencia.
+
 ## EPIC-WCS-06 — Piloto
 
 ### WCS-23 — Ejecutar piloto y validar métricas de soporte

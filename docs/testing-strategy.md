@@ -33,3 +33,9 @@
 ## Gate de aceptación
 
 No alcanza con que compile. Cada issue debe declarar qué casos prueba, qué riesgo cubren y dónde queda la evidencia.
+
+## Evidencia de WCS-13
+
+- `mvn clean test`: tests unitarios de HMAC, parser, controller, servicio de aplicación y adapter Meta.
+- `WallyCustomerSupportApplicationTest`: arranque Spring Boot con JPA, migración Flyway V1 y adapters mock usando H2 compatible con PostgreSQL.
+- La prueba de integración PostgreSQL real se ejecuta con `docker compose up -d postgres`; Testcontainers se incorpora en la siguiente iteración de integración.

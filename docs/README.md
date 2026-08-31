@@ -18,6 +18,7 @@
 - [`testing-strategy.md`](testing-strategy.md)
 - [`operations.md`](operations.md)
 - [`queries.md`](queries.md)
+- [`../infra/README.md`](../infra/README.md): base AWS, state y reglas de activación.
 
 ## Colaboración
 
