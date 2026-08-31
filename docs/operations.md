@@ -75,6 +75,8 @@ wcs/{environment}/providers
 
 Bedrock debe autenticarse preferentemente con IAM Role del workload; no se crea una API key para Bedrock. Los valores de Secrets Manager no se pasan a Jira, Confluence, la base de datos ni los logs.
 
+La primera entrega deja `ExternalConfigurationProperties` como contrato de bootstrap y usa placeholders locales. La carga efectiva desde AWS AppConfig y Secrets Manager es WCS-22: debe incorporarse como fuente de configuración del runtime sin cambiar los puertos de aplicación ni introducir secretos en `application.properties`.
+
 Las únicas variables de entorno productivas son bootstrap del runtime, por ejemplo `AWS_REGION`, `AWS_APPCONFIG_APPLICATION`, `AWS_APPCONFIG_ENVIRONMENT`, `AWS_APPCONFIG_PROFILE` y referencias no secretas a Secrets Manager. El perfil `local-mock` puede usar `.env` ignorado y valores sintéticos.
 
 ## Observabilidad mínima
