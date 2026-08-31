@@ -26,6 +26,13 @@ El usuario de base de datos que ejecute Flyway debe poder crear el schema
 ownership/permisos necesarios. Terraform no intenta modificar permisos del
 RDS compartido.
 
+El módulo `appconfig` admite `appconfig_configuration_content` opcional. Al
+proveerlo crea una versión hosted JSON y un deployment all-at-once; el JSON
+debe contener configuración no sensible y referencias a Secrets Manager, nunca
+tokens o passwords. Si queda en `null`, Terraform crea únicamente la
+application, environment y profile para que el contenido pueda cargarse por
+otro proceso aprobado.
+
 ## Estado remoto
 
 El backend conserva el bucket de estado existente de `tesis-dev`, pero usa una

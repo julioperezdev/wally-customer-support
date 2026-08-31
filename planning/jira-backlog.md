@@ -121,9 +121,11 @@ El Space Jira `WCS` fue creado el 2026-08-29 y el backlog inicial fue cargado. L
 
 La base inicial de Terraform, ECR, AppConfig, Secrets Manager, OIDC y los
 workflows de validación/deploy queda versionada en `infra/`, `.github/` y
-`ci/`. Esto no reemplaza la implementación del loader AWS ni autoriza un
-`apply`; la activación productiva requiere completar la issue y adjuntar plan,
-deploy, health y smoke como evidencia.
+`ci/`. El loader inicial de AppConfig y la resolución allow-listed de
+Secrets Manager quedan implementados en WCS-22, con bypass local y fail-fast
+productivo. Esto no autoriza un `apply`; la activación productiva requiere
+configurar referencias reales, red, plan, deploy, health y smoke como
+evidencia.
 
 ## EPIC-WCS-06 — Piloto
 

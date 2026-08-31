@@ -7,9 +7,20 @@ public record ExternalConfigurationProperties(
         AppConfig appconfig,
         SecretsManager secretsManager) {
 
-    public record AppConfig(String application, String environment, String profile) {
+    public record AppConfig(
+            String application,
+            String environment,
+            String profile,
+            boolean enabled,
+            boolean failFast) {
     }
 
-    public record SecretsManager(String secretId) {
+    public record SecretsManager(
+            String secretId,
+            String runtimeSecretId,
+            String databaseSecretId,
+            String whatsappSecretId,
+            boolean enabled,
+            boolean failFast) {
     }
 }
