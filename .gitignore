@@ -7,8 +7,7 @@
 
 # Build artifacts
 target/
-build/
-out/
+/build/
 node_modules/
 dist/
 
