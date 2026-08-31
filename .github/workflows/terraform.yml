@@ -4,11 +4,13 @@ on:
   pull_request:
     paths:
       - "infra/**"
+      - ".github/workflows/terraform.yml"
   push:
     branches:
       - main
     paths:
       - "infra/**"
+      - ".github/workflows/terraform.yml"
   workflow_dispatch:
     inputs:
       action:
@@ -19,11 +21,14 @@ on:
         options:
           - plan
           - apply
+      confirm_apply:
+        description: "Required for apply after reviewing a successful plan"
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
-  id-token: write
-  pull-requests: write
 
 env:
   TF_WORKING_DIR: infra/environments/prod
@@ -57,7 +62,7 @@ jobs:
         run: terraform validate
 
   plan-or-apply:
-    name: Terraform ${{ inputs.action }}
+    name: Terraform Plan / Apply (manual)
     needs: validate
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
@@ -66,13 +71,33 @@ jobs:
     env:
       AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
       AWS_TERRAFORM_ROLE_ARN: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
-      TERRAFORM_VARS: ${{ secrets.TERRAFORM_VARS }}
+
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Check apply guardrails
+        if: inputs.action == 'apply'
+        env:
+          CONFIRM_APPLY: ${{ inputs.confirm_apply }}
+        run: |
+          set -euo pipefail
+          [ "$GITHUB_REF" = "refs/heads/main" ] || {
+            echo "::error::Terraform apply is allowed only from main"
+            exit 1
+          }
+          [ "$CONFIRM_APPLY" = "true" ] || {
+            echo "::error::Set confirm_apply=true only after reviewing a successful plan"
+            exit 1
+          }
+
       - name: Check Terraform deployment configuration
+        env:
+          TERRAFORM_VARS: ${{ secrets.TERRAFORM_VARS }}
         run: |
           set -euo pipefail
           [ -n "$AWS_TERRAFORM_ROLE_ARN" ] || {
@@ -85,8 +110,12 @@ jobs:
           }
 
       - name: Write reviewed Terraform variables
-        working-directory: ${{ env.TF_WORKING_DIR }}
-        run: printf '%s' "$TERRAFORM_VARS" > terraform.auto.tfvars
+        env:
+          TERRAFORM_VARS: ${{ secrets.TERRAFORM_VARS }}
+        run: |
+          set -euo pipefail
+          umask 077
+          printf '%s' "$TERRAFORM_VARS" > "$RUNNER_TEMP/wcs-terraform.tfvars"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -106,20 +135,63 @@ jobs:
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform init -input=false
 
-      - name: Terraform Plan
+      - name: Terraform Plan (captured, no sensitive output)
         working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform plan -input=false -out=tfplan -no-color 2>&1 | tee plan.txt
+        run: |
+          set +e
+          terraform plan \
+            -input=false \
+            -detailed-exitcode \
+            -out="$RUNNER_TEMP/wcs.tfplan" \
+            -var-file="$RUNNER_TEMP/wcs-terraform.tfvars" \
+            -no-color > "$RUNNER_TEMP/wcs-terraform-plan.log" 2>&1
+          plan_exit=$?
+          set -e
 
-      - name: Block destructive plan
+          case "$plan_exit" in
+            0|2) ;;
+            *)
+              echo "::error::Terraform plan failed. Check AWS identity, backend access and reviewed variables."
+              exit "$plan_exit"
+              ;;
+          esac
+
+      - name: Summarize and block destructive plan
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
           set -euo pipefail
-          if grep -Eq 'Plan: [0-9]+ to add, [0-9]+ to change, [1-9][0-9]* to destroy\.' plan.txt; then
-            echo "::error::Terraform plan contains resource destruction; review state, account and variables before continuing."
+          plan_json="$RUNNER_TEMP/wcs-terraform-plan.json"
+          terraform show -json "$RUNNER_TEMP/wcs.tfplan" > "$plan_json"
+
+          create_count="$(jq '[.resource_changes[]? | select((.change.actions | index("create")) != null and (.change.actions | index("delete")) == null)] | length' "$plan_json")"
+          update_count="$(jq '[.resource_changes[]? | select((.change.actions | index("update")) != null)] | length' "$plan_json")"
+          destroy_count="$(jq '[.resource_changes[]? | select((.change.actions | index("delete")) != null)] | length' "$plan_json")"
+          replace_count="$(jq '[.resource_changes[]? | select((.change.actions | index("create")) != null and (.change.actions | index("delete")) != null)] | length' "$plan_json")"
+
+          {
+            echo "### Terraform plan summary"
+            echo "- Create: $create_count"
+            echo "- Update: $update_count"
+            echo "- Destroy: $destroy_count"
+            echo "- Replace: $replace_count"
+            echo
+            echo "Resource addresses and actions:"
+            jq -r '[.resource_changes[]? | select((.change.actions | index("no-op")) == null and (.change.actions | index("read")) == null) | "- `\(.address)`: \(.change.actions | join(","))"] | if length == 0 then "- No resource changes" else .[] end' "$plan_json"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$destroy_count" -gt 0 ]; then
+            echo "::error::Terraform plan contains destroy actions; the CI guardrail blocks plan/apply."
+            jq -r '[.resource_changes[]? | select((.change.actions | index("delete")) != null) | "\(.address): \(.change.actions | join(","))"] | .[]' "$plan_json"
+            exit 1
+          fi
+
+          if [ "$replace_count" -gt 0 ]; then
+            echo "::error::Terraform plan contains replacement actions; the CI guardrail blocks plan/apply."
+            jq -r '[.resource_changes[]? | select((.change.actions | index("create")) != null and (.change.actions | index("delete")) != null) | "\(.address): \(.change.actions | join(","))"] | .[]' "$plan_json"
             exit 1
           fi
 
       - name: Apply reviewed plan
         if: inputs.action == 'apply'
         working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform apply -input=false -auto-approve tfplan
+        run: terraform apply -input=false -auto-approve "$RUNNER_TEMP/wcs.tfplan"

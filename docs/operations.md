@@ -49,10 +49,31 @@ ci/backend-deploy.sh              despliegue por digest y health-check
 ```
 
 La validación de Terraform corre en pull requests y en cambios a `main` sin
-acceder al backend remoto. El plan y el apply requieren `workflow_dispatch`,
-un rol AWS con OIDC y variables revisadas en `TERRAFORM_VARS`; el workflow
-bloquea planes con destrucciones. El deploy de backend también es manual y usa
+acceder al backend remoto. El plan y el apply se ejecutan desde
+`workflow_dispatch`: el plan escribe un resumen sin valores sensibles en el
+resumen del workflow y el apply sólo puede ejecutarse desde `main`, con
+`confirm_apply=true`, un rol AWS con OIDC y la aprobación del Environment
+`production`. El workflow bloquea destrucciones y reemplazos, y aplica el plan
+generado en esa misma ejecución. El deploy de backend también es manual y usa
 una imagen identificada por digest.
+
+Para habilitar Terraform en GitHub se deben configurar en el Environment
+`production`:
+
+- `AWS_TERRAFORM_ROLE_ARN`: ARN de un rol preaprobado con trust OIDC para
+  `julioperezdev/wally-customer-support` y el subject del Environment
+  `production`.
+- `TERRAFORM_VARS`: archivo HCL con variables revisadas y referencias de ARN,
+  nunca passwords, tokens, claves privadas ni otros valores secretos.
+- una regla de aprobación con al menos un reviewer requerido para el
+  Environment `production`.
+
+El workflow no crea ni amplía automáticamente el rol AWS de Terraform. La
+confianza OIDC y sus permisos deben revisarse en AWS, incluyendo el acceso a
+la key de state de WCS y sólo los recursos que este stack administra. El apply
+no se dispara por un push: primero se ejecuta `plan`, se revisa su resumen y
+luego se vuelve a lanzar el workflow con `action=apply` y
+`confirm_apply=true`.
 
 La base de datos existente se configura como `shared_rds_*` y el runtime recibe
 referencias a AppConfig/Secrets Manager. La carga efectiva de esos valores en
