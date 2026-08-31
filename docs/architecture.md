@@ -125,6 +125,12 @@ La aplicación tendrá una única configuración lógica y distintos proveedores
 
 Las variables de entorno quedan limitadas al bootstrap del runtime (`AWS_REGION`, identificadores de AppConfig/Secrets Manager y perfil local). No se usará un `.env` como mecanismo de configuración de producción ni se imprimirán valores resueltos.
 
+`AwsExternalConfigurationEnvironmentPostProcessor` carga AppConfig antes del
+binding de `@ConfigurationProperties` y resuelve desde Secrets Manager sólo los
+campos allow-listed de los roles `database`, `whatsapp` y `runtime`. La
+aplicación puede arrancar en `local-mock` sin clientes AWS; en ambientes reales
+el fail-fast evita operar con configuración parcial.
+
 ## Flujos críticos
 
 1. El adapter de canal recibe el evento.

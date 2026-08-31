@@ -31,7 +31,8 @@ Fuera de alcance inicial: audio, imágenes, stickers, ubicación, grupos, pagos,
 ### Fase 2 — Fundación de producto, mock vertical slice e infraestructura base
 
 **Salida:** Spring Boot modular, PostgreSQL/JPA/Flyway, schema `wcs` sobre el
-RDS compartido, puertos y adapters, configuración local/producción,
+RDS compartido, puertos y adapters, configuración local/producción con
+AppConfig y Secrets Manager,
 persistencia, deduplicación, outbox/dispatcher durable, Mock WhatsApp, Mock
 LLM, Mock Knowledge Retriever, endpoint interno, tests e infraestructura base
 con ECR, AppConfig, Secrets Manager, OIDC y App Runner opcional.

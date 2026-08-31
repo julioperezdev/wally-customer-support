@@ -11,6 +11,10 @@ shared_rds_instance_identifier = "REPLACE_WITH_EXISTING_RDS_INSTANCE_IDENTIFIER"
 shared_rds_secret_arn          = "arn:aws:secretsmanager:us-east-1:ACCOUNT_ID:secret:REPLACE_WITH_EXISTING_RDS_SECRET"
 existing_github_oidc_provider_arn = "arn:aws:iam::ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com"
 
+# ARNs of additional secrets referenced by AppConfig, for example the
+# WhatsApp secret. Values remain outside Terraform.
+appconfig_secret_arns = []
+
 # Flyway creates and owns this schema inside the existing database.
 database_schema = "wcs"
 
@@ -19,6 +23,21 @@ database_schema = "wcs"
 backend_create_service    = false
 backend_vpc_connector_arn = null
 backend_image_tag         = "bootstrap"
+
+# By default Terraform creates a safe fake AppConfig document plus fake
+# database/WhatsApp secret versions. Replace the values in the AWS console
+# before enabling App Runner. This content override is optional and must only
+# contain non-secret values and references to Secrets Manager.
+# appconfig_configuration_content = <<-JSON
+# {
+#   "wcs.whatsapp.graph-api-version": "v25.0",
+#   "wcs.whatsapp.graph-api-base-url": "https://graph.facebook.com",
+#   "wcs.external-config.secrets-manager.database-secret-id": "tesis-dev-prod/rds",
+#   "wcs.external-config.secrets-manager.whatsapp-secret-id": "wcs/prod/whatsapp",
+#   "wcs.ai.provider": "mock",
+#   "wcs.rag.provider": "mock"
+# }
+# JSON
 
 backend_runtime_environment_variables = {
   # Add only non-secret project configuration here.

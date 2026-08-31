@@ -57,6 +57,25 @@ variable "runtime_secret_name" {
   default     = null
 }
 
+variable "database_secret_name" {
+  type        = string
+  description = "WCS bootstrap database secret name. To use shared RDS, update the AppConfig reference and IAM ARN instead of renaming this secret."
+  default     = null
+}
+
+variable "whatsapp_secret_name" {
+  type        = string
+  description = "WCS WhatsApp secret name."
+  default     = null
+}
+
+variable "appconfig_configuration_content" {
+  type        = string
+  nullable    = true
+  description = "Optional JSON AppConfig document containing non-secret settings and Secrets Manager references."
+  default     = null
+}
+
 variable "backend_create_service" {
   type        = bool
   description = "Whether to create App Runner. Keep false until image, network and runtime configuration are verified."
@@ -97,6 +116,12 @@ variable "backend_runtime_environment_secrets" {
   type        = map(string)
   description = "Optional App Runner secret mappings. Values are Secrets Manager ARNs, never secret values."
   default     = {}
+}
+
+variable "appconfig_secret_arns" {
+  type        = set(string)
+  description = "Secret ARNs referenced by AppConfig and readable by the runtime, never secret values."
+  default     = []
 }
 
 variable "enable_bedrock_access" {
