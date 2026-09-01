@@ -205,6 +205,7 @@ data "aws_iam_policy_document" "terraform" {
     effect = "Allow"
     actions = [
       "secretsmanager:DescribeSecret",
+      "secretsmanager:GetResourcePolicy",
       "secretsmanager:GetSecretValue",
       "secretsmanager:ListSecretVersionIds",
       "secretsmanager:PutSecretValue",
@@ -220,9 +221,12 @@ data "aws_iam_policy_document" "terraform" {
     for_each = var.shared_rds_secret_arn == null ? [] : [var.shared_rds_secret_arn]
 
     content {
-      sid       = "ReadSharedRdsSecretMetadata"
-      effect    = "Allow"
-      actions   = ["secretsmanager:DescribeSecret"]
+      sid    = "ReadSharedRdsSecretMetadata"
+      effect = "Allow"
+      actions = [
+        "secretsmanager:DescribeSecret",
+        "secretsmanager:GetResourcePolicy",
+      ]
       resources = [statement.value]
     }
   }
@@ -242,6 +246,7 @@ data "aws_iam_policy_document" "terraform" {
     actions = [
       "ecr:DescribeRepositories",
       "ecr:DeleteLifecyclePolicy",
+      "ecr:GetLifecyclePolicy",
       "ecr:ListTagsForResource",
       "ecr:PutLifecyclePolicy",
       "ecr:TagResource",
