@@ -11,6 +11,7 @@ Flyway crea únicamente el schema lógico `wcs`.
 - AWS App Runner como runtime del monolito modular, desactivado por defecto
   hasta completar el contrato de configuración, red y secrets.
 - IAM/OIDC para que GitHub Actions despliegue sin access keys.
+- Un rol IAM dedicado para que GitHub Actions ejecute Terraform sobre el stack WCS.
 - AWS AppConfig para configuración no sensible versionable.
 - AWS Secrets Manager para el contenedor de secrets de WCS y la referencia al
   secret existente del RDS compartido.
@@ -56,6 +57,26 @@ El flujo posterior al primer `apply` es:
 Los valores fake son deliberados y no permiten una operación productiva. La
 configuración manual de consola queda preservada por `ignore_changes`; no
 agregar valores reales a `terraform.tfvars`, al repositorio o a los outputs.
+
+## Rol de Terraform para GitHub Actions
+
+Cuando `existing_github_oidc_provider_arn` está configurado, este stack crea el
+rol `wally-customer-support-prod-github-terraform-deploy` y expone su ARN en el
+output `terraform_github_deploy_role_arn`. El rol usa el mismo proveedor OIDC
+de GitHub que puede existir en la cuenta por `tesis-dev`, pero su trust policy
+acepta únicamente el repositorio WCS y el Environment `production`.
+
+El permiso está limitado al state de WCS, AppConfig, los secrets con prefijo
+`wcs/prod/`, ECR, App Runner, lectura del RDS compartido e IAM de los roles
+WCS. Incluye un deny explícito para borrar recursos del stack. Si la cuenta
+dispone de una permissions boundary, se puede indicar mediante
+`terraform_permissions_boundary_arn`.
+
+El rol no puede auto-crear su propia primera credencial: el primer apply que
+lo crea debe ejecutarse con un principal de bootstrap autorizado y con un
+plan revisado. Una vez creado, su ARN se configura como el secret
+`AWS_TERRAFORM_ROLE_ARN` del Environment `production` y los siguientes plan/apply
+se ejecutan desde GitHub Actions.
 
 ## Estado remoto
 

@@ -80,6 +80,12 @@ referencias a AppConfig/Secrets Manager. La carga efectiva de esos valores en
 Spring sigue siendo el alcance de WCS-22; por eso App Runner queda desactivado
 por defecto y esta base no constituye un deployment productivo.
 
+El CI de Terraform usa un rol IAM dedicado de WCS, no el rol de `tesis-dev`.
+Su trust OIDC está restringido al repositorio WCS y al Environment `production`;
+su policy limita el state al prefijo de WCS y los permisos de servicio a los
+recursos administrados por este stack. El primer apply del rol requiere un
+bootstrap autorizado, porque un rol no puede autenticarse antes de existir.
+
 ## Configuración productiva
 
 La configuración productiva se divide deliberadamente:
