@@ -50,7 +50,7 @@ resource "aws_appconfig_deployment" "this" {
   count = var.configuration_content == null ? 0 : 1
 
   application_id           = aws_appconfig_application.this.id
-  configuration_profile_id = aws_appconfig_configuration_profile.this.id
+  configuration_profile_id = aws_appconfig_configuration_profile.this.configuration_profile_id
   configuration_version    = aws_appconfig_hosted_configuration_version.this[0].version_number
   deployment_strategy_id   = aws_appconfig_deployment_strategy.this[0].id
   environment_id           = aws_appconfig_environment.this.environment_id
