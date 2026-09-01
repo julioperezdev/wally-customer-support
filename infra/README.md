@@ -64,7 +64,10 @@ Cuando `existing_github_oidc_provider_arn` está configurado, este stack crea el
 rol `wally-customer-support-prod-github-terraform-deploy` y expone su ARN en el
 output `terraform_github_deploy_role_arn`. El rol usa el mismo proveedor OIDC
 de GitHub que puede existir en la cuenta por `tesis-dev`, pero su trust policy
-acepta únicamente el repositorio WCS y el Environment `production`.
+acepta únicamente el repositorio WCS y el Environment `production`. Para
+repositorios con el subject OIDC inmutable de GitHub se deben configurar
+`github_repository_owner_id` y `github_repository_id`; son identificadores
+públicos de GitHub, no secretos.
 
 El permiso está limitado al state de WCS, AppConfig, los secrets con prefijo
 `wcs/prod/`, ECR, App Runner, lectura del RDS compartido e IAM de los roles

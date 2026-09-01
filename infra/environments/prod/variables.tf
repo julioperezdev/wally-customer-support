@@ -22,6 +22,18 @@ variable "github_repository" {
   default     = "julioperezdev/wally-customer-support"
 }
 
+variable "github_repository_owner_id" {
+  type        = string
+  description = "Immutable numeric GitHub owner ID used by the repository OIDC subject claim."
+  default     = null
+}
+
+variable "github_repository_id" {
+  type        = string
+  description = "Immutable numeric GitHub repository ID used by the repository OIDC subject claim."
+  default     = null
+}
+
 variable "existing_github_oidc_provider_arn" {
   type        = string
   description = "Existing GitHub Actions OIDC provider ARN. This stack does not create a second provider."

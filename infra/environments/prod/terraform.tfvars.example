@@ -5,6 +5,9 @@ aws_region      = "us-east-1"
 project_name    = "wally-customer-support"
 environment     = "prod"
 github_repository = "julioperezdev/wally-customer-support"
+# GitHub immutable OIDC subject identifiers. These are IDs, not secrets.
+github_repository_owner_id = "67208692"
+github_repository_id       = "1351752798"
 
 # Confirm these values from the AWS account that owns tesis-dev.
 shared_rds_instance_identifier = "REPLACE_WITH_EXISTING_RDS_INSTANCE_IDENTIFIER"
