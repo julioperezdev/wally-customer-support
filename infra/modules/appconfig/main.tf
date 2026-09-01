@@ -24,7 +24,7 @@ resource "aws_appconfig_hosted_configuration_version" "this" {
   count = var.configuration_content == null ? 0 : 1
 
   application_id           = aws_appconfig_application.this.id
-  configuration_profile_id = aws_appconfig_configuration_profile.this.id
+  configuration_profile_id = aws_appconfig_configuration_profile.this.configuration_profile_id
   content                  = var.configuration_content
   content_type             = "application/json"
   description              = "Versioned WCS runtime configuration managed by Terraform."
