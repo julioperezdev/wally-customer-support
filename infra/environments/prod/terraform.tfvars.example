@@ -11,6 +11,9 @@ shared_rds_instance_identifier = "REPLACE_WITH_EXISTING_RDS_INSTANCE_IDENTIFIER"
 shared_rds_secret_arn          = "arn:aws:secretsmanager:us-east-1:ACCOUNT_ID:secret:REPLACE_WITH_EXISTING_RDS_SECRET"
 existing_github_oidc_provider_arn = "arn:aws:iam::ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com"
 
+# Optional. Prefer a permissions boundary when your AWS account provides one.
+terraform_permissions_boundary_arn = null
+
 # ARNs of additional secrets referenced by AppConfig, for example the
 # WhatsApp secret. Values remain outside Terraform.
 appconfig_secret_arns = []

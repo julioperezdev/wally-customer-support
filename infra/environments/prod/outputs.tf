@@ -78,3 +78,8 @@ output "backend_apprunner_ecr_access_role_arn" {
 output "backend_github_deploy_role_arn" {
   value = try(module.github_backend_deploy[0].role_arn, null)
 }
+
+output "terraform_github_deploy_role_arn" {
+  description = "WCS Terraform CI role ARN for AWS_TERRAFORM_ROLE_ARN."
+  value       = try(module.github_terraform_deploy[0].role_arn, null)
+}

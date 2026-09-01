@@ -28,6 +28,12 @@ variable "existing_github_oidc_provider_arn" {
   default     = null
 }
 
+variable "terraform_permissions_boundary_arn" {
+  type        = string
+  description = "Optional IAM permissions boundary applied to the WCS Terraform CI role."
+  default     = null
+}
+
 variable "shared_rds_instance_identifier" {
   type        = string
   description = "Identifier of the existing tesis-dev RDS instance. WCS reads it as a data source and never manages it."

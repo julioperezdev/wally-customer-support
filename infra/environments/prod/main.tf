@@ -140,3 +140,20 @@ module "github_backend_deploy" {
   apprunner_ecr_access_role_arn = module.backend_apprunner.apprunner_ecr_access_role_arn
   tags                          = local.common_tags
 }
+
+module "github_terraform_deploy" {
+  count  = var.existing_github_oidc_provider_arn == null ? 0 : 1
+  source = "../../modules/github-terraform-deploy"
+
+  project_name             = var.project_name
+  environment              = var.environment
+  github_repository        = var.github_repository
+  github_oidc_provider_arn = var.existing_github_oidc_provider_arn
+  aws_region               = var.aws_region
+  state_bucket_name        = "tesis-dev-terraform-state-us-east-1"
+  state_key                = "wally-customer-support/environments/prod/terraform.tfstate"
+  secret_name_prefix       = "wcs/${var.environment}/"
+  shared_rds_secret_arn    = var.shared_rds_secret_arn
+  permissions_boundary_arn = var.terraform_permissions_boundary_arn
+  tags                     = local.common_tags
+}
