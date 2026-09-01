@@ -11,5 +11,5 @@ output "environment_id" {
 }
 
 output "configuration_profile_id" {
-  value = aws_appconfig_configuration_profile.this.id
+  value = aws_appconfig_configuration_profile.this.configuration_profile_id
 }
