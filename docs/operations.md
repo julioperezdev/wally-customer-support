@@ -8,9 +8,17 @@ Related repository paths: `src/main/resources`, `.github/workflows`, `infra/`
 
 ## Ambientes
 
-- `local-mock`: sin Meta ni LLM real, con PostgreSQL local.
-- `staging`: integraciones controladas y datos sintéticos.
-- `production`: cuenta Meta, secrets gestionados y monitoreo obligatorio.
+`SPRING_PROFILES_ACTIVE` selecciona el environment homónimo de AppConfig. La
+aplicación de AppConfig es siempre `wally-customer-support` y el profile hosted
+es siempre `runtime`.
+
+- `local-mock`: sin AppConfig, Meta ni LLM real, con PostgreSQL local.
+- `dev`: desarrollo compartido con integraciones controladas.
+- `test`: pruebas con datos sintéticos.
+- `prod`: cuenta Meta, secrets gestionados y monitoreo obligatorio.
+
+El Environment `production` de GitHub Actions es un gate de despliegue y no
+debe confundirse con el environment `prod` de Spring/AppConfig.
 
 ## CI/CD objetivo
 
@@ -128,7 +136,7 @@ wcs/{environment}/providers
 
 Bedrock debe autenticarse preferentemente con IAM Role del workload; no se crea una API key para Bedrock. Los valores de Secrets Manager no se pasan a Jira, Confluence, la base de datos ni los logs.
 
-El runtime implementa `AwsExternalConfigurationEnvironmentPostProcessor` como fuente temprana de configuración de Spring. Primero carga un snapshot de AWS AppConfig Data API y luego resuelve únicamente campos allow-listed de los secretos referenciados en AWS Secrets Manager. Los valores nunca se escriben en `application.properties`, el repositorio ni los logs.
+El runtime implementa `AwsExternalConfigurationEnvironmentPostProcessor` como fuente temprana de configuración de Spring. Primero carga un snapshot de AWS AppConfig Data API y luego resuelve únicamente campos allow-listed de los secretos referenciados en AWS Secrets Manager. El nombre de la aplicación y el profile de AppConfig están hardcodeados en `application.properties`; `SPRING_PROFILES_ACTIVE` selecciona `dev`, `test` o `prod`. Los valores nunca se escriben en `application.properties`, el repositorio ni los logs.
 
 ### Contrato del documento de AppConfig
 
@@ -190,7 +198,11 @@ por AppConfig (por ejemplo, WhatsApp). No se permite
 prepara los permisos y deja los valores fuera de su estado; el documento de
 AppConfig puede versionarse porque sólo contiene referencias no sensibles.
 
-Las únicas variables de entorno productivas son bootstrap del runtime, por ejemplo `AWS_REGION`, `AWS_APPCONFIG_APPLICATION`, `AWS_APPCONFIG_ENVIRONMENT`, `AWS_APPCONFIG_PROFILE` y referencias no secretas a Secrets Manager. El perfil `local-mock` puede usar `.env` ignorado y valores sintéticos.
+Las variables de entorno productivas son el bootstrap del runtime (`AWS_REGION`,
+`SPRING_PROFILES_ACTIVE`, los flags de activación y referencias no secretas a
+Secrets Manager). El nombre de la aplicación AppConfig y el profile hosted se
+mantienen estables en `application.properties`. El perfil `local-mock` puede
+usar `.env` ignorado y valores sintéticos.
 
 El entorno prod incluye por defecto una configuración hosted y versiones
 bootstrap falsas para `wcs/{environment}/database` y

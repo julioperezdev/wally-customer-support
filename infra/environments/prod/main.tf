@@ -50,10 +50,7 @@ locals {
   runtime_environment_variables = merge(
     {
       AWS_REGION                    = var.aws_region
-      SPRING_PROFILES_ACTIVE        = "production"
-      AWS_APPCONFIG_APPLICATION     = module.appconfig.application_id
-      AWS_APPCONFIG_ENVIRONMENT     = module.appconfig.environment_id
-      AWS_APPCONFIG_PROFILE         = module.appconfig.configuration_profile_id
+      SPRING_PROFILES_ACTIVE        = var.environment
       AWS_APPCONFIG_ENABLED         = "true"
       AWS_APPCONFIG_FAIL_FAST       = "true"
       AWS_SECRETS_MANAGER_SECRET_ID = module.runtime_secrets.secret_name
@@ -93,7 +90,7 @@ module "whatsapp_secrets" {
 module "appconfig" {
   source = "../../modules/appconfig"
 
-  application_name      = "${var.project_name}-${var.environment}"
+  application_name      = var.project_name
   environment_name      = var.environment
   profile_name          = "runtime"
   configuration_content = coalesce(var.appconfig_configuration_content, local.fake_appconfig_configuration)

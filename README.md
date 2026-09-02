@@ -42,6 +42,25 @@ mvn clean test
 SPRING_PROFILES_ACTIVE=local-mock mvn spring-boot:run
 ```
 
+Para levantar localmente contra el ambiente `prod` de AWS, la aplicación toma
+el nombre estable de AppConfig desde `application.properties`, usa
+`SPRING_PROFILES_ACTIVE` para seleccionar el environment y resuelve las
+referencias a Secrets Manager:
+
+```bash
+AWS_PROFILE=julio_dev \
+AWS_REGION=us-east-1 \
+SPRING_PROFILES_ACTIVE=prod \
+AWS_APPCONFIG_ENABLED=true \
+AWS_SECRETS_MANAGER_ENABLED=true \
+mvn spring-boot:run
+```
+
+El documento de AppConfig debe contener las referencias
+`wcs.external-config.secrets-manager.database-secret-id` y
+`wcs.external-config.secrets-manager.whatsapp-secret-id`. No se pasan IDs de
+AppConfig ni contraseñas por variables de entorno.
+
 El endpoint de verificación es `GET /webhook/whatsapp` y el webhook es `POST /webhook/whatsapp`. En `local-mock`, el webhook persiste el mensaje, consulta el retriever mock, genera una respuesta mock y la despacha por el adapter mock. La deduplicación se hace en PostgreSQL mediante `external_message_id`; el outbox sobrevive a reinicios.
 
 Para probar la integración real con Meta, usar un `.env` local separado, cambiar `WCS_WHATSAPP_ADAPTER=meta` y completar credenciales rotadas. Los secretos productivos deben resolverse desde Secrets Manager; AppConfig contiene sólo configuración no sensible.
