@@ -240,3 +240,24 @@ No registrar texto completo, firmas, tokens, números de teléfono completos ni 
 - Un provider no configurado falla de forma explícita y controlada; no se hace fallback silencioso a producción con datos sintéticos.
 - Health verifica proceso y dependencias esenciales; readiness declara qué integración está deshabilitada o degradada sin imprimir secretos.
 - La rotación de Secrets Manager debe ser probada sin recompilar ni cambiar código.
+
+## Smoke test local de WhatsApp
+
+Para enviar una plantilla aprobada desde el número de prueba de Meta, usar el
+helper versionado en `scripts/send-whatsapp-template.sh`. El script obtiene el
+JSON de `wcs/prod/whatsapp` desde Secrets Manager, extrae el access token sin
+mostrarlo y recién entonces ejecuta el POST contra Graph API.
+
+```bash
+./scripts/send-whatsapp-template.sh --recipient <WHATSAPP_ID>
+```
+
+AWS CLI debe tener configurados fuera del repositorio el perfil o sesión y la
+región que tienen permiso `secretsmanager:GetSecretValue` sobre el secret. El
+comando no recibe el token como argumento ni lo persiste. Se pueden cambiar el
+secret, phone number ID, versión, plantilla e idioma con `--secret-id`,
+`--phone-number-id`, `--graph-api-version`, `--template` y `--language`.
+
+Este helper prueba el envío saliente de una plantilla; no reemplaza el test del
+webhook entrante desde el botón `Test` de Meta. No almacenar el destinatario,
+tokens ni respuestas con PII en el repositorio o en tickets.
