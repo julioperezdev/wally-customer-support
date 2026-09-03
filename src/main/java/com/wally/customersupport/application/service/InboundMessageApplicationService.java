@@ -40,6 +40,7 @@ public class InboundMessageApplicationService implements InboundMessagePort {
     private final OutboxRepository outboxRepository;
     private final KnowledgeRetriever knowledgeRetriever;
     private final LlmClient llmClient;
+    private final CatalogConversationService catalogConversationService;
     private final RagProperties ragProperties;
     private final Clock clock;
 
@@ -51,6 +52,7 @@ public class InboundMessageApplicationService implements InboundMessagePort {
             OutboxRepository outboxRepository,
             KnowledgeRetriever knowledgeRetriever,
             LlmClient llmClient,
+            CatalogConversationService catalogConversationService,
             RagProperties ragProperties) {
         this(
                 conversationRepository,
@@ -59,6 +61,7 @@ public class InboundMessageApplicationService implements InboundMessagePort {
                 outboxRepository,
                 knowledgeRetriever,
                 llmClient,
+                catalogConversationService,
                 ragProperties,
                 Clock.systemUTC());
     }
@@ -70,6 +73,7 @@ public class InboundMessageApplicationService implements InboundMessagePort {
             OutboxRepository outboxRepository,
             KnowledgeRetriever knowledgeRetriever,
             LlmClient llmClient,
+            CatalogConversationService catalogConversationService,
             RagProperties ragProperties,
             Clock clock) {
         this.conversationRepository = conversationRepository;
@@ -78,6 +82,7 @@ public class InboundMessageApplicationService implements InboundMessagePort {
         this.outboxRepository = outboxRepository;
         this.knowledgeRetriever = knowledgeRetriever;
         this.llmClient = llmClient;
+        this.catalogConversationService = catalogConversationService;
         this.ragProperties = ragProperties;
         this.clock = clock;
     }
@@ -118,17 +123,19 @@ public class InboundMessageApplicationService implements InboundMessagePort {
                 command.occurredAt() == null ? now : command.occurredAt(),
                 now));
 
-        List<String> recentMessages = messageRepository.findRecentBodies(conversation.id(), 20);
-        List<KnowledgeChunk> knowledge = knowledgeRetriever.retrieve(new KnowledgeQuery(
-                command.body(),
-                conversation.id(),
-                Math.max(1, ragProperties.maxResults())));
-        String reply = llmClient.generateReply(new ConversationContext(
-                conversation.id(),
-                conversation.externalCustomerId(),
-                command.body(),
-                recentMessages,
-                knowledge));
+        String reply = catalogConversationService.replyFor(command.body()).orElseGet(() -> {
+            List<String> recentMessages = messageRepository.findRecentBodies(conversation.id(), 20);
+            List<KnowledgeChunk> knowledge = knowledgeRetriever.retrieve(new KnowledgeQuery(
+                    command.body(),
+                    conversation.id(),
+                    Math.max(1, ragProperties.maxResults())));
+            return llmClient.generateReply(new ConversationContext(
+                    conversation.id(),
+                    conversation.externalCustomerId(),
+                    command.body(),
+                    recentMessages,
+                    knowledge));
+        });
 
         processingAttemptRepository.save(new ProcessingAttempt(
                 UUID.randomUUID(),
