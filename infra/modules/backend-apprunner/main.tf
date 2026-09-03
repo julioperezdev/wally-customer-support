@@ -94,6 +94,17 @@ data "aws_iam_policy_document" "apprunner_instance" {
   }
 
   dynamic "statement" {
+    for_each = var.enable_bedrock_access && length(var.bedrock_knowledge_base_arns) > 0 ? [1] : []
+
+    content {
+      sid       = "RetrieveApprovedKnowledgeBases"
+      effect    = "Allow"
+      actions   = ["bedrock:Retrieve"]
+      resources = sort(tolist(var.bedrock_knowledge_base_arns))
+    }
+  }
+
+  dynamic "statement" {
     for_each = var.enable_appconfig_access ? [1] : []
 
     content {

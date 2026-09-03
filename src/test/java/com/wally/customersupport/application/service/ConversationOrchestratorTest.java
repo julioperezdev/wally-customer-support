@@ -55,7 +55,7 @@ class ConversationOrchestratorTest {
                 supportConfigurationQueryService,
                 knowledgeRetriever,
                 llmClient,
-                new RagProperties("mock", 5));
+                new RagProperties("mock", 5, null, null));
         context = new ConversationContext(
                 UUID.randomUUID(), "customer-1", "consulta", List.of("consulta"), List.of());
     }

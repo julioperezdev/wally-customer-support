@@ -40,6 +40,34 @@ output "appconfig_configuration_profile_id" {
   value = module.appconfig.configuration_profile_id
 }
 
+output "knowledge_base_source_bucket_name" {
+  value = module.wcs_knowledge_base.source_bucket_name
+}
+
+output "knowledge_base_vector_bucket_name" {
+  value = module.wcs_knowledge_base.vector_bucket_name
+}
+
+output "knowledge_base_vector_index_arn" {
+  value = module.wcs_knowledge_base.vector_index_arn
+}
+
+output "knowledge_base_id" {
+  value = module.wcs_knowledge_base.knowledge_base_id
+}
+
+output "knowledge_base_arn" {
+  value = module.wcs_knowledge_base.knowledge_base_arn
+}
+
+output "knowledge_base_data_source_id" {
+  value = module.wcs_knowledge_base.data_source_id
+}
+
+output "knowledge_base_service_role_arn" {
+  value = module.wcs_knowledge_base.service_role_arn
+}
+
 output "runtime_secret_arn" {
   description = "WCS Secrets Manager container ARN; values are not managed by Terraform."
   value       = module.runtime_secrets.secret_arn

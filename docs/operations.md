@@ -48,11 +48,13 @@ infra/bootstrap/                  límites y verificaciones del state
 infra/environments/prod/          composición del entorno WCS
 infra/modules/appconfig/          application, environment y profile
 infra/modules/runtime-secrets/    contenedor de Secrets Manager sin valores
+infra/modules/bedrock-knowledge-base/  S3, S3 Vectors, Bedrock KB y service role
 infra/modules/backend-apprunner/  ECR, IAM, App Runner opcional
 infra/modules/github-backend-deploy/  OIDC y permisos de despliegue
 ci/backend-deploy.sh              despliegue por digest y health-check
 .github/workflows/backend.yml     verify; deploy manual
 .github/workflows/terraform.yml   validate; plan/apply manual
+knowledge-base/wcs/                documentos Markdown versionados para la KB
 ```
 
 La validación de Terraform corre en pull requests y en cambios a `main` sin
@@ -239,6 +241,36 @@ deben reemplazar desde la consola
 antes de habilitar App Runner. Las versiones iniciales de Terraform ignoran
 cambios posteriores hechos en consola para no revertir una rotación manual;
 Terraform no debe recibir valores reales.
+
+### Knowledge Base documental de WCS
+
+La Knowledge Base propia se administra mediante el módulo
+`infra/modules/bedrock-knowledge-base`. El bucket fuente y el vector store son
+recursos separados de cualquier KB histórica. Los documentos aprobados viven
+en `knowledge-base/wcs/` y Terraform los publica bajo `documents/` con
+versionado y cifrado SSE-S3.
+
+La configuración objetivo es:
+
+- Amazon Bedrock Knowledge Bases con una data source S3.
+- Amazon S3 Vectors como vector store.
+- `amazon.titan-embed-text-v2:0`, `FLOAT32`, 1024 dimensiones y distancia
+  euclídea.
+- IAM exclusivo para Bedrock con lectura de los documentos y acceso al índice
+  de WCS.
+
+Después del apply, iniciar y revisar la ingesta de manera explícita:
+
+```bash
+./scripts/start-wcs-knowledge-ingestion.sh \
+  --knowledge-base-id "$(terraform -chdir=infra/environments/prod output -raw knowledge_base_id)" \
+  --data-source-id "$(terraform -chdir=infra/environments/prod output -raw knowledge_base_data_source_id)" \
+  --wait
+```
+
+La operación debe registrar en Jira el job de ingesta, cantidad indexada y
+cantidad fallida. No se incluyen conversaciones reales, PII, secretos ni
+contenido del catálogo dinámico en esta fuente.
 
 ## Observabilidad mínima
 

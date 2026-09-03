@@ -103,6 +103,12 @@ variable "bedrock_model_arns" {
   default     = []
 }
 
+variable "bedrock_knowledge_base_arns" {
+  type        = set(string)
+  description = "Bedrock Knowledge Base ARNs allowed by the runtime role for Retrieve calls."
+  default     = []
+}
+
 variable "enable_appconfig_access" {
   type        = bool
   description = "Whether to grant runtime AppConfig data-plane permissions."

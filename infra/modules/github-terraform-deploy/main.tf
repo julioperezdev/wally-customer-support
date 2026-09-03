@@ -27,6 +27,13 @@ locals {
   appconfig_deployment_arn_pattern            = "arn:${local.partition}:appconfig:${var.aws_region}:${local.account_id}:application/*/environment/*/deployment/*"
   appconfig_deployment_strategy_arn_pattern   = "arn:${local.partition}:appconfig:${var.aws_region}:${local.account_id}:deploymentstrategy/*"
   secret_arn_pattern                          = "arn:${local.partition}:secretsmanager:${var.aws_region}:${local.account_id}:secret:${var.secret_name_prefix}*"
+  knowledge_base_role_arn_pattern             = "arn:${local.partition}:iam::${local.account_id}:role/${var.project_name}-${var.environment}-bedrock-kb"
+  knowledge_base_arn_pattern                  = "arn:${local.partition}:bedrock:${var.aws_region}:${local.account_id}:knowledge-base/*"
+  knowledge_base_data_source_arn_pattern      = "arn:${local.partition}:bedrock:${var.aws_region}:${local.account_id}:knowledge-base/*/datasource/*"
+  source_bucket_arn_pattern                   = "arn:${local.partition}:s3:::${var.project_name}-${var.environment}-kb-source-*"
+  source_object_arn_pattern                   = "${local.source_bucket_arn_pattern}/documents/*"
+  vector_bucket_arn_pattern                   = "arn:${local.partition}:s3vectors:${var.aws_region}:${local.account_id}:bucket/${var.project_name}-${var.environment}-kb-vectors-*"
+  vector_index_arn_pattern                    = "${local.vector_bucket_arn_pattern}/index/*"
   service_linked_role_arn                     = "arn:${local.partition}:iam::${local.account_id}:role/aws-service-role/apprunner.amazonaws.com/AWSServiceRoleForAppRunner"
 
   legacy_allowed_subjects = [
@@ -115,6 +122,102 @@ data "aws_iam_policy_document" "terraform" {
       "rds:DescribeDBInstances",
     ]
     resources = ["*"]
+  }
+
+  statement {
+    sid    = "CreateWcsKnowledgeSourceBucket"
+    effect = "Allow"
+    actions = [
+      "s3:CreateBucket",
+    ]
+    resources = ["*"]
+
+    condition {
+      test     = "StringLike"
+      variable = "s3:bucketname"
+      values   = ["${var.project_name}-${var.environment}-kb-source-*"]
+    }
+  }
+
+  statement {
+    sid    = "ManageWcsKnowledgeSourceBucket"
+    effect = "Allow"
+    actions = [
+      "s3:DeleteObject",
+      "s3:GetBucketLocation",
+      "s3:GetBucketOwnershipControls",
+      "s3:GetBucketPublicAccessBlock",
+      "s3:GetBucketTagging",
+      "s3:GetBucketVersioning",
+      "s3:GetEncryptionConfiguration",
+      "s3:GetLifecycleConfiguration",
+      "s3:GetObject",
+      "s3:ListBucket",
+      "s3:PutBucketOwnershipControls",
+      "s3:PutBucketPublicAccessBlock",
+      "s3:PutBucketTagging",
+      "s3:PutBucketVersioning",
+      "s3:PutEncryptionConfiguration",
+      "s3:PutLifecycleConfiguration",
+      "s3:PutObject",
+      "s3:TagResource",
+      "s3:UntagResource",
+    ]
+    resources = [local.source_bucket_arn_pattern, local.source_object_arn_pattern]
+  }
+
+  statement {
+    sid    = "CreateWcsKnowledgeVectorResources"
+    effect = "Allow"
+    actions = [
+      "s3vectors:CreateIndex",
+      "s3vectors:CreateVectorBucket",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "ManageWcsKnowledgeVectorResources"
+    effect = "Allow"
+    actions = [
+      "s3vectors:DeleteIndex",
+      "s3vectors:DeleteVectorBucket",
+      "s3vectors:GetIndex",
+      "s3vectors:GetVectorBucket",
+      "s3vectors:GetVectorBucketPolicy",
+      "s3vectors:ListIndexes",
+      "s3vectors:PutVectorBucketPolicy",
+      "s3vectors:TagResource",
+      "s3vectors:UntagResource",
+    ]
+    resources = [local.vector_bucket_arn_pattern, local.vector_index_arn_pattern]
+  }
+
+  statement {
+    sid    = "CreateWcsKnowledgeBaseResources"
+    effect = "Allow"
+    actions = [
+      "bedrock:CreateDataSource",
+      "bedrock:CreateKnowledgeBase",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "ManageWcsKnowledgeBaseResources"
+    effect = "Allow"
+    actions = [
+      "bedrock:GetDataSource",
+      "bedrock:GetKnowledgeBase",
+      "bedrock:ListDataSources",
+      "bedrock:ListTagsForResource",
+      "bedrock:StartIngestionJob",
+      "bedrock:TagResource",
+      "bedrock:UntagResource",
+      "bedrock:UpdateDataSource",
+      "bedrock:UpdateKnowledgeBase",
+    ]
+    resources = [local.knowledge_base_arn_pattern, local.knowledge_base_data_source_arn_pattern]
   }
 
   statement {
@@ -346,6 +449,19 @@ data "aws_iam_policy_document" "terraform" {
   }
 
   statement {
+    sid       = "PassWcsKnowledgeBaseRole"
+    effect    = "Allow"
+    actions   = ["iam:PassRole"]
+    resources = [local.knowledge_base_role_arn_pattern]
+
+    condition {
+      test     = "StringEquals"
+      variable = "iam:PassedToService"
+      values   = ["bedrock.amazonaws.com"]
+    }
+  }
+
+  statement {
     sid       = "CreateAppRunnerServiceLinkedRole"
     effect    = "Allow"
     actions   = ["iam:CreateServiceLinkedRole"]
@@ -375,6 +491,12 @@ data "aws_iam_policy_document" "terraform" {
       "iam:DeleteRolePolicy",
       "iam:DetachRolePolicy",
       "secretsmanager:DeleteSecret",
+      "s3:DeleteBucket",
+      "s3:DeleteObject",
+      "s3vectors:DeleteIndex",
+      "s3vectors:DeleteVectorBucket",
+      "bedrock:DeleteDataSource",
+      "bedrock:DeleteKnowledgeBase",
     ]
     resources = [
       local.apprunner_service_arn_pattern,
@@ -388,6 +510,12 @@ data "aws_iam_policy_document" "terraform" {
       local.ecr_repository_arn_pattern,
       local.iam_role_arn_pattern,
       local.secret_arn_pattern,
+      local.source_bucket_arn_pattern,
+      local.source_object_arn_pattern,
+      local.vector_bucket_arn_pattern,
+      local.vector_index_arn_pattern,
+      local.knowledge_base_arn_pattern,
+      local.knowledge_base_data_source_arn_pattern,
     ]
   }
 }
