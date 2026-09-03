@@ -18,8 +18,6 @@ import java.util.UUID;
 import org.mockito.ArgumentCaptor;
 
 import com.wally.customersupport.application.port.out.ConversationRepository;
-import com.wally.customersupport.application.port.out.KnowledgeRetriever;
-import com.wally.customersupport.application.port.out.LlmClient;
 import com.wally.customersupport.application.port.out.MessageRepository;
 import com.wally.customersupport.application.port.out.OutboxRepository;
 import com.wally.customersupport.application.port.out.ProcessingAttemptRepository;
@@ -28,13 +26,11 @@ import com.wally.customersupport.domain.model.Conversation;
 import com.wally.customersupport.domain.model.ConversationStatus;
 import com.wally.customersupport.domain.model.InboundMessageCommand;
 import com.wally.customersupport.domain.model.InboundMessageResult;
-import com.wally.customersupport.domain.model.KnowledgeChunk;
 import com.wally.customersupport.domain.model.Message;
 import com.wally.customersupport.domain.model.MessageDirection;
 import com.wally.customersupport.domain.model.MessageType;
 import com.wally.customersupport.domain.model.OutboxMessage;
 import com.wally.customersupport.domain.model.ProcessingAttempt;
-import com.wally.customersupport.infrastructure.config.RagProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -55,11 +51,7 @@ class InboundMessageApplicationServiceTest {
     @Mock
     private OutboxRepository outboxRepository;
     @Mock
-    private KnowledgeRetriever knowledgeRetriever;
-    @Mock
-    private LlmClient llmClient;
-    @Mock
-    private CatalogConversationService catalogConversationService;
+    private ConversationOrchestrator conversationOrchestrator;
 
     private InboundMessageApplicationService service;
     private Conversation conversation;
@@ -72,12 +64,9 @@ class InboundMessageApplicationServiceTest {
                 messageRepository,
                 processingAttemptRepository,
                 outboxRepository,
-                knowledgeRetriever,
-                llmClient,
-                catalogConversationService,
-                new RagProperties("mock", 5),
+                conversationOrchestrator,
                 Clock.fixed(NOW, ZoneOffset.UTC));
-        lenient().when(catalogConversationService.replyFor(any())).thenReturn(Optional.empty());
+        lenient().when(conversationOrchestrator.replyFor(any())).thenReturn("Respuesta segura");
         conversation = new Conversation(
                 UUID.randomUUID(), Channel.WHATSAPP, "conversation-1", "customer-1",
                 ConversationStatus.OPEN, NOW, NOW);
@@ -95,8 +84,6 @@ class InboundMessageApplicationServiceTest {
                 .thenReturn(Optional.of(conversation));
         when(messageRepository.save(any(Message.class))).thenReturn(message);
         when(messageRepository.findRecentBodies(conversation.id(), 20)).thenReturn(List.of(command.body()));
-        when(knowledgeRetriever.retrieve(any())).thenReturn(List.of(new KnowledgeChunk("policy", 0.9, "source-1")));
-        when(llmClient.generateReply(any())).thenReturn("Respuesta segura");
 
         InboundMessageResult result = service.accept(command);
 
@@ -115,8 +102,7 @@ class InboundMessageApplicationServiceTest {
         assertEquals(InboundMessageResult.Result.DUPLICATE, result.result());
         verify(conversationRepository, never()).save(any());
         verify(messageRepository, times(1)).existsByExternalMessageId(Channel.WHATSAPP, "message-1");
-        verify(knowledgeRetriever, never()).retrieve(any());
-        verify(llmClient, never()).generateReply(any());
+        verify(conversationOrchestrator, never()).replyFor(any());
         verify(outboxRepository, never()).save(any());
     }
 
@@ -138,8 +124,7 @@ class InboundMessageApplicationServiceTest {
                 .thenReturn(Optional.of(telegramConversation));
         when(messageRepository.save(any(Message.class))).thenReturn(telegramMessage);
         when(messageRepository.findRecentBodies(telegramConversation.id(), 20)).thenReturn(List.of(telegramCommand.body()));
-        when(knowledgeRetriever.retrieve(any())).thenReturn(List.of());
-        when(llmClient.generateReply(any())).thenReturn("Tenemos stock disponible");
+        when(conversationOrchestrator.replyFor(any())).thenReturn("Tenemos stock disponible");
 
         service.accept(telegramCommand);
 
@@ -150,9 +135,8 @@ class InboundMessageApplicationServiceTest {
     }
 
     @Test
-    void queuesCatalogReplyWithoutCallingLlm() {
-        when(catalogConversationService.replyFor("¿Tienen remera negra talle M?"))
-                .thenReturn(Optional.of("Encontré estos productos"));
+    void queuesOrchestratedReply() {
+        when(conversationOrchestrator.replyFor(any())).thenReturn("Encontré estos productos");
         when(messageRepository.existsByExternalMessageId(Channel.WHATSAPP, "message-1")).thenReturn(false);
         when(conversationRepository.findByChannelAndExternalConversationId(Channel.WHATSAPP, "conversation-1"))
                 .thenReturn(Optional.of(conversation));
@@ -165,9 +149,7 @@ class InboundMessageApplicationServiceTest {
                 Channel.WHATSAPP, "message-1", "conversation-1", "customer-1",
                 "¿Tienen remera negra talle M?", NOW));
 
-        verify(catalogConversationService).replyFor("¿Tienen remera negra talle M?");
-        verify(llmClient, never()).generateReply(any());
-        verify(knowledgeRetriever, never()).retrieve(any());
+        verify(conversationOrchestrator).replyFor(any());
         verify(outboxRepository).save(any(OutboxMessage.class));
     }
 }

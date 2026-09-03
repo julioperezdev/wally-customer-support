@@ -7,8 +7,6 @@ import java.util.UUID;
 
 import com.wally.customersupport.application.port.in.InboundMessagePort;
 import com.wally.customersupport.application.port.out.ConversationRepository;
-import com.wally.customersupport.application.port.out.KnowledgeRetriever;
-import com.wally.customersupport.application.port.out.LlmClient;
 import com.wally.customersupport.application.port.out.MessageRepository;
 import com.wally.customersupport.application.port.out.OutboxRepository;
 import com.wally.customersupport.application.port.out.ProcessingAttemptRepository;
@@ -17,8 +15,6 @@ import com.wally.customersupport.domain.model.ConversationContext;
 import com.wally.customersupport.domain.model.ConversationStatus;
 import com.wally.customersupport.domain.model.InboundMessageCommand;
 import com.wally.customersupport.domain.model.InboundMessageResult;
-import com.wally.customersupport.domain.model.KnowledgeChunk;
-import com.wally.customersupport.domain.model.KnowledgeQuery;
 import com.wally.customersupport.domain.model.Message;
 import com.wally.customersupport.domain.model.MessageDirection;
 import com.wally.customersupport.domain.model.MessageType;
@@ -26,7 +22,6 @@ import com.wally.customersupport.domain.model.OutboxMessage;
 import com.wally.customersupport.domain.model.OutboundMessage;
 import com.wally.customersupport.domain.model.ProcessingAttempt;
 import com.wally.customersupport.domain.model.ProcessingAttemptStatus;
-import com.wally.customersupport.infrastructure.config.RagProperties;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,10 +33,7 @@ public class InboundMessageApplicationService implements InboundMessagePort {
     private final MessageRepository messageRepository;
     private final ProcessingAttemptRepository processingAttemptRepository;
     private final OutboxRepository outboxRepository;
-    private final KnowledgeRetriever knowledgeRetriever;
-    private final LlmClient llmClient;
-    private final CatalogConversationService catalogConversationService;
-    private final RagProperties ragProperties;
+    private final ConversationOrchestrator conversationOrchestrator;
     private final Clock clock;
 
     @Autowired
@@ -50,19 +42,13 @@ public class InboundMessageApplicationService implements InboundMessagePort {
             MessageRepository messageRepository,
             ProcessingAttemptRepository processingAttemptRepository,
             OutboxRepository outboxRepository,
-            KnowledgeRetriever knowledgeRetriever,
-            LlmClient llmClient,
-            CatalogConversationService catalogConversationService,
-            RagProperties ragProperties) {
+            ConversationOrchestrator conversationOrchestrator) {
         this(
                 conversationRepository,
                 messageRepository,
                 processingAttemptRepository,
                 outboxRepository,
-                knowledgeRetriever,
-                llmClient,
-                catalogConversationService,
-                ragProperties,
+                conversationOrchestrator,
                 Clock.systemUTC());
     }
 
@@ -71,19 +57,13 @@ public class InboundMessageApplicationService implements InboundMessagePort {
             MessageRepository messageRepository,
             ProcessingAttemptRepository processingAttemptRepository,
             OutboxRepository outboxRepository,
-            KnowledgeRetriever knowledgeRetriever,
-            LlmClient llmClient,
-            CatalogConversationService catalogConversationService,
-            RagProperties ragProperties,
+            ConversationOrchestrator conversationOrchestrator,
             Clock clock) {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.processingAttemptRepository = processingAttemptRepository;
         this.outboxRepository = outboxRepository;
-        this.knowledgeRetriever = knowledgeRetriever;
-        this.llmClient = llmClient;
-        this.catalogConversationService = catalogConversationService;
-        this.ragProperties = ragProperties;
+        this.conversationOrchestrator = conversationOrchestrator;
         this.clock = clock;
     }
 
@@ -123,19 +103,13 @@ public class InboundMessageApplicationService implements InboundMessagePort {
                 command.occurredAt() == null ? now : command.occurredAt(),
                 now));
 
-        String reply = catalogConversationService.replyFor(command.body()).orElseGet(() -> {
-            List<String> recentMessages = messageRepository.findRecentBodies(conversation.id(), 20);
-            List<KnowledgeChunk> knowledge = knowledgeRetriever.retrieve(new KnowledgeQuery(
-                    command.body(),
-                    conversation.id(),
-                    Math.max(1, ragProperties.maxResults())));
-            return llmClient.generateReply(new ConversationContext(
+        List<String> recentMessages = messageRepository.findRecentBodies(conversation.id(), 20);
+        String reply = conversationOrchestrator.replyFor(new ConversationContext(
                     conversation.id(),
                     conversation.externalCustomerId(),
                     command.body(),
                     recentMessages,
-                    knowledge));
-        });
+                    List.of()));
 
         processingAttemptRepository.save(new ProcessingAttempt(
                 UUID.randomUUID(),

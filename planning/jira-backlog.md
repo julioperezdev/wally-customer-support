@@ -108,9 +108,15 @@ El Space Jira `WCS` fue creado el 2026-08-29 y el backlog inicial fue cargado. L
 
 ## EPIC-WCS-05 — LLM y operación
 
-### WCS-20 — Seleccionar modelo, versionar prompt y definir guardrails
+### WCS-20 — Orquestar intenciones, seleccionar modelo y definir guardrails
 
 **Tipo:** Task · **Priority:** Highest · **Estimate:** 4d · **Depends on:** WCS-11
+
+El vertical slice incluye un `ConversationIntentClassifier` detrás de un puerto,
+un `ConversationOrchestrator` y routing a catálogo, horarios, políticas, saludo,
+handoff y soporte general. Bedrock sólo clasifica y extrae filtros
+estructurados; los casos de uso consultan las fuentes autorizadas y no reciben
+SQL ni hechos generados por el modelo.
 
 ### WCS-21 — Implementar integración real del LLM y métricas de costo/latencia
 

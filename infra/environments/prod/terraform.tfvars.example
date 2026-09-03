@@ -47,6 +47,8 @@ backend_image_tag         = "bootstrap"
 #   "wcs.telegram.connect-timeout": "PT2S",
 #   "wcs.telegram.read-timeout": "PT5S",
 #   "wcs.ai.provider": "mock",
+#   "wcs.ai.model": "llm.mock.v1",
+#   "wcs.ai.region": "us-east-1",
 #   "wcs.rag.provider": "mock"
 # }
 # JSON

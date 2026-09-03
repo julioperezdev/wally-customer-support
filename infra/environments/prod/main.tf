@@ -51,6 +51,7 @@ locals {
     "wcs.telegram.read-timeout"                              = "PT5S"
     "wcs.ai.provider"                                        = "mock"
     "wcs.ai.model"                                           = "llm.mock.v1"
+    "wcs.ai.region"                                          = var.aws_region
     "wcs.rag.provider"                                       = "mock"
     "wcs.rag.max-results"                                    = 5
     "wcs.outbox.max-attempts"                                = 3

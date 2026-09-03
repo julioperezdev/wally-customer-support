@@ -118,6 +118,7 @@ wcs.telegram.read-timeout
 wcs.outbox.max-attempts
 wcs.ai.provider
 wcs.ai.model
+wcs.ai.region
 wcs.rag.provider
 wcs.rag.max-results
 ```
@@ -164,7 +165,8 @@ referencias a secretos, por ejemplo:
   "wcs.telegram.adapter": "disabled",
   "wcs.telegram.api-base-url": "https://api.telegram.org",
   "wcs.ai.provider": "bedrock",
-  "wcs.ai.model": "amazon.nova-lite-v1"
+  "wcs.ai.model": "openai.gpt-oss-20b-1:0",
+  "wcs.ai.region": "us-east-1"
 }
 ```
 

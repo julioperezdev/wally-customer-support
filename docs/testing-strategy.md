@@ -110,6 +110,24 @@ Busco Remera Fantasma
 El primer caso debe informar `sin stock`, el segundo debe devolver la variante
 correspondiente y el tercero no debe inventar un producto.
 
+### Prueba manual del orquestador de intenciones
+
+Con `wcs.ai.provider=bedrock` y `wcs.ai.model=openai.gpt-oss-20b-1:0` en
+AppConfig, probar variaciones de lenguaje natural. El modelo debe producir una
+decisión estructurada, pero el cliente sólo recibe el resultado del caso de
+uso:
+
+```text
+¿Tienen camisetas oscuras en mediano?
+¿A qué hora están abiertos el sábado?
+¿Cómo funcionan los envíos?
+Hola
+```
+
+Las consultas deben enrutarse respectivamente a catálogo, horarios, política y
+saludo. Verificar que una consulta ambigua solicite aclaración, que el precio y
+stock sigan viniendo de PostgreSQL y que el LLM no pueda inventar esos valores.
+
 ## Datos y fixtures
 
 - Catálogo, horarios y políticas demo versionados y marcados como `DEMO`.

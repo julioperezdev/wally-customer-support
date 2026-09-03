@@ -108,6 +108,10 @@ interface LlmClient {
     String generateReply(ConversationContext context);
 }
 
+interface ConversationIntentClassifier {
+    ConversationIntentDecision classify(String message);
+}
+
 interface KnowledgeRetriever {
     List<KnowledgeChunk> retrieve(KnowledgeQuery query);
 }
@@ -128,9 +132,17 @@ interface OutboxRepository { /* durable outbox and retry state */ }
 
 Los nombres y contratos son internos de WCS; ningún adapter debe filtrarlos con tipos de Meta, Telegram o AWS. El `OutboxDispatcher` selecciona el adapter mediante `OutboundMessage.channel`; el dominio no conoce URLs, tokens, templates ni payloads de proveedores.
 
-El catálogo se consulta con filtros estructurados y resultados determinísticos
-de PostgreSQL. El LLM puede ayudar a extraer la intención en una fase
-posterior, pero no genera SQL ni inventa precio, stock, políticas u horarios.
+El flujo conversacional pasa por `ConversationOrchestrator`, que usa el puerto
+`ConversationIntentClassifier` para convertir lenguaje natural en una decisión
+estructurada. Las decisiones permitidas son `GREETING`, `CATALOG_SEARCH`,
+`BUSINESS_HOURS`, `POLICY_QUERY`, `HUMAN_HANDOFF`, `GENERAL_SUPPORT` y
+`UNKNOWN`. El orquestador invoca el caso de uso correspondiente; no ejecuta
+acciones derivadas directamente de texto libre.
+
+En `CATALOG_SEARCH`, el clasificador sólo extrae filtros
+`name`/`sku`/`size`/`color`. El catálogo se consulta con esos filtros y
+resultados determinísticos de PostgreSQL. El LLM no genera SQL ni inventa
+precio, stock, políticas u horarios.
 Las imágenes se modelan como referencias de objeto S3 y su envío por WhatsApp
 queda fuera del MVP.
 
@@ -162,10 +174,11 @@ deshabilitan las fuentes externas y usan datos sintéticos.
 2. Se valida la firma sobre el body original antes de parsear.
 3. Se transforma a un comando interno y se persiste de forma idempotente.
 4. La primera fundación genera la respuesta mediante puertos y deja el envío en un outbox durable; la separación del processor asíncrono completo queda en la siguiente iteración.
-5. El contexto consulta conocimiento y genera una respuesta detrás de `KnowledgeRetriever` y `LlmClient`.
-6. `ResponsePolicy` validará grounding, privacidad, ventana de atención y fallback antes de habilitar producción.
-7. El dispatcher envía la respuesta y registra el resultado/reintento.
-8. Logs, métricas y trazas usan correlación y metadatos sanitizados, nunca payloads completos.
+5. `ConversationOrchestrator` clasifica la intención y ejecuta catálogo, horarios, políticas, handoff o soporte general.
+6. Sólo el soporte general consulta conocimiento y genera una respuesta detrás de `KnowledgeRetriever` y `LlmClient`.
+7. `ResponsePolicy` validará grounding, privacidad, ventana de atención y fallback antes de habilitar producción.
+8. El dispatcher envía la respuesta y registra el resultado/reintento.
+9. Logs, métricas y trazas usan correlación y metadatos sanitizados, nunca payloads completos.
 
 ## Decisiones abiertas antes de producción
 
@@ -175,5 +188,4 @@ deshabilitan las fuentes externas y usan datos sintéticos.
 - Handoff humano y ownership de conversación.
 - Topología de hosting y terminación HTTPS/mTLS.
 - Retención, borrado, acceso y estrategia de cifrado.
-- Contrato de uso de `CatalogQueryService` y `SupportConfigurationQueryService`
-  dentro del processor conversacional.
+- Persistencia del handoff humano y ownership de la tarea priorizada.
