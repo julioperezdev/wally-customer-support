@@ -11,9 +11,13 @@ Related repository paths: `src/main/java/.../application/ai`, `src/main/resource
 | ID lógico | Proveedor | Uso | Estado |
 | --- | --- | --- | --- |
 | `llm.mock.v1` | Interno | Desarrollo, tests y fixtures | Accepted |
-| `llm.bedrock.TBD.v1` | AWS Bedrock | Respuestas reales de soporte | Proposed |
+| `llm.bedrock.openai.gpt-oss-20b.v1` | AWS Bedrock | Clasificación de intención y soporte general | Proposed |
 
-Bedrock se integra detrás de `LlmClient`. El caso de uso no conoce el model ID ni el SDK. La selección del modelo, región, límites, timeout, guardrails y fallback se resuelve mediante AppConfig; el acceso se autoriza con IAM.
+Bedrock se integra detrás de `ConversationIntentClassifier` y `LlmClient`.
+`ConversationOrchestrator` sólo consume decisiones estructuradas del clasificador
+y ejecuta casos de uso internos. El caso de uso no conoce el model ID ni el SDK.
+La selección del modelo, región, límites, timeout, guardrails y fallback se
+resuelve mediante AppConfig; el acceso se autoriza con IAM.
 
 ## RAG
 
@@ -59,15 +63,45 @@ Cada prompt debe tener:
 
 El piloto requiere un dataset sanitizado con casos frecuentes, ambiguos, desconocidos, adversariales y de escalamiento. Métricas mínimas: respuesta válida, groundedness según fuente autorizada, derivación correcta, latencia, costo por interacción y tasa de reintento.
 
+## Orquestación y contrato de intención
+
+El clasificador responde sólo este contrato, sin SQL ni datos de negocio:
+
+```json
+{
+  "intent": "CATALOG_SEARCH",
+  "confidence": 0.94,
+  "catalogQuery": {
+    "name": "remera",
+    "sku": null,
+    "size": "M",
+    "color": "negro"
+  },
+  "policyKey": null
+}
+```
+
+El backend valida la intención, limita la confianza mínima a `0.65`, normaliza
+los filtros y ejecuta el caso de uso. Una respuesta malformada o una intención
+con baja confianza nunca habilita una búsqueda sin filtros ni una operación
+sensible.
+
+El prompt de clasificación está versionado como `conversation-intent-v1` y el
+texto del cliente se envía como datos delimitados y acotados. El modelo real es
+`openai.gpt-oss-20b-1:0`, seleccionado por `wcs.ai.model`.
+
 ## Contrato de aplicación
 
 ```text
 InboundMessage
-  → ConversationContextBuilder
-  → KnowledgeRetriever (opcional según política)
-  → LlmClient
-  → ResponsePolicy
+  → ConversationOrchestrator
+  → ConversationIntentClassifier
+  → caso de uso interno
   → OutboundMessagePort
+
+GENERAL_SUPPORT
+  → KnowledgeRetriever
+  → LlmClient
 ```
 
 Los tests deben poder ejecutar el mismo flujo con `MockKnowledgeRetriever`,

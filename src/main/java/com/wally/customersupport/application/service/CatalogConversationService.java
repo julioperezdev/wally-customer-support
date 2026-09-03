@@ -12,11 +12,11 @@ import com.wally.customersupport.domain.model.CatalogVariant;
 import org.springframework.stereotype.Service;
 
 /**
- * Interprets the small, deterministic catalog vocabulary used by the MVP.
+ * Executes the deterministic catalog use case from structured filters.
  *
  * <p>This boundary deliberately does not ask an LLM to generate SQL or
- * catalog facts. A future LLM may replace the parser while keeping the same
- * {@link CatalogQuery} contract.</p>
+ * catalog facts. The orchestrator may obtain the {@link CatalogQuery} from a
+ * classifier, while PostgreSQL remains the source of truth.</p>
  */
 @Service
 public class CatalogConversationService {
@@ -34,18 +34,23 @@ public class CatalogConversationService {
     }
 
     public Optional<String> replyFor(String message) {
-        Optional<CatalogQuery> parsedQuery = CatalogQueryParser.parse(message);
-        if (parsedQuery.isEmpty()) {
-            return Optional.empty();
-        }
+        return CatalogQueryParser.parse(message).map(this::replyForQuery);
+    }
 
-        CatalogQuery query = parsedQuery.get();
-        if (query.isEmpty()) {
+    public Optional<String> replyFor(CatalogQuery query) {
+        if (query == null) {
             return Optional.of(CATALOG_CLARIFICATION);
+        }
+        return Optional.of(replyForQuery(query));
+    }
+
+    private String replyForQuery(CatalogQuery query) {
+        if (query.isEmpty()) {
+            return CATALOG_CLARIFICATION;
         }
 
         List<CatalogProduct> products = catalogQueryService.search(query);
-        return Optional.of(format(query, products));
+        return format(query, products);
     }
 
     private static String format(CatalogQuery query, List<CatalogProduct> products) {
