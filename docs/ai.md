@@ -1,9 +1,9 @@
 # IA, LLM y RAG — WCS
 
 Owner: AI/Tech Lead  
-Status: `Proposed`  
-Last reviewed: 2026-08-30  
-Related Jira: `WCS-11`, `WCS-20`, `WCS-21`  
+Status: `Accepted`
+Last reviewed: 2026-09-03
+Related Jira: `WCS-11`, `WCS-20`, `WCS-21`, `WCS-30`
 Related repository paths: `src/main/java/.../application/ai`, `src/main/resources/prompts`, `src/test/resources/fixtures`
 
 ## Registro de modelos
@@ -27,7 +27,7 @@ RAG se integra detrás de `KnowledgeRetriever` y se mantiene separado de `LlmCli
 | ID lógico | Adapter | Uso | Estado |
 | --- | --- | --- | --- |
 | `knowledge.mock.v1` | Interno | Tests y desarrollo local | Accepted |
-| `knowledge.bedrock-kb.s3-vectors.v1` | AWS Bedrock Knowledge Bases + S3 Vectors | Documentación estática de WCS | Proposed |
+| `knowledge.bedrock-kb.s3-vectors.v1` | AWS Bedrock Knowledge Bases + S3 Vectors | Documentación estática de WCS | In implementation |
 | `knowledge.pgvector.v1` | PostgreSQL + pgvector | Índice propio, control de chunks y filtros | Proposed |
 
 La decisión actual es usar una Knowledge Base propia de WCS para conocimiento
@@ -36,12 +36,13 @@ deben entregar el mismo `RetrievedContext`, con source ID, versión, score y
 fragmentos limitados. La ingestión, versionado y borrado de documentos se diseña
 como un flujo separado de la consulta.
 
-La configuración inicial objetivo de la Knowledge Base es S3 como fuente,
+La implementación inicial de la Knowledge Base usa S3 como fuente,
 Amazon S3 Vectors como vector store y Amazon Titan Text Embeddings V2 con
 vectores `float32` de 1024 dimensiones. El bucket, índice, Knowledge Base y
 service role deben ser exclusivos de WCS. El patrón histórico de
 `bigg-rag-sales-offhours` se conserva sólo como referencia; sus documentos no
-se reutilizan.
+se reutilizan. Los documentos versionados están en `knowledge-base/wcs/` y la
+ingesta se inicia de forma explícita después de revisar el contenido publicado.
 
 S3 Vectors es apropiado para consultas documentales de baja frecuencia y
 búsqueda semántica. Si WCS requiere búsqueda híbrida o filtros avanzados, se

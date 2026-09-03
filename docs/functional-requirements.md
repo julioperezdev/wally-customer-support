@@ -1,6 +1,6 @@
 # Requerimientos funcionales — WCS
 
-Estado: `Draft`. Alcance MVP propuesto el 2026-09-03; requiere validación final del producto antes de pasar a `Accepted`.
+Estado: `Accepted` para el MVP. Aprobado por el Product Owner el 2026-09-03. La validación legal de retención y supresión sigue siendo requisito previo a producción.
 
 ## Actores
 

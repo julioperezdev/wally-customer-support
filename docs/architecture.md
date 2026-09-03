@@ -1,7 +1,7 @@
 # Arquitectura objetivo — WCS
 
 Owner: Tech Lead  
-Status: `Proposed`  
+Status: `Accepted`
 Last reviewed: 2026-09-03
 Related Jira: `WCS-13`, `WCS-17`, `WCS-18`, `WCS-20`, `WCS-21`, `WCS-22`, `WCS-25`, `WCS-28`, `WCS-29`
 Related repository paths: `src/main/java`, `src/main/resources`, `db/migration`  

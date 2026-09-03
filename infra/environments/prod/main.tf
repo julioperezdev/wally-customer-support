@@ -52,8 +52,10 @@ locals {
     "wcs.ai.provider"                                        = "mock"
     "wcs.ai.model"                                           = "llm.mock.v1"
     "wcs.ai.region"                                          = var.aws_region
-    "wcs.rag.provider"                                       = "mock"
+    "wcs.rag.provider"                                       = "bedrock-kb"
     "wcs.rag.max-results"                                    = 5
+    "wcs.rag.knowledge-base-id"                              = module.wcs_knowledge_base.knowledge_base_id
+    "wcs.rag.region"                                         = var.aws_region
     "wcs.outbox.max-attempts"                                = 3
     "wcs.external-config.secrets-manager.database-secret-id" = module.database_secrets.secret_name
     "wcs.external-config.secrets-manager.whatsapp-secret-id" = module.whatsapp_secrets.secret_name
@@ -111,6 +113,16 @@ module "appconfig" {
   tags                     = local.common_tags
 }
 
+module "wcs_knowledge_base" {
+  source = "../../modules/bedrock-knowledge-base"
+
+  project_name               = var.project_name
+  environment                = var.environment
+  aws_region                 = var.aws_region
+  source_documents_directory = "${path.root}/../../../knowledge-base/wcs"
+  tags                       = local.common_tags
+}
+
 module "runtime_secrets" {
   source = "../../modules/runtime-secrets"
 
@@ -135,6 +147,7 @@ module "backend_apprunner" {
   vpc_connector_arn             = var.backend_vpc_connector_arn
   enable_bedrock_access         = var.enable_bedrock_access
   bedrock_model_arns            = var.bedrock_model_arns
+  bedrock_knowledge_base_arns   = var.enable_bedrock_access ? [module.wcs_knowledge_base.knowledge_base_arn] : []
   tags                          = local.common_tags
 }
 

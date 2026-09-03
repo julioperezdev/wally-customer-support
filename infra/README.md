@@ -17,6 +17,8 @@ Flyway crea únicamente el schema lógico `wcs`.
   secret existente del RDS compartido.
 - Un secret separado `wcs/{environment}/telegram` para el bot de Telegram y el
   secret de validación del webhook.
+- Una Knowledge Base propia de WCS: bucket S3 versionado para Markdown, S3
+  Vectors, Titan Text Embeddings V2 y un service role exclusivo.
 - RDS PostgreSQL existente de `tesis-dev`, consumido como dependencia externa.
 - Bedrock como permiso opcional del runtime, sin habilitarlo por defecto.
 
@@ -45,6 +47,25 @@ que contenga sólo configuración no sensible y referencias a Secrets Manager,
 nunca tokens o passwords. La versión hosted y el deployment también ignoran
 cambios posteriores hechos en la consola, por lo que una operación manual no
 será revertida por Terraform.
+
+El módulo `bedrock-knowledge-base` crea únicamente recursos propios de WCS. La
+fuente está en `knowledge-base/wcs/`, el vector store usa S3 Vectors y la KB
+queda configurada para `amazon.titan-embed-text-v2:0`, `FLOAT32` y 1024
+dimensiones. La KB histórica `bigg-rag-sales-offhours` no se importa ni se
+modifica.
+
+Terraform crea la fuente y la data source, pero la ingesta es una operación
+explícita para poder revisar el contenido antes de indexarlo:
+
+```bash
+./scripts/start-wcs-knowledge-ingestion.sh \
+  --knowledge-base-id <WCS_KNOWLEDGE_BASE_ID> \
+  --data-source-id <WCS_DATA_SOURCE_ID> \
+  --wait
+```
+
+Los identificadores se obtienen de los outputs de Terraform. El script usa la
+cadena de credenciales del AWS CLI y no recibe ni imprime secretos.
 
 El flujo posterior al primer `apply` es:
 
