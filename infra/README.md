@@ -33,7 +33,9 @@ Esos valores tienen `ignore_changes` para que puedas reemplazarlos en la
 consola de Secrets Manager sin que el siguiente `terraform apply` los restaure.
 No se debe habilitar App Runner mientras sigan presentes.
 
-El módulo `appconfig` recibe por defecto un JSON hosted falso con las claves
+El módulo `appconfig` usa una aplicación estable (`wally-customer-support`) y
+un environment por despliegue (`dev`, `test` o `prod`). Recibe por defecto un
+JSON hosted falso con las claves
 Spring y referencias a esos dos secrets, y crea un deployment all-at-once.
 `appconfig_configuration_content` permite reemplazar ese documento por otro
 que contenga sólo configuración no sensible y referencias a Secrets Manager,

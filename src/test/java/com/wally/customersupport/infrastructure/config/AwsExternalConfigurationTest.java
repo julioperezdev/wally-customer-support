@@ -1,5 +1,9 @@
 package com.wally.customersupport.infrastructure.config;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Properties;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -38,6 +42,22 @@ class AwsExternalConfigurationTest {
     }
 
     @Test
+    void usesStableProductionAppConfigEnvironment() throws IOException {
+        var applicationProperties = new Properties();
+        try (InputStream input = getClass().getResourceAsStream("/application.properties")) {
+            assertThat(input).isNotNull();
+            applicationProperties.load(input);
+        }
+
+        assertThat(applicationProperties.getProperty("wcs.external-config.appconfig.application"))
+                .isEqualTo("wally-customer-support");
+        assertThat(applicationProperties.getProperty("wcs.external-config.appconfig.profile"))
+                .isEqualTo("runtime");
+        assertThat(applicationProperties.getProperty("wcs.external-config.appconfig.environment"))
+                .isEqualTo("prod");
+    }
+
+    @Test
     void flattensAppConfigJsonIntoSpringProperties() {
         AppConfigDataClient client = mock(AppConfigDataClient.class);
         when(client.startConfigurationSession(org.mockito.ArgumentMatchers.<StartConfigurationSessionRequest>any()))
@@ -54,7 +74,8 @@ class AwsExternalConfigurationTest {
                                 """))
                         .build());
 
-        var properties = new ExternalConfigurationProperties.AppConfig("wcs", "prod", "runtime", true, true);
+        var properties = new ExternalConfigurationProperties.AppConfig(
+                "wally-customer-support", "prod", "runtime", true, true);
 
         var loaded = new AppConfigConfigurationLoader(client, objectMapper).load(properties);
 

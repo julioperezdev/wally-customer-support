@@ -11,7 +11,10 @@ Decision/source: specification de WhatsApp y re-baseline solicitada el 2026-08-3
 
 WCS será inicialmente un **monolito modular con arquitectura hexagonal**. Esto permite entregar rápido sin acoplar el dominio a Meta, AWS, un proveedor LLM, una tecnología de retrieval ni una cola específica. La separación modular deja abierta una extracción posterior sólo cuando el volumen o el ownership lo justifique.
 
-La integración de WhatsApp puede estar caída, sin credenciales o sin configuración de Meta y el sistema debe continuar arrancando en `local-mock`, ejecutando tests y permitiendo desarrollar persistencia, conversación, IA y RAG.
+La integración de WhatsApp, el LLM y el retrieval se consumen mediante adapters.
+La ejecución normal usa las integraciones productivas configuradas en AWS;
+los tests conservan dobles para poder verificar persistencia, conversación, IA
+y RAG sin depender de servicios externos.
 
 ## Mapa lógico
 
@@ -121,15 +124,19 @@ La aplicación tendrá una única configuración lógica y distintos proveedores
 | --- | --- | --- |
 | No sensible | AWS AppConfig | Graph API version/base URL, Phone Number ID, WABA ID, timeouts, retries, provider mode, Bedrock model ID, Knowledge Base ID, prompt version, retention |
 | Secreto | AWS Secrets Manager | Meta access token, Meta app secret, webhook verify token, credenciales de base de datos y keys de proveedores externos |
-| Local | `.env` ignorado + Docker Compose | Valores sintéticos o credenciales de desarrollo, nunca valores productivos |
+| Local | `application.properties` + cadena estándar de credenciales AWS | Mismo runtime `prod` para validar integraciones; nunca se versionan credenciales |
 
-Las variables de entorno quedan limitadas al bootstrap del runtime (`AWS_REGION`, identificadores de AppConfig/Secrets Manager y perfil local). No se usará un `.env` como mecanismo de configuración de producción ni se imprimirán valores resueltos.
+No se requieren variables de entorno de aplicación para el bootstrap normal.
+Los identificadores estables de AppConfig están versionados; la región y las
+credenciales se resuelven mediante el proveedor estándar del SDK de AWS. No se
+usará un `.env` como mecanismo de configuración de producción ni se imprimirán
+valores resueltos.
 
 `AwsExternalConfigurationEnvironmentPostProcessor` carga AppConfig antes del
 binding de `@ConfigurationProperties` y resuelve desde Secrets Manager sólo los
-campos allow-listed de los roles `database`, `whatsapp` y `runtime`. La
-aplicación puede arrancar en `local-mock` sin clientes AWS; en ambientes reales
-el fail-fast evita operar con configuración parcial.
+campos allow-listed de los roles `database`, `whatsapp` y `runtime`. El runtime
+normal usa AWS y el fail-fast evita operar con configuración parcial; los tests
+deshabilitan las fuentes externas y usan datos sintéticos.
 
 ## Flujos críticos
 

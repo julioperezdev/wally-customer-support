@@ -33,28 +33,31 @@ La issue `WCS-24` conserva la evidencia histórica de la prueba inicial de Whats
 Requisitos: Java 25, Maven y Docker para PostgreSQL local.
 
 ```bash
-cp .env.example .env
-set -a
-source .env
-set +a
-docker compose up -d postgres
 mvn clean test
-SPRING_PROFILES_ACTIVE=local-mock mvn spring-boot:run
+mvn spring-boot:run
 ```
 
-El endpoint de verificación es `GET /webhook/whatsapp` y el webhook es `POST /webhook/whatsapp`. En `local-mock`, el webhook persiste el mensaje, consulta el retriever mock, genera una respuesta mock y la despacha por el adapter mock. La deduplicación se hace en PostgreSQL mediante `external_message_id`; el outbox sobrevive a reinicios.
+La ejecución normal usa el ambiente `prod` de AWS. AppConfig y Secrets Manager
+se habilitan desde `application.properties`; WCS usa temporalmente la región
+AWS `us-east-1` y el SDK resuelve las credenciales mediante su cadena estándar.
+En local sólo es necesario tener una sesión o perfil AWS ya configurado; no se
+exportan variables para arrancar la aplicación.
 
-Para probar la integración real con Meta, usar un `.env` local separado, cambiar `WCS_WHATSAPP_ADAPTER=meta` y completar credenciales rotadas. Los secretos productivos deben resolverse desde Secrets Manager; AppConfig contiene sólo configuración no sensible.
+`application.properties` sólo contiene el bootstrap y la configuración estática
+de Spring. El starter carga la configuración de AppConfig y los valores
+allow-listed de Secrets Manager como propiedades en memoria antes de crear los
+beans; no escribe ni modifica archivos de configuración durante el arranque.
 
-```env
-WCS_WHATSAPP_ADAPTER=meta
-WHATSAPP_GRAPH_API_VERSION=v25.0
-WHATSAPP_GRAPH_API_BASE_URL=https://graph.facebook.com
-WHATSAPP_PHONE_NUMBER_ID=<runtime-value>
-WHATSAPP_ACCESS_TOKEN=<secret-runtime-value>
-WHATSAPP_VERIFY_TOKEN=<secret-runtime-value>
-META_APP_SECRET=<secret-runtime-value>
-```
+El documento de AppConfig debe contener las referencias
+`wcs.external-config.secrets-manager.database-secret-id` y
+`wcs.external-config.secrets-manager.whatsapp-secret-id`. No se pasan IDs de
+AppConfig ni contraseñas por variables de entorno.
+
+El endpoint de verificación es `GET /webhook/whatsapp` y el webhook es `POST /webhook/whatsapp`. No existe un perfil mock de runtime: los dobles de Meta, LLM y RAG se usan en los tests. El adapter real de Meta ya está disponible; Bedrock y pgvector deben implementarse antes de activar esos providers en AppConfig. La deduplicación se hace en PostgreSQL mediante `external_message_id`; el outbox sobrevive a reinicios.
+
+Para probar la integración real con Meta, AppConfig debe seleccionar el adapter
+`meta` y Secrets Manager debe contener los valores reales. No se copian tokens ni
+credenciales a un `.env`, al repositorio ni a los logs.
 
 El adapter Meta soporta texto y templates aprobados con parámetros de body. La evidencia de la PoC debe ser sanitizada y quedar en [WCS-24](https://julioperezdev.atlassian.net/browse/WCS-24); la fundación y sus pruebas se registran en [WCS-13](https://julioperezdev.atlassian.net/browse/WCS-13).
 

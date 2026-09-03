@@ -8,9 +8,16 @@ Related repository paths: `src/main/resources`, `.github/workflows`, `infra/`
 
 ## Ambientes
 
-- `local-mock`: sin Meta ni LLM real, con PostgreSQL local.
-- `staging`: integraciones controladas y datos sintéticos.
-- `production`: cuenta Meta, secrets gestionados y monitoreo obligatorio.
+Por el momento WCS opera únicamente con el environment `prod` de AppConfig. La
+aplicación de AppConfig es siempre `wally-customer-support` y el profile hosted
+es siempre `runtime`; ambos identificadores están versionados en el bootstrap.
+
+- `prod`: cuenta Meta, secrets gestionados y monitoreo obligatorio.
+- `test`: perfil interno de pruebas con datos sintéticos y dobles de los adapters;
+  no representa un ambiente operativo.
+
+El Environment `production` de GitHub Actions es un gate de despliegue y no
+debe confundirse con el environment `prod` de Spring/AppConfig.
 
 ## CI/CD objetivo
 
@@ -128,7 +135,7 @@ wcs/{environment}/providers
 
 Bedrock debe autenticarse preferentemente con IAM Role del workload; no se crea una API key para Bedrock. Los valores de Secrets Manager no se pasan a Jira, Confluence, la base de datos ni los logs.
 
-El runtime implementa `AwsExternalConfigurationEnvironmentPostProcessor` como fuente temprana de configuración de Spring. Primero carga un snapshot de AWS AppConfig Data API y luego resuelve únicamente campos allow-listed de los secretos referenciados en AWS Secrets Manager. Los valores nunca se escriben en `application.properties`, el repositorio ni los logs.
+El runtime implementa `AwsExternalConfigurationEnvironmentPostProcessor` como fuente temprana de configuración de Spring. Primero carga un snapshot de AWS AppConfig Data API y luego resuelve únicamente campos allow-listed de los secretos referenciados en AWS Secrets Manager. El nombre de la aplicación y el environment `prod` están versionados en `application.properties`; la región AWS es temporalmente `us-east-1`. Las credenciales se resuelven mediante la cadena estándar del SDK. El starter agrega los valores como `PropertySource` en memoria antes del binding de Spring: no genera ni modifica un `application.properties` en runtime. Los valores nunca se escriben en `application.properties`, el repositorio ni los logs.
 
 ### Contrato del documento de AppConfig
 
@@ -163,21 +170,19 @@ accidental en una propiedad de Spring.
 ### Precedencia y modos de ejecución
 
 La precedencia efectiva es: argumentos de línea de comandos y propiedades del
-sistema, variables de entorno de bootstrap, Secrets Manager resuelto,
-AppConfig, y defaults versionados en `application.properties`. Los nombres de
-AppConfig y Secrets Manager son bootstrap; los valores de los secretos no son
-variables de entorno productivas.
+sistema, Secrets Manager resuelto, AppConfig y defaults versionados en
+`application.properties`. Los valores de los secretos no son variables de
+entorno productivas.
 
-`AWS_APPCONFIG_ENABLED` y `AWS_SECRETS_MANAGER_ENABLED` deben estar en `true`
-en un runtime AWS. Ambos soportan `*_FAIL_FAST=true`: un ambiente productivo
-no debe arrancar con configuración incompleta. En local o `local-mock` se
-mantienen en `false`, por lo que se puede iniciar, testear y desarrollar sin
-credenciales AWS.
+AppConfig y Secrets Manager están habilitados permanentemente en el runtime
+normal y usan fail-fast: la aplicación no arranca con configuración productiva
+incompleta. Los tests sobrescriben esas propiedades en
+`src/test/resources/application-test.properties` y usan dobles sintéticos.
 
-El loader crea clientes AWS con la cadena estándar de credenciales y la región
-`AWS_REGION`. Sólo se hace una lectura al arranque; el redeploy o restart
-consume la última versión desplegada de AppConfig y permite rotar secrets sin
-recompilar.
+El loader crea clientes AWS temporalmente en `us-east-1` y usa la cadena estándar
+de credenciales del SDK. Sólo se hace una lectura al arranque; el redeploy o
+restart consume la última versión desplegada de AppConfig y permite rotar
+secrets sin recompilar.
 
 ### IAM mínimo
 
@@ -190,7 +195,10 @@ por AppConfig (por ejemplo, WhatsApp). No se permite
 prepara los permisos y deja los valores fuera de su estado; el documento de
 AppConfig puede versionarse porque sólo contiene referencias no sensibles.
 
-Las únicas variables de entorno productivas son bootstrap del runtime, por ejemplo `AWS_REGION`, `AWS_APPCONFIG_APPLICATION`, `AWS_APPCONFIG_ENVIRONMENT`, `AWS_APPCONFIG_PROFILE` y referencias no secretas a Secrets Manager. El perfil `local-mock` puede usar `.env` ignorado y valores sintéticos.
+No se requieren variables de entorno de aplicación para el arranque normal. En
+local, el SDK usa una sesión o perfil AWS configurado fuera del repositorio; en
+AWS usa el rol IAM del workload. Los secretos siguen siendo exclusivos de
+Secrets Manager.
 
 El entorno prod incluye por defecto una configuración hosted y versiones
 bootstrap falsas para `wcs/{environment}/database` y
@@ -226,8 +234,9 @@ No registrar texto completo, firmas, tokens, números de teléfono completos ni 
 
 ## Reglas de disponibilidad
 
-- La aplicación arranca en `local-mock` sin Meta, Bedrock, Knowledge Bases ni credenciales externas.
-- Staging puede activar cada adapter real de forma independiente mediante AppConfig.
+- La aplicación normal arranca con AppConfig y Secrets Manager; si una
+  integración productiva requerida no está disponible, falla explícitamente.
+- Los tests pueden activar dobles de cada adapter de forma independiente.
 - Un provider no configurado falla de forma explícita y controlada; no se hace fallback silencioso a producción con datos sintéticos.
 - Health verifica proceso y dependencias esenciales; readiness declara qué integración está deshabilitada o degradada sin imprimir secretos.
 - La rotación de Secrets Manager debe ser probada sin recompilar ni cambiar código.

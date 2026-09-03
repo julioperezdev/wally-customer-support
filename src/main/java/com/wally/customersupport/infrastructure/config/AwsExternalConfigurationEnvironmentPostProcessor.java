@@ -1,6 +1,5 @@
 package com.wally.customersupport.infrastructure.config;
 
-import java.time.Duration;
 import java.util.Map;
 
 import tools.jackson.databind.ObjectMapper;
@@ -15,15 +14,16 @@ import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.StandardEnvironment;
 
-import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.appconfigdata.AppConfigDataClient;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 
 /**
  * Adds AWS-backed configuration before Spring binds application properties.
- * Bootstrap identifiers come from environment/system properties; payload values
- * are never logged.
+ * Bootstrap identifiers are versioned with the application; payload values are
+ * never logged. AWS credentials are resolved by the SDK default credentials
+ * provider chain, so the same code works with a local AWS profile and an AWS
+ * workload role.
  */
 public final class AwsExternalConfigurationEnvironmentPostProcessor
         implements EnvironmentPostProcessor, Ordered {
@@ -32,6 +32,7 @@ public final class AwsExternalConfigurationEnvironmentPostProcessor
     private static final String CONFIG_PREFIX = "wcs.external-config";
     private static final String APPCONFIG_SOURCE = "awsAppConfig";
     private static final String SECRETS_SOURCE = "awsSecretsManager";
+    private static final Region AWS_REGION = Region.US_EAST_1;
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
@@ -52,7 +53,7 @@ public final class AwsExternalConfigurationEnvironmentPostProcessor
 
     private void loadAppConfig(ConfigurableEnvironment environment,
             ExternalConfigurationProperties.AppConfig properties) {
-        try (AppConfigDataClient client = buildAppConfigClient(environment)) {
+        try (AppConfigDataClient client = buildAppConfigClient()) {
             Map<String, Object> values = new AppConfigConfigurationLoader(client, new ObjectMapper()).load(properties);
             if (values.isEmpty()) {
                 handleFailure(properties.failFast(), "AWS AppConfig returned an empty configuration", null);
@@ -67,7 +68,7 @@ public final class AwsExternalConfigurationEnvironmentPostProcessor
 
     private void loadSecrets(ConfigurableEnvironment environment,
             ExternalConfigurationProperties.SecretsManager properties) {
-        try (SecretsManagerClient client = buildSecretsManagerClient(environment)) {
+        try (SecretsManagerClient client = buildSecretsManagerClient()) {
             Map<String, Object> values = new SecretsManagerConfigurationLoader(client, new ObjectMapper()).load(properties);
             if (values.isEmpty()) {
                 handleFailure(properties.failFast(), "AWS Secrets Manager returned no configured application values", null);
@@ -96,32 +97,14 @@ public final class AwsExternalConfigurationEnvironmentPostProcessor
                 new MapPropertySource(name, values));
     }
 
-    private static AppConfigDataClient buildAppConfigClient(ConfigurableEnvironment environment) {
+    private static AppConfigDataClient buildAppConfigClient() {
         return AppConfigDataClient.builder()
-                .region(region(environment))
-                .overrideConfiguration(clientConfiguration(environment))
                 .build();
     }
 
-    private static SecretsManagerClient buildSecretsManagerClient(ConfigurableEnvironment environment) {
+    private static SecretsManagerClient buildSecretsManagerClient() {
         return SecretsManagerClient.builder()
-                .region(region(environment))
-                .overrideConfiguration(clientConfiguration(environment))
                 .build();
-    }
-
-    private static Region region(ConfigurableEnvironment environment) {
-        String region = environment.getProperty("AWS_REGION", environment.getProperty("aws.region"));
-        if (region == null || region.isBlank()) {
-            throw new IllegalArgumentException("AWS_REGION must be configured when AWS external configuration is enabled");
-        }
-        return Region.of(region);
-    }
-
-    private static ClientOverrideConfiguration clientConfiguration(ConfigurableEnvironment environment) {
-        Duration timeout = Duration.parse(environment.getProperty(
-                "wcs.external-config.client-timeout", "PT5S"));
-        return ClientOverrideConfiguration.builder().apiCallTimeout(timeout).build();
     }
 
     private static void handleFailure(boolean failFast, String message, RuntimeException exception) {

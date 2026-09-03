@@ -45,12 +45,10 @@ backend_image_tag         = "bootstrap"
 # }
 # JSON
 
-backend_runtime_environment_variables = {
-  # Add only non-secret project configuration here.
-  WCS_WHATSAPP_ADAPTER = "mock"
-  WCS_LLM_PROVIDER     = "mock"
-  WCS_RAG_PROVIDER     = "mock"
-}
+# AppConfig and Secrets Manager are loaded by the application bootstrap.
+# Keep this empty unless App Runner needs an unrelated, explicitly approved
+# non-secret variable.
+backend_runtime_environment_variables = {}
 
 # These values are Secret Manager ARNs, not secret values. Leave empty until
 # App Runner secret mappings are explicitly approved.

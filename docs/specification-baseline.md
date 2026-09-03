@@ -29,7 +29,8 @@ Este baseline de canal se incorpora a la arquitectura definitiva como un adapter
 - RAG detrás de `KnowledgeRetriever`, con adapters para Bedrock Knowledge Bases y PostgreSQL/pgvector.
 - PostgreSQL/JPA/Flyway para persistencia; outbox o dispatcher durable para el procesamiento asíncrono.
 - AppConfig para configuración no sensible y Secrets Manager para tokens, app secrets, credenciales y keys.
-- `local-mock` debe continuar operativo aunque Meta, Bedrock o RAG no estén configurados.
+- Los dobles de Meta, Bedrock y RAG deben permanecer disponibles para tests sin
+  convertirlos en la configuración normal del runtime.
 
 ## Fuera de alcance del baseline de canal
 
