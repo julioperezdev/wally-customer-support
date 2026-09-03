@@ -2,7 +2,7 @@
 
 Owner: Product/Tech Lead  
 Status: `Proposed`  
-Last reviewed: 2026-08-30
+Last reviewed: 2026-09-03
 
 ## Visión
 
@@ -31,11 +31,12 @@ Fuera de alcance inicial: audio, imágenes, stickers, ubicación, grupos, pagos,
 ### Fase 2 — Fundación de producto, mock vertical slice e infraestructura base
 
 **Salida:** Spring Boot modular, PostgreSQL/JPA/Flyway, schema `wcs` sobre el
-RDS compartido, puertos y adapters, configuración local/producción con
-AppConfig y Secrets Manager,
-persistencia, deduplicación, outbox/dispatcher durable, Mock WhatsApp, Mock
-LLM, Mock Knowledge Retriever, endpoint interno, tests e infraestructura base
-con ECR, AppConfig, Secrets Manager, OIDC y App Runner opcional.
+RDS compartido, puertos y adapters, catálogo demo determinístico, horarios y
+políticas versionadas, referencias de imágenes para S3, configuración
+local/producción con AppConfig y Secrets Manager, persistencia, deduplicación,
+outbox/dispatcher durable, Mock WhatsApp, Mock LLM, Mock Knowledge Retriever,
+endpoint interno, tests e infraestructura base con ECR, AppConfig, Secrets
+Manager, OIDC y App Runner opcional.
 
 ### Fase 3 — Integración real con Meta
 

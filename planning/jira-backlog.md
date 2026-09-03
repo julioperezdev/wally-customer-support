@@ -135,6 +135,30 @@ evidencia.
 
 **Métricas:** resolución, handoff, fallback, latencia, costo, fallos, duplicados y feedback.
 
+## Orden de ejecución vigente — 2026-09-03
+
+El backlog se reordenó por dependencia funcional y por el estado real del
+repositorio. La rama de trabajo parte de `main` y concentra el primer vertical
+slice de datos de negocio en `WCS-25`; `WCS-28` se implementa junto con él
+porque ambos comparten migraciones, seeds y consulta de configuración.
+
+| Orden | Jira | Estado al iniciar | Entrega | Dependencias relevantes |
+| ---: | --- | --- | --- | --- |
+| 1 | WCS-25 | In Progress | Catálogo demo, variantes, stock, precio, referencia S3 y consulta determinística | WCS-10, WCS-11, WCS-13 |
+| 1 | WCS-28 | In Progress | Horarios y políticas demo versionadas/configurables | WCS-11, WCS-13 |
+| 2 | WCS-26 | To Do | Seguimiento humano priorizado, opt-out y retención | WCS-25 |
+| 3 | WCS-27 | To Do | Recepción rápida y procesamiento asíncrono durable | WCS-25 |
+| 4 | WCS-20 | To Do | Prompt, selección de modelo y guardrails | WCS-11, WCS-25, WCS-28 |
+| 5 | WCS-21 | To Do | Bedrock real, métricas de costo y latencia | WCS-20, WCS-27 |
+| 6 | WCS-18 | To Do | Cliente Meta real detrás del adapter | WCS-17, WCS-27 |
+| 7 | WCS-19 | To Do | Prueba controlada end-to-end con Meta | WCS-18, WCS-26, WCS-27 |
+| 8 | WCS-22 | In Progress | Deploy, health, smoke, observabilidad y rollback productivo | WCS-18, WCS-21 |
+
+`WCS-14`–`WCS-16` y `WCS-17` ya tienen la fundación o el contrato inicial
+versionado; deben completarse/verificarse según la evidencia de cada issue antes
+de cerrar las dependencias. El orden no implica cerrar automáticamente issues:
+cada transición requiere pruebas, evidencia y PR asociado.
+
 ## Template común de issue
 
 Cada issue real debe agregar contexto, objetivo, alcance, fuera de alcance, FR/UC, criterios Given/When/Then, pruebas, evidencia, dependencias, riesgos, documentación, rollout y rollback.

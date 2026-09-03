@@ -30,7 +30,7 @@ capturas.
 |---|---|---|---|---|
 | `TC-001` | P0 | Saludo inicial | Responde exactamente `Hola, ¿cómo te puedo ayudar?` | JUnit |
 | `TC-002` | P0 | Consulta de política demo | Usa sólo el contenido configurado como `DEMO` | JUnit + fixture |
-| `TC-003` | P0 | Consulta de producto por nombre/SKU | Devuelve producto, precio y disponibilidad desde PostgreSQL | JUnit + SQL agregado |
+| `TC-003` | P0 | Consulta de producto por nombre/SKU | Devuelve producto, precio, moneda y disponibilidad desde PostgreSQL | JUnit + SQL agregado |
 | `TC-004` | P0 | Filtros por talle/color | Sólo devuelve variantes que cumplen todos los filtros | JUnit |
 | `TC-005` | P0 | Producto inexistente o sin stock | No inventa datos y ofrece aclaración o seguimiento | JUnit |
 | `TC-006` | P1 | Consulta ambigua | Hace una pregunta concreta de aclaración | JUnit |
@@ -40,6 +40,8 @@ capturas.
 | `TC-010` | P1 | Fuera del horario demo | Informa el horario configurado y mantiene la conversación en estado correcto | JUnit |
 | `TC-011` | P0 | Acción sensible | No ejecuta cancelaciones, reembolsos, pagos ni cambios; crea seguimiento | JUnit |
 | `TC-012` | P1 | Imagen de catálogo | Persiste una referencia S3 válida; no intenta enviar media en el MVP | Integration |
+| `TC-039` | P0 | Seed demo de catálogo | Carga productos, variantes, SKU únicos y stock no negativo | Spring Boot + Flyway |
+| `TC-040` | P0 | Configuración demo de atención | Carga siete días y políticas versionadas; domingo permanece cerrado | Spring Boot + Flyway |
 
 ## Matriz de WhatsApp y seguridad
 
@@ -102,5 +104,5 @@ No alcanza con que compile. Para aceptar el MVP:
 ## Evidencia actual
 
 - `mvn clean test`: tests unitarios de HMAC, parser, controller, servicio de aplicación y adapter Meta.
-- `WallyCustomerSupportApplicationTest`: arranque Spring Boot con JPA, migración Flyway V1 y adapters de prueba.
+- `WallyCustomerSupportApplicationTest`: arranque Spring Boot con JPA, migraciones Flyway V1–V3, consulta del catálogo demo, horarios y políticas con adapters de prueba.
 - La integración PostgreSQL real debe ejecutarse con Testcontainers o el PostgreSQL local documentado antes de cerrar WCS-12.
