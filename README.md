@@ -65,7 +65,10 @@ El adapter Meta soporta texto y templates aprobados con parámetros de body. La 
 
 **Fundación técnica — en implementación:** arquitectura, operación y modelo de datos describen la fundación modular, AppConfig/Secrets Manager, JPA/PostgreSQL, Bedrock y RAG desacoplados. Las páginas canónicas siguen en `Proposed` hasta la aceptación funcional correspondiente.
 
-La branch de trabajo es `feature/WCS-13-product-foundation` y está asociada al repositorio GitHub `julioperezdev/wally-customer-support`. No contiene credenciales productivas.
+La branch de trabajo actual es `feature/WCS-25-demo-catalog`, creada desde
+`main` y asociada al repositorio GitHub
+`julioperezdev/wally-customer-support`. Implementa el primer vertical slice de
+catálogo, horarios y políticas demo. No contiene credenciales productivas.
 
 La infraestructura base sigue el patrón de `tesis-dev`, pero WCS no crea otro
 RDS: consume el existente y usa el schema `wcs`. El stack Terraform deja

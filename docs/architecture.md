@@ -2,8 +2,8 @@
 
 Owner: Tech Lead  
 Status: `Proposed`  
-Last reviewed: 2026-08-30  
-Related Jira: `WCS-13`, `WCS-17`, `WCS-18`, `WCS-20`, `WCS-21`, `WCS-22`  
+Last reviewed: 2026-09-03
+Related Jira: `WCS-13`, `WCS-17`, `WCS-18`, `WCS-20`, `WCS-21`, `WCS-22`, `WCS-25`, `WCS-28`
 Related repository paths: `src/main/java`, `src/main/resources`, `db/migration`  
 Decision/source: specification de WhatsApp y re-baseline solicitada el 2026-08-30
 
@@ -109,12 +109,27 @@ interface KnowledgeRetriever {
     List<KnowledgeChunk> retrieve(KnowledgeQuery query);
 }
 
+interface CatalogRepository {
+    List<CatalogProduct> search(CatalogQuery query);
+}
+
+interface SupportConfigurationRepository {
+    List<BusinessHour> findBusinessHours();
+    Optional<SupportPolicy> findActivePolicy(String policyKey);
+}
+
 interface ConversationRepository { /* load/save aggregate */ }
 interface MessageRepository { /* idempotency and state */ }
 interface OutboxRepository { /* durable outbox and retry state */ }
 ```
 
 Los nombres y contratos son internos de WCS; ningún adapter debe filtrarlos con tipos de Meta o AWS.
+
+El catálogo se consulta con filtros estructurados y resultados determinísticos
+de PostgreSQL. El LLM puede ayudar a extraer la intención en una fase
+posterior, pero no genera SQL ni inventa precio, stock, políticas u horarios.
+Las imágenes se modelan como referencias de objeto S3 y su envío por WhatsApp
+queda fuera del MVP.
 
 ## Configuración por ambiente
 
@@ -157,3 +172,5 @@ deshabilitan las fuentes externas y usan datos sintéticos.
 - Handoff humano y ownership de conversación.
 - Topología de hosting y terminación HTTPS/mTLS.
 - Retención, borrado, acceso y estrategia de cifrado.
+- Contrato de uso de `CatalogQueryService` y `SupportConfigurationQueryService`
+  dentro del processor conversacional.
