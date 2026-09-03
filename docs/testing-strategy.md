@@ -20,6 +20,11 @@ capturas.
 | Contract | Payloads de Meta, respuestas de Meta, LLM y repositorios | Fixtures versionados |
 | Integration | PostgreSQL, Flyway, constraints, stock, outbox y ownership | Testcontainers / reporte SQL |
 | E2E mock | Inbound → persistencia → respuesta → outbox → outbound | Log de correlación sanitizado |
+
+La matriz de adapters debe ejecutar el mismo caso de uso con `Channel.WHATSAPP`
+y `Channel.TELEGRAM`. Los contratos de cada canal verifican sólo la traducción
+del payload, autenticación del webhook y request outbound; no duplican reglas de
+catálogo, IA, ownership o idempotencia.
 | E2E Meta | Número controlado, webhook HTTPS y respuesta real | Evidencia sanitizada |
 | Data lifecycle | Retención, borrado y `DO_NOT_CONTACT` | Reporte de job + query agregada |
 | Operational | Health, readiness, ack rápido, retry, alertas y rollback | CI + runbook |

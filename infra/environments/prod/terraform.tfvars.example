@@ -40,6 +40,12 @@ backend_image_tag         = "bootstrap"
 #   "wcs.whatsapp.graph-api-base-url": "https://graph.facebook.com",
 #   "wcs.external-config.secrets-manager.database-secret-id": "tesis-dev-prod/rds",
 #   "wcs.external-config.secrets-manager.whatsapp-secret-id": "wcs/prod/whatsapp",
+#   "wcs.external-config.secrets-manager.telegram-secret-id": "wcs/prod/telegram",
+#   "wcs.telegram.enabled": false,
+#   "wcs.telegram.adapter": "disabled",
+#   "wcs.telegram.api-base-url": "https://api.telegram.org",
+#   "wcs.telegram.connect-timeout": "PT2S",
+#   "wcs.telegram.read-timeout": "PT5S",
 #   "wcs.ai.provider": "mock",
 #   "wcs.rag.provider": "mock"
 # }

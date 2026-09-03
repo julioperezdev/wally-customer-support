@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.UUID;
 
 import com.wally.customersupport.domain.model.OutboundMessage;
+import com.wally.customersupport.domain.model.Channel;
 import com.wally.customersupport.infrastructure.config.WhatsAppProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -52,7 +53,7 @@ class MetaWhatsAppOutboundAdapterTest {
                         """))
                 .andRespond(withSuccess("{\"messages\":[{\"id\":\"synthetic-message-id\"}]}", MediaType.APPLICATION_JSON));
 
-        adapter.send(OutboundMessage.text(conversationId, "synthetic-recipient", "Hola"));
+        adapter.send(OutboundMessage.text(Channel.WHATSAPP, conversationId, "synthetic-recipient", "Hola"));
 
         server.verify();
     }
@@ -79,6 +80,7 @@ class MetaWhatsAppOutboundAdapterTest {
                 .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
 
         adapter.send(OutboundMessage.template(
+                Channel.WHATSAPP,
                 conversationId,
                 "synthetic-recipient",
                 "order_confirmation",
@@ -95,7 +97,8 @@ class MetaWhatsAppOutboundAdapterTest {
 
         MetaWhatsAppException exception = assertThrows(
                 MetaWhatsAppException.class,
-                () -> adapter.send(OutboundMessage.text(conversationId, "synthetic-recipient", "Hola")));
+                () -> adapter.send(OutboundMessage.text(
+                        Channel.WHATSAPP, conversationId, "synthetic-recipient", "Hola")));
 
         assertTrue(exception.getMessage().contains("HTTP 500"));
         assertTrue(!exception.getMessage().contains("synthetic-access-token"));

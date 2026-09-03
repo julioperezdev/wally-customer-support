@@ -15,6 +15,8 @@ Flyway crea únicamente el schema lógico `wcs`.
 - AWS AppConfig para configuración no sensible versionable.
 - AWS Secrets Manager para el contenedor de secrets de WCS y la referencia al
   secret existente del RDS compartido.
+- Un secret separado `wcs/{environment}/telegram` para el bot de Telegram y el
+  secret de validación del webhook.
 - RDS PostgreSQL existente de `tesis-dev`, consumido como dependencia externa.
 - Bedrock como permiso opcional del runtime, sin habilitarlo por defecto.
 
@@ -27,16 +29,17 @@ El usuario de base de datos que ejecute Flyway debe poder crear el schema
 ownership/permisos necesarios. Terraform no intenta modificar permisos del
 RDS compartido.
 
-Terraform crea además secretos separados para `wcs/{environment}/database` y
-`wcs/{environment}/whatsapp`, con valores explícitamente falsos para bootstrap.
+Terraform crea además secretos separados para `wcs/{environment}/database`,
+`wcs/{environment}/whatsapp` y `wcs/{environment}/telegram`, con valores
+explícitamente falsos para bootstrap.
 Esos valores tienen `ignore_changes` para que puedas reemplazarlos en la
 consola de Secrets Manager sin que el siguiente `terraform apply` los restaure.
 No se debe habilitar App Runner mientras sigan presentes.
 
 El módulo `appconfig` usa una aplicación estable (`wally-customer-support`) y
 un environment por despliegue (`dev`, `test` o `prod`). Recibe por defecto un
-JSON hosted falso con las claves
-Spring y referencias a esos dos secrets, y crea un deployment all-at-once.
+JSON hosted falso con las claves Spring y referencias a esos tres secrets, y
+crea un deployment all-at-once.
 `appconfig_configuration_content` permite reemplazar ese documento por otro
 que contenga sólo configuración no sensible y referencias a Secrets Manager,
 nunca tokens o passwords. La versión hosted y el deployment también ignoran
@@ -50,10 +53,13 @@ El flujo posterior al primer `apply` es:
    de `tesis-dev`.
 2. En Secrets Manager, editar `wcs/prod/whatsapp` con `access-token`,
    `verify-token` y `app-secret` reales.
-3. En AppConfig, reemplazar los valores `REPLACE_ME_*`, cambiar
+3. En Secrets Manager, editar `wcs/prod/telegram` con `bot-token` y
+   `webhook-secret-token` reales si se habilita ese canal.
+4. En AppConfig, reemplazar los valores `REPLACE_ME_*`, cambiar
    `wcs.whatsapp.adapter` a `meta` cuando corresponda y desplegar una nueva
-   versión.
-4. Verificar que `backend_create_service` siga en `false` hasta completar
+   versión. Para Telegram, cambiar `wcs.telegram.enabled` a `true` y
+   `wcs.telegram.adapter` a `telegram` sólo después de cargar el secret.
+5. Verificar que `backend_create_service` siga en `false` hasta completar
    conectividad al RDS, permisos IAM, imagen y smoke test.
 
 Los valores fake son deliberados y no permiten una operación productiva. La

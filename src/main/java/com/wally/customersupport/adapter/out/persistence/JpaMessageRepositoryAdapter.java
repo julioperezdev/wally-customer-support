@@ -6,6 +6,7 @@ import java.util.UUID;
 import com.wally.customersupport.adapter.out.persistence.entity.MessageJpaEntity;
 import com.wally.customersupport.adapter.out.persistence.repository.SpringDataMessageRepository;
 import com.wally.customersupport.application.port.out.MessageRepository;
+import com.wally.customersupport.domain.model.Channel;
 import com.wally.customersupport.domain.model.Message;
 import org.springframework.stereotype.Repository;
 
@@ -19,8 +20,8 @@ public class JpaMessageRepositoryAdapter implements MessageRepository {
     }
 
     @Override
-    public boolean existsByExternalMessageId(String externalMessageId) {
-        return repository.existsByExternalMessageId(externalMessageId);
+    public boolean existsByExternalMessageId(Channel channel, String externalMessageId) {
+        return repository.existsByChannelAndExternalMessageId(channel, externalMessageId);
     }
 
     @Override

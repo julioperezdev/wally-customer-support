@@ -34,13 +34,16 @@ Fuera de alcance inicial: audio, imágenes, stickers, ubicación, grupos, pagos,
 RDS compartido, puertos y adapters, catálogo demo determinístico, horarios y
 políticas versionadas, referencias de imágenes para S3, configuración
 local/producción con AppConfig y Secrets Manager, persistencia, deduplicación,
-outbox/dispatcher durable, Mock WhatsApp, Mock LLM, Mock Knowledge Retriever,
-endpoint interno, tests e infraestructura base con ECR, AppConfig, Secrets
-Manager, OIDC y App Runner opcional.
+outbox/dispatcher durable, adapters de WhatsApp y Telegram, Mock LLM, Mock
+Knowledge Retriever, endpoint interno, tests e infraestructura base con ECR,
+AppConfig, Secrets Manager, OIDC y App Runner opcional.
 
-### Fase 3 — Integración real con Meta
+### Fase 3 — Integraciones reales de canales
 
-**Salida:** verificación, firma `X-Hub-Signature-256`, parser de payload, cliente `RestClient`, ventana de atención, reintentos y prueba controlada con el número de Meta.
+**Salida:** webhook Telegram protegido, webhook Meta con verificación y firma
+`X-Hub-Signature-256`, parsers de payload, clientes `RestClient`, ventana de
+atención, reintentos y pruebas controladas con los canales habilitados. Cada
+canal continúa detrás de su adapter y comparte el caso de uso de aplicación.
 
 ### Fase 4 — LLM y políticas conversacionales
 

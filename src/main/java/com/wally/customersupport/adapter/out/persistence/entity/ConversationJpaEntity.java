@@ -27,8 +27,8 @@ public class ConversationJpaEntity {
     @Column(name = "external_conversation_id", nullable = false, length = 128)
     private String externalConversationId;
 
-    @Column(name = "customer_wa_id", nullable = false, length = 32)
-    private String customerWaId;
+    @Column(name = "external_customer_id", nullable = false, length = 128)
+    private String externalCustomerId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
@@ -47,13 +47,13 @@ public class ConversationJpaEntity {
         this.id = conversation.id();
         this.channel = conversation.channel();
         this.externalConversationId = conversation.externalConversationId();
-        this.customerWaId = conversation.customerWaId();
+        this.externalCustomerId = conversation.externalCustomerId();
         this.status = conversation.status();
         this.createdAt = conversation.createdAt();
         this.updatedAt = conversation.updatedAt();
     }
 
     public Conversation toDomain() {
-        return new Conversation(id, channel, externalConversationId, customerWaId, status, createdAt, updatedAt);
+        return new Conversation(id, channel, externalConversationId, externalCustomerId, status, createdAt, updatedAt);
     }
 }

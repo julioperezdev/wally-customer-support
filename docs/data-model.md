@@ -3,7 +3,7 @@
 Owner: Tech Lead  
 Status: `Proposed`  
 Last reviewed: 2026-09-03
-Related Jira: `WCS-13`, `WCS-14`, `WCS-15`, `WCS-16`, `WCS-25`, `WCS-28`
+Related Jira: `WCS-13`, `WCS-14`, `WCS-15`, `WCS-16`, `WCS-25`, `WCS-28`, `WCS-29`
 Related repository paths: `src/main/java/.../adapter/out/persistence`, `src/main/resources/db/migration`
 
 ## Aislamiento en el RDS compartido
@@ -21,7 +21,7 @@ red en este repositorio.
 
 - `id` UUID interno.
 - `channel` y `external_conversation_id`, únicos como par.
-- `customer_wa_id`, aislado del ownership futuro por tienda.
+- `external_customer_id`, aislado del ownership futuro por tienda y válido para cualquier canal.
 - `status` (`OPEN`, `CLOSED`).
 - timestamps.
 
@@ -29,6 +29,7 @@ red en este repositorio.
 
 - `id` UUID interno.
 - `conversation_id` FK.
+- `channel`, redundante de forma intencional para mantener idempotencia por proveedor.
 - `external_message_id`, único cuando existe.
 - `direction` (`INBOUND`, `OUTBOUND`).
 - `message_type` (`TEXT` en el MVP).
@@ -52,6 +53,7 @@ Permite confirmar el webhook después de una transacción local y despachar el t
 
 * `id` UUID.
 * `aggregate_id` y `event_type`.
+* `channel` y `recipient_id`, para enrutar la entrega al adapter correcto.
 * campos de entrega tipados, sin payload Meta completo.
 * `status` (`PENDING`, `PROCESSING`, `SENT`, `FAILED`).
 * `attempts`, `available_at`, `version` y `sent_at`.
@@ -106,7 +108,7 @@ Si se elige pgvector, la columna vectorial se agrega en una migración posterior
 ### Entidades futuras
 
 - `store`/`store_id` para aislamiento multi-tienda; el MVP mantiene una tienda
-  demo y no usa `customer_wa_id` como ownership.
+  demo y no usa `external_customer_id` como ownership.
 - `human_handoff`.
 - `knowledge_source` y versiones de contenido.
 - `ai_usage_metric`.
@@ -117,7 +119,7 @@ Si se elige pgvector, la columna vectorial se agrega en una migración posterior
 - Toda migración nueva tiene rollback documentado o procedimiento reversible.
 - No almacenar tokens de Meta ni keys de LLM en la BD.
 - PII, retención, borrado y acceso deben estar definidos antes de producción.
-- El aislamiento por tienda se debe diseñar antes de habilitar multi-tenant; no se debe asumir que `wa_id` alcanza como ownership.
-- La implementación inicial puede operar con una tienda, pero las claves internas deben permitir incorporar `store_id`/`account_id` sin redefinir `wa_id` como ownership.
+- El aislamiento por tienda se debe diseñar antes de habilitar multi-tenant; no se debe asumir que un identificador externo de canal alcanza como ownership.
+- La implementación inicial puede operar con una tienda, pero las claves internas deben permitir incorporar `store_id`/`account_id` sin redefinir un identificador de canal como ownership.
 - JPA/Hibernate no reemplaza Flyway: el schema productivo se versiona con migraciones explícitas.
 - No persistir payloads completos de Meta, prompts completos ni respuestas del proveedor salvo que exista una política de retención aprobada.

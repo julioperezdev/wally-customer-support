@@ -87,11 +87,11 @@ public class InboundMessageApplicationService implements InboundMessagePort {
     public InboundMessageResult accept(InboundMessageCommand command) {
         if (isBlank(command.externalMessageId())
                 || isBlank(command.externalConversationId())
-                || isBlank(command.customerWaId())
+                || isBlank(command.externalCustomerId())
                 || isBlank(command.body())) {
             return InboundMessageResult.ignored();
         }
-        if (messageRepository.existsByExternalMessageId(command.externalMessageId())) {
+        if (messageRepository.existsByExternalMessageId(command.channel(), command.externalMessageId())) {
             return InboundMessageResult.duplicate();
         }
 
@@ -102,7 +102,7 @@ public class InboundMessageApplicationService implements InboundMessagePort {
                         UUID.randomUUID(),
                         command.channel(),
                         command.externalConversationId(),
-                        command.customerWaId(),
+                        command.externalCustomerId(),
                         ConversationStatus.OPEN,
                         now,
                         now)));
@@ -110,6 +110,7 @@ public class InboundMessageApplicationService implements InboundMessagePort {
         Message inboundMessage = messageRepository.save(new Message(
                 UUID.randomUUID(),
                 conversation.id(),
+                command.channel(),
                 command.externalMessageId(),
                 MessageDirection.INBOUND,
                 MessageType.TEXT,
@@ -124,7 +125,7 @@ public class InboundMessageApplicationService implements InboundMessagePort {
                 Math.max(1, ragProperties.maxResults())));
         String reply = llmClient.generateReply(new ConversationContext(
                 conversation.id(),
-                conversation.customerWaId(),
+                conversation.externalCustomerId(),
                 command.body(),
                 recentMessages,
                 knowledge));
@@ -140,7 +141,11 @@ public class InboundMessageApplicationService implements InboundMessagePort {
 
         if (!isBlank(reply)) {
             outboxRepository.save(OutboxMessage.pendingReply(
-                    OutboundMessage.text(conversation.id(), conversation.customerWaId(), reply),
+                    OutboundMessage.text(
+                            conversation.channel(),
+                            conversation.id(),
+                            conversation.externalCustomerId(),
+                            reply),
                     now));
         }
         return InboundMessageResult.accepted();

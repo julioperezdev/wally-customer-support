@@ -7,7 +7,7 @@ public record Conversation(
         UUID id,
         Channel channel,
         String externalConversationId,
-        String customerWaId,
+        String externalCustomerId,
         ConversationStatus status,
         Instant createdAt,
         Instant updatedAt) {

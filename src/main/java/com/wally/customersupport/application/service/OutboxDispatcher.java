@@ -4,10 +4,14 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import com.wally.customersupport.application.port.out.OutboxRepository;
 import com.wally.customersupport.application.port.out.OutboundMessagePort;
 import com.wally.customersupport.domain.model.OutboxMessage;
+import com.wally.customersupport.domain.model.Channel;
 import com.wally.customersupport.infrastructure.config.OutboxProperties;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
@@ -23,25 +27,26 @@ public class OutboxDispatcher {
     private static final Duration RETRY_DELAY = Duration.ofSeconds(30);
 
     private final OutboxRepository outboxRepository;
-    private final OutboundMessagePort outboundMessagePort;
+    private final Map<Channel, OutboundMessagePort> outboundMessagePorts;
     private final OutboxProperties properties;
     private final Clock clock;
 
     @Autowired
     public OutboxDispatcher(
             OutboxRepository outboxRepository,
-            OutboundMessagePort outboundMessagePort,
+            List<OutboundMessagePort> outboundMessagePorts,
             OutboxProperties properties) {
-        this(outboxRepository, outboundMessagePort, properties, Clock.systemUTC());
+        this(outboxRepository, outboundMessagePorts, properties, Clock.systemUTC());
     }
 
     OutboxDispatcher(
             OutboxRepository outboxRepository,
-            OutboundMessagePort outboundMessagePort,
+            List<OutboundMessagePort> outboundMessagePorts,
             OutboxProperties properties,
             Clock clock) {
         this.outboxRepository = outboxRepository;
-        this.outboundMessagePort = outboundMessagePort;
+        this.outboundMessagePorts = outboundMessagePorts.stream()
+                .collect(Collectors.toUnmodifiableMap(OutboundMessagePort::channel, Function.identity()));
         this.properties = properties;
         this.clock = clock;
     }
@@ -58,6 +63,11 @@ public class OutboxDispatcher {
     private void dispatch(OutboxMessage outboxMessage, Instant now) {
         try {
             outboxRepository.markProcessing(outboxMessage.id());
+            OutboundMessagePort outboundMessagePort = outboundMessagePorts.get(outboxMessage.message().channel());
+            if (outboundMessagePort == null) {
+                throw new IllegalStateException(
+                        "No outbound adapter configured for channel " + outboxMessage.message().channel());
+            }
             outboundMessagePort.send(outboxMessage.message());
             outboxRepository.markSent(outboxMessage.id(), clock.instant());
         } catch (RuntimeException exception) {

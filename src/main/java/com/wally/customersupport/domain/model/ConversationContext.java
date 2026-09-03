@@ -5,7 +5,7 @@ import java.util.UUID;
 
 public record ConversationContext(
         UUID conversationId,
-        String customerWaId,
+        String externalCustomerId,
         String latestMessage,
         List<String> recentMessages,
         List<KnowledgeChunk> knowledge) {

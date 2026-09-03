@@ -14,6 +14,9 @@ Estado: `Draft`. Alcance MVP propuesto el 2026-09-03; requiere validación final
 
 - La tienda de demostración se llama **Ropa de Programador**.
 - El canal del MVP es WhatsApp y sólo se procesan mensajes de texto.
+- Telegram se incorpora como canal técnico de desarrollo/prueba con los mismos
+  casos de uso conversacionales; el dominio recibe un contrato interno con
+  `Channel` y no conoce payloads ni APIs de proveedores.
 - El bot responde siempre la primera interacción. El pedido de atención humana crea una tarea priorizada para el backoffice, con el contexto de la conversación y vencimiento recomendado dentro de 24 horas.
 - El MVP no ejecuta cancelaciones, reembolsos, pagos ni modificaciones de pedidos.
 - Se utilizará un catálogo ficticio en PostgreSQL. Las imágenes se almacenarán en S3, pero no se enviarán como media por WhatsApp durante esta fase.

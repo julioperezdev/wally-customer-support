@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.UUID;
 
 import com.wally.customersupport.domain.model.DeliveryType;
+import com.wally.customersupport.domain.model.Channel;
 import com.wally.customersupport.domain.model.OutboundMessage;
 import com.wally.customersupport.domain.model.OutboxMessage;
 import com.wally.customersupport.domain.model.OutboxStatus;
@@ -36,8 +37,12 @@ public class OutboxJpaEntity {
     @Column(name = "message_type", nullable = false, length = 32)
     private DeliveryType messageType;
 
-    @Column(name = "recipient_wa_id", nullable = false, length = 32)
-    private String recipientWaId;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32)
+    private Channel channel;
+
+    @Column(name = "recipient_id", nullable = false, length = 128)
+    private String recipientId;
 
     @Column(columnDefinition = "text")
     private String body;
@@ -81,7 +86,8 @@ public class OutboxJpaEntity {
         this.aggregateId = message.aggregateId();
         this.eventType = message.eventType();
         this.messageType = message.message().deliveryType();
-        this.recipientWaId = message.message().recipientWaId();
+        this.channel = message.message().channel();
+        this.recipientId = message.message().recipientId();
         this.body = message.message().body();
         this.templateName = message.message().templateName();
         this.templateLanguageCode = message.message().templateLanguageCode();
@@ -99,8 +105,9 @@ public class OutboxJpaEntity {
                 ? List.of()
                 : Arrays.asList(templateBodyParameters.split(PARAMETER_SEPARATOR, -1));
         OutboundMessage outboundMessage = new OutboundMessage(
+                channel,
                 aggregateId,
-                recipientWaId,
+                recipientId,
                 messageType,
                 body,
                 templateName,

@@ -1,4 +1,4 @@
-package com.wally.customersupport.adapter.out.whatsapp.mock;
+package com.wally.customersupport.adapter.out.telegram;
 
 import com.wally.customersupport.application.port.out.OutboundMessagePort;
 import com.wally.customersupport.domain.model.Channel;
@@ -9,18 +9,19 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConditionalOnProperty(name = "wcs.whatsapp.adapter", havingValue = "mock", matchIfMissing = true)
-public class MockWhatsAppOutboundAdapter implements OutboundMessagePort {
+@ConditionalOnProperty(name = "wcs.telegram.enabled", havingValue = "true")
+@ConditionalOnProperty(name = "wcs.telegram.adapter", havingValue = "mock")
+public class MockTelegramOutboundAdapter implements OutboundMessagePort {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(MockWhatsAppOutboundAdapter.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(MockTelegramOutboundAdapter.class);
 
     @Override
     public Channel channel() {
-        return Channel.WHATSAPP;
+        return Channel.TELEGRAM;
     }
 
     @Override
     public void send(OutboundMessage message) {
-        LOGGER.info("Mock WhatsApp outbound message dispatched: type={}", message.deliveryType());
+        LOGGER.info("Mock Telegram outbound message dispatched: type={}", message.deliveryType());
     }
 }

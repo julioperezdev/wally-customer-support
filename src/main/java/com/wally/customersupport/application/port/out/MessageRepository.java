@@ -4,10 +4,11 @@ import java.util.List;
 import java.util.UUID;
 
 import com.wally.customersupport.domain.model.Message;
+import com.wally.customersupport.domain.model.Channel;
 
 public interface MessageRepository {
 
-    boolean existsByExternalMessageId(String externalMessageId);
+    boolean existsByExternalMessageId(Channel channel, String externalMessageId);
 
     Message save(Message message);
 
