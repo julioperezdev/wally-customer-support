@@ -102,11 +102,12 @@ module "telegram_secrets" {
 module "appconfig" {
   source = "../../modules/appconfig"
 
-  application_name      = var.project_name
-  environment_name      = var.environment
-  profile_name          = "runtime"
-  configuration_content = coalesce(var.appconfig_configuration_content, local.fake_appconfig_configuration)
-  tags                  = local.common_tags
+  application_name         = var.project_name
+  environment_name         = var.environment
+  profile_name             = "runtime"
+  deployment_strategy_name = "${var.project_name}-${var.environment}-all-at-once"
+  configuration_content    = coalesce(var.appconfig_configuration_content, local.fake_appconfig_configuration)
+  tags                     = local.common_tags
 }
 
 module "runtime_secrets" {
