@@ -87,6 +87,29 @@ catálogo, IA, ownership o idempotencia.
 - `TC-037`: rollback de una versión de aplicación sin alterar migraciones ya aplicadas.
 - `TC-038`: alerta o métrica ante aumento de errores, retries, duplicados o tareas de seguimiento vencidas.
 
+### Prueba manual de catálogo por Telegram
+
+Con AppConfig seleccionando `wcs.telegram.enabled=true` y
+`wcs.telegram.adapter=telegram`, una API local expuesta por HTTPS y el webhook
+registrado, enviar al bot:
+
+```text
+¿Tienen remera negra talle M?
+```
+
+La respuesta esperada debe incluir `Remera NullPointer`, `18.900,00 ARS` y
+`stock disponible: 12`. La respuesta debe provenir del catálogo demo en
+PostgreSQL y no de una respuesta generada por el LLM mock. También verificar:
+
+```text
+¿Tienen remera blanca talle M?
+¿Está disponible el SKU RP-REM-NP-NEG-M?
+Busco Remera Fantasma
+```
+
+El primer caso debe informar `sin stock`, el segundo debe devolver la variante
+correspondiente y el tercero no debe inventar un producto.
+
 ## Datos y fixtures
 
 - Catálogo, horarios y políticas demo versionados y marcados como `DEMO`.

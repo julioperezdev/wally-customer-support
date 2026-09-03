@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import javax.sql.DataSource;
+import com.wally.customersupport.application.service.CatalogConversationService;
 import com.wally.customersupport.application.service.CatalogQueryService;
 import com.wally.customersupport.application.service.SupportConfigurationQueryService;
 import com.wally.customersupport.domain.model.CatalogQuery;
@@ -22,6 +23,9 @@ class WallyCustomerSupportApplicationTest {
 
     @Autowired
     private CatalogQueryService catalogQueryService;
+
+    @Autowired
+    private CatalogConversationService catalogConversationService;
 
     @Autowired
     private SupportConfigurationQueryService supportConfigurationQueryService;
@@ -53,5 +57,16 @@ class WallyCustomerSupportApplicationTest {
         assertTrue(policy.isPresent());
         assertEquals(1, policy.get().version());
         assertTrue(policy.get().demo());
+    }
+
+    @Test
+    void answersAConversationCatalogQueryUsingTheDemoDatabase() {
+        String reply = catalogConversationService
+                .replyFor("¿Tienen remera negra talle M?")
+                .orElseThrow();
+
+        assertTrue(reply.contains("Remera NullPointer"));
+        assertTrue(reply.contains("18.900,00 ARS"));
+        assertTrue(reply.contains("stock disponible: 12"));
     }
 }

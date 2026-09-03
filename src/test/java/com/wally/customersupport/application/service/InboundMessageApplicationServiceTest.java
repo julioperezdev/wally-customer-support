@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -57,6 +58,8 @@ class InboundMessageApplicationServiceTest {
     private KnowledgeRetriever knowledgeRetriever;
     @Mock
     private LlmClient llmClient;
+    @Mock
+    private CatalogConversationService catalogConversationService;
 
     private InboundMessageApplicationService service;
     private Conversation conversation;
@@ -71,8 +74,10 @@ class InboundMessageApplicationServiceTest {
                 outboxRepository,
                 knowledgeRetriever,
                 llmClient,
+                catalogConversationService,
                 new RagProperties("mock", 5),
                 Clock.fixed(NOW, ZoneOffset.UTC));
+        lenient().when(catalogConversationService.replyFor(any())).thenReturn(Optional.empty());
         conversation = new Conversation(
                 UUID.randomUUID(), Channel.WHATSAPP, "conversation-1", "customer-1",
                 ConversationStatus.OPEN, NOW, NOW);
@@ -142,5 +147,27 @@ class InboundMessageApplicationServiceTest {
         verify(outboxRepository).save(outboxCaptor.capture());
         assertEquals(Channel.TELEGRAM, outboxCaptor.getValue().message().channel());
         assertEquals("telegram-user-1", outboxCaptor.getValue().message().recipientId());
+    }
+
+    @Test
+    void queuesCatalogReplyWithoutCallingLlm() {
+        when(catalogConversationService.replyFor("¿Tienen remera negra talle M?"))
+                .thenReturn(Optional.of("Encontré estos productos"));
+        when(messageRepository.existsByExternalMessageId(Channel.WHATSAPP, "message-1")).thenReturn(false);
+        when(conversationRepository.findByChannelAndExternalConversationId(Channel.WHATSAPP, "conversation-1"))
+                .thenReturn(Optional.of(conversation));
+        Message message = new Message(
+                UUID.randomUUID(), conversation.id(), Channel.WHATSAPP, "message-1", MessageDirection.INBOUND,
+                MessageType.TEXT, "¿Tienen remera negra talle M?", NOW, NOW);
+        when(messageRepository.save(any(Message.class))).thenReturn(message);
+
+        service.accept(new InboundMessageCommand(
+                Channel.WHATSAPP, "message-1", "conversation-1", "customer-1",
+                "¿Tienen remera negra talle M?", NOW));
+
+        verify(catalogConversationService).replyFor("¿Tienen remera negra talle M?");
+        verify(llmClient, never()).generateReply(any());
+        verify(knowledgeRetriever, never()).retrieve(any());
+        verify(outboxRepository).save(any(OutboxMessage.class));
     }
 }
