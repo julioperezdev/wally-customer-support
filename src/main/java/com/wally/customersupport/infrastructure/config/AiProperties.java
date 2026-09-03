@@ -5,6 +5,5 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "wcs.ai")
 public record AiProperties(
         String provider,
-        String model,
-        String mockReply) {
+        String model) {
 }
