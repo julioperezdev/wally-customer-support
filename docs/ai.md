@@ -12,6 +12,7 @@ Related repository paths: `src/main/java/.../application/ai`, `src/main/resource
 | --- | --- | --- | --- |
 | `llm.mock.v1` | Interno | Desarrollo, tests y fixtures | Accepted |
 | `llm.bedrock.openai.gpt-oss-20b.v1` | AWS Bedrock | Clasificación de intención y soporte general | Proposed |
+| `llm.bedrock.nova-pro.v1` | AWS Bedrock | Referencia histórica para generación documental | Reference |
 
 Bedrock se integra detrás de `ConversationIntentClassifier` y `LlmClient`.
 `ConversationOrchestrator` sólo consume decisiones estructuradas del clasificador
@@ -26,12 +27,25 @@ RAG se integra detrás de `KnowledgeRetriever` y se mantiene separado de `LlmCli
 | ID lógico | Adapter | Uso | Estado |
 | --- | --- | --- | --- |
 | `knowledge.mock.v1` | Interno | Tests y desarrollo local | Accepted |
-| `knowledge.bedrock-kb.v1` | AWS Bedrock Knowledge Bases | Fuente administrada por AWS | Proposed |
+| `knowledge.bedrock-kb.s3-vectors.v1` | AWS Bedrock Knowledge Bases + S3 Vectors | Documentación estática de WCS | Proposed |
 | `knowledge.pgvector.v1` | PostgreSQL + pgvector | Índice propio, control de chunks y filtros | Proposed |
 
-La elección entre Knowledge Bases y pgvector no bloquea la aplicación. Ambas implementaciones entregan el mismo `RetrievedContext`, con source ID, versión, score y fragmentos limitados. La ingestión, versionado y borrado de documentos se diseña como un flujo separado de la consulta.
+La decisión actual es usar una Knowledge Base propia de WCS para conocimiento
+documental y mantener pgvector como alternativa futura. Ambas implementaciones
+deben entregar el mismo `RetrievedContext`, con source ID, versión, score y
+fragmentos limitados. La ingestión, versionado y borrado de documentos se diseña
+como un flujo separado de la consulta.
 
-No se fija todavía la dimensión del vector ni el modelo de embeddings: hacerlo antes de seleccionar el proveedor produciría una migración difícil de revertir.
+La configuración inicial objetivo de la Knowledge Base es S3 como fuente,
+Amazon S3 Vectors como vector store y Amazon Titan Text Embeddings V2 con
+vectores `float32` de 1024 dimensiones. El bucket, índice, Knowledge Base y
+service role deben ser exclusivos de WCS. El patrón histórico de
+`bigg-rag-sales-offhours` se conserva sólo como referencia; sus documentos no
+se reutilizan.
+
+S3 Vectors es apropiado para consultas documentales de baja frecuencia y
+búsqueda semántica. Si WCS requiere búsqueda híbrida o filtros avanzados, se
+reevaluará OpenSearch o un índice propio.
 
 Cada modelo real debe registrar proveedor, model ID, versión, límites, timeout, precio vigente, fecha de revisión y casos permitidos.
 
@@ -90,6 +104,28 @@ El prompt de clasificación está versionado como `conversation-intent-v1` y el
 texto del cliente se envía como datos delimitados y acotados. El modelo real es
 `openai.gpt-oss-20b-1:0`, seleccionado por `wcs.ai.model`.
 
+## Datos dinámicos y tools
+
+Los datos transaccionales no se consultan como texto vectorizado. Bedrock puede
+proponer una tool mediante Converse, pero el backend de WCS valida sus
+argumentos y ejecuta el caso de uso correspondiente:
+
+| Tool | Fuente | Parámetros iniciales |
+| --- | --- | --- |
+| `search_catalog` | PostgreSQL | `name`, `sku`, `size`, `color`, `maxPrice` |
+| `get_stock` | PostgreSQL/inventario | `sku`, variante |
+| `get_cart` | Servicio transaccional | `customerId` |
+| `get_order_status` | Servicio de pedidos | `customerId`, `orderId` |
+
+El LLM no recibe credenciales, no genera SQL ejecutable y no puede inventar
+precio, stock, carrito ni estado de pedido. Las consultas se mantienen
+parametrizadas y allow-listed. Para DynamoDB se implementará un adapter de
+persistencia equivalente.
+
+Las preguntas documentales pasan por `KnowledgeRetriever`; las preguntas
+dinámicas pasan por tools de aplicación. Una pregunta mixta puede combinar
+ambos caminos antes de redactar la respuesta final.
+
 ## Contrato de aplicación
 
 ```text
@@ -102,6 +138,12 @@ InboundMessage
 GENERAL_SUPPORT
   → KnowledgeRetriever
   → LlmClient
+
+CATALOG_SEARCH / STOCK / CART / ORDER
+  → Bedrock Converse tool use
+  → caso de uso WCS
+  → PostgreSQL o adapter transaccional
+  → LlmClient para redactar sólo con el resultado validado
 ```
 
 Los tests deben poder ejecutar el mismo flujo con `MockKnowledgeRetriever`,

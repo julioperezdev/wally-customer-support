@@ -12,6 +12,7 @@
 - [`data-model.md`](data-model.md)
 - [`ai.md`](ai.md)
 - [`decisions/`](decisions/)
+  - [`002-static-knowledge-and-dynamic-data.md`](decisions/002-static-knowledge-and-dynamic-data.md): Knowledge Base para documentos y tools para datos dinámicos.
 
 ## Calidad y operación
 

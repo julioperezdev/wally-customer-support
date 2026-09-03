@@ -16,7 +16,20 @@ Un cliente puede enviar un mensaje de texto y recibir una respuesta del bot por 
 
 Incluye webhook de Meta, verificación, HMAC, mensajes de texto, conversación básica, LLM desacoplado, respuesta por WhatsApp, modo mock, idempotencia, reintentos acotados, logs estructurados, PostgreSQL, tests de contrato/integración y entorno local reproducible.
 
-Fuera de alcance inicial: audio, imágenes, stickers, ubicación, grupos, pagos, WhatsApp Flows, panel web, tools autónomas y configuración automática de Meta. RAG queda planificado detrás de un puerto, con Knowledge Bases o pgvector como decisión posterior.
+Fuera de alcance inicial: audio, imágenes, stickers, ubicación, grupos, pagos, WhatsApp Flows, panel web y configuración automática de Meta. El conocimiento documental queda detrás de `KnowledgeRetriever`; la implementación inicial será una Knowledge Base propia de WCS y pgvector permanece como alternativa futura.
+
+## Decisión de conocimiento y datos
+
+Para el desarrollo del MVP se adopta una Knowledge Base propia de WCS para
+documentación estática y Bedrock Converse con tools WCS para información
+dinámica. La Knowledge Base usará inicialmente S3, S3 Vectors y Titan Text
+Embeddings V2 de 1024 dimensiones. PostgreSQL continúa siendo la fuente de
+verdad para catálogo, precio, stock, carrito y pedidos; pgvector queda como
+alternativa futura detrás de `KnowledgeRetriever`.
+
+La Knowledge Base histórica `bigg-rag-sales-offhours` sólo se utiliza como
+referencia de implementación. Sus documentos y recursos no se comparten con
+WCS.
 
 ## Fases y gates
 
@@ -45,13 +58,21 @@ AppConfig, Secrets Manager, OIDC y App Runner opcional.
 atención, reintentos y pruebas controladas con los canales habilitados. Cada
 canal continúa detrás de su adapter y comparte el caso de uso de aplicación.
 
-### Fase 4 — LLM y políticas conversacionales
+### Fase 4 — LLM, tools y políticas conversacionales
 
-**Salida:** proveedor/modelo seleccionado, prompt versionado, límites, guardrails, fallback, evaluación, costo y latencia medidos.
+**Salida:** Bedrock Converse detrás de `LlmClient` y del clasificador de
+intención, contratos de tools para datos dinámicos, prompts versionados,
+límites, guardrails, fallback, evaluación, costo y latencia medidos. El LLM
+interpreta la consulta y propone una tool; WCS valida y ejecuta el caso de uso.
 
 ### Fase 5 — Conocimiento y RAG
 
-**Salida:** fuente aprobada, pipeline de ingestión versionado, `KnowledgeRetriever`, evaluación de recuperación, decisión documentada entre Bedrock Knowledge Bases y pgvector, y fallback cuando no existe evidencia suficiente.
+**Salida:** Knowledge Base propia de WCS para documentos estáticos, bucket S3,
+S3 Vectors, Titan Text Embeddings V2, pipeline de ingestión versionado,
+`KnowledgeRetriever`, evaluación de recuperación y fallback cuando no existe
+evidencia suficiente. PostgreSQL continúa siendo la fuente de verdad para
+catálogo, precio, stock, carrito y pedidos; pgvector queda como alternativa
+futura detrás del mismo puerto.
 
 ### Fase 6 — Producción y operación
 

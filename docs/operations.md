@@ -121,6 +121,7 @@ wcs.ai.model
 wcs.ai.region
 wcs.rag.provider
 wcs.rag.max-results
+wcs.rag.knowledge-base-id (cuando el adapter Bedrock KB esté habilitado)
 ```
 
 ### AWS Secrets Manager — secretos
@@ -166,9 +167,23 @@ referencias a secretos, por ejemplo:
   "wcs.telegram.api-base-url": "https://api.telegram.org",
   "wcs.ai.provider": "bedrock",
   "wcs.ai.model": "openai.gpt-oss-20b-1:0",
-  "wcs.ai.region": "us-east-1"
+  "wcs.ai.region": "us-east-1",
+  "wcs.rag.provider": "bedrock-kb",
+  "wcs.rag.max-results": 5,
+  "wcs.rag.knowledge-base-id": "REPLACE_ME_WCS_KNOWLEDGE_BASE_ID"
 }
 ```
+
+El proveedor `bedrock-kb` representa la Knowledge Base documental propia de
+WCS. Su fuente inicial es S3 y su vector store objetivo es S3 Vectors con Titan
+Text Embeddings V2 de 1024 dimensiones. El identificador de la Knowledge Base
+es configuración no sensible y el service role sólo debe ser utilizado por
+Bedrock para leer la fuente y el índice propios de WCS.
+
+Las consultas de catálogo, stock, carrito y pedidos no deben resolverse con
+`wcs.rag.provider`. Esas capacidades se implementan como tools/casos de uso
+WCS y consultan sus fuentes transaccionales con autorización, ownership y
+queries parametrizadas.
 
 Las referencias admitidas actualmente son:
 

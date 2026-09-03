@@ -33,8 +33,10 @@ Conversation Application
         ▼
 Message Processor
   ├── ConversationContextBuilder
-  ├── KnowledgeRetriever
-  ├── LlmClient
+  ├── ConversationIntentClassifier / Bedrock Converse
+  ├── KnowledgeRetriever para consultas documentales
+  ├── WCS tools para datos dinámicos
+  ├── LlmClient para respuestas fundamentadas
   ├── ResponsePolicy
   └── OutboundMessagePort
         │
@@ -49,6 +51,69 @@ Message Processor
         ▼
 PostgreSQL + Flyway + observabilidad
 ```
+
+## Frontera entre conocimiento y datos transaccionales
+
+WCS separa el conocimiento documental de los datos que deben ser consultados
+con exactitud. Bedrock Knowledge Bases se utilizará para documentos estáticos
+de la tienda, mientras que los casos de uso dinámicos se ejecutarán sobre las
+fuentes transaccionales de WCS.
+
+```text
+Mensaje del cliente
+        │
+        ▼
+Bedrock Converse / ConversationIntentClassifier
+        │
+        ├── Consulta documental
+        │      └── KnowledgeRetriever → WCS Knowledge Base
+        │                                └── S3 + S3 Vectors
+        │
+        └── Consulta dinámica
+               └── tool WCS → caso de uso → PostgreSQL/DynamoDB/API
+        │
+        ▼
+LlmClient + ResponsePolicy
+        │
+        ▼
+Outbox → WhatsApp / Telegram
+```
+
+### Conocimiento documental
+
+La Knowledge Base de WCS tendrá bucket S3, índice S3 Vectors, Titan Text
+Embeddings V2 de 1024 dimensiones y service role propios. Los documentos
+iniciales serán FAQ, ubicación, sedes, formas de envío, cómo comprar y
+cambios/devoluciones. El patrón histórico de `bigg-rag-sales-offhours` sirve
+como referencia de configuración, pero sus recursos y documentos no se
+comparten con WCS.
+
+El contenido se ingesta mediante un pipeline explícito y versionado. Los
+documentos pueden llevar metadatos de tipo, idioma, versión, estado y vigencia.
+Una respuesta no puede basarse en documentos vencidos, fuera del scope o sin
+evidencia suficiente.
+
+### Datos dinámicos
+
+El LLM puede seleccionar una tool y extraer argumentos, pero WCS valida esos
+argumentos y ejecuta el caso de uso. Las tools iniciales son:
+
+| Tool | Fuente | Parámetros principales |
+| --- | --- | --- |
+| `search_catalog` | PostgreSQL | nombre, SKU, talle, color, precio máximo |
+| `get_stock` | PostgreSQL/inventario | SKU y variante |
+| `get_cart` | Servicio transaccional | identidad del cliente |
+| `get_order_status` | Servicio de pedidos | identidad y número de pedido |
+
+El LLM no tiene acceso directo a credenciales, no genera SQL ejecutable y no
+puede inventar precios, stock, carrito ni estados de pedidos. PostgreSQL usa
+consultas parametrizadas y allow-listed; DynamoDB u otra fuente futura se
+integra mediante un adapter equivalente.
+
+Los horarios y políticas que gobiernan reglas operativas permanecen en datos
+estructurados y versionados. La Knowledge Base puede contener una copia
+editorial para responder preguntas generales sólo si se mantiene sincronizada
+con la fuente de verdad.
 
 ## Topología AWS base
 
@@ -175,7 +240,9 @@ deshabilitan las fuentes externas y usan datos sintéticos.
 3. Se transforma a un comando interno y se persiste de forma idempotente.
 4. La primera fundación genera la respuesta mediante puertos y deja el envío en un outbox durable; la separación del processor asíncrono completo queda en la siguiente iteración.
 5. `ConversationOrchestrator` clasifica la intención y ejecuta catálogo, horarios, políticas, handoff o soporte general.
-6. Sólo el soporte general consulta conocimiento y genera una respuesta detrás de `KnowledgeRetriever` y `LlmClient`.
+6. Las consultas documentales consultan `KnowledgeRetriever`; las consultas
+   dinámicas usan tools WCS y fuentes transaccionales antes de generar la
+   respuesta detrás de `LlmClient`.
 7. `ResponsePolicy` validará grounding, privacidad, ventana de atención y fallback antes de habilitar producción.
 8. El dispatcher envía la respuesta y registra el resultado/reintento.
 9. Logs, métricas y trazas usan correlación y metadatos sanitizados, nunca payloads completos.
@@ -184,7 +251,8 @@ deshabilitan las fuentes externas y usan datos sintéticos.
 
 - SQS/SQS FIFO, outbox polling u otro dispatcher durable.
 - Modelo Bedrock y guardrails aplicables.
-- Knowledge Bases o índice propio en pgvector; pueden coexistir detrás de `KnowledgeRetriever`.
+- Evaluar pgvector como alternativa si se necesitan chunks, filtros, búsqueda
+  híbrida o control de indexación que no cubra la Knowledge Base de WCS.
 - Handoff humano y ownership de conversación.
 - Topología de hosting y terminación HTTPS/mTLS.
 - Retención, borrado, acceso y estrategia de cifrado.
