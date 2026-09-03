@@ -47,19 +47,6 @@ locals {
     "wcs.external-config.secrets-manager.whatsapp-secret-id" = module.whatsapp_secrets.secret_name
   })
 
-  runtime_environment_variables = merge(
-    {
-      AWS_REGION                    = var.aws_region
-      SPRING_PROFILES_ACTIVE        = var.environment
-      AWS_APPCONFIG_ENABLED         = "true"
-      AWS_APPCONFIG_FAIL_FAST       = "true"
-      AWS_SECRETS_MANAGER_SECRET_ID = module.runtime_secrets.secret_name
-      AWS_SECRETS_MANAGER_ENABLED   = "true"
-      AWS_SECRETS_MANAGER_FAIL_FAST = "true"
-    },
-    var.backend_runtime_environment_variables
-  )
-
   runtime_secret_arns = setunion(
     toset(values(var.backend_runtime_environment_secrets)),
     toset([module.runtime_secrets.secret_arn]),
@@ -115,7 +102,7 @@ module "backend_apprunner" {
   image_tag                     = var.backend_image_tag
   cpu                           = var.backend_cpu
   memory                        = var.backend_memory
-  runtime_environment_variables = local.runtime_environment_variables
+  runtime_environment_variables = var.backend_runtime_environment_variables
   runtime_environment_secrets   = var.backend_runtime_environment_secrets
   runtime_secret_arns           = local.runtime_secret_arns
   vpc_connector_arn             = var.backend_vpc_connector_arn

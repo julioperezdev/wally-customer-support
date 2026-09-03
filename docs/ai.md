@@ -70,4 +70,6 @@ InboundMessage
   → OutboundMessagePort
 ```
 
-El modo `local-mock` debe poder ejecutar el mismo flujo con `MockKnowledgeRetriever`, `MockLlmClient` y `MockWhatsAppAdapter`.
+Los tests deben poder ejecutar el mismo flujo con `MockKnowledgeRetriever`,
+`MockLlmClient` y `MockWhatsAppAdapter`, sin convertir esos dobles en el modo
+normal de ejecución.

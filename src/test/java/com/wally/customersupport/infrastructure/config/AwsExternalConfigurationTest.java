@@ -42,22 +42,19 @@ class AwsExternalConfigurationTest {
     }
 
     @Test
-    void derivesAppConfigEnvironmentFromSpringProfile() throws IOException {
+    void usesStableProductionAppConfigEnvironment() throws IOException {
         var applicationProperties = new Properties();
         try (InputStream input = getClass().getResourceAsStream("/application.properties")) {
             assertThat(input).isNotNull();
             applicationProperties.load(input);
         }
 
-        var environment = new MockEnvironment().withProperty("SPRING_PROFILES_ACTIVE", "test");
-        var appconfigEnvironment = environment.resolvePlaceholders(
-                applicationProperties.getProperty("wcs.external-config.appconfig.environment"));
-
         assertThat(applicationProperties.getProperty("wcs.external-config.appconfig.application"))
                 .isEqualTo("wally-customer-support");
         assertThat(applicationProperties.getProperty("wcs.external-config.appconfig.profile"))
                 .isEqualTo("runtime");
-        assertThat(appconfigEnvironment).isEqualTo("test");
+        assertThat(applicationProperties.getProperty("wcs.external-config.appconfig.environment"))
+                .isEqualTo("prod");
     }
 
     @Test

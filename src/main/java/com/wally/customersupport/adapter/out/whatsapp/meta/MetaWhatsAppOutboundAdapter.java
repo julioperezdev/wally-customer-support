@@ -10,6 +10,7 @@ import com.wally.customersupport.application.port.out.OutboundMessagePort;
 import com.wally.customersupport.domain.model.OutboundMessage;
 import com.wally.customersupport.infrastructure.config.WhatsAppProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
@@ -27,6 +28,7 @@ public class MetaWhatsAppOutboundAdapter implements OutboundMessagePort {
     private final RestClient restClient;
     private final WhatsAppProperties properties;
 
+    @Autowired
     public MetaWhatsAppOutboundAdapter(RestClient.Builder restClientBuilder, WhatsAppProperties properties) {
         this(buildRestClient(restClientBuilder, properties), properties);
     }
