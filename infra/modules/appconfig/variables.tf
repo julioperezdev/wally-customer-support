@@ -13,6 +13,12 @@ variable "profile_name" {
   description = "AWS AppConfig configuration profile name."
 }
 
+variable "deployment_strategy_name" {
+  type        = string
+  description = "Stable AWS AppConfig deployment strategy name."
+  default     = null
+}
+
 variable "configuration_content" {
   type        = string
   nullable    = true

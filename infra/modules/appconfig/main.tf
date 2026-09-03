@@ -37,7 +37,7 @@ resource "aws_appconfig_hosted_configuration_version" "this" {
 resource "aws_appconfig_deployment_strategy" "this" {
   count = var.configuration_content == null ? 0 : 1
 
-  name                           = "${var.application_name}-all-at-once"
+  name                           = coalesce(var.deployment_strategy_name, "${var.application_name}-all-at-once")
   deployment_duration_in_minutes = 0
   growth_factor                  = 100
   growth_type                    = "LINEAR"
