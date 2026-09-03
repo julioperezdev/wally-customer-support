@@ -6,7 +6,7 @@ public record InboundMessageCommand(
         Channel channel,
         String externalMessageId,
         String externalConversationId,
-        String customerWaId,
+        String externalCustomerId,
         String body,
         Instant occurredAt) {
 }

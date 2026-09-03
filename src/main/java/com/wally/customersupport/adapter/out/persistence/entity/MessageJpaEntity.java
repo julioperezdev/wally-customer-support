@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 import com.wally.customersupport.domain.model.Message;
+import com.wally.customersupport.domain.model.Channel;
 import com.wally.customersupport.domain.model.MessageDirection;
 import com.wally.customersupport.domain.model.MessageType;
 import jakarta.persistence.Column;
@@ -22,6 +23,10 @@ public class MessageJpaEntity {
 
     @Column(name = "conversation_id", nullable = false)
     private UUID conversationId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32)
+    private Channel channel;
 
     @Column(name = "external_message_id", nullable = false, length = 128)
     private String externalMessageId;
@@ -49,6 +54,7 @@ public class MessageJpaEntity {
     public MessageJpaEntity(Message message) {
         this.id = message.id();
         this.conversationId = message.conversationId();
+        this.channel = message.channel();
         this.externalMessageId = message.externalMessageId();
         this.direction = message.direction();
         this.messageType = message.messageType();
@@ -61,6 +67,7 @@ public class MessageJpaEntity {
         return new Message(
                 id,
                 conversationId,
+                channel,
                 externalMessageId,
                 direction,
                 messageType,

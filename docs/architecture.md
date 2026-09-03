@@ -3,7 +3,7 @@
 Owner: Tech Lead  
 Status: `Proposed`  
 Last reviewed: 2026-09-03
-Related Jira: `WCS-13`, `WCS-17`, `WCS-18`, `WCS-20`, `WCS-21`, `WCS-22`, `WCS-25`, `WCS-28`
+Related Jira: `WCS-13`, `WCS-17`, `WCS-18`, `WCS-20`, `WCS-21`, `WCS-22`, `WCS-25`, `WCS-28`, `WCS-29`
 Related repository paths: `src/main/java`, `src/main/resources`, `db/migration`  
 Decision/source: specification de WhatsApp y re-baseline solicitada el 2026-08-30
 
@@ -19,7 +19,7 @@ y RAG sin depender de servicios externos.
 ## Mapa lógico
 
 ```text
-WhatsApp / canal futuro
+WhatsApp / Telegram / canal futuro
         │ HTTPS, firma, parseo
         ▼
 Inbound Adapter
@@ -39,7 +39,9 @@ Message Processor
   └── OutboundMessagePort
         │
         ├── MetaWhatsAppAdapter
+        ├── TelegramAdapter
         ├── MockWhatsAppAdapter
+        └── MockTelegramAdapter
         ├── BedrockLlmAdapter
         ├── MockLlmAdapter
         ├── BedrockKnowledgeBaseAdapter
@@ -81,8 +83,8 @@ aplicación.
 | --- | --- | --- |
 | `domain` | Entidades, value objects, estados y reglas puras | Java |
 | `application` | Casos de uso, puertos, políticas y orquestación | `domain` |
-| `adapter/in/web` | HTTP, validación, challenge y firma | `application`, Spring Web |
-| `adapter/out/whatsapp` | Meta Cloud API, mocks y mapeo de errores | `application`, RestClient |
+| `adapter/in/web` | HTTP, validación, challenge, firma y secret de webhook | `application`, Spring Web |
+| `adapter/out/whatsapp` y `adapter/out/telegram` | APIs de canal, mocks y mapeo de errores | `application`, RestClient |
 | `adapter/out/ai` | Bedrock, mocks, prompts y métricas | `application`, AWS SDK |
 | `adapter/out/knowledge` | Knowledge Bases, pgvector y mocks | `application`, AWS SDK/JDBC |
 | `adapter/out/persistence` | JPA, repositorios y Flyway | `application`, Spring Data |
@@ -98,6 +100,7 @@ interface InboundMessagePort {
 }
 
 interface OutboundMessagePort {
+    Channel channel();
     void send(OutboundMessage message);
 }
 
@@ -123,7 +126,7 @@ interface MessageRepository { /* idempotency and state */ }
 interface OutboxRepository { /* durable outbox and retry state */ }
 ```
 
-Los nombres y contratos son internos de WCS; ningún adapter debe filtrarlos con tipos de Meta o AWS.
+Los nombres y contratos son internos de WCS; ningún adapter debe filtrarlos con tipos de Meta, Telegram o AWS. El `OutboxDispatcher` selecciona el adapter mediante `OutboundMessage.channel`; el dominio no conoce URLs, tokens, templates ni payloads de proveedores.
 
 El catálogo se consulta con filtros estructurados y resultados determinísticos
 de PostgreSQL. El LLM puede ayudar a extraer la intención en una fase
@@ -137,8 +140,8 @@ La aplicación tendrá una única configuración lógica y distintos proveedores
 
 | Tipo | Fuente productiva | Ejemplos |
 | --- | --- | --- |
-| No sensible | AWS AppConfig | Graph API version/base URL, Phone Number ID, WABA ID, timeouts, retries, provider mode, Bedrock model ID, Knowledge Base ID, prompt version, retention |
-| Secreto | AWS Secrets Manager | Meta access token, Meta app secret, webhook verify token, credenciales de base de datos y keys de proveedores externos |
+| No sensible | AWS AppConfig | Graph API y Telegram base URLs, Phone Number ID, WABA ID, activación/adapter de canal, timeouts, retries, provider mode, Bedrock model ID, Knowledge Base ID, prompt version, retention |
+| Secreto | AWS Secrets Manager | Meta access token/app secret/verify token, Telegram bot token y webhook secret, credenciales de base de datos y keys de proveedores externos |
 | Local | `application.properties` + cadena estándar de credenciales AWS | Mismo runtime `prod` para validar integraciones; nunca se versionan credenciales |
 
 No se requieren variables de entorno de aplicación para el bootstrap normal.
@@ -149,7 +152,7 @@ valores resueltos.
 
 `AwsExternalConfigurationEnvironmentPostProcessor` carga AppConfig antes del
 binding de `@ConfigurationProperties` y resuelve desde Secrets Manager sólo los
-campos allow-listed de los roles `database`, `whatsapp` y `runtime`. El runtime
+campos allow-listed de los roles `database`, `whatsapp`, `telegram` y `runtime`. El runtime
 normal usa AWS y el fail-fast evita operar con configuración parcial; los tests
 deshabilitan las fuentes externas y usan datos sintéticos.
 

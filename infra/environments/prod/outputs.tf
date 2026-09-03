@@ -55,6 +55,11 @@ output "whatsapp_secret_arn" {
   value       = module.whatsapp_secrets.secret_arn
 }
 
+output "telegram_secret_arn" {
+  description = "WCS Telegram secret ARN; replace its fake value before enabling Telegram."
+  value       = module.telegram_secrets.secret_arn
+}
+
 output "backend_ecr_repository_name" {
   value = module.backend_apprunner.ecr_repository_name
 }

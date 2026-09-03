@@ -99,10 +99,16 @@ class AwsExternalConfigurationTest {
                                 {"access-token":"token-value","verify-token":"verify-value","app-secret":"app-value",
                                  "ignored":"must-not-become-a-property"}
                                 """)
+                        .build())
+                .thenReturn(GetSecretValueResponse.builder()
+                        .secretString("""
+                                {"bot-token":"bot-token-value","webhook-secret-token":"webhook-token-value",
+                                 "ignored":"must-not-become-a-property"}
+                                """)
                         .build());
 
         var properties = new ExternalConfigurationProperties.SecretsManager(
-                null, null, "database-secret", "whatsapp-secret", true, true);
+                null, null, "database-secret", "whatsapp-secret", "telegram-secret", true, true);
 
         var loaded = new SecretsManagerConfigurationLoader(client, objectMapper).load(properties);
 
@@ -112,6 +118,8 @@ class AwsExternalConfigurationTest {
                 .containsEntry("wcs.whatsapp.access-token", "token-value")
                 .containsEntry("wcs.whatsapp.verify-token", "verify-value")
                 .containsEntry("wcs.whatsapp.app-secret", "app-value")
+                .containsEntry("wcs.telegram.bot-token", "bot-token-value")
+                .containsEntry("wcs.telegram.webhook-secret-token", "webhook-token-value")
                 .doesNotContainKey("ignored");
     }
 }

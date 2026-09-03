@@ -109,6 +109,12 @@ wcs.whatsapp.phone-number-id
 wcs.whatsapp.business-account-id
 wcs.whatsapp.connect-timeout
 wcs.whatsapp.read-timeout
+wcs.telegram.enabled
+wcs.telegram.adapter
+wcs.telegram.api-base-url
+wcs.telegram.allowed-chat-id
+wcs.telegram.connect-timeout
+wcs.telegram.read-timeout
 wcs.outbox.max-attempts
 wcs.ai.provider
 wcs.ai.model
@@ -123,6 +129,10 @@ wcs/{environment}/whatsapp
   access-token
   verify-token
   app-secret
+
+wcs/{environment}/telegram
+  bot-token
+  webhook-secret-token
 
 wcs/{environment}/database
   username
@@ -149,6 +159,10 @@ referencias a secretos, por ejemplo:
   "wcs.whatsapp.graph-api-base-url": "https://graph.facebook.com",
   "wcs.external-config.secrets-manager.database-secret-id": "tesis-dev-prod/rds",
   "wcs.external-config.secrets-manager.whatsapp-secret-id": "wcs/prod/whatsapp",
+  "wcs.external-config.secrets-manager.telegram-secret-id": "wcs/prod/telegram",
+  "wcs.telegram.enabled": false,
+  "wcs.telegram.adapter": "disabled",
+  "wcs.telegram.api-base-url": "https://api.telegram.org",
   "wcs.ai.provider": "bedrock",
   "wcs.ai.model": "amazon.nova-lite-v1"
 }
@@ -160,6 +174,7 @@ Las referencias admitidas actualmente son:
 | --- | --- | --- |
 | `database-secret-id` | `jdbc-url`/`jdbc_url`/`url`, `username`/`user`, `password` | `spring.datasource.url`, `spring.datasource.username`, `spring.datasource.password` |
 | `whatsapp-secret-id` | `access-token`, `verify-token`, `app-secret` y variantes snake/camel | `wcs.whatsapp.access-token`, `wcs.whatsapp.verify-token`, `wcs.whatsapp.app-secret` |
+| `telegram-secret-id` | `bot-token`, `webhook-secret-token` y variantes snake/camel | `wcs.telegram.bot-token`, `wcs.telegram.webhook-secret-token` |
 | `runtime-secret-id` | combinación explícita de los campos anteriores | propiedades correspondientes |
 
 El `secret-id` legacy sólo se usa como referencia genérica cuando no hay
@@ -190,7 +205,7 @@ El rol de runtime necesita `appconfigdata:StartConfigurationSession`,
 `appconfigdata:GetLatestConfiguration` y
 `secretsmanager:GetSecretValue` sobre los ARNs concretos de WCS y del RDS
 compartido, más los ARNs declarados para cualquier secret adicional referenciado
-por AppConfig (por ejemplo, WhatsApp). No se permite
+por AppConfig (por ejemplo, WhatsApp o Telegram). No se permite
 `secretsmanager:ListSecrets` ni se usan access keys embebidas. Terraform
 prepara los permisos y deja los valores fuera de su estado; el documento de
 AppConfig puede versionarse porque sólo contiene referencias no sensibles.
@@ -201,8 +216,9 @@ AWS usa el rol IAM del workload. Los secretos siguen siendo exclusivos de
 Secrets Manager.
 
 El entorno prod incluye por defecto una configuración hosted y versiones
-bootstrap falsas para `wcs/{environment}/database` y
-`wcs/{environment}/whatsapp`. Los valores se deben reemplazar desde la consola
+bootstrap falsas para `wcs/{environment}/database`,
+`wcs/{environment}/whatsapp` y `wcs/{environment}/telegram`. Los valores se
+deben reemplazar desde la consola
 antes de habilitar App Runner. Las versiones iniciales de Terraform ignoran
 cambios posteriores hechos en consola para no revertir una rotación manual;
 Terraform no debe recibir valores reales.
@@ -240,3 +256,20 @@ No registrar texto completo, firmas, tokens, números de teléfono completos ni 
 - Un provider no configurado falla de forma explícita y controlada; no se hace fallback silencioso a producción con datos sintéticos.
 - Health verifica proceso y dependencias esenciales; readiness declara qué integración está deshabilitada o degradada sin imprimir secretos.
 - La rotación de Secrets Manager debe ser probada sin recompilar ni cambiar código.
+
+## Registro del webhook de Telegram
+
+Cuando el endpoint público ya esté disponible, registrar el webhook mediante el
+helper que obtiene el bot token y el secret desde `wcs/prod/telegram`:
+
+```bash
+./scripts/register-telegram-webhook.sh \
+  --url https://<host-publico>/webhook/telegram
+```
+
+La URL debe ser HTTPS y terminar exactamente en `/webhook/telegram`. Para una
+prueba local se puede usar una URL HTTPS temporal de ngrok. El registro se debe
+repetir si cambia la URL temporal; no incluir el token en el comando.
+La implementación usa webhook; el long polling no forma parte del runtime de
+WCS. Para una prueba local, se expone la aplicación con ngrok y se registra esa
+URL temporal.

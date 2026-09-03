@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.wally.customersupport.application.port.out.OutboundMessagePort;
+import com.wally.customersupport.domain.model.Channel;
 import com.wally.customersupport.domain.model.OutboundMessage;
 import com.wally.customersupport.infrastructure.config.WhatsAppProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -39,6 +40,11 @@ public class MetaWhatsAppOutboundAdapter implements OutboundMessagePort {
     }
 
     @Override
+    public Channel channel() {
+        return Channel.WHATSAPP;
+    }
+
+    @Override
     public void send(OutboundMessage message) {
         validateConfiguration(message);
         Map<String, Object> payload = message.deliveryType() == com.wally.customersupport.domain.model.DeliveryType.TEMPLATE
@@ -50,7 +56,7 @@ public class MetaWhatsAppOutboundAdapter implements OutboundMessagePort {
     private Map<String, Object> textPayload(OutboundMessage message) {
         return Map.of(
                 "messaging_product", "whatsapp",
-                "to", message.recipientWaId(),
+                "to", message.recipientId(),
                 "type", "text",
                 "text", Map.of("body", message.body()));
     }
@@ -70,7 +76,7 @@ public class MetaWhatsAppOutboundAdapter implements OutboundMessagePort {
         }
         return Map.of(
                 "messaging_product", "whatsapp",
-                "to", message.recipientWaId(),
+                "to", message.recipientId(),
                 "type", "template",
                 "template", template);
     }
@@ -96,7 +102,7 @@ public class MetaWhatsAppOutboundAdapter implements OutboundMessagePort {
     }
 
     private void validateConfiguration(OutboundMessage message) {
-        if (message == null || isBlank(message.recipientWaId())) {
+        if (message == null || message.channel() != Channel.WHATSAPP || isBlank(message.recipientId())) {
             throw new IllegalArgumentException("Recipient is required");
         }
         if (message.deliveryType() == com.wally.customersupport.domain.model.DeliveryType.TEXT

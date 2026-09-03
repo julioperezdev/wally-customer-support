@@ -87,6 +87,12 @@ variable "whatsapp_secret_name" {
   default     = null
 }
 
+variable "telegram_secret_name" {
+  type        = string
+  description = "WCS Telegram secret name."
+  default     = null
+}
+
 variable "appconfig_configuration_content" {
   type        = string
   nullable    = true

@@ -31,6 +31,11 @@ locals {
     "app-secret"   = "REPLACE_ME_META_APP_SECRET"
   })
 
+  fake_telegram_secret_json = jsonencode({
+    "bot-token"            = "REPLACE_ME_TELEGRAM_BOT_TOKEN"
+    "webhook-secret-token" = "REPLACE_ME_TELEGRAM_WEBHOOK_SECRET"
+  })
+
   fake_appconfig_configuration = jsonencode({
     "wcs.whatsapp.adapter"                                   = "mock"
     "wcs.whatsapp.graph-api-version"                         = "v25.0"
@@ -38,6 +43,12 @@ locals {
     "wcs.whatsapp.phone-number-id"                           = "REPLACE_ME_PHONE_NUMBER_ID"
     "wcs.whatsapp.business-account-id"                       = "REPLACE_ME_BUSINESS_ACCOUNT_ID"
     "wcs.whatsapp.allowed-recipient"                         = ""
+    "wcs.telegram.enabled"                                   = false
+    "wcs.telegram.adapter"                                   = "disabled"
+    "wcs.telegram.api-base-url"                              = "https://api.telegram.org"
+    "wcs.telegram.allowed-chat-id"                           = ""
+    "wcs.telegram.connect-timeout"                           = "PT2S"
+    "wcs.telegram.read-timeout"                              = "PT5S"
     "wcs.ai.provider"                                        = "mock"
     "wcs.ai.model"                                           = "llm.mock.v1"
     "wcs.rag.provider"                                       = "mock"
@@ -45,12 +56,17 @@ locals {
     "wcs.outbox.max-attempts"                                = 3
     "wcs.external-config.secrets-manager.database-secret-id" = module.database_secrets.secret_name
     "wcs.external-config.secrets-manager.whatsapp-secret-id" = module.whatsapp_secrets.secret_name
+    "wcs.external-config.secrets-manager.telegram-secret-id" = module.telegram_secrets.secret_name
   })
 
   runtime_secret_arns = setunion(
     toset(values(var.backend_runtime_environment_secrets)),
     toset([module.runtime_secrets.secret_arn]),
-    toset([module.database_secrets.secret_arn, module.whatsapp_secrets.secret_arn]),
+    toset([
+      module.database_secrets.secret_arn,
+      module.whatsapp_secrets.secret_arn,
+      module.telegram_secrets.secret_arn
+    ]),
     var.shared_rds_secret_arn == null ? toset([]) : toset([var.shared_rds_secret_arn]),
     var.appconfig_secret_arns
   )
@@ -71,6 +87,15 @@ module "whatsapp_secrets" {
   name                = coalesce(var.whatsapp_secret_name, "wcs/${var.environment}/whatsapp")
   description         = "WCS WhatsApp credentials. Replace the fake bootstrap JSON in Secrets Manager before enabling Meta."
   initial_secret_json = local.fake_whatsapp_secret_json
+  tags                = local.common_tags
+}
+
+module "telegram_secrets" {
+  source = "../../modules/runtime-secrets"
+
+  name                = coalesce(var.telegram_secret_name, "wcs/${var.environment}/telegram")
+  description         = "WCS Telegram credentials. Replace the fake bootstrap JSON in Secrets Manager before enabling Telegram."
+  initial_secret_json = local.fake_telegram_secret_json
   tags                = local.common_tags
 }
 

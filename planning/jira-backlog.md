@@ -29,6 +29,7 @@ El Space Jira `WCS` fue creado el 2026-08-29 y el backlog inicial fue cargado. L
 | WCS-BL-15 | WCS-21 |
 | WCS-BL-16 | WCS-22 |
 | WCS-BL-17 | WCS-23 |
+| WCS-BL-18 | WCS-29 |
 
 ## EPIC-WCS-01 — Gobierno y documentación
 
@@ -127,6 +128,19 @@ productivo. Esto no autoriza un `apply`; la activación productiva requiere
 configurar referencias reales, red, plan, deploy, health y smoke como
 evidencia.
 
+### WCS-29 — Agregar canal Telegram desacoplado e infraestructura de credenciales
+
+**Tipo:** Task · **Priority:** High · **Estimate:** 4d · **Depends on:** WCS-14, WCS-15, WCS-22
+
+Agregar Telegram como canal de desarrollo y prueba sin que el dominio ni los
+casos de uso conozcan Telegram o WhatsApp. Incluye adapter inbound/outbound,
+enrutamiento del outbox por canal, webhook protegido por secret token,
+configuración AppConfig, secret `wcs/{environment}/telegram`, permiso IAM
+mínimo, migración de identificadores externos genéricos y tests/documentación.
+
+Fuera de alcance: reemplazar WhatsApp, grupos/archivos/pagos de Telegram,
+Bedrock/RAG, cambio de RDS o publicación productiva.
+
 ## EPIC-WCS-06 — Piloto
 
 ### WCS-23 — Ejecutar piloto y validar métricas de soporte
@@ -153,6 +167,7 @@ porque ambos comparten migraciones, seeds y consulta de configuración.
 | 6 | WCS-18 | To Do | Cliente Meta real detrás del adapter | WCS-17, WCS-27 |
 | 7 | WCS-19 | To Do | Prueba controlada end-to-end con Meta | WCS-18, WCS-26, WCS-27 |
 | 8 | WCS-22 | In Progress | Deploy, health, smoke, observabilidad y rollback productivo | WCS-18, WCS-21 |
+| 9 | WCS-29 | In Progress | Canal Telegram, routing por canal, webhook, secret y configuración AWS | WCS-14, WCS-15, WCS-22 |
 
 `WCS-14`–`WCS-16` y `WCS-17` ya tienen la fundación o el contrato inicial
 versionado; deben completarse/verificarse según la evidencia de cada issue antes

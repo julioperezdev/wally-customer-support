@@ -1,6 +1,6 @@
 # WCS — Wally Customer Support
 
-Sistema de customer support conversacional para una tienda, inicialmente sobre WhatsApp Cloud API.
+Sistema de customer support conversacional para una tienda, con WhatsApp Cloud API y Telegram detrás de adapters de canal.
 
 El repositorio contiene la documentación y la base técnica del producto. La implementación definitiva se organiza como un monolito modular con adapters para WhatsApp, LLM, RAG y persistencia; la activación productiva queda gobernada por los gates funcionales y operativos de WCS.
 
@@ -49,11 +49,12 @@ allow-listed de Secrets Manager como propiedades en memoria antes de crear los
 beans; no escribe ni modifica archivos de configuración durante el arranque.
 
 El documento de AppConfig debe contener las referencias
-`wcs.external-config.secrets-manager.database-secret-id` y
-`wcs.external-config.secrets-manager.whatsapp-secret-id`. No se pasan IDs de
-AppConfig ni contraseñas por variables de entorno.
+`wcs.external-config.secrets-manager.database-secret-id`,
+`wcs.external-config.secrets-manager.whatsapp-secret-id` y, cuando Telegram se
+habilite, `wcs.external-config.secrets-manager.telegram-secret-id`. No se pasan
+IDs de AppConfig ni contraseñas por variables de entorno.
 
-El endpoint de verificación es `GET /webhook/whatsapp` y el webhook es `POST /webhook/whatsapp`. No existe un perfil mock de runtime: los dobles de Meta, LLM y RAG se usan en los tests. El adapter real de Meta ya está disponible; Bedrock y pgvector deben implementarse antes de activar esos providers en AppConfig. La deduplicación se hace en PostgreSQL mediante `external_message_id`; el outbox sobrevive a reinicios.
+El endpoint de verificación es `GET /webhook/whatsapp` y el webhook es `POST /webhook/whatsapp`. Telegram recibe updates en `POST /webhook/telegram` cuando el canal está habilitado y valida `X-Telegram-Bot-Api-Secret-Token`. No existe un perfil mock de runtime: los dobles de Meta, Telegram, LLM y RAG se usan en los tests. La deduplicación se hace en PostgreSQL mediante `external_message_id`; el outbox sobrevive a reinicios y enruta por canal.
 
 Para probar la integración real con Meta, AppConfig debe seleccionar el adapter
 `meta` y Secrets Manager debe contener los valores reales. No se copian tokens ni
@@ -65,10 +66,9 @@ El adapter Meta soporta texto y templates aprobados con parámetros de body. La 
 
 **Fundación técnica — en implementación:** arquitectura, operación y modelo de datos describen la fundación modular, AppConfig/Secrets Manager, JPA/PostgreSQL, Bedrock y RAG desacoplados. Las páginas canónicas siguen en `Proposed` hasta la aceptación funcional correspondiente.
 
-La branch de trabajo actual es `feature/WCS-25-demo-catalog`, creada desde
-`main` y asociada al repositorio GitHub
-`julioperezdev/wally-customer-support`. Implementa el primer vertical slice de
-catálogo, horarios y políticas demo. No contiene credenciales productivas.
+Las branches de trabajo se crean desde `main` y se asocian al repositorio
+GitHub `julioperezdev/wally-customer-support` usando la key de Jira
+correspondiente (`WCS-*`). No contienen credenciales productivas.
 
 La infraestructura base sigue el patrón de `tesis-dev`, pero WCS no crea otro
 RDS: consume el existente y usa el schema `wcs`. El stack Terraform deja

@@ -14,6 +14,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.mockito.ArgumentCaptor;
+
 import com.wally.customersupport.application.port.out.ConversationRepository;
 import com.wally.customersupport.application.port.out.KnowledgeRetriever;
 import com.wally.customersupport.application.port.out.LlmClient;
@@ -81,9 +83,9 @@ class InboundMessageApplicationServiceTest {
     @Test
     void persistsInboundMessageAndQueuesReplyBehindOutbox() {
         Message message = new Message(
-                UUID.randomUUID(), conversation.id(), "message-1", MessageDirection.INBOUND,
+                UUID.randomUUID(), conversation.id(), Channel.WHATSAPP, "message-1", MessageDirection.INBOUND,
                 MessageType.TEXT, command.body(), NOW, NOW);
-        when(messageRepository.existsByExternalMessageId("message-1")).thenReturn(false);
+        when(messageRepository.existsByExternalMessageId(Channel.WHATSAPP, "message-1")).thenReturn(false);
         when(conversationRepository.findByChannelAndExternalConversationId(Channel.WHATSAPP, "conversation-1"))
                 .thenReturn(Optional.of(conversation));
         when(messageRepository.save(any(Message.class))).thenReturn(message);
@@ -101,15 +103,44 @@ class InboundMessageApplicationServiceTest {
 
     @Test
     void returnsDuplicateWithoutCallingAiOrSendingAnotherReply() {
-        when(messageRepository.existsByExternalMessageId("message-1")).thenReturn(true);
+        when(messageRepository.existsByExternalMessageId(Channel.WHATSAPP, "message-1")).thenReturn(true);
 
         InboundMessageResult result = service.accept(command);
 
         assertEquals(InboundMessageResult.Result.DUPLICATE, result.result());
         verify(conversationRepository, never()).save(any());
-        verify(messageRepository, times(1)).existsByExternalMessageId("message-1");
+        verify(messageRepository, times(1)).existsByExternalMessageId(Channel.WHATSAPP, "message-1");
         verify(knowledgeRetriever, never()).retrieve(any());
         verify(llmClient, never()).generateReply(any());
         verify(outboxRepository, never()).save(any());
+    }
+
+    @Test
+    void processesTelegramThroughTheSameApplicationService() {
+        Conversation telegramConversation = new Conversation(
+                UUID.randomUUID(), Channel.TELEGRAM, "telegram-chat-1", "telegram-user-1",
+                ConversationStatus.OPEN, NOW, NOW);
+        InboundMessageCommand telegramCommand = new InboundMessageCommand(
+                Channel.TELEGRAM, "telegram-update-1", "telegram-chat-1", "telegram-user-1", "Busco una remera", NOW);
+        Message telegramMessage = new Message(
+                UUID.randomUUID(), telegramConversation.id(), Channel.TELEGRAM, "telegram-update-1",
+                MessageDirection.INBOUND, MessageType.TEXT, telegramCommand.body(), NOW, NOW);
+
+        when(messageRepository.existsByExternalMessageId(Channel.TELEGRAM, "telegram-update-1"))
+                .thenReturn(false);
+        when(conversationRepository.findByChannelAndExternalConversationId(
+                Channel.TELEGRAM, "telegram-chat-1"))
+                .thenReturn(Optional.of(telegramConversation));
+        when(messageRepository.save(any(Message.class))).thenReturn(telegramMessage);
+        when(messageRepository.findRecentBodies(telegramConversation.id(), 20)).thenReturn(List.of(telegramCommand.body()));
+        when(knowledgeRetriever.retrieve(any())).thenReturn(List.of());
+        when(llmClient.generateReply(any())).thenReturn("Tenemos stock disponible");
+
+        service.accept(telegramCommand);
+
+        ArgumentCaptor<OutboxMessage> outboxCaptor = ArgumentCaptor.forClass(OutboxMessage.class);
+        verify(outboxRepository).save(outboxCaptor.capture());
+        assertEquals(Channel.TELEGRAM, outboxCaptor.getValue().message().channel());
+        assertEquals("telegram-user-1", outboxCaptor.getValue().message().recipientId());
     }
 }

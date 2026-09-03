@@ -4,8 +4,9 @@ import java.util.List;
 import java.util.UUID;
 
 public record OutboundMessage(
+        Channel channel,
         UUID conversationId,
-        String recipientWaId,
+        String recipientId,
         DeliveryType deliveryType,
         String body,
         String templateName,
@@ -18,19 +19,21 @@ public record OutboundMessage(
                 : List.copyOf(templateBodyParameters);
     }
 
-    public static OutboundMessage text(UUID conversationId, String recipientWaId, String body) {
-        return new OutboundMessage(conversationId, recipientWaId, DeliveryType.TEXT, body, null, null, List.of());
+    public static OutboundMessage text(Channel channel, UUID conversationId, String recipientId, String body) {
+        return new OutboundMessage(channel, conversationId, recipientId, DeliveryType.TEXT, body, null, null, List.of());
     }
 
     public static OutboundMessage template(
+            Channel channel,
             UUID conversationId,
-            String recipientWaId,
+            String recipientId,
             String templateName,
             String languageCode,
             List<String> bodyParameters) {
         return new OutboundMessage(
+                channel,
                 conversationId,
-                recipientWaId,
+                recipientId,
                 DeliveryType.TEMPLATE,
                 null,
                 templateName,

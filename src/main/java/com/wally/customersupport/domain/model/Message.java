@@ -6,6 +6,7 @@ import java.util.UUID;
 public record Message(
         UUID id,
         UUID conversationId,
+        Channel channel,
         String externalMessageId,
         MessageDirection direction,
         MessageType messageType,

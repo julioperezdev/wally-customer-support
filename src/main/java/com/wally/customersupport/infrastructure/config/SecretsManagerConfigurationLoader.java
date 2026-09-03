@@ -25,10 +25,12 @@ final class SecretsManagerConfigurationLoader {
         Map<String, Object> resolved = new LinkedHashMap<>();
         loadSecret(properties.databaseSecretId(), "database", resolved);
         loadSecret(properties.whatsappSecretId(), "whatsapp", resolved);
+        loadSecret(properties.telegramSecretId(), "telegram", resolved);
         String runtimeSecretId = properties.runtimeSecretId();
         if (runtimeSecretId == null || runtimeSecretId.isBlank()) {
             boolean hasDedicatedReferences = isPresent(properties.databaseSecretId())
-                    || isPresent(properties.whatsappSecretId());
+                    || isPresent(properties.whatsappSecretId())
+                    || isPresent(properties.telegramSecretId());
             runtimeSecretId = hasDedicatedReferences ? null : properties.secretId();
         }
         loadSecret(runtimeSecretId, "runtime", resolved);
@@ -57,6 +59,7 @@ final class SecretsManagerConfigurationLoader {
             switch (kind) {
                 case "database" -> mapDatabase(root, target);
                 case "whatsapp" -> mapWhatsApp(root, target);
+                case "telegram" -> mapTelegram(root, target);
                 case "runtime" -> mapRuntime(root, target);
                 default -> throw new IllegalArgumentException("Unsupported secret kind: " + kind);
             }
@@ -83,6 +86,13 @@ final class SecretsManagerConfigurationLoader {
                 "META_APP_SECRET");
     }
 
+    private static void mapTelegram(JsonNode root, Map<String, Object> target) {
+        putIfPresent(root, target, "wcs.telegram.bot-token", "bot-token", "bot_token", "botToken",
+                "token", "TELEGRAM_BOT_TOKEN");
+        putIfPresent(root, target, "wcs.telegram.webhook-secret-token", "webhook-secret-token",
+                "webhook_secret_token", "webhookSecretToken", "secret-token", "TELEGRAM_WEBHOOK_SECRET_TOKEN");
+    }
+
     private static void mapRuntime(JsonNode root, Map<String, Object> target) {
         putIfPresent(root, target, "spring.datasource.url", "spring.datasource.url", "jdbc-url", "jdbc_url",
                 "DATABASE_URL");
@@ -96,6 +106,7 @@ final class SecretsManagerConfigurationLoader {
                 "WHATSAPP_VERIFY_TOKEN");
         putIfPresent(root, target, "wcs.whatsapp.app-secret", "wcs.whatsapp.app-secret", "app-secret",
                 "META_APP_SECRET");
+        mapTelegram(root, target);
     }
 
     private static void putIfPresent(JsonNode root, Map<String, Object> target, String propertyName,
