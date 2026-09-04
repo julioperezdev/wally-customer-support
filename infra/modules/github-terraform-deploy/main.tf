@@ -34,6 +34,7 @@ locals {
   source_object_arn_pattern                   = "${local.source_bucket_arn_pattern}/documents/*"
   vector_bucket_arn_pattern                   = "arn:${local.partition}:s3vectors:${var.aws_region}:${local.account_id}:bucket/${var.project_name}-${var.environment}-kb-vectors-*"
   vector_index_arn_pattern                    = "${local.vector_bucket_arn_pattern}/index/*"
+  terraform_knowledge_base_policy_arn         = "arn:${local.partition}:iam::${local.account_id}:policy/${var.project_name}-${var.environment}-terraform-knowledge-base-access"
   service_linked_role_arn                     = "arn:${local.partition}:iam::${local.account_id}:role/aws-service-role/apprunner.amazonaws.com/AWSServiceRoleForAppRunner"
 
   legacy_allowed_subjects = [
@@ -403,6 +404,34 @@ data "aws_iam_policy_document" "terraform" {
   }
 
   statement {
+    sid       = "CreateWcsManagedPolicies"
+    effect    = "Allow"
+    actions   = ["iam:CreatePolicy"]
+    resources = ["*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "iam:PolicyName"
+      values   = ["${var.project_name}-${var.environment}-terraform-knowledge-base-access"]
+    }
+  }
+
+  statement {
+    sid    = "ManageWcsManagedPolicies"
+    effect = "Allow"
+    actions = [
+      "iam:CreatePolicyVersion",
+      "iam:DeletePolicyVersion",
+      "iam:GetPolicy",
+      "iam:GetPolicyVersion",
+      "iam:ListPolicyVersions",
+      "iam:TagPolicy",
+      "iam:UntagPolicy",
+    ]
+    resources = [local.terraform_knowledge_base_policy_arn]
+  }
+
+  statement {
     sid       = "PassWcsAppRunnerRoles"
     effect    = "Allow"
     actions   = ["iam:PassRole"]
@@ -531,8 +560,14 @@ resource "aws_iam_role_policy" "terraform" {
   policy = data.aws_iam_policy_document.terraform.json
 }
 
-resource "aws_iam_role_policy" "terraform_knowledge_base" {
-  name   = "terraform-wcs-knowledge-base-access"
-  role   = aws_iam_role.terraform.id
-  policy = data.aws_iam_policy_document.terraform_knowledge_base.json
+resource "aws_iam_policy" "terraform_knowledge_base" {
+  name        = "${var.project_name}-${var.environment}-terraform-knowledge-base-access"
+  description = "Terraform access to the WCS Knowledge Base source bucket."
+  policy      = data.aws_iam_policy_document.terraform_knowledge_base.json
+  tags        = var.tags
+}
+
+resource "aws_iam_role_policy_attachment" "terraform_knowledge_base" {
+  role       = aws_iam_role.terraform.name
+  policy_arn = aws_iam_policy.terraform_knowledge_base.arn
 }
