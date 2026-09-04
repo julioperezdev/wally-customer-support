@@ -432,7 +432,10 @@ data "aws_iam_policy_document" "terraform" {
     condition {
       test     = "StringEquals"
       variable = "iam:PassedToService"
-      values   = ["build.apprunner.amazonaws.com"]
+      values = [
+        "apprunner.amazonaws.com",
+        "build.apprunner.amazonaws.com",
+      ]
     }
   }
 
@@ -445,7 +448,10 @@ data "aws_iam_policy_document" "terraform" {
     condition {
       test     = "StringEquals"
       variable = "iam:PassedToService"
-      values   = ["tasks.apprunner.amazonaws.com"]
+      values = [
+        "apprunner.amazonaws.com",
+        "tasks.apprunner.amazonaws.com",
+      ]
     }
   }
 
