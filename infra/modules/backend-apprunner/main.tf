@@ -173,7 +173,10 @@ resource "aws_apprunner_service" "backend" {
     interval            = 10
     timeout             = 5
     healthy_threshold   = 1
-    unhealthy_threshold = 5
+    # Spring Boot initializes JPA, Flyway and external AWS configuration
+    # before it can answer the health endpoint on the smallest App Runner
+    # instance size. Allow up to 100 seconds for the first deployment.
+    unhealthy_threshold = 10
   }
 
   network_configuration {
