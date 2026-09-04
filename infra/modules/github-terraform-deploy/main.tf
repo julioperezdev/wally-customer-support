@@ -131,12 +131,6 @@ data "aws_iam_policy_document" "terraform" {
       "s3:CreateBucket",
     ]
     resources = ["*"]
-
-    condition {
-      test     = "StringLike"
-      variable = "s3:bucketname"
-      values   = ["${var.project_name}-${var.environment}-kb-source-*"]
-    }
   }
 
   statement {
