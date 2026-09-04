@@ -23,8 +23,17 @@ Flyway crea únicamente el schema lógico `wcs`.
 - Bedrock como permiso opcional del runtime, sin habilitarlo por defecto.
 
 No se crean VPC, subnets, security groups ni otra instancia RDS en este stack.
-El `backend_vpc_connector_arn` debe apuntar al conector existente que tenga
-ruta al RDS compartido, una vez que ese recurso sea confirmado.
+`backend_egress_type` controla la salida de App Runner:
+
+- `DEFAULT` usa la salida pública administrada por App Runner. Es el modo
+  temporal de WCS porque Telegram y otras APIs externas son públicas y el RDS
+  compartido está temporalmente expuesto para pruebas.
+- `VPC` usa `backend_vpc_connector_arn` y requiere que las subnets del conector
+  tengan rutas a NAT Gateway o endpoints privados para cada dependencia. No se
+  debe seleccionar `VPC` sólo porque el backend necesite llegar a RDS.
+
+El RDS compartido debe volver a una conectividad privada antes de considerar
+productivo el modo `DEFAULT`.
 
 El usuario de base de datos que ejecute Flyway debe poder crear el schema
 `wcs` y sus tablas, o un administrador debe crearlo previamente y otorgar el
@@ -137,7 +146,7 @@ terraform -chdir=infra/environments/prod validate
 
 Para un plan real hay que completar un `terraform.tfvars` local con el
 identificador del RDS, ARN del secret del RDS, ARN del proveedor OIDC y, si se
-habilita App Runner, el VPC connector. En CI, ese mismo contenido se configura
+selecciona `backend_egress_type = "VPC"`, el VPC connector. En CI, ese mismo contenido se configura
 como el secret `TERRAFORM_VARS` del Environment `production`, mientras que
 `AWS_TERRAFORM_ROLE_ARN` apunta a un rol AWS preaprobado con OIDC. Los valores
 sensibles permanecen en Secrets Manager; nunca se escriben en

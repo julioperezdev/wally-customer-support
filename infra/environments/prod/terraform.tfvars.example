@@ -24,9 +24,12 @@ appconfig_secret_arns = []
 # Flyway creates and owns this schema inside the existing database.
 database_schema = "wcs"
 
-# Keep App Runner disabled until the image, VPC connector and AWS config loader
-# are verified. This flag is intentionally not a production default.
+# The temporary setup uses App Runner public egress so it can call Telegram's
+# public API without a NAT Gateway. RDS is currently public for development.
+# Use "VPC" only after the connector subnets have a NAT Gateway or the needed
+# private endpoints, and set backend_vpc_connector_arn to that connector.
 backend_create_service    = false
+backend_egress_type       = "DEFAULT"
 backend_vpc_connector_arn = null
 backend_image_tag         = "bootstrap"
 

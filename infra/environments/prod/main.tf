@@ -151,6 +151,7 @@ module "backend_apprunner" {
   runtime_environment_variables = var.backend_runtime_environment_variables
   runtime_environment_secrets   = var.backend_runtime_environment_secrets
   runtime_secret_arns           = local.runtime_secret_arns
+  egress_type                   = var.backend_egress_type
   vpc_connector_arn             = var.backend_vpc_connector_arn
   enable_bedrock_access         = var.enable_bedrock_access
   bedrock_model_arns            = var.bedrock_model_arns
