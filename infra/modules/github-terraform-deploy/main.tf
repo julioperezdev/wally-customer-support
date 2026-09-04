@@ -428,15 +428,6 @@ data "aws_iam_policy_document" "terraform" {
     effect    = "Allow"
     actions   = ["iam:PassRole"]
     resources = [local.apprunner_ecr_access_role_arn]
-
-    condition {
-      test     = "StringEquals"
-      variable = "iam:PassedToService"
-      values = [
-        "apprunner.amazonaws.com",
-        "build.apprunner.amazonaws.com",
-      ]
-    }
   }
 
   statement {
@@ -444,15 +435,6 @@ data "aws_iam_policy_document" "terraform" {
     effect    = "Allow"
     actions   = ["iam:PassRole"]
     resources = [local.apprunner_instance_role_arn]
-
-    condition {
-      test     = "StringEquals"
-      variable = "iam:PassedToService"
-      values = [
-        "apprunner.amazonaws.com",
-        "tasks.apprunner.amazonaws.com",
-      ]
-    }
   }
 
   statement {
