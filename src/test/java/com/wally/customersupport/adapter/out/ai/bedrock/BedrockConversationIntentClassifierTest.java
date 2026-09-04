@@ -16,7 +16,7 @@ class BedrockConversationIntentClassifierTest {
     @Test
     void parsesStructuredCatalogDecisionWithoutAllowingModelDataToBecomeSql() {
         BedrockConverseClient converseClient = mock(BedrockConverseClient.class);
-        when(converseClient.complete(anyString(), anyString(), anyInt(), anyFloat()))
+        when(converseClient.complete(anyString(), anyString(), anyString(), anyString(), anyInt(), anyFloat()))
                 .thenReturn("""
                         {"intent":"CATALOG_SEARCH","confidence":0.94,
                          "catalogQuery":{"name":"camiseta","sku":null,"size":"M","color":"negro"},
@@ -36,7 +36,7 @@ class BedrockConversationIntentClassifierTest {
     @Test
     void convertsMalformedModelOutputToUnknownDecision() {
         BedrockConverseClient converseClient = mock(BedrockConverseClient.class);
-        when(converseClient.complete(anyString(), anyString(), anyInt(), anyFloat()))
+        when(converseClient.complete(anyString(), anyString(), anyString(), anyString(), anyInt(), anyFloat()))
                 .thenReturn("not-json");
 
         var decision = new BedrockConversationIntentClassifier(converseClient, new ObjectMapper())

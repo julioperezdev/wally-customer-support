@@ -52,6 +52,9 @@ locals {
     "wcs.ai.provider"                                        = "mock"
     "wcs.ai.model"                                           = "llm.mock.v1"
     "wcs.ai.region"                                          = var.aws_region
+    "wcs.ai.pricing-version"                                 = "aws-bedrock-us-east-1-standard-2026-09"
+    "wcs.ai.input-price-usd-per-million-tokens"              = 0.0721
+    "wcs.ai.output-price-usd-per-million-tokens"             = 0.3090
     "wcs.rag.provider"                                       = "bedrock-kb"
     "wcs.rag.max-results"                                    = 5
     "wcs.rag.knowledge-base-id"                              = module.wcs_knowledge_base.knowledge_base_id

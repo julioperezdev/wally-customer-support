@@ -5,7 +5,7 @@ services:
     image: grafana/grafana:13.1.0
     restart: unless-stopped
     ports:
-      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"
+      - "${GRAFANA_BIND_ADDRESS:-0.0.0.0}:${GRAFANA_PORT:-3000}:3000"
     environment:
       AWS_SDK_LOAD_CONFIG: "1"
       AWS_REGION: ${AWS_REGION:-us-east-1}

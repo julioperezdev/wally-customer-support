@@ -1,8 +1,10 @@
 package com.wally.customersupport.application.service;
 
 import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import com.wally.customersupport.application.port.out.ConversationIntentClassifier;
 import com.wally.customersupport.application.port.out.KnowledgeRetriever;
@@ -15,6 +17,7 @@ import com.wally.customersupport.domain.model.KnowledgeChunk;
 import com.wally.customersupport.domain.model.KnowledgeQuery;
 import com.wally.customersupport.domain.model.SupportPolicy;
 import com.wally.customersupport.infrastructure.config.RagProperties;
+import com.wally.customersupport.infrastructure.observability.StructuredEventLog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -58,37 +61,45 @@ public class ConversationOrchestrator {
     }
 
     public String replyFor(ConversationContext context) {
+        long startedAt = System.nanoTime();
         if (context == null || context.latestMessage() == null || context.latestMessage().isBlank()) {
-            return SAFE_FALLBACK;
+            return completeQuery(context, "UNKNOWN", "INVALID_INPUT", SAFE_FALLBACK, startedAt);
         }
 
-        long startedAt = System.nanoTime();
         ConversationIntentDecision decision;
         try {
             decision = intentClassifier.classify(context.latestMessage());
         } catch (RuntimeException exception) {
-            LOGGER.warn(
-                    "WCS_EVENT eventType=INTENT_CLASSIFICATION_FAILED errorType={} durationMs={}",
-                    exception.getClass().getSimpleName(),
-                    elapsedMillis(startedAt));
-            return safeGeneralSupport(context);
+            StructuredEventLog.warn(LOGGER, "INTENT_CLASSIFICATION_FAILED", Map.of(
+                    "errorType", exception.getClass().getSimpleName(),
+                    "durationMs", elapsedMillis(startedAt)));
+            return completeQuery(
+                    context,
+                    "UNKNOWN",
+                    "CLASSIFICATION_FAILED",
+                    safeGeneralSupport(context),
+                    startedAt);
         }
         if (decision == null) {
-            LOGGER.warn(
-                    "WCS_EVENT eventType=INTENT_CLASSIFICATION_FAILED errorType=null_decision durationMs={}",
-                    elapsedMillis(startedAt));
-            return SAFE_FALLBACK;
+            StructuredEventLog.warn(LOGGER, "INTENT_CLASSIFICATION_FAILED", Map.of(
+                    "errorType", "null_decision",
+                    "durationMs", elapsedMillis(startedAt)));
+            return completeQuery(context, "UNKNOWN", "CLASSIFICATION_FAILED", SAFE_FALLBACK, startedAt);
         }
-        LOGGER.info(
-                "WCS_EVENT eventType=INTENT_CLASSIFIED intent={} confidence={} durationMs={}",
-                decision.intent(),
-                decision.confidence(),
-                elapsedMillis(startedAt));
+        StructuredEventLog.info(LOGGER, "INTENT_CLASSIFIED", Map.of(
+                "intent", decision.intent().name(),
+                "confidence", decision.confidence(),
+                "durationMs", elapsedMillis(startedAt)));
         if (decision.confidence() < MIN_CONFIDENCE) {
-            return LOW_CONFIDENCE;
+            return completeQuery(
+                    context,
+                    decision.intent().name(),
+                    "LOW_CONFIDENCE",
+                    LOW_CONFIDENCE,
+                    startedAt);
         }
 
-        return switch (decision.intent()) {
+        String reply = switch (decision.intent()) {
             case GREETING -> GREETING;
             case CATALOG_SEARCH -> catalogConversationService.replyFor(decision.catalogQuery())
                     .orElse(LOW_CONFIDENCE);
@@ -97,6 +108,7 @@ public class ConversationOrchestrator {
             case HUMAN_HANDOFF -> HUMAN_HANDOFF;
             case GENERAL_SUPPORT, UNKNOWN -> safeGeneralSupport(context);
         };
+        return completeQuery(context, decision.intent().name(), "REPLIED", reply, startedAt);
     }
 
     private String safeGeneralSupport(ConversationContext context) {
@@ -112,10 +124,33 @@ public class ConversationOrchestrator {
                     context.recentMessages(),
                     knowledge));
         } catch (RuntimeException exception) {
-            LOGGER.warn(
-                    "WCS_EVENT eventType=GENERAL_SUPPORT_FAILED errorType={}",
-                    exception.getClass().getSimpleName());
+            Map<String, Object> fields = new LinkedHashMap<>();
+            fields.put("errorType", exception.getClass().getSimpleName());
+            addCorrelationId(fields, context);
+            StructuredEventLog.warn(LOGGER, "GENERAL_SUPPORT_FAILED", fields);
             return SAFE_FALLBACK;
+        }
+    }
+
+    private String completeQuery(
+            ConversationContext context,
+            String queryType,
+            String outcome,
+            String reply,
+            long startedAt) {
+        Map<String, Object> fields = new LinkedHashMap<>();
+        fields.put("queryType", queryType);
+        fields.put("outcome", outcome);
+        fields.put("responseGenerated", reply != null && !reply.isBlank());
+        fields.put("durationMs", elapsedMillis(startedAt));
+        addCorrelationId(fields, context);
+        StructuredEventLog.info(LOGGER, "CONVERSATION_QUERY_COMPLETED", fields);
+        return reply;
+    }
+
+    private static void addCorrelationId(Map<String, Object> fields, ConversationContext context) {
+        if (context != null && context.conversationId() != null) {
+            fields.put("correlationId", context.conversationId());
         }
     }
 

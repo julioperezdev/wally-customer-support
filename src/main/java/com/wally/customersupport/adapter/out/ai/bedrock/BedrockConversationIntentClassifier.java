@@ -50,7 +50,10 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
             return ConversationIntentDecision.unknown();
         }
         try {
-            String output = converseClient.complete(SYSTEM_PROMPT,
+            String output = converseClient.complete(
+                    "intent-classification",
+                    "conversation.intent.classify",
+                    SYSTEM_PROMPT,
                     "Version de prompt: " + PROMPT_VERSION + "\n<customer_message>\n"
                             + message.substring(0, Math.min(message.length(), MAX_MESSAGE_CHARS))
                             + "\n</customer_message>",

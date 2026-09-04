@@ -2,12 +2,15 @@ package com.wally.customersupport.adapter.in.web.telegram;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.wally.customersupport.application.port.in.InboundMessagePort;
 import com.wally.customersupport.domain.model.InboundMessageCommand;
 import com.wally.customersupport.domain.model.InboundMessageResult;
 import com.wally.customersupport.infrastructure.config.TelegramProperties;
+import com.wally.customersupport.infrastructure.observability.StructuredEventLog;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,25 +48,31 @@ public class TelegramWebhookController {
             @RequestBody String rawBody,
             @RequestHeader(name = SECRET_HEADER, required = false) String secretToken) {
         if (!constantTimeEquals(secretToken, properties.webhookSecretToken())) {
-            LOGGER.warn("WCS_EVENT eventType=WEBHOOK_REJECTED channel=telegram reason=invalid_secret");
+            StructuredEventLog.warn(LOGGER, "WEBHOOK_REJECTED", Map.of(
+                    "channel", "telegram",
+                    "reason", "invalid_secret"));
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
         try {
             List<InboundMessageCommand> commands = payloadParser.parse(rawBody);
-            LOGGER.info("WCS_EVENT eventType=WEBHOOK_ACCEPTED channel=telegram commandCount={}", commands.size());
+            StructuredEventLog.info(LOGGER, "WEBHOOK_ACCEPTED", Map.of(
+                    "channel", "telegram",
+                    "commandCount", commands.size()));
             for (InboundMessageCommand command : commands) {
                 long startedAt = System.nanoTime();
                 InboundMessageResult result = inboundMessagePort.accept(command);
-                LOGGER.info(
-                        "WCS_EVENT eventType=INBOUND_MESSAGE_PROCESSED channel={} result={} durationMs={}",
-                        command.channel(),
-                        result.result(),
-                        elapsedMillis(startedAt));
+                Map<String, Object> fields = new LinkedHashMap<>();
+                fields.put("channel", command.channel().name().toLowerCase(java.util.Locale.ROOT));
+                fields.put("result", result.result().name());
+                fields.put("durationMs", elapsedMillis(startedAt));
+                StructuredEventLog.info(LOGGER, "INBOUND_MESSAGE_PROCESSED", fields);
             }
             return ResponseEntity.ok().build();
         } catch (TelegramPayloadException exception) {
-            LOGGER.warn("WCS_EVENT eventType=WEBHOOK_REJECTED channel=telegram reason=malformed_payload");
+            StructuredEventLog.warn(LOGGER, "WEBHOOK_REJECTED", Map.of(
+                    "channel", "telegram",
+                    "reason", "malformed_payload"));
             return ResponseEntity.badRequest().build();
         }
     }

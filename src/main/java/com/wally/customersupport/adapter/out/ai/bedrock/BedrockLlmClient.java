@@ -42,7 +42,13 @@ public class BedrockLlmClient implements LlmClient {
                 limit(context.knowledge().stream()
                         .map(chunk -> "[" + chunk.sourceId() + "] " + chunk.content())
                         .reduce("", (left, right) -> left + "\n" + right), 8_000));
-        return converseClient.complete(SYSTEM_PROMPT, prompt, 512, 0.2f);
+        return converseClient.complete(
+                "response-generation",
+                "conversation.reply.generate",
+                SYSTEM_PROMPT,
+                prompt,
+                512,
+                0.2f);
     }
 
     private static String limit(String value, int maxChars) {
