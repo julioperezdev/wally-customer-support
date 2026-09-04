@@ -18,7 +18,16 @@ Bedrock se integra detrás de `ConversationIntentClassifier` y `LlmClient`.
 `ConversationOrchestrator` sólo consume decisiones estructuradas del clasificador
 y ejecuta casos de uso internos. El caso de uso no conoce el model ID ni el SDK.
 La selección del modelo, región, límites, timeout, guardrails y fallback se
-resuelve mediante AppConfig; el acceso se autoriza con IAM.
+resuelve mediante AppConfig; el acceso a Bedrock se autoriza con IAM.
+
+Cada llamada a Bedrock Converse emite el evento estructurado
+`AI_USAGE_RECORDED`, con etapa, operación, proveedor, model ID, éxito, tokens
+de entrada/salida/total, latencia total, latencia reportada por el proveedor y
+un costo USD estimado. El costo usa `wcs.ai.pricing-version` y los precios por
+millón de tokens de entrada/salida definidos en AppConfig o en los defaults de
+bootstrap. Nunca se registran prompts, respuestas ni secretos. El evento y sus
+consultas están documentados en [`docs/observability.md`](observability.md) y
+[`observability/grafana/queries/cloudwatch-logs-insights.md`](../observability/grafana/queries/cloudwatch-logs-insights.md).
 
 ## RAG
 

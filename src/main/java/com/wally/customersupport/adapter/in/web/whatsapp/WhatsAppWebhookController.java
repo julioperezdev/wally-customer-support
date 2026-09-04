@@ -2,12 +2,15 @@ package com.wally.customersupport.adapter.in.web.whatsapp;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.wally.customersupport.application.port.in.InboundMessagePort;
 import com.wally.customersupport.domain.model.InboundMessageCommand;
 import com.wally.customersupport.domain.model.InboundMessageResult;
 import com.wally.customersupport.infrastructure.config.WhatsAppProperties;
+import com.wally.customersupport.infrastructure.observability.StructuredEventLog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -62,25 +65,31 @@ public class WhatsAppWebhookController {
             @RequestBody String rawBody,
             @RequestHeader(name = "X-Hub-Signature-256", required = false) String signature) {
         if (!hmacVerifier.isValid(rawBody, signature, properties.appSecret())) {
-            LOGGER.warn("WCS_EVENT eventType=WEBHOOK_REJECTED channel=whatsapp reason=invalid_signature");
+            StructuredEventLog.warn(LOGGER, "WEBHOOK_REJECTED", Map.of(
+                    "channel", "whatsapp",
+                    "reason", "invalid_signature"));
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
         try {
             List<InboundMessageCommand> commands = payloadParser.parse(rawBody);
-            LOGGER.info("WCS_EVENT eventType=WEBHOOK_ACCEPTED channel=whatsapp commandCount={}", commands.size());
+            StructuredEventLog.info(LOGGER, "WEBHOOK_ACCEPTED", Map.of(
+                    "channel", "whatsapp",
+                    "commandCount", commands.size()));
             for (InboundMessageCommand command : commands) {
                 long startedAt = System.nanoTime();
                 InboundMessageResult result = inboundMessagePort.accept(command);
-                LOGGER.info(
-                        "WCS_EVENT eventType=INBOUND_MESSAGE_PROCESSED channel={} result={} durationMs={}",
-                        command.channel(),
-                        result.result(),
-                        elapsedMillis(startedAt));
+                Map<String, Object> fields = new LinkedHashMap<>();
+                fields.put("channel", command.channel().name().toLowerCase(java.util.Locale.ROOT));
+                fields.put("result", result.result().name());
+                fields.put("durationMs", elapsedMillis(startedAt));
+                StructuredEventLog.info(LOGGER, "INBOUND_MESSAGE_PROCESSED", fields);
             }
             return ResponseEntity.ok().build();
         } catch (WhatsAppPayloadException exception) {
-            LOGGER.warn("WCS_EVENT eventType=WEBHOOK_REJECTED channel=whatsapp reason=malformed_payload");
+            StructuredEventLog.warn(LOGGER, "WEBHOOK_REJECTED", Map.of(
+                    "channel", "whatsapp",
+                    "reason", "malformed_payload"));
             return ResponseEntity.badRequest().build();
         }
     }

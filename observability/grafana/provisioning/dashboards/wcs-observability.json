@@ -242,9 +242,79 @@
     {
       "id": 6,
       "type": "logs",
+      "title": "IA · tokens, costo y latencia",
+      "description": "Agregado por llamada de Bedrock. El costo es estimado según la versión de pricing configurada.",
+      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 20},
+      "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": false,
+        "prettifyLogMessage": true,
+        "enableLogDetails": false,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      },
+      "targets": [
+        {
+          "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
+          "expression": "fields @timestamp, @message\n| filter @message like /\\\"eventType\\\":\\\"AI_USAGE_RECORDED\\\"/\n| parse @message /\\\"stage\\\":\\\"(?<parsedStage>[^\\\"]+)\\\"/\n| parse @message /\\\"operation\\\":\\\"(?<parsedOperation>[^\\\"]+)\\\"/\n| parse @message /\\\"provider\\\":\\\"(?<parsedProvider>[^\\\"]+)\\\"/\n| parse @message /\\\"model\\\":\\\"(?<parsedModel>[^\\\"]+)\\\"/\n| parse @message /\\\"pricingVersion\\\":\\\"(?<parsedPricingVersion>[^\\\"]+)\\\"/\n| parse @message /\\\"inputTokens\\\":(?<parsedInputTokens>[0-9]+)/\n| parse @message /\\\"outputTokens\\\":(?<parsedOutputTokens>[0-9]+)/\n| parse @message /\\\"totalTokens\\\":(?<parsedTotalTokens>[0-9]+)/\n| parse @message /\\\"estimatedCostUsd\\\":(?<parsedEstimatedCostUsd>[0-9.]+)/\n| parse @message /\\\"durationMs\\\":(?<parsedDurationMs>[0-9]+)/\n| parse @message /\\\"success\\\":(?<parsedSuccess>true|false)/\n| stats sum(parsedInputTokens) as inputTokens, sum(parsedOutputTokens) as outputTokens, sum(parsedTotalTokens) as totalTokens, sum(parsedEstimatedCostUsd) as estimatedCostUsd, avg(parsedDurationMs) as averageDurationMs, pct(parsedDurationMs, 95) as p95DurationMs, sum(if(parsedSuccess = \"false\", 1, 0)) as failures, count() as aiCalls by parsedStage, parsedOperation, parsedProvider, parsedModel, parsedPricingVersion, bin(1h)\n| sort @timestamp asc",
+          "id": "",
+          "label": "",
+          "logsMode": "Insights",
+          "logsQueryScope": "namePrefix",
+          "logGroupClass": "STANDARD",
+          "logGroupPrefixes": ["/aws/apprunner/$service_name"],
+          "queryLanguage": "CWLI",
+          "queryMode": "Logs",
+          "refId": "A",
+          "region": "$region",
+          "statsGroups": ["parsedStage", "parsedOperation", "parsedProvider", "parsedModel", "parsedPricingVersion"]
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "logs",
+      "title": "Consultas · tipo, resultado y latencia",
+      "description": "Una fila por consulta conversacional completada, sin contenido del usuario.",
+      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 32},
+      "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": false,
+        "prettifyLogMessage": true,
+        "enableLogDetails": false,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      },
+      "targets": [
+        {
+          "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
+          "expression": "fields @timestamp, @message\n| filter @message like /\\\"eventType\\\":\\\"CONVERSATION_QUERY_COMPLETED\\\"/\n| parse @message /\\\"queryType\\\":\\\"(?<parsedQueryType>[^\\\"]+)\\\"/\n| parse @message /\\\"outcome\\\":\\\"(?<parsedOutcome>[^\\\"]+)\\\"/\n| parse @message /\\\"durationMs\\\":(?<parsedDurationMs>[0-9]+)/\n| stats count() as queries, avg(parsedDurationMs) as averageDurationMs, pct(parsedDurationMs, 95) as p95DurationMs by parsedQueryType, parsedOutcome, bin(1h)\n| sort @timestamp asc",
+          "id": "",
+          "label": "",
+          "logsMode": "Insights",
+          "logsQueryScope": "namePrefix",
+          "logGroupClass": "STANDARD",
+          "logGroupPrefixes": ["/aws/apprunner/$service_name"],
+          "queryLanguage": "CWLI",
+          "queryMode": "Logs",
+          "refId": "A",
+          "region": "$region",
+          "statsGroups": ["parsedQueryType", "parsedOutcome"]
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "logs",
       "title": "WCS · últimos eventos operativos",
       "description": "Eventos agregados de webhook, mensajes, intenciones y entregas. No muestra texto del usuario.",
-      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 20},
+      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 44},
       "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
       "options": {
         "showTime": true,
@@ -275,11 +345,11 @@
       ]
     },
     {
-      "id": 7,
+      "id": 9,
       "type": "logs",
       "title": "App Runner · errores",
       "description": "Diagnóstico de errores del runtime. Revisar siempre que no haya PII antes de compartir evidencia.",
-      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 32},
+      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 56},
       "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
       "options": {
         "showTime": true,

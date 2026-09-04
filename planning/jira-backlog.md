@@ -122,6 +122,14 @@ SQL ni hechos generados por el modelo.
 
 **Tipo:** Story · **Priority:** High · **Estimate:** 4d · **Depends on:** WCS-20, WCS-16
 
+La integración de Bedrock Converse registra un evento JSON por llamada real con
+operación, etapa, proveedor, model ID, tokens de entrada/salida/total, latencia,
+éxito y costo USD estimado según la versión de pricing configurada. El
+orquestador registra el tipo y resultado de cada consulta completa; los eventos
+no contienen prompts, respuestas, secretos ni PII. Las consultas reutilizables
+y el dashboard local de CloudWatch/Grafana están versionados en
+`observability/grafana/` y documentados en `docs/observability.md`.
+
 ### WCS-22 — CI/CD, secrets, observabilidad, smoke y rollback
 
 **Tipo:** Task · **Priority:** High · **Estimate:** 6d · **Depends on:** WCS-18, WCS-21

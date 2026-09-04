@@ -1,12 +1,15 @@
 package com.wally.customersupport.adapter.out.knowledge.bedrock;
 
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
 
 import com.wally.customersupport.application.port.out.KnowledgeRetriever;
 import com.wally.customersupport.domain.model.KnowledgeChunk;
 import com.wally.customersupport.domain.model.KnowledgeQuery;
 import com.wally.customersupport.infrastructure.config.RagProperties;
+import com.wally.customersupport.infrastructure.observability.StructuredEventLog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.bedrockagentruntime.BedrockAgentRuntimeClient;
@@ -55,12 +58,25 @@ public final class BedrockKnowledgeRetriever implements KnowledgeRetriever {
                     .map(BedrockKnowledgeRetriever::toKnowledgeChunk)
                     .filter(Objects::nonNull)
                     .toList();
-            log.info("Bedrock Knowledge Base retrieval completed: resultCount={}, latencyMs={}",
-                    chunks.size(), elapsedMillis(startedAt));
+            Map<String, Object> fields = new LinkedHashMap<>();
+            fields.put("stage", "knowledge-retrieval");
+            fields.put("operation", "knowledge.retrieve");
+            fields.put("provider", "bedrock-kb");
+            fields.put("success", true);
+            fields.put("resultCount", chunks.size());
+            fields.put("durationMs", elapsedMillis(startedAt));
+            StructuredEventLog.info(log, "RAG_RETRIEVAL_RECORDED", fields);
             return chunks;
         } catch (RuntimeException exception) {
-            log.warn("Bedrock Knowledge Base retrieval failed: errorType={}, latencyMs={}",
-                    exception.getClass().getSimpleName(), elapsedMillis(startedAt));
+            Map<String, Object> fields = new LinkedHashMap<>();
+            fields.put("stage", "knowledge-retrieval");
+            fields.put("operation", "knowledge.retrieve");
+            fields.put("provider", "bedrock-kb");
+            fields.put("success", false);
+            fields.put("resultCount", 0);
+            fields.put("durationMs", elapsedMillis(startedAt));
+            fields.put("errorType", exception.getClass().getSimpleName());
+            StructuredEventLog.warn(log, "RAG_RETRIEVAL_RECORDED", fields);
             throw exception;
         }
     }

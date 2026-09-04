@@ -121,6 +121,9 @@ wcs.outbox.max-attempts
 wcs.ai.provider
 wcs.ai.model
 wcs.ai.region
+wcs.ai.pricing-version
+wcs.ai.input-price-usd-per-million-tokens
+wcs.ai.output-price-usd-per-million-tokens
 wcs.rag.provider
 wcs.rag.max-results
 wcs.rag.knowledge-base-id (cuando el adapter Bedrock KB esté habilitado)
@@ -170,6 +173,9 @@ referencias a secretos, por ejemplo:
   "wcs.ai.provider": "bedrock",
   "wcs.ai.model": "openai.gpt-oss-20b-1:0",
   "wcs.ai.region": "us-east-1",
+  "wcs.ai.pricing-version": "aws-bedrock-us-east-1-standard-2026-09",
+  "wcs.ai.input-price-usd-per-million-tokens": 0.0721,
+  "wcs.ai.output-price-usd-per-million-tokens": 0.3090,
   "wcs.rag.provider": "bedrock-kb",
   "wcs.rag.max-results": 5,
   "wcs.rag.knowledge-base-id": "REPLACE_ME_WCS_KNOWLEDGE_BASE_ID"

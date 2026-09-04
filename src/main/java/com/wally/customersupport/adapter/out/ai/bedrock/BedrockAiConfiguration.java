@@ -25,6 +25,6 @@ public class BedrockAiConfiguration {
 
     @Bean
     BedrockConverseClient bedrockConverseClient(BedrockRuntimeClient client, AiProperties properties) {
-        return new BedrockConverseClient(client, properties.effectiveModel());
+        return new BedrockConverseClient(client, properties);
     }
 }

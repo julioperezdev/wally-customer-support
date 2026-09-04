@@ -3,6 +3,7 @@ package com.wally.customersupport.application.service;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -13,6 +14,7 @@ import com.wally.customersupport.application.port.out.OutboundMessagePort;
 import com.wally.customersupport.domain.model.OutboxMessage;
 import com.wally.customersupport.domain.model.Channel;
 import com.wally.customersupport.infrastructure.config.OutboxProperties;
+import com.wally.customersupport.infrastructure.observability.StructuredEventLog;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,21 +73,25 @@ public class OutboxDispatcher {
             }
             outboundMessagePort.send(outboxMessage.message());
             outboxRepository.markSent(outboxMessage.id(), clock.instant());
-            LOGGER.info(
-                    "WCS_EVENT eventType=OUTBOUND_MESSAGE_DISPATCHED channel={} result=SENT durationMs={}",
-                    outboxMessage.message().channel(),
-                    elapsedMillis(startedAt));
+            Map<String, Object> fields = new LinkedHashMap<>();
+            fields.put("channel", outboxMessage.message().channel().name().toLowerCase(java.util.Locale.ROOT));
+            fields.put("result", "SENT");
+            fields.put("durationMs", elapsedMillis(startedAt));
+            fields.put("correlationId", outboxMessage.message().conversationId());
+            StructuredEventLog.info(LOGGER, "OUTBOUND_MESSAGE_DISPATCHED", fields);
         } catch (RuntimeException exception) {
             outboxRepository.markFailed(
                     outboxMessage.id(),
                     sanitizeError(exception),
                     now.plus(RETRY_DELAY),
                     outboxMessage.attempts() + 1 >= Math.max(1, properties.maxAttempts()));
-            LOGGER.warn(
-                    "WCS_EVENT eventType=OUTBOUND_MESSAGE_DISPATCHED channel={} result=FAILED errorType={} durationMs={}",
-                    outboxMessage.message().channel(),
-                    exception.getClass().getSimpleName(),
-                    elapsedMillis(startedAt));
+            Map<String, Object> fields = new LinkedHashMap<>();
+            fields.put("channel", outboxMessage.message().channel().name().toLowerCase(java.util.Locale.ROOT));
+            fields.put("result", "FAILED");
+            fields.put("errorType", exception.getClass().getSimpleName());
+            fields.put("durationMs", elapsedMillis(startedAt));
+            fields.put("correlationId", outboxMessage.message().conversationId());
+            StructuredEventLog.warn(LOGGER, "OUTBOUND_MESSAGE_DISPATCHED", fields);
         }
     }
 

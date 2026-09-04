@@ -77,6 +77,8 @@ catálogo, IA, ownership o idempotencia.
 | `TC-030` | P1 | Retención de metadatos de 90 días | Elimina metadatos fuera de plazo según configuración | Reporte de limpieza |
 | `TC-031` | P1 | Métricas agregadas | Conserva métricas sin teléfono ni contenido | Query agregada |
 | `TC-032` | P0 | Logs y errores | No contienen tokens, mensajes completos, teléfonos ni prompts | Revisión automatizada |
+| `TC-041` | P1 | Uso real de Bedrock | Emite `AI_USAGE_RECORDED` con modelo, tokens, latencia, pricing version y costo estimado | Test del adapter + log sanitizado |
+| `TC-042` | P1 | Consultas de observabilidad | CloudWatch agrega consultas, IA, RAG y entregas sin errores de campos | Logs Insights/Grafana |
 
 ## End-to-end y operación
 
@@ -86,6 +88,11 @@ catálogo, IA, ownership o idempotencia.
 - `TC-036`: health/readiness y correlación permiten diagnosticar sin exponer PII.
 - `TC-037`: rollback de una versión de aplicación sin alterar migraciones ya aplicadas.
 - `TC-038`: alerta o métrica ante aumento de errores, retries, duplicados o tareas de seguimiento vencidas.
+- `TC-041`: cada llamada de Bedrock exitosa o fallida registra el uso disponible sin
+  incluir prompt, respuesta ni credenciales; una ejecución mock no simula costo
+  de proveedor.
+- `TC-042`: las queries versionadas de CloudWatch funcionan tanto con campos JSON
+  descubiertos como con mensajes que tengan prefijo textual de Spring.
 
 ### Prueba manual de catálogo por Telegram
 
