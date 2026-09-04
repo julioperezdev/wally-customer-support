@@ -180,14 +180,10 @@ resource "aws_apprunner_service" "backend" {
     unhealthy_threshold = 10
   }
 
-  dynamic "network_configuration" {
-    for_each = var.egress_type == "VPC" ? [1] : []
-
-    content {
-      egress_configuration {
-        egress_type       = "VPC"
-        vpc_connector_arn = var.vpc_connector_arn
-      }
+  network_configuration {
+    egress_configuration {
+      egress_type = var.egress_type
+      vpc_connector_arn = var.egress_type == "VPC" ? var.vpc_connector_arn : null
     }
   }
 

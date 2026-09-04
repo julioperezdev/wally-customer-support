@@ -93,7 +93,7 @@ variable "vpc_connector_arn" {
 
 variable "egress_type" {
   type        = string
-  description = "App Runner outbound network mode. DEFAULT uses public App Runner egress; VPC requires a connector with internet or AWS endpoint routing."
+  description = "App Runner outbound network mode. DEFAULT uses public App Runner egress; VPC requires a connector with internet or AWS endpoint routing. The value is sent explicitly to App Runner."
   default     = "DEFAULT"
 
   validation {
