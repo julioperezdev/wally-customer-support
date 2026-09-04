@@ -285,6 +285,17 @@ contenido del catálogo dinámico en esta fuente.
 
 No registrar texto completo, firmas, tokens, números de teléfono completos ni payloads de Meta en producción.
 
+La primera implementación operativa está documentada en
+[`observability.md`](observability.md). Incluye Grafana local en Docker con el
+datasource read-only de CloudWatch, métricas de App Runner y consultas por
+prefijo para los log groups dinámicos de las revisiones. El dashboard no expone
+Grafana a Internet ni consulta PostgreSQL directamente.
+
+El backend emite eventos sanitizados con prefijo `WCS_EVENT` para observar
+webhooks, procesamiento inbound, intención y despacho outbound. Estos eventos
+no contienen texto de usuario, prompts, números de teléfono, chat IDs,
+secretos ni payloads de proveedores.
+
 ## Runbooks requeridos
 
 - Webhook no recibe eventos.

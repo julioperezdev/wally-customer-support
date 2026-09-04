@@ -61,6 +61,7 @@ public class OutboxDispatcher {
     }
 
     private void dispatch(OutboxMessage outboxMessage, Instant now) {
+        long startedAt = System.nanoTime();
         try {
             outboxRepository.markProcessing(outboxMessage.id());
             OutboundMessagePort outboundMessagePort = outboundMessagePorts.get(outboxMessage.message().channel());
@@ -70,14 +71,26 @@ public class OutboxDispatcher {
             }
             outboundMessagePort.send(outboxMessage.message());
             outboxRepository.markSent(outboxMessage.id(), clock.instant());
+            LOGGER.info(
+                    "WCS_EVENT eventType=OUTBOUND_MESSAGE_DISPATCHED channel={} result=SENT durationMs={}",
+                    outboxMessage.message().channel(),
+                    elapsedMillis(startedAt));
         } catch (RuntimeException exception) {
             outboxRepository.markFailed(
                     outboxMessage.id(),
                     sanitizeError(exception),
                     now.plus(RETRY_DELAY),
                     outboxMessage.attempts() + 1 >= Math.max(1, properties.maxAttempts()));
-            LOGGER.warn("Outbound message dispatch failed; retry policy applied");
+            LOGGER.warn(
+                    "WCS_EVENT eventType=OUTBOUND_MESSAGE_DISPATCHED channel={} result=FAILED errorType={} durationMs={}",
+                    outboxMessage.message().channel(),
+                    exception.getClass().getSimpleName(),
+                    elapsedMillis(startedAt));
         }
+    }
+
+    private static long elapsedMillis(long startedAt) {
+        return (System.nanoTime() - startedAt) / 1_000_000;
     }
 
     private static String sanitizeError(RuntimeException exception) {
