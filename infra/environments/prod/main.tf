@@ -134,6 +134,10 @@ module "runtime_secrets" {
 module "backend_apprunner" {
   source = "../../modules/backend-apprunner"
 
+  # App Runner validates iam:PassRole during CreateService. Ensure the
+  # Terraform deploy role policy is updated before that API call is made.
+  depends_on = [module.github_terraform_deploy]
+
   project_name                  = var.project_name
   environment                   = var.environment
   ecr_repository_name           = "${var.project_name}-${var.environment}-backend"
