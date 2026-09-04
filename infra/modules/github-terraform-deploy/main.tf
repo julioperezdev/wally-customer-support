@@ -126,26 +126,6 @@ data "aws_iam_policy_document" "terraform" {
   }
 
   statement {
-    sid    = "CreateWcsKnowledgeSourceBucket"
-    effect = "Allow"
-    actions = [
-      "s3:CreateBucket",
-    ]
-    resources = ["*"]
-  }
-
-  statement {
-    sid    = "ReadWcsKnowledgeSourceBucket"
-    effect = "Allow"
-    actions = [
-      "s3:Get*",
-      "s3:ListBucket",
-      "s3:ListTagsForResource",
-    ]
-    resources = [local.source_bucket_arn_pattern, local.source_object_arn_pattern]
-  }
-
-  statement {
     sid    = "CreateWcsKnowledgeVectorResources"
     effect = "Allow"
     actions = [
@@ -542,6 +522,24 @@ data "aws_iam_policy_document" "terraform" {
 }
 
 data "aws_iam_policy_document" "terraform_knowledge_base" {
+  statement {
+    sid       = "CreateWcsKnowledgeSourceBucket"
+    effect    = "Allow"
+    actions   = ["s3:CreateBucket"]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "ReadWcsKnowledgeSourceBucket"
+    effect = "Allow"
+    actions = [
+      "s3:Get*",
+      "s3:ListBucket",
+      "s3:ListTagsForResource",
+    ]
+    resources = [local.source_bucket_arn_pattern, local.source_object_arn_pattern]
+  }
+
   statement {
     sid    = "ManageWcsKnowledgeSourceBucket"
     effect = "Allow"
