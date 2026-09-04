@@ -226,8 +226,8 @@ secrets sin recompilar.
 
 ### IAM mínimo
 
-El rol de runtime necesita `appconfigdata:StartConfigurationSession`,
-`appconfigdata:GetLatestConfiguration` y
+El rol de runtime necesita `appconfig:StartConfigurationSession`,
+`appconfig:GetLatestConfiguration` y
 `secretsmanager:GetSecretValue` sobre los ARNs concretos de WCS y del RDS
 compartido, más los ARNs declarados para cualquier secret adicional referenciado
 por AppConfig (por ejemplo, WhatsApp o Telegram). No se permite
