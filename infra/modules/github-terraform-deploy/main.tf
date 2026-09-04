@@ -135,6 +135,16 @@ data "aws_iam_policy_document" "terraform" {
   }
 
   statement {
+    sid    = "ReadWcsKnowledgeSourceBucket"
+    effect = "Allow"
+    actions = [
+      "s3:Get*",
+      "s3:ListBucket",
+    ]
+    resources = [local.source_bucket_arn_pattern, local.source_object_arn_pattern]
+  }
+
+  statement {
     sid    = "CreateWcsKnowledgeVectorResources"
     effect = "Allow"
     actions = [
@@ -521,25 +531,6 @@ data "aws_iam_policy_document" "terraform_knowledge_base" {
     sid    = "ManageWcsKnowledgeSourceBucket"
     effect = "Allow"
     actions = [
-      "s3:DeleteObject",
-      "s3:GetBucketAccelerateConfiguration",
-      "s3:GetBucketAcl",
-      "s3:GetBucketCors",
-      "s3:GetBucketLocation",
-      "s3:GetBucketLogging",
-      "s3:GetBucketOwnershipControls",
-      "s3:GetBucketPolicy",
-      "s3:GetBucketPublicAccessBlock",
-      "s3:GetBucketRequestPayment",
-      "s3:GetBucketTagging",
-      "s3:GetBucketVersioning",
-      "s3:GetEncryptionConfiguration",
-      "s3:GetLifecycleConfiguration",
-      "s3:GetObject",
-      "s3:GetObjectLockConfiguration",
-      "s3:GetReplicationConfiguration",
-      "s3:GetBucketWebsite",
-      "s3:ListBucket",
       "s3:PutBucketOwnershipControls",
       "s3:PutBucketPublicAccessBlock",
       "s3:PutBucketTagging",
