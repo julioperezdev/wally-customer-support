@@ -6,6 +6,7 @@ import java.util.List;
 
 import com.wally.customersupport.application.port.in.InboundMessagePort;
 import com.wally.customersupport.domain.model.InboundMessageCommand;
+import com.wally.customersupport.domain.model.InboundMessageResult;
 import com.wally.customersupport.infrastructure.config.WhatsAppProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,18 +62,31 @@ public class WhatsAppWebhookController {
             @RequestBody String rawBody,
             @RequestHeader(name = "X-Hub-Signature-256", required = false) String signature) {
         if (!hmacVerifier.isValid(rawBody, signature, properties.appSecret())) {
+            LOGGER.warn("WCS_EVENT eventType=WEBHOOK_REJECTED channel=whatsapp reason=invalid_signature");
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
         try {
             List<InboundMessageCommand> commands = payloadParser.parse(rawBody);
-            commands.forEach(inboundMessagePort::accept);
-            LOGGER.debug("WhatsApp webhook accepted {} text event(s)", commands.size());
+            LOGGER.info("WCS_EVENT eventType=WEBHOOK_ACCEPTED channel=whatsapp commandCount={}", commands.size());
+            for (InboundMessageCommand command : commands) {
+                long startedAt = System.nanoTime();
+                InboundMessageResult result = inboundMessagePort.accept(command);
+                LOGGER.info(
+                        "WCS_EVENT eventType=INBOUND_MESSAGE_PROCESSED channel={} result={} durationMs={}",
+                        command.channel(),
+                        result.result(),
+                        elapsedMillis(startedAt));
+            }
             return ResponseEntity.ok().build();
         } catch (WhatsAppPayloadException exception) {
-            LOGGER.warn("WhatsApp webhook rejected malformed JSON payload");
+            LOGGER.warn("WCS_EVENT eventType=WEBHOOK_REJECTED channel=whatsapp reason=malformed_payload");
             return ResponseEntity.badRequest().build();
         }
+    }
+
+    private static long elapsedMillis(long startedAt) {
+        return (System.nanoTime() - startedAt) / 1_000_000;
     }
 
     private static boolean constantTimeEquals(String first, String second) {

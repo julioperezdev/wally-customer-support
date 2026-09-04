@@ -28,6 +28,7 @@ WCS (Wally Customer Support) es un sistema de atención conversacional para una 
 - IA: `docs/ai.md`.
 - Testing: `docs/testing-strategy.md`.
 - Operación: `docs/operations.md`.
+- Observabilidad: `docs/observability.md`.
 - Trazabilidad: `docs/documentation-system.md`.
 - Skill de relación Jira–GitHub: `docs/agents/jira-github-traceability.md`.
 - Trabajo inicial: `planning/jira-backlog.md`.

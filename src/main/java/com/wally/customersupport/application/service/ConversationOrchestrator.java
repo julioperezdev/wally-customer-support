@@ -15,11 +15,14 @@ import com.wally.customersupport.domain.model.KnowledgeChunk;
 import com.wally.customersupport.domain.model.KnowledgeQuery;
 import com.wally.customersupport.domain.model.SupportPolicy;
 import com.wally.customersupport.infrastructure.config.RagProperties;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
 public class ConversationOrchestrator {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(ConversationOrchestrator.class);
     private static final double MIN_CONFIDENCE = 0.65;
     private static final String GREETING = "Hola, ¿cómo te puedo ayudar?";
     private static final String LOW_CONFIDENCE = "No estoy seguro de haber entendido tu consulta. "
@@ -59,15 +62,28 @@ public class ConversationOrchestrator {
             return SAFE_FALLBACK;
         }
 
+        long startedAt = System.nanoTime();
         ConversationIntentDecision decision;
         try {
             decision = intentClassifier.classify(context.latestMessage());
         } catch (RuntimeException exception) {
+            LOGGER.warn(
+                    "WCS_EVENT eventType=INTENT_CLASSIFICATION_FAILED errorType={} durationMs={}",
+                    exception.getClass().getSimpleName(),
+                    elapsedMillis(startedAt));
             return safeGeneralSupport(context);
         }
         if (decision == null) {
+            LOGGER.warn(
+                    "WCS_EVENT eventType=INTENT_CLASSIFICATION_FAILED errorType=null_decision durationMs={}",
+                    elapsedMillis(startedAt));
             return SAFE_FALLBACK;
         }
+        LOGGER.info(
+                "WCS_EVENT eventType=INTENT_CLASSIFIED intent={} confidence={} durationMs={}",
+                decision.intent(),
+                decision.confidence(),
+                elapsedMillis(startedAt));
         if (decision.confidence() < MIN_CONFIDENCE) {
             return LOW_CONFIDENCE;
         }
@@ -96,8 +112,15 @@ public class ConversationOrchestrator {
                     context.recentMessages(),
                     knowledge));
         } catch (RuntimeException exception) {
+            LOGGER.warn(
+                    "WCS_EVENT eventType=GENERAL_SUPPORT_FAILED errorType={}",
+                    exception.getClass().getSimpleName());
             return SAFE_FALLBACK;
         }
+    }
+
+    private static long elapsedMillis(long startedAt) {
+        return (System.nanoTime() - startedAt) / 1_000_000;
     }
 
     private String formatBusinessHours() {

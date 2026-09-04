@@ -15,6 +15,7 @@ import javax.crypto.spec.SecretKeySpec;
 import com.wally.customersupport.application.port.in.InboundMessagePort;
 import com.wally.customersupport.domain.model.Channel;
 import com.wally.customersupport.domain.model.InboundMessageCommand;
+import com.wally.customersupport.domain.model.InboundMessageResult;
 import com.wally.customersupport.infrastructure.config.WhatsAppProperties;
 import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -73,6 +74,7 @@ class WhatsAppWebhookControllerTest {
         InboundMessageCommand command = new InboundMessageCommand(
                 Channel.WHATSAPP, "message-1", "conversation-1", "customer-1", "Hola", null);
         org.mockito.Mockito.when(payloadParser.parse(body)).thenReturn(java.util.List.of(command));
+        org.mockito.Mockito.when(inboundMessagePort.accept(command)).thenReturn(InboundMessageResult.accepted());
 
         mockMvc.perform(post("/webhook/whatsapp")
                         .contentType(MediaType.APPLICATION_JSON)

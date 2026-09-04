@@ -132,7 +132,9 @@ workflows de validación/deploy queda versionada en `infra/`, `.github/` y
 Secrets Manager quedan implementados en WCS-22, con bypass local y fail-fast
 productivo. Esto no autoriza un `apply`; la activación productiva requiere
 configurar referencias reales, red, plan, deploy, health y smoke como
-evidencia.
+evidencia. La primera iteración de observabilidad queda documentada en
+`docs/observability.md` y `observability/grafana/`: Grafana local consulta
+CloudWatch read-only y el backend emite eventos operativos sanitizados.
 
 ### WCS-29 — Agregar canal Telegram desacoplado e infraestructura de credenciales
 

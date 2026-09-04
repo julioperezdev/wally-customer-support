@@ -6,8 +6,11 @@ import java.util.List;
 
 import com.wally.customersupport.application.port.in.InboundMessagePort;
 import com.wally.customersupport.domain.model.InboundMessageCommand;
+import com.wally.customersupport.domain.model.InboundMessageResult;
 import com.wally.customersupport.infrastructure.config.TelegramProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class TelegramWebhookController {
 
     private static final String SECRET_HEADER = "X-Telegram-Bot-Api-Secret-Token";
+    private static final Logger LOGGER = LoggerFactory.getLogger(TelegramWebhookController.class);
 
     private final TelegramProperties properties;
     private final TelegramInboundPayloadParser payloadParser;
@@ -41,16 +45,31 @@ public class TelegramWebhookController {
             @RequestBody String rawBody,
             @RequestHeader(name = SECRET_HEADER, required = false) String secretToken) {
         if (!constantTimeEquals(secretToken, properties.webhookSecretToken())) {
+            LOGGER.warn("WCS_EVENT eventType=WEBHOOK_REJECTED channel=telegram reason=invalid_secret");
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
         try {
             List<InboundMessageCommand> commands = payloadParser.parse(rawBody);
-            commands.forEach(inboundMessagePort::accept);
+            LOGGER.info("WCS_EVENT eventType=WEBHOOK_ACCEPTED channel=telegram commandCount={}", commands.size());
+            for (InboundMessageCommand command : commands) {
+                long startedAt = System.nanoTime();
+                InboundMessageResult result = inboundMessagePort.accept(command);
+                LOGGER.info(
+                        "WCS_EVENT eventType=INBOUND_MESSAGE_PROCESSED channel={} result={} durationMs={}",
+                        command.channel(),
+                        result.result(),
+                        elapsedMillis(startedAt));
+            }
             return ResponseEntity.ok().build();
         } catch (TelegramPayloadException exception) {
+            LOGGER.warn("WCS_EVENT eventType=WEBHOOK_REJECTED channel=telegram reason=malformed_payload");
             return ResponseEntity.badRequest().build();
         }
+    }
+
+    private static long elapsedMillis(long startedAt) {
+        return (System.nanoTime() - startedAt) / 1_000_000;
     }
 
     private static boolean constantTimeEquals(String first, String second) {

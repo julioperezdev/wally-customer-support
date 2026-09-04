@@ -21,6 +21,7 @@ El repositorio contiene la documentación y la base técnica del producto. La im
 - [`docs/ai.md`](docs/ai.md): registro de modelos, prompts, guardrails y evaluación.
 - [`docs/testing-strategy.md`](docs/testing-strategy.md): estrategia y evidencia de testing.
 - [`docs/operations.md`](docs/operations.md): CI/CD, observabilidad, seguridad y operación.
+- [`docs/observability.md`](docs/observability.md): Grafana local, CloudWatch y eventos operativos.
 - [`infra/README.md`](infra/README.md): base Terraform de AWS, state separado y servicios preparados.
 - [`docs/queries.md`](docs/queries.md): consultas SQL y CloudWatch sanitizadas.
 - [`docs/agents/playbook.md`](docs/agents/playbook.md): reglas para agentes de IA.

@@ -11,6 +11,7 @@ import java.util.List;
 import com.wally.customersupport.application.port.in.InboundMessagePort;
 import com.wally.customersupport.domain.model.Channel;
 import com.wally.customersupport.domain.model.InboundMessageCommand;
+import com.wally.customersupport.domain.model.InboundMessageResult;
 import com.wally.customersupport.infrastructure.config.TelegramProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -55,6 +56,7 @@ class TelegramWebhookControllerTest {
     @Test
     void validatesSecretBeforeDelegatingToApplication() throws Exception {
         when(payloadParser.parse("{\"update_id\":1}")).thenReturn(List.of(command));
+        when(inboundMessagePort.accept(command)).thenReturn(InboundMessageResult.accepted());
 
         mockMvc.perform(post("/webhook/telegram")
                         .contentType(MediaType.APPLICATION_JSON)

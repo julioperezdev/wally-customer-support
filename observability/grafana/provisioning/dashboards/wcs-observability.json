@@ -1,0 +1,315 @@
+{
+  "id": null,
+  "uid": "wcs-observability",
+  "title": "WCS · Observabilidad local",
+  "tags": ["wcs", "observability", "WCS-22"],
+  "timezone": "browser",
+  "editable": false,
+  "refresh": "5m",
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "region",
+        "label": "AWS region",
+        "type": "custom",
+        "query": "us-east-1",
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "options": [
+          {
+            "selected": true,
+            "text": "us-east-1",
+            "value": "us-east-1"
+          }
+        ],
+        "current": {
+          "text": "us-east-1",
+          "value": "us-east-1"
+        }
+      },
+      {
+        "name": "service_name",
+        "label": "App Runner service",
+        "type": "custom",
+        "query": "wally-customer-support-prod-backend",
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "options": [
+          {
+            "selected": true,
+            "text": "wally-customer-support-prod-backend",
+            "value": "wally-customer-support-prod-backend"
+          }
+        ],
+        "current": {
+          "text": "wally-customer-support-prod-backend",
+          "value": "wally-customer-support-prod-backend"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "Alcance",
+      "gridPos": {"h": 4, "w": 24, "x": 0, "y": 0},
+      "options": {
+        "mode": "markdown",
+        "content": "Este dashboard consulta CloudWatch directamente desde Grafana local.\n\n- App Runner: requests, respuestas HTTP, latencia e instancias.\n- WCS_EVENT: canal, resultado, intención y duración sin texto de usuario ni PII.\n- Los log groups se seleccionan por prefijo para sobrevivir a nuevas revisiones de App Runner."
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "App Runner · requests",
+      "description": "Solicitudes HTTP del servicio seleccionado.",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+      "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "multi", "sort": "desc"}
+      },
+      "targets": [
+        {
+          "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
+          "dimensions": {"ServiceName": "$service_name"},
+          "expression": "",
+          "id": "",
+          "label": "Requests",
+          "matchExact": false,
+          "metricEditorMode": 0,
+          "metricName": "Requests",
+          "metricQueryType": 0,
+          "namespace": "AWS/AppRunner",
+          "period": "300",
+          "queryMode": "Metrics",
+          "refId": "A",
+          "region": "$region",
+          "statistic": "Sum",
+          "statistics": ["Sum"],
+          "sqlExpression": ""
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "App Runner · respuestas HTTP",
+      "description": "Respuestas agrupadas por familia de estado.",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+      "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "multi", "sort": "desc"}
+      },
+      "targets": [
+        {
+          "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
+          "dimensions": {"ServiceName": "$service_name"},
+          "expression": "",
+          "id": "",
+          "label": "2xx",
+          "matchExact": false,
+          "metricEditorMode": 0,
+          "metricName": "2xxStatusResponses",
+          "metricQueryType": 0,
+          "namespace": "AWS/AppRunner",
+          "period": "300",
+          "queryMode": "Metrics",
+          "refId": "A",
+          "region": "$region",
+          "statistic": "Sum",
+          "statistics": ["Sum"],
+          "sqlExpression": ""
+        },
+        {
+          "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
+          "dimensions": {"ServiceName": "$service_name"},
+          "expression": "",
+          "id": "",
+          "label": "4xx",
+          "matchExact": false,
+          "metricEditorMode": 0,
+          "metricName": "4xxStatusResponses",
+          "metricQueryType": 0,
+          "namespace": "AWS/AppRunner",
+          "period": "300",
+          "queryMode": "Metrics",
+          "refId": "B",
+          "region": "$region",
+          "statistic": "Sum",
+          "statistics": ["Sum"],
+          "sqlExpression": ""
+        },
+        {
+          "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
+          "dimensions": {"ServiceName": "$service_name"},
+          "expression": "",
+          "id": "",
+          "label": "5xx",
+          "matchExact": false,
+          "metricEditorMode": 0,
+          "metricName": "5xxStatusResponses",
+          "metricQueryType": 0,
+          "namespace": "AWS/AppRunner",
+          "period": "300",
+          "queryMode": "Metrics",
+          "refId": "C",
+          "region": "$region",
+          "statistic": "Sum",
+          "statistics": ["Sum"],
+          "sqlExpression": ""
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "App Runner · latencia",
+      "description": "Latencia media de las solicitudes, en milisegundos.",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+      "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
+      "fieldConfig": {"defaults": {"unit": "ms"}, "overrides": []},
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "multi", "sort": "desc"}
+      },
+      "targets": [
+        {
+          "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
+          "dimensions": {"ServiceName": "$service_name"},
+          "expression": "",
+          "id": "",
+          "label": "RequestLatency",
+          "matchExact": false,
+          "metricEditorMode": 0,
+          "metricName": "RequestLatency",
+          "metricQueryType": 0,
+          "namespace": "AWS/AppRunner",
+          "period": "300",
+          "queryMode": "Metrics",
+          "refId": "A",
+          "region": "$region",
+          "statistic": "Average",
+          "statistics": ["Average"],
+          "sqlExpression": ""
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "App Runner · instancias activas",
+      "description": "Instancias activas del servicio.",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+      "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "multi", "sort": "desc"}
+      },
+      "targets": [
+        {
+          "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
+          "dimensions": {"ServiceName": "$service_name"},
+          "expression": "",
+          "id": "",
+          "label": "ActiveInstances",
+          "matchExact": false,
+          "metricEditorMode": 0,
+          "metricName": "ActiveInstances",
+          "metricQueryType": 0,
+          "namespace": "AWS/AppRunner",
+          "period": "300",
+          "queryMode": "Metrics",
+          "refId": "A",
+          "region": "$region",
+          "statistic": "Maximum",
+          "statistics": ["Maximum"],
+          "sqlExpression": ""
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "logs",
+      "title": "WCS · últimos eventos operativos",
+      "description": "Eventos agregados de webhook, mensajes, intenciones y entregas. No muestra texto del usuario.",
+      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 20},
+      "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": false,
+        "prettifyLogMessage": true,
+        "enableLogDetails": false,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      },
+      "targets": [
+        {
+          "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
+          "expression": "fields @timestamp, @message\n| filter @message like /WCS_EVENT/\n| sort @timestamp desc\n| limit 100",
+          "id": "",
+          "label": "",
+          "logsMode": "Insights",
+          "logsQueryScope": "namePrefix",
+          "logGroupClass": "STANDARD",
+          "logGroupPrefixes": ["/aws/apprunner/$service_name"],
+          "queryLanguage": "CWLI",
+          "queryMode": "Logs",
+          "refId": "A",
+          "region": "$region",
+          "statsGroups": []
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "logs",
+      "title": "App Runner · errores",
+      "description": "Diagnóstico de errores del runtime. Revisar siempre que no haya PII antes de compartir evidencia.",
+      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 32},
+      "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": false,
+        "prettifyLogMessage": true,
+        "enableLogDetails": false,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      },
+      "targets": [
+        {
+          "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
+          "expression": "fields @timestamp, @message\n| filter @message like /ERROR|Exception/\n| sort @timestamp desc\n| limit 100",
+          "id": "",
+          "label": "",
+          "logsMode": "Insights",
+          "logsQueryScope": "namePrefix",
+          "logGroupClass": "STANDARD",
+          "logGroupPrefixes": ["/aws/apprunner/$service_name"],
+          "queryLanguage": "CWLI",
+          "queryMode": "Logs",
+          "refId": "A",
+          "region": "$region",
+          "statsGroups": []
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "version": 1
+}

@@ -2,6 +2,9 @@
 
 Las consultas reales deben vivir en Confluence y versionarse aquí cuando sean ejecutables. Todos los ejemplos deben usar ventanas acotadas, agregados y datos sanitizados.
 
+Las consultas de Logs Insights para el dashboard local están en
+[`../observability/grafana/queries/cloudwatch-logs-insights.md`](../observability/grafana/queries/cloudwatch-logs-insights.md).
+
 ## SQL — salud del procesamiento
 
 ```sql
