@@ -3,7 +3,7 @@
 Owner: Tech Lead  
 Status: `Accepted`
 Last reviewed: 2026-08-30  
-Related Jira: `WCS-13`, `WCS-21`, `WCS-22`  
+Related Jira: `WCS-13`, `WCS-21`, `WCS-22`, `WCS-30`
 Related repository paths: `src/main/resources`, `.github/workflows`, `infra/`
 
 ## Ambientes
@@ -38,6 +38,21 @@ main
 ```
 
 No se debe declarar un release operativo sólo por tener el PR verde.
+
+## Salida de red de App Runner
+
+El entorno temporal de WCS usa `backend_egress_type = "DEFAULT"`, que deja la
+salida pública administrada por App Runner. Esto permite que el backend llame a
+la API pública de Telegram sin agregar un NAT Gateway. El RDS compartido está
+temporalmente público para pruebas y queda fuera de la administración de este
+stack.
+
+El modo `VPC` sólo debe habilitarse cuando las subnets del VPC connector tengan
+NAT Gateway para APIs públicas o endpoints privados para cada dependencia AWS.
+Un VPC connector con subnets privadas sin ruta de salida permite llegar a
+recursos internos, pero bloquea Telegram, WhatsApp y cualquier API pública.
+Antes de cerrar el acceso público del RDS hay que diseñar la conectividad
+privada y cambiar explícitamente `backend_egress_type` a `VPC`.
 
 ## Base de infraestructura y pipelines
 

@@ -87,8 +87,19 @@ variable "runtime_secret_arns" {
 
 variable "vpc_connector_arn" {
   type        = string
-  description = "Existing App Runner VPC connector ARN."
+  description = "Existing App Runner VPC connector ARN, required only when egress_type is VPC."
   default     = null
+}
+
+variable "egress_type" {
+  type        = string
+  description = "App Runner outbound network mode. DEFAULT uses public App Runner egress; VPC requires a connector with internet or AWS endpoint routing."
+  default     = "DEFAULT"
+
+  validation {
+    condition     = contains(["DEFAULT", "VPC"], var.egress_type)
+    error_message = "egress_type must be DEFAULT or VPC."
+  }
 }
 
 variable "enable_bedrock_access" {

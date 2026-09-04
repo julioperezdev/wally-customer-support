@@ -126,8 +126,19 @@ variable "backend_memory" {
 
 variable "backend_vpc_connector_arn" {
   type        = string
-  description = "Existing App Runner VPC connector ARN with network access to the shared RDS."
+  description = "Existing App Runner VPC connector ARN, used only when backend_egress_type is VPC."
   default     = null
+}
+
+variable "backend_egress_type" {
+  type        = string
+  description = "App Runner outbound network mode. DEFAULT is used for the temporary public-RDS setup; VPC requires backend_vpc_connector_arn and appropriate routing."
+  default     = "DEFAULT"
+
+  validation {
+    condition     = contains(["DEFAULT", "VPC"], var.backend_egress_type)
+    error_message = "backend_egress_type must be DEFAULT or VPC."
+  }
 }
 
 variable "backend_runtime_environment_variables" {

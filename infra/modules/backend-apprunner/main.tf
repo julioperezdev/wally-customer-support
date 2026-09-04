@@ -138,8 +138,8 @@ resource "aws_apprunner_service" "backend" {
 
   lifecycle {
     precondition {
-      condition     = var.vpc_connector_arn != null
-      error_message = "backend_vpc_connector_arn is required before creating App Runner so the service can reach the shared RDS."
+      condition     = var.egress_type == "DEFAULT" || var.vpc_connector_arn != null
+      error_message = "vpc_connector_arn is required when App Runner egress_type is VPC."
     }
   }
 
@@ -180,10 +180,14 @@ resource "aws_apprunner_service" "backend" {
     unhealthy_threshold = 10
   }
 
-  network_configuration {
-    egress_configuration {
-      egress_type       = "VPC"
-      vpc_connector_arn = var.vpc_connector_arn
+  dynamic "network_configuration" {
+    for_each = var.egress_type == "VPC" ? [1] : []
+
+    content {
+      egress_configuration {
+        egress_type       = "VPC"
+        vpc_connector_arn = var.vpc_connector_arn
+      }
     }
   }
 
