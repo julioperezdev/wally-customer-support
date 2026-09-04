@@ -140,6 +140,7 @@ data "aws_iam_policy_document" "terraform" {
     actions = [
       "s3:Get*",
       "s3:ListBucket",
+      "s3:ListTagsForResource",
     ]
     resources = [local.source_bucket_arn_pattern, local.source_object_arn_pattern]
   }
@@ -164,6 +165,7 @@ data "aws_iam_policy_document" "terraform" {
       "s3vectors:GetVectorBucket",
       "s3vectors:GetVectorBucketPolicy",
       "s3vectors:ListIndexes",
+      "s3vectors:ListTagsForResource",
       "s3vectors:PutVectorBucketPolicy",
       "s3vectors:TagResource",
       "s3vectors:UntagResource",
