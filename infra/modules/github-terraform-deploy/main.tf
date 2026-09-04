@@ -140,6 +140,7 @@ data "aws_iam_policy_document" "terraform" {
       "s3:DeleteObject",
       "s3:GetBucketLocation",
       "s3:GetBucketOwnershipControls",
+      "s3:GetBucketPolicy",
       "s3:GetBucketPublicAccessBlock",
       "s3:GetBucketTagging",
       "s3:GetBucketVersioning",
