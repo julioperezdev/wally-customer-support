@@ -97,8 +97,15 @@ docker compose --env-file observability/grafana/.env \
   -f observability/grafana/docker-compose.yml ps
 ```
 
-Abrir <http://localhost:3000> e ingresar con el usuario y la contraseña del
-archivo `.env`. El puerto queda ligado a `127.0.0.1` y el datasource `WCS
+En la computadora, abrir <http://localhost:3000> —o el puerto definido en
+`GRAFANA_PORT`— e ingresar con el usuario y la contraseña del archivo `.env`.
+El compose publica el puerto en `0.0.0.0` para permitir el acceso desde una
+VPN. Desde el teléfono usar `http://IP_VPN_DE_LA_COMPUTADORA:PUERTO`, por
+ejemplo `http://100.x.y.z:3001` si la computadora usa ese puerto.
+
+`0.0.0.0` escucha en todas las interfaces del host. Antes de usarlo, limitar
+el puerto `GRAFANA_PORT` con el firewall del sistema a la subred de la VPN y
+no configurar port-forwarding público en el router. El datasource `WCS
 CloudWatch` se provisiona automáticamente.
 
 El dashboard `WCS · Observabilidad local` usa por defecto:
@@ -144,9 +151,10 @@ métricas pueden generar cargos normales de AWS. Se consulta por prefijo porque
 App Runner crea nuevos IDs de revisión sin cambiar el nombre lógico del
 servicio.
 
-La solución es deliberadamente sólo de diagnóstico local. No expone Grafana a
-Internet, no consulta directamente PostgreSQL y no reemplaza alarmas, retención
-ni un sistema de trazas productivo.
+La solución es deliberadamente sólo de diagnóstico local. No configura
+port-forwarding público ni consulta directamente PostgreSQL. El binding en
+`0.0.0.0` debe combinarse con una VPN y reglas de firewall; no reemplaza
+alarmas, retención ni un sistema de trazas productivo.
 
 ## Validación con las preguntas de Telegram
 
