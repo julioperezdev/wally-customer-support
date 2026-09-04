@@ -444,15 +444,28 @@ data "aws_iam_policy_document" "terraform" {
   }
 
   statement {
-    sid       = "PassWcsAppRunnerRoles"
+    sid       = "PassWcsAppRunnerEcrAccessRole"
     effect    = "Allow"
     actions   = ["iam:PassRole"]
-    resources = [local.apprunner_ecr_access_role_arn, local.apprunner_instance_role_arn]
+    resources = [local.apprunner_ecr_access_role_arn]
 
     condition {
       test     = "StringEquals"
       variable = "iam:PassedToService"
-      values   = ["apprunner.amazonaws.com"]
+      values   = ["build.apprunner.amazonaws.com"]
+    }
+  }
+
+  statement {
+    sid       = "PassWcsAppRunnerInstanceRole"
+    effect    = "Allow"
+    actions   = ["iam:PassRole"]
+    resources = [local.apprunner_instance_role_arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "iam:PassedToService"
+      values   = ["tasks.apprunner.amazonaws.com"]
     }
   }
 
