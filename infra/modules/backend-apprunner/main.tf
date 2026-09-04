@@ -110,7 +110,8 @@ data "aws_iam_policy_document" "apprunner_instance" {
     content {
       sid       = "ReadAppConfig"
       effect    = "Allow"
-      actions   = ["appconfigdata:StartConfigurationSession", "appconfigdata:GetLatestConfiguration"]
+      # AppConfig Data API uses the appconfig IAM namespace for these actions.
+      actions   = ["appconfig:StartConfigurationSession", "appconfig:GetLatestConfiguration"]
       resources = ["*"]
     }
   }
