@@ -25,6 +25,14 @@ La matriz de adapters debe ejecutar el mismo caso de uso con `Channel.WHATSAPP`
 y `Channel.TELEGRAM`. Los contratos de cada canal verifican sólo la traducción
 del payload, autenticación del webhook y request outbound; no duplican reglas de
 catálogo, IA, ownership o idempotencia.
+
+Los tests de integración que arrancan el contexto Spring y acceden a
+persistencia usan un contenedor PostgreSQL 16 administrado por Testcontainers.
+El datasource se inyecta con `@DynamicPropertySource`, por lo que la suite no
+depende de PostgreSQL local, H2, RDS ni credenciales externas. Ejecutar
+`mvn -q verify` requiere que Docker Desktop o un runtime Docker compatible esté
+disponible; los tests unitarios y de aplicación continúan usando dobles y no
+necesitan iniciar el contenedor.
 | E2E Meta | Número controlado, webhook HTTPS y respuesta real | Evidencia sanitizada |
 | Data lifecycle | Retención, borrado y `DO_NOT_CONTACT` | Reporte de job + query agregada |
 | Operational | Health, readiness, ack rápido, retry, alertas y rollback | CI + runbook |
@@ -157,5 +165,5 @@ No alcanza con que compile. Para aceptar el MVP:
 ## Evidencia actual
 
 - `mvn clean test`: tests unitarios de HMAC, parser, controller, servicio de aplicación y adapter Meta.
-- `WallyCustomerSupportApplicationTest`: arranque Spring Boot con JPA, migraciones Flyway V1–V3, consulta del catálogo demo, horarios y políticas con adapters de prueba.
-- La integración PostgreSQL real debe ejecutarse con Testcontainers o el PostgreSQL local documentado antes de cerrar WCS-12.
+- `WallyCustomerSupportApplicationIntegrationTest`: arranque Spring Boot con JPA, migraciones Flyway V1–V4, consulta del catálogo demo, horarios y políticas contra PostgreSQL 16 de Testcontainers.
+- La integración PostgreSQL real se ejecuta de forma reproducible con Testcontainers antes de cerrar WCS-12; no se usa H2 para validar el esquema, las queries ni las migraciones.

@@ -7,16 +7,35 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import javax.sql.DataSource;
 import com.wally.customersupport.catalog.application.service.CatalogConversationService;
 import com.wally.customersupport.catalog.application.service.CatalogQueryService;
-import com.wally.customersupport.support.application.service.SupportConfigurationQueryService;
 import com.wally.customersupport.catalog.domain.model.CatalogQuery;
+import com.wally.customersupport.support.application.service.SupportConfigurationQueryService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.ActiveProfiles;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest
 @ActiveProfiles("test")
-class WallyCustomerSupportApplicationTest {
+@Testcontainers
+class WallyCustomerSupportApplicationIntegrationTest {
+
+    @Container
+    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16")
+            .withDatabaseName("wcs_test")
+            .withUsername("wcs")
+            .withPassword("test");
+
+    @DynamicPropertySource
+    static void datasourceProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
+        registry.add("spring.datasource.username", POSTGRES::getUsername);
+        registry.add("spring.datasource.password", POSTGRES::getPassword);
+    }
 
     @Autowired
     private DataSource dataSource;
