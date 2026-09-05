@@ -49,8 +49,8 @@ locals {
     "wcs.telegram.allowed-chat-id"                           = ""
     "wcs.telegram.connect-timeout"                           = "PT2S"
     "wcs.telegram.read-timeout"                              = "PT5S"
-    "wcs.ai.provider"                                        = "mock"
-    "wcs.ai.model"                                           = "llm.mock.v1"
+    "wcs.ai.provider"                                        = "bedrock"
+    "wcs.ai.model"                                           = "openai.gpt-oss-20b-1:0"
     "wcs.ai.region"                                          = var.aws_region
     "wcs.ai.pricing-version"                                 = "aws-bedrock-us-east-1-standard-2026-09"
     "wcs.ai.input-price-usd-per-million-tokens"              = 0.0721

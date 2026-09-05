@@ -20,7 +20,9 @@ Flyway crea únicamente el schema lógico `wcs`.
 - Una Knowledge Base propia de WCS: bucket S3 versionado para Markdown, S3
   Vectors, Titan Text Embeddings V2 y un service role exclusivo.
 - RDS PostgreSQL existente de `tesis-dev`, consumido como dependencia externa.
-- Bedrock como permiso opcional del runtime, sin habilitarlo por defecto.
+- Bedrock habilitado para el runtime con permiso mínimo sobre el modelo
+  configurado; el modelo no se puede invocar si AppConfig mantiene el provider
+  `mock`.
 
 No se crean VPC, subnets, security groups ni otra instancia RDS en este stack.
 `backend_egress_type` controla la salida de App Runner:

@@ -49,8 +49,8 @@ backend_image_tag         = "bootstrap"
 #   "wcs.telegram.api-base-url": "https://api.telegram.org",
 #   "wcs.telegram.connect-timeout": "PT2S",
 #   "wcs.telegram.read-timeout": "PT5S",
-#   "wcs.ai.provider": "mock",
-#   "wcs.ai.model": "llm.mock.v1",
+#   "wcs.ai.provider": "bedrock",
+#   "wcs.ai.model": "openai.gpt-oss-20b-1:0",
 #   "wcs.ai.region": "us-east-1",
 #   "wcs.ai.pricing-version": "aws-bedrock-us-east-1-standard-2026-09",
 #   "wcs.ai.input-price-usd-per-million-tokens": 0.0721,
@@ -68,5 +68,5 @@ backend_runtime_environment_variables = {}
 # App Runner secret mappings are explicitly approved.
 backend_runtime_environment_secrets = {}
 
-enable_bedrock_access = false
-bedrock_model_arns    = []
+enable_bedrock_access = true
+bedrock_model_arns    = ["arn:aws:bedrock:us-east-1::foundation-model/openai.gpt-oss-20b-1:0"]
