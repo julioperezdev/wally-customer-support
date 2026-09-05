@@ -5,17 +5,15 @@ import java.util.List;
 import com.wally.customersupport.application.port.out.CatalogRepository;
 import com.wally.customersupport.domain.model.CatalogProduct;
 import com.wally.customersupport.domain.model.CatalogQuery;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class CatalogQueryService {
 
     private final CatalogRepository catalogRepository;
-
-    public CatalogQueryService(CatalogRepository catalogRepository) {
-        this.catalogRepository = catalogRepository;
-    }
 
     @Transactional(readOnly = true)
     public List<CatalogProduct> search(CatalogQuery query) {

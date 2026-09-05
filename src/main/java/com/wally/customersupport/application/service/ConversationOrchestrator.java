@@ -18,11 +18,13 @@ import com.wally.customersupport.domain.model.KnowledgeQuery;
 import com.wally.customersupport.domain.model.SupportPolicy;
 import com.wally.customersupport.infrastructure.config.RagProperties;
 import com.wally.customersupport.infrastructure.observability.StructuredEventLog;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
+@RequiredArgsConstructor
 public class ConversationOrchestrator {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ConversationOrchestrator.class);
@@ -44,21 +46,6 @@ public class ConversationOrchestrator {
     private final KnowledgeRetriever knowledgeRetriever;
     private final LlmClient llmClient;
     private final RagProperties ragProperties;
-
-    public ConversationOrchestrator(
-            ConversationIntentClassifier intentClassifier,
-            CatalogConversationService catalogConversationService,
-            SupportConfigurationQueryService supportConfigurationQueryService,
-            KnowledgeRetriever knowledgeRetriever,
-            LlmClient llmClient,
-            RagProperties ragProperties) {
-        this.intentClassifier = intentClassifier;
-        this.catalogConversationService = catalogConversationService;
-        this.supportConfigurationQueryService = supportConfigurationQueryService;
-        this.knowledgeRetriever = knowledgeRetriever;
-        this.llmClient = llmClient;
-        this.ragProperties = ragProperties;
-    }
 
     public String replyFor(ConversationContext context) {
         long startedAt = System.nanoTime();

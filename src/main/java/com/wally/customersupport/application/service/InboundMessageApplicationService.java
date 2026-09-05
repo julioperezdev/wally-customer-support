@@ -22,11 +22,12 @@ import com.wally.customersupport.domain.model.OutboxMessage;
 import com.wally.customersupport.domain.model.OutboundMessage;
 import com.wally.customersupport.domain.model.ProcessingAttempt;
 import com.wally.customersupport.domain.model.ProcessingAttemptStatus;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class InboundMessageApplicationService implements InboundMessagePort {
 
     private final ConversationRepository conversationRepository;
@@ -35,37 +36,6 @@ public class InboundMessageApplicationService implements InboundMessagePort {
     private final OutboxRepository outboxRepository;
     private final ConversationOrchestrator conversationOrchestrator;
     private final Clock clock;
-
-    @Autowired
-    public InboundMessageApplicationService(
-            ConversationRepository conversationRepository,
-            MessageRepository messageRepository,
-            ProcessingAttemptRepository processingAttemptRepository,
-            OutboxRepository outboxRepository,
-            ConversationOrchestrator conversationOrchestrator) {
-        this(
-                conversationRepository,
-                messageRepository,
-                processingAttemptRepository,
-                outboxRepository,
-                conversationOrchestrator,
-                Clock.systemUTC());
-    }
-
-    InboundMessageApplicationService(
-            ConversationRepository conversationRepository,
-            MessageRepository messageRepository,
-            ProcessingAttemptRepository processingAttemptRepository,
-            OutboxRepository outboxRepository,
-            ConversationOrchestrator conversationOrchestrator,
-            Clock clock) {
-        this.conversationRepository = conversationRepository;
-        this.messageRepository = messageRepository;
-        this.processingAttemptRepository = processingAttemptRepository;
-        this.outboxRepository = outboxRepository;
-        this.conversationOrchestrator = conversationOrchestrator;
-        this.clock = clock;
-    }
 
     @Override
     @Transactional
