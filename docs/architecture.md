@@ -3,8 +3,8 @@
 Owner: Tech Lead  
 Status: `Accepted`
 Last reviewed: 2026-09-03
-Related Jira: `WCS-13`, `WCS-17`, `WCS-18`, `WCS-20`, `WCS-21`, `WCS-22`, `WCS-25`, `WCS-28`, `WCS-29`
-Related repository paths: `src/main/java`, `src/main/resources`, `db/migration`  
+Related Jira: `WCS-13`, `WCS-17`, `WCS-18`, `WCS-20`, `WCS-21`, `WCS-22`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-32`
+Related repository paths: `src/main/java/com/wally/customersupport/{conversation,catalog,support,knowledge,shared}`, `src/main/resources`, `db/migration`
 Decision/source: specification de WhatsApp y re-baseline solicitada el 2026-08-30
 
 ## Decisión base
@@ -144,18 +144,51 @@ aplicación.
 
 ## Módulos y responsabilidades
 
-| Módulo | Responsabilidad | Dependencias permitidas |
-| --- | --- | --- |
-| `domain` | Entidades, value objects, estados y reglas puras | Java |
-| `application` | Casos de uso, puertos, políticas y orquestación | `domain` |
-| `adapter/in/web` | HTTP, validación, challenge, firma y secret de webhook | `application`, Spring Web |
-| `adapter/out/whatsapp` y `adapter/out/telegram` | APIs de canal, mocks y mapeo de errores | `application`, RestClient |
-| `adapter/out/ai` | Bedrock, mocks, prompts y métricas | `application`, AWS SDK |
-| `adapter/out/knowledge` | Knowledge Bases, pgvector y mocks | `application`, AWS SDK/JDBC |
-| `adapter/out/persistence` | JPA, repositorios y Flyway | `application`, Spring Data |
-| `infrastructure` | Configuración, seguridad, scheduling y observabilidad | Spring/AWS |
+WCS se organiza por bounded context. Cada contexto contiene sus casos de uso,
+modelos y adapters concretos; no existe una carpeta técnica global que mezcle
+persistencia, canales o IA de todos los contextos.
 
-El dominio no importa Spring, Meta, Graph API, Bedrock, SDKs de LLM ni JPA. Los controllers son delgados y no contienen prompts ni reglas de negocio.
+```text
+com.wally.customersupport/
+├── conversation/
+│   ├── application/{port,service}/
+│   ├── domain/model/
+│   └── infrastructure/
+│       ├── http/{telegram,whatsapp}/
+│       ├── channel/{telegram,whatsapp}/
+│       ├── ai/{bedrock,mock}/
+│       └── repository/postgres/
+├── catalog/
+│   ├── application/{port,service}/
+│   ├── domain/model/
+│   └── infrastructure/repository/postgres/
+├── support/
+│   ├── application/{port,service}/
+│   ├── domain/model/
+│   └── infrastructure/repository/postgres/
+├── knowledge/
+│   ├── application/port/
+│   ├── domain/model/
+│   └── infrastructure/ai/{bedrock,mock}/
+└── shared/infrastructure/{config,observability}/
+```
+
+| Contexto | Responsabilidad | Dependencias externas |
+| --- | --- | --- |
+| `conversation` | Mensajes, conversaciones, clasificación, orquestación, outbox y canales | Spring Web, RestClient, AWS Bedrock, JPA |
+| `catalog` | Productos, variantes, filtros y consultas determinísticas | Spring Data JPA, PostgreSQL |
+| `support` | Horarios y políticas operativas | Spring Data JPA, PostgreSQL |
+| `knowledge` | Recuperación documental y Knowledge Bases | AWS Bedrock |
+| `shared` | Configuración, bootstrap externo y observabilidad transversal | Spring/AWS |
+
+El dominio de cada contexto no importa Spring, Meta, Graph API, Bedrock, SDKs
+de LLM, JPA ni HTTP. Los controllers son delgados y no contienen prompts,
+queries complejas ni reglas de negocio.
+
+Los adapters concretos viven dentro del contexto que los utiliza. Las
+interfaces existentes se mantienen durante esta migración para no mezclar el
+refactor físico con un cambio de contratos; la eliminación progresiva de
+sufijos redundantes como `Port` queda para una tarea posterior.
 
 ### Inyección de dependencias y construcción de servicios
 

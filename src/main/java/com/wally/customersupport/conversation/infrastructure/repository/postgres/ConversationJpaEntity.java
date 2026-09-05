@@ -1,0 +1,59 @@
+package com.wally.customersupport.conversation.infrastructure.repository.postgres;
+
+import java.time.Instant;
+import java.util.UUID;
+
+import com.wally.customersupport.conversation.domain.model.Channel;
+import com.wally.customersupport.conversation.domain.model.Conversation;
+import com.wally.customersupport.conversation.domain.model.ConversationStatus;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+@Entity
+@Table(name = "conversations", schema = "wcs")
+public class ConversationJpaEntity {
+
+    @Id
+    private UUID id;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32)
+    private Channel channel;
+
+    @Column(name = "external_conversation_id", nullable = false, length = 128)
+    private String externalConversationId;
+
+    @Column(name = "external_customer_id", nullable = false, length = 128)
+    private String externalCustomerId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32)
+    private ConversationStatus status;
+
+    @Column(name = "created_at", nullable = false)
+    private Instant createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
+
+    protected ConversationJpaEntity() {
+    }
+
+    public ConversationJpaEntity(Conversation conversation) {
+        this.id = conversation.id();
+        this.channel = conversation.channel();
+        this.externalConversationId = conversation.externalConversationId();
+        this.externalCustomerId = conversation.externalCustomerId();
+        this.status = conversation.status();
+        this.createdAt = conversation.createdAt();
+        this.updatedAt = conversation.updatedAt();
+    }
+
+    public Conversation toDomain() {
+        return new Conversation(id, channel, externalConversationId, externalCustomerId, status, createdAt, updatedAt);
+    }
+}

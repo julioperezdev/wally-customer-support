@@ -5,10 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import javax.sql.DataSource;
-import com.wally.customersupport.application.service.CatalogConversationService;
-import com.wally.customersupport.application.service.CatalogQueryService;
-import com.wally.customersupport.application.service.SupportConfigurationQueryService;
-import com.wally.customersupport.domain.model.CatalogQuery;
+import com.wally.customersupport.catalog.application.service.CatalogConversationService;
+import com.wally.customersupport.catalog.application.service.CatalogQueryService;
+import com.wally.customersupport.support.application.service.SupportConfigurationQueryService;
+import com.wally.customersupport.catalog.domain.model.CatalogQuery;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

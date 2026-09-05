@@ -1,2 +1,2 @@
 org.springframework.boot.EnvironmentPostProcessor=\
-com.wally.customersupport.infrastructure.config.AwsExternalConfigurationEnvironmentPostProcessor
+com.wally.customersupport.shared.infrastructure.config.AwsExternalConfigurationEnvironmentPostProcessor
