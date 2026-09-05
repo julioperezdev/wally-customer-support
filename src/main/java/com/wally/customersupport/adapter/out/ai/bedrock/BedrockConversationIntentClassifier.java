@@ -20,6 +20,7 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
     private static final int MAX_MESSAGE_CHARS = 2_000;
     // GPT-OSS emits reasoning before the final JSON. maxTokens includes both.
     private static final int MAX_OUTPUT_TOKENS = 1_024;
+    private static final double DEFAULT_GENERAL_SUPPORT_CONFIDENCE = 0.70;
     private static final Set<String> POLICY_KEYS = Set.of("shipping", "payments", "changes", "returns");
     private static final String SYSTEM_PROMPT = """
             Sos el clasificador de intenciones de Wally Customer Support.
@@ -30,12 +31,17 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
 
             Intenciones permitidas: GREETING, CATALOG_SEARCH, BUSINESS_HOURS, POLICY_QUERY,
             HUMAN_HANDOFF, GENERAL_SUPPORT, UNKNOWN.
+            GENERAL_SUPPORT incluye ubicacion, sedes, direccion, contacto y otras preguntas generales
+            de la tienda que no sean catalogo, horarios, politicas o solicitud de agente.
             policyKey permitido: shipping, payments, changes, returns.
             Para CATALOG_SEARCH, extrae solo filtros presentes y usa talle XS, S, M, L, XL o XXL;
             color y nombre deben quedar en español normalizado. Si un dato no aparece, usa null.
+            confidence siempre debe ser un numero JSON entre 0 y 1, nunca null.
+            Para una pregunta clara de ubicacion como "¿Dónde están ubicados?", usa GENERAL_SUPPORT
+            con confidence >= 0.90.
 
             Formato obligatorio:
-            {"intent":"CATALOG_SEARCH","confidence":0.0,"catalogQuery":{"name":null,"sku":null,"size":null,"color":null},"policyKey":null}
+            {"intent":"GENERAL_SUPPORT","confidence":0.0,"catalogQuery":{"name":null,"sku":null,"size":null,"color":null},"policyKey":null}
             """;
 
     private final BedrockConverseClient converseClient;
@@ -71,7 +77,7 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
         try {
             JsonNode root = objectMapper.readTree(extractJsonObject(output));
             ConversationIntent intent = parseIntent(root.path("intent").asText(null));
-            double confidence = root.path("confidence").asDouble(0.0);
+            double confidence = parseConfidence(root.path("confidence"), intent);
             CatalogQuery catalogQuery = intent == ConversationIntent.CATALOG_SEARCH
                     ? catalogQuery(root.path("catalogQuery"))
                     : null;
@@ -82,6 +88,18 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
         } catch (RuntimeException exception) {
             return ConversationIntentDecision.unknown();
         }
+    }
+
+    private double parseConfidence(JsonNode node, ConversationIntent intent) {
+        if (node == null || node.isMissingNode() || node.isNull()) {
+            // GENERAL_SUPPORT is a read-only/documentary path. Allow a valid
+            // intent with an omitted confidence to reach RAG, while keeping
+            // malformed confidence unsafe for operational intents.
+            return intent == ConversationIntent.GENERAL_SUPPORT
+                    ? DEFAULT_GENERAL_SUPPORT_CONFIDENCE
+                    : 0.0;
+        }
+        return node.isNumber() ? node.asDouble() : 0.0;
     }
 
     private CatalogQuery catalogQuery(JsonNode node) {
