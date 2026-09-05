@@ -18,6 +18,8 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
 
     private static final String PROMPT_VERSION = "conversation-intent-v1";
     private static final int MAX_MESSAGE_CHARS = 2_000;
+    // GPT-OSS emits reasoning before the final JSON. maxTokens includes both.
+    private static final int MAX_OUTPUT_TOKENS = 1_024;
     private static final Set<String> POLICY_KEYS = Set.of("shipping", "payments", "changes", "returns");
     private static final String SYSTEM_PROMPT = """
             Sos el clasificador de intenciones de Wally Customer Support.
@@ -57,7 +59,7 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
                     "Version de prompt: " + PROMPT_VERSION + "\n<customer_message>\n"
                             + message.substring(0, Math.min(message.length(), MAX_MESSAGE_CHARS))
                             + "\n</customer_message>",
-                    256,
+                    MAX_OUTPUT_TOKENS,
                     0.0f);
             return parse(output);
         } catch (RuntimeException exception) {
