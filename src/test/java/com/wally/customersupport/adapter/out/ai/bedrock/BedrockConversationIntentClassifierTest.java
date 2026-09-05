@@ -48,4 +48,17 @@ class BedrockConversationIntentClassifierTest {
         assertEquals(ConversationIntent.UNKNOWN, decision.intent());
         assertEquals(0.0, decision.confidence());
     }
+
+    @Test
+    void usesBoundedConfidenceWhenGeneralSupportOmitsConfidence() {
+        BedrockConverseClient converseClient = mock(BedrockConverseClient.class);
+        when(converseClient.complete(anyString(), anyString(), anyString(), anyString(), anyInt(), anyFloat()))
+                .thenReturn("{\"intent\":\"GENERAL_SUPPORT\",\"catalogQuery\":null,\"policyKey\":null}");
+
+        var decision = new BedrockConversationIntentClassifier(converseClient, new ObjectMapper())
+                .classify("¿Dónde están ubicados?");
+
+        assertEquals(ConversationIntent.GENERAL_SUPPORT, decision.intent());
+        assertEquals(0.70, decision.confidence());
+    }
 }

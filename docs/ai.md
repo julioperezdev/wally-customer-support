@@ -117,6 +117,10 @@ GPT-OSS puede emitir un bloque de razonamiento antes del resultado final; por
 eso la clasificación y la redacción usan un presupuesto de salida de `1024`
 tokens. `maxTokens` incluye razonamiento y respuesta, y el adapter sólo extrae
 bloques de texto finales, nunca razonamiento ni prompts.
+El contrato exige una confianza numérica. Si Bedrock devuelve una intención
+`GENERAL_SUPPORT` válida pero omite la confianza, el backend aplica `0.70` sólo
+para ese camino documental de bajo riesgo; las intenciones operativas siguen
+siendo rechazadas cuando la confianza está ausente o malformada.
 
 ## Datos dinámicos y tools
 
