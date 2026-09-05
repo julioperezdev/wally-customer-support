@@ -113,6 +113,10 @@ sensible.
 El prompt de clasificación está versionado como `conversation-intent-v1` y el
 texto del cliente se envía como datos delimitados y acotados. El modelo real es
 `openai.gpt-oss-20b-1:0`, seleccionado por `wcs.ai.model`.
+GPT-OSS puede emitir un bloque de razonamiento antes del resultado final; por
+eso la clasificación y la redacción usan un presupuesto de salida de `1024`
+tokens. `maxTokens` incluye razonamiento y respuesta, y el adapter sólo extrae
+bloques de texto finales, nunca razonamiento ni prompts.
 
 ## Datos dinámicos y tools
 

@@ -9,6 +9,9 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(name = "wcs.ai.provider", havingValue = "bedrock")
 public class BedrockLlmClient implements LlmClient {
 
+    // GPT-OSS emits reasoning before the final answer. maxTokens includes both.
+    private static final int MAX_OUTPUT_TOKENS = 1_024;
+
     private static final String SYSTEM_PROMPT = """
             Sos el asistente de atención de Ropa de Programador.
             Responde en español claro, breve y amable. Usa únicamente la información entre
@@ -47,7 +50,7 @@ public class BedrockLlmClient implements LlmClient {
                 "conversation.reply.generate",
                 SYSTEM_PROMPT,
                 prompt,
-                512,
+                MAX_OUTPUT_TOKENS,
                 0.2f);
     }
 

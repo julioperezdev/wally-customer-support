@@ -4,7 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.anyFloat;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.wally.customersupport.domain.model.ConversationIntent;
@@ -31,6 +33,7 @@ class BedrockConversationIntentClassifierTest {
         assertEquals("camiseta", decision.catalogQuery().name());
         assertEquals("M", decision.catalogQuery().size());
         assertEquals("negro", decision.catalogQuery().color());
+        verify(converseClient).complete(anyString(), anyString(), anyString(), anyString(), eq(1_024), eq(0.0f));
     }
 
     @Test
