@@ -11,7 +11,7 @@ Related repository paths: `src/main/java/.../application/ai`, `src/main/resource
 | ID lógico | Proveedor | Uso | Estado |
 | --- | --- | --- | --- |
 | `llm.mock.v1` | Interno | Desarrollo, tests y fixtures | Accepted |
-| `llm.bedrock.openai.gpt-oss-20b.v1` | AWS Bedrock | Clasificación de intención y soporte general | Proposed |
+| `llm.bedrock.openai.gpt-oss-20b.v1` | AWS Bedrock | Clasificación de intención y soporte general | Accepted |
 | `llm.bedrock.nova-pro.v1` | AWS Bedrock | Referencia histórica para generación documental | Reference |
 
 Bedrock se integra detrás de `ConversationIntentClassifier` y `LlmClient`.

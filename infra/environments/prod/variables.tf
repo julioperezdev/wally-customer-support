@@ -162,11 +162,11 @@ variable "appconfig_secret_arns" {
 variable "enable_bedrock_access" {
   type        = bool
   description = "Whether the App Runner runtime role may invoke the explicitly listed Bedrock models."
-  default     = false
+  default     = true
 }
 
 variable "bedrock_model_arns" {
   type        = set(string)
   description = "Bedrock model ARNs allowed to the runtime when enable_bedrock_access is true."
-  default     = []
+  default     = ["arn:aws:bedrock:us-east-1::foundation-model/openai.gpt-oss-20b-1:0"]
 }
