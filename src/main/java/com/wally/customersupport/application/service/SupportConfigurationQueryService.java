@@ -6,17 +6,15 @@ import java.util.Optional;
 import com.wally.customersupport.application.port.out.SupportConfigurationRepository;
 import com.wally.customersupport.domain.model.BusinessHour;
 import com.wally.customersupport.domain.model.SupportPolicy;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class SupportConfigurationQueryService {
 
     private final SupportConfigurationRepository repository;
-
-    public SupportConfigurationQueryService(SupportConfigurationRepository repository) {
-        this.repository = repository;
-    }
 
     @Transactional(readOnly = true)
     public List<BusinessHour> businessHours() {

@@ -157,6 +157,22 @@ aplicación.
 
 El dominio no importa Spring, Meta, Graph API, Bedrock, SDKs de LLM ni JPA. Los controllers son delgados y no contienen prompts ni reglas de negocio.
 
+### Inyección de dependencias y construcción de servicios
+
+La inyección de dependencias es siempre por constructor. En los servicios de
+`application` se usa Lombok `@RequiredArgsConstructor` para generar el
+constructor a partir de las dependencias `final`; no se usa inyección por
+campo, `@Data` ni setters mutables. El dominio permanece como Java plano y no
+depende de Lombok ni de Spring.
+
+Las clases que necesiten normalizar o transformar dependencias al construirse
+pueden conservar un constructor explícito. Actualmente `OutboxDispatcher`
+mantiene ese patrón porque construye el registro de adapters por canal.
+
+El tiempo se inyecta mediante el bean `Clock` de infraestructura, configurado
+en UTC. Los tests pueden reemplazarlo por `Clock.fixed(...)` para conservar
+resultados determinísticos.
+
 ## Puertos principales
 
 ```java

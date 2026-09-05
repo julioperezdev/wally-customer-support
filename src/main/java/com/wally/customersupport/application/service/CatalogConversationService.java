@@ -9,6 +9,7 @@ import java.util.Optional;
 import com.wally.customersupport.domain.model.CatalogProduct;
 import com.wally.customersupport.domain.model.CatalogQuery;
 import com.wally.customersupport.domain.model.CatalogVariant;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 /**
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
  * classifier, while PostgreSQL remains the source of truth.</p>
  */
 @Service
+@RequiredArgsConstructor
 public class CatalogConversationService {
 
     private static final String CATALOG_CLARIFICATION =
@@ -28,10 +30,6 @@ public class CatalogConversationService {
                     + "No puedo confirmar disponibilidad fuera de los datos registrados.";
 
     private final CatalogQueryService catalogQueryService;
-
-    public CatalogConversationService(CatalogQueryService catalogQueryService) {
-        this.catalogQueryService = catalogQueryService;
-    }
 
     public Optional<String> replyFor(String message) {
         return CatalogQueryParser.parse(message).map(this::replyForQuery);
