@@ -4,7 +4,7 @@ Owner: Tech Lead
 Status: `Proposed`  
 Last reviewed: 2026-09-03
 Related Jira: `WCS-13`, `WCS-14`, `WCS-15`, `WCS-16`, `WCS-25`, `WCS-28`, `WCS-29`
-Related repository paths: `src/main/java/.../adapter/out/persistence`, `src/main/resources/db/migration`
+Related repository paths: `src/main/java/com/wally/customersupport/{conversation,catalog,support}/infrastructure/repository/postgres`, `src/main/resources/db/migration`
 
 ## Aislamiento en el RDS compartido
 

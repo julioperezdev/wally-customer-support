@@ -4,7 +4,7 @@ Owner: AI/Tech Lead
 Status: `Accepted`
 Last reviewed: 2026-09-03
 Related Jira: `WCS-11`, `WCS-20`, `WCS-21`, `WCS-30`
-Related repository paths: `src/main/java/.../application/ai`, `src/main/resources/prompts`, `src/test/resources/fixtures`
+Related repository paths: `src/main/java/com/wally/customersupport/conversation/infrastructure/ai`, `src/main/resources/prompts`, `src/test/resources/fixtures`
 
 ## Registro de modelos
 

@@ -157,7 +157,8 @@ pero no deben existir dos valores autoritativos sin sincronización:
 - Jira: `WCS-11`, `WCS-20`, `WCS-21`.
 - Documentación canónica: `WCS — AI Models & Prompt Registry` y
   `WCS — Architecture & Services`.
-- Implementación prevista: `adapter/out/knowledge`, `adapter/out/ai` y
+- Implementación prevista: `knowledge/infrastructure/ai`,
+  `conversation/infrastructure/ai` y sus respectivos módulos
   `application`.
 
 ## Referencias técnicas

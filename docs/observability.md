@@ -3,7 +3,7 @@
 Owner: Tech Lead
 Status: `In Progress`
 Related Jira: `WCS-21`, `WCS-22`
-Related repository paths: `observability/grafana/`, `src/main/java/com/wally/customersupport/adapter/in/web/`, `src/main/java/com/wally/customersupport/application/service/`
+Related repository paths: `observability/grafana/`, `src/main/java/com/wally/customersupport/conversation/infrastructure/http/`, `src/main/java/com/wally/customersupport/conversation/application/service/`, `src/main/java/com/wally/customersupport/shared/infrastructure/observability/`
 
 ## Objetivo de esta iteración
 
