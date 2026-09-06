@@ -25,11 +25,15 @@ App Runner ──► CloudWatch Logs + AWS/AppRunner metrics
 ## Qué se instrumenta
 
 El backend emite eventos operativos como una línea JSON con el prefijo lógico
-`WCS_EVENT`. Cada evento tiene `eventFamily`, `schemaVersion`, `eventType`,
-`service` y `occurredAt`, además de sus dimensiones específicas. El formato
-JSON permite conservar tipos numéricos y booleanos para agregaciones; las
-consultas versionadas usan `parse` explícito porque Spring Boot puede agregar
-un prefijo textual al mensaje antes de enviarlo a CloudWatch.
+`WCS_EVENT`. Cada evento tiene `eventFamily`, `schemaVersion`, `eventId`,
+`eventType`, `service` y `occurredAt`, además de sus dimensiones específicas.
+Cuando existe un request HTTP, también incluye el `requestId` generado por el
+backend. El mismo ID se mantiene en MDC durante el procesamiento síncrono,
+por lo que permite relacionar el request con clasificación, IA, RAG y la
+respuesta generada. El formato JSON permite conservar tipos numéricos y
+booleanos para agregaciones; las consultas versionadas usan `parse` explícito
+porque Spring Boot puede agregar un prefijo textual al mensaje antes de
+enviarlo a CloudWatch.
 
 El enfoque sigue el patrón de [wide events](https://loggingsucks.com/): un
 evento resume cada consulta y cada dependencia relevante, con el contexto
@@ -37,6 +41,7 @@ operacional necesario para diagnóstico y costo, pero sin contenido de negocio.
 
 | Evento | Campos | Uso |
 | --- | --- | --- |
+| `HTTP_REQUEST_COMPLETED` | `requestId`, `httpMethod`, `route`, `httpStatus`, `outcome`, `durationMs`, `errorType` | Cierre de cada request HTTP, incluidos errores y rechazos |
 | `WEBHOOK_ACCEPTED` | `channel`, `commandCount` | Webhook recibido con autenticación válida |
 | `WEBHOOK_REJECTED` | `channel`, `reason` | Firma o secret inválido, payload malformado |
 | `INBOUND_MESSAGE_PROCESSED` | `channel`, `result`, `durationMs` | Mensaje aceptado, duplicado o ignorado |
@@ -51,8 +56,12 @@ operacional necesario para diagnóstico y costo, pero sin contenido de negocio.
 No se registran texto de usuario, prompts, respuestas completas, números de
 teléfono, chat IDs, secretos, firmas ni payloads de proveedores. Los campos
 `inputTokens`, `outputTokens` y `totalTokens` son cantidades consumidas por el
-modelo, no tokens de autenticación. `correlationId` es el UUID interno de la
-conversación/outbox y no contiene el identificador externo del canal.
+modelo, no tokens de autenticación. `requestId`, `eventId` y `correlationId`
+son identificadores internos; `correlationId` representa la conversación o
+outbox y no contiene el identificador externo del canal. El response header
+`X-Request-Id` expone únicamente el identificador generado para facilitar el
+diagnóstico, sin aceptar ni reflejar valores arbitrarios enviados por el
+cliente.
 
 `AI_USAGE_RECORDED` se emite para Bedrock Converse con los contadores
 normalizados que devuelve el proveedor. `estimatedCostUsd` se calcula con el
@@ -155,6 +164,20 @@ La solución es deliberadamente sólo de diagnóstico local. No configura
 port-forwarding público ni consulta directamente PostgreSQL. El binding en
 `0.0.0.0` debe combinarse con una VPN y reglas de firewall; no reemplaza
 alarmas, retención ni un sistema de trazas productivo.
+
+## Requests HTTP y correlación
+
+`RequestObservabilityFilter` genera un `requestId` UUID por request, lo añade
+al response header `X-Request-Id` y emite un único
+`HTTP_REQUEST_COMPLETED` al finalizar. El evento contiene `SUCCESS`,
+`CLIENT_ERROR`, `SERVER_ERROR` o `ERROR`, junto con status y duración. No se
+emite un log `INIT` ni se lee el body para construir el evento.
+
+El `requestId` se agrega automáticamente a todos los eventos escritos durante
+el mismo hilo mediante MDC. Los procesos asíncronos, como el dispatcher de
+outbox, continúan utilizando `correlationId` de conversación y sus propios
+campos de entrega; un request HTTP no se mantiene abierto mientras se envía
+la respuesta al proveedor.
 
 ## Validación con las preguntas de Telegram
 

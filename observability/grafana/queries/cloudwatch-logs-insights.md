@@ -5,10 +5,35 @@ Estas consultas se ejecutan desde Grafana Explore usando el datasource
 `/aws/apprunner/wally-customer-support-prod-backend`.
 
 WCS emite eventos operativos como una línea JSON con el campo común
-`eventFamily=WCS_EVENT`, `schemaVersion`, `eventType`, `service` y
-`occurredAt`. Spring Boot puede agregar un prefijo textual a la línea; por eso
-las consultas usan `parse` explícito en vez de depender del descubrimiento
-automático de campos JSON.
+`eventFamily=WCS_EVENT`, `schemaVersion`, `eventId`, `eventType`, `service` y
+`occurredAt`. Los requests HTTP agregan `requestId` y lo propagan a los
+eventos síncronos del flujo. Spring Boot puede agregar un prefijo textual a la
+línea; por eso las consultas usan `parse` explícito en vez de depender del
+descubrimiento automático de campos JSON.
+
+## Requests HTTP por ruta, resultado y latencia
+
+```text
+fields @timestamp, @message
+| filter @message like /\"eventType\":\"HTTP_REQUEST_COMPLETED\"/
+| parse @message /\"httpMethod\":\"(?<parsedHttpMethod>[^\"]+)\"/
+| parse @message /\"route\":\"(?<parsedRoute>[^\"]+)\"/
+| parse @message /\"httpStatus\":(?<parsedHttpStatus>[0-9]+)/
+| parse @message /\"outcome\":\"(?<parsedOutcome>[^\"]+)\"/
+| parse @message /\"durationMs\":(?<parsedDurationMs>[0-9]+)/
+| stats count() as requests,
+        avg(parsedDurationMs) as averageDurationMs,
+        pct(parsedDurationMs, 50) as p50DurationMs,
+        pct(parsedDurationMs, 95) as p95DurationMs,
+        sum(if(parsedOutcome = \"SERVER_ERROR\" or parsedOutcome = \"ERROR\", 1, 0)) as failures
+  by parsedHttpMethod, parsedRoute, parsedHttpStatus, parsedOutcome, bin(1h)
+| sort @timestamp asc
+```
+
+El response header `X-Request-Id` permite buscar todos los eventos de una
+ejecución concreta. Para métricas agregadas no se debe usar `requestId` como
+dimensión: es un valor de alta cardinalidad y sólo debe utilizarse para
+diagnóstico puntual.
 
 Los eventos no incluyen texto de usuario, prompts, respuestas completas,
 secretos, números de teléfono ni tokens de autenticación. `inputTokens`,
