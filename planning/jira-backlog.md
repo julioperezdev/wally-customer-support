@@ -142,6 +142,18 @@ autoridad transaccional basada en memoria.
 **Evidencia:** tests del parser, flujo común de WhatsApp/Telegram,
 Testcontainers, logs sanitizados y documentación actualizada.
 
+## WCS-39 — Alinear baseline de AppConfig v5 en Terraform
+
+**Tipo:** Task · **Prioridad:** High · **Estimate:** 1d · **Estado:** In Progress
+
+Mantener en Terraform el baseline no sensible de AppConfig versión 5 y agregar
+las cuatro claves de preferencias explícitas con sus valores aprobados. No se
+incluyen secretos ni se elimina la protección `ignore_changes` que evita
+sobrescribir cambios administrados desde AWS.
+
+**Evidencia:** diff de Terraform, `terraform fmt`, `terraform validate` y
+revisión de valores contra la versión 5 activa en AWS.
+
 ## EPIC-WCS-01 — Gobierno y documentación
 
 ### WCS-9 — Definir espacio Confluence y matriz de fuentes de verdad
@@ -302,6 +314,7 @@ semántica o AgentCore.
 | 13 | WCS-36 | In Progress | Resumen versionado, ventana reciente, checkpoint y fallback controlado | WCS-35 |
 | 14 | WCS-37 | In Progress | Preferencias explícitas PostgreSQL, TTL, ownership, borrado y contexto auxiliar | WCS-34, WCS-35, WCS-36 |
 | 15 | WCS-38 | In Progress | Captura determinística de preferencias explícitas en inbound | WCS-20, WCS-37 |
+| 16 | WCS-39 | In Progress | Baseline AppConfig v5 y preferencias explícitas declarados en Terraform | WCS-22, WCS-38 |
 
 `WCS-14`–`WCS-16` y `WCS-17` ya tienen la fundación o el contrato inicial
 versionado; deben completarse/verificarse según la evidencia de cada issue antes

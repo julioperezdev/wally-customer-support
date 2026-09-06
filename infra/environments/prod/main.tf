@@ -36,15 +36,19 @@ locals {
     "webhook-secret-token" = "REPLACE_ME_TELEGRAM_WEBHOOK_SECRET"
   })
 
-  fake_appconfig_configuration = jsonencode({
-    "wcs.whatsapp.adapter"                                   = "mock"
+  # This bootstrap document mirrors the currently deployed AppConfig v5
+  # non-secret baseline. Runtime changes made in AppConfig remain protected by
+  # ignore_changes in the AppConfig module; this document is used when the
+  # hosted configuration is created or explicitly overridden.
+  default_appconfig_configuration = {
+    "wcs.whatsapp.adapter"                                   = "meta"
     "wcs.whatsapp.graph-api-version"                         = "v25.0"
     "wcs.whatsapp.graph-api-base-url"                        = "https://graph.facebook.com"
-    "wcs.whatsapp.phone-number-id"                           = "REPLACE_ME_PHONE_NUMBER_ID"
-    "wcs.whatsapp.business-account-id"                       = "REPLACE_ME_BUSINESS_ACCOUNT_ID"
-    "wcs.whatsapp.allowed-recipient"                         = ""
-    "wcs.telegram.enabled"                                   = false
-    "wcs.telegram.adapter"                                   = "disabled"
+    "wcs.whatsapp.phone-number-id"                           = "1271920986004478"
+    "wcs.whatsapp.business-account-id"                       = "1684722242599448"
+    "wcs.whatsapp.allowed-recipient"                         = "5491159230699"
+    "wcs.telegram.enabled"                                   = true
+    "wcs.telegram.adapter"                                   = "telegram"
     "wcs.telegram.api-base-url"                              = "https://api.telegram.org"
     "wcs.telegram.allowed-chat-id"                           = ""
     "wcs.telegram.connect-timeout"                           = "PT2S"
@@ -60,10 +64,14 @@ locals {
     "wcs.rag.knowledge-base-id"                              = module.wcs_knowledge_base.knowledge_base_id
     "wcs.rag.region"                                         = var.aws_region
     "wcs.outbox.max-attempts"                                = 3
+    "wcs.conversation.preferences.enabled"                   = false
+    "wcs.conversation.preferences.ttl"                       = "PT24H"
+    "wcs.conversation.preferences.max-preferences"           = 5
+    "wcs.conversation.preferences.max-value-characters"      = 64
     "wcs.external-config.secrets-manager.database-secret-id" = module.database_secrets.secret_name
     "wcs.external-config.secrets-manager.whatsapp-secret-id" = module.whatsapp_secrets.secret_name
     "wcs.external-config.secrets-manager.telegram-secret-id" = module.telegram_secrets.secret_name
-  })
+  }
 
   runtime_secret_arns = setunion(
     toset(values(var.backend_runtime_environment_secrets)),
@@ -112,8 +120,11 @@ module "appconfig" {
   environment_name         = var.environment
   profile_name             = "runtime"
   deployment_strategy_name = "${var.project_name}-${var.environment}-all-at-once"
-  configuration_content    = coalesce(var.appconfig_configuration_content, local.fake_appconfig_configuration)
-  tags                     = local.common_tags
+  configuration_content = jsonencode(merge(
+    local.default_appconfig_configuration,
+    var.appconfig_configuration_content == null ? {} : jsondecode(var.appconfig_configuration_content)
+  ))
+  tags = local.common_tags
 }
 
 module "wcs_knowledge_base" {
