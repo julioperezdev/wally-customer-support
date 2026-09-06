@@ -107,11 +107,21 @@ Se agregan cuando el producto acepta el alcance de conocimiento:
 
 Si se elige pgvector, la columna vectorial se agrega en una migración posterior cuando estén aprobados modelo de embeddings y dimensión. Knowledge Bases no requiere almacenar embeddings en WCS.
 
-### Estado conversacional — planificado en `WCS-33`
+### Estado conversacional — contrato en `WCS-34`, persistencia planificada en Fase 3
 
 La primera entrega reconstruye los filtros activos a partir de una ventana
 acotada de mensajes inbound persistidos. La siguiente iteración persistirá un
-estado tipado por conversación, separado del historial:
+estado tipado por conversación, separado del historial. `WCS-34` define el
+contrato `ConversationMemory`, el modelo inmutable `ConversationState` y los
+límites de privacidad/retención; el adapter en memoria sólo se usa en tests y
+desarrollo controlado:
+
+* `conversationId` y `actorId` pseudónimo como ownership;
+* mensajes recientes limitados por TTL, cantidad y caracteres;
+* carga que expira y elimina el estado vencido;
+* limpieza explícita por conversación y actor.
+
+La persistencia de Fase 3 agregará:
 
 * filtros de catálogo activos y sus reglas de reemplazo/limpieza;
 * último intent y timestamp de actualización;

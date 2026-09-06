@@ -12,6 +12,7 @@
 - [`data-model.md`](data-model.md)
 - [`ai.md`](ai.md)
 - [`conversational-memory-and-agentcore-plan.md`](conversational-memory-and-agentcore-plan.md): contexto conversacional, memoria, Knowledge Base y evaluación opcional de AgentCore.
+- [`privacy-retention.md`](privacy-retention.md): clasificación, límites, aislamiento, borrado y retención de memoria conversacional.
 - [`decisions/`](decisions/)
   - [`002-static-knowledge-and-dynamic-data.md`](decisions/002-static-knowledge-and-dynamic-data.md): Knowledge Base para documentos y tools para datos dinámicos.
   - [`003-conversational-memory-boundary.md`](decisions/003-conversational-memory-boundary.md): PostgreSQL como memoria inicial y AgentCore como adapter opcional.

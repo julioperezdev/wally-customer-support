@@ -3,7 +3,7 @@
 Owner: Product/Tech Lead
 Status: `Accepted for phased implementation`
 Last reviewed: 2026-09-05
-Related Jira: `WCS-20`, `WCS-21`, `WCS-30`, `WCS-33`
+Related Jira: `WCS-20`, `WCS-21`, `WCS-30`, `WCS-33`, `WCS-34`
 Canonical Confluence: [WCS — Conversational Memory, Context & AgentCore Plan](https://julioperezdev.atlassian.net/wiki/spaces/SD/pages/6684674/WCS+Conversational+Memory+Context+AgentCore+Plan)
 Related repository paths: `src/main/java/com/wally/customersupport/conversation`, `src/main/java/com/wally/customersupport/catalog`, `src/main/resources/db/migration`, `docs/ai.md`, `docs/architecture.md`
 Decision/source: plan aprobado para WCS el 2026-09-05
@@ -158,6 +158,11 @@ La persistencia independiente de `ConversationState` se implementa en la Fase
 - decisión de qué información nunca se guarda.
 
 **Criterio de salida:** Confluence y repositorio contienen la política aceptada; la configuración de retención es explícita; existen pruebas de aislamiento y borrado.
+
+`WCS-34` implementa el contrato `ConversationMemory`, `ConversationState`, la
+política recomendada y un adapter en memoria para tests. La persistencia real y
+la configuración productiva quedan fuera de esta fase y corresponden a la
+Fase 3, una vez aprobado el gate legal y de negocio.
 
 La política legal de retención sigue siendo un gate previo a producción.
 
@@ -330,3 +335,4 @@ Métricas:
 | Fecha | Cambio |
 | --- | --- |
 | 2026-09-05 | Se documentan siete fases, frontera PostgreSQL/Knowledge Base/AgentCore y exclusión de LangChain/LangGraph como dependencias. |
+| 2026-09-06 | Se inicia Fase 2 con contrato de memoria, límites de contexto y política propuesta de privacidad, retención, aislamiento y borrado en `WCS-34`. |
