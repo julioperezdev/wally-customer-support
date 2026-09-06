@@ -3,7 +3,7 @@
 Owner: Product/Tech Lead
 Status: `Accepted for phased implementation`
 Last reviewed: 2026-09-05
-Related Jira: `WCS-20`, `WCS-21`, `WCS-30`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-36`
+Related Jira: `WCS-20`, `WCS-21`, `WCS-30`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-36`, `WCS-37`
 Canonical Confluence: [WCS — Conversational Memory, Context & AgentCore Plan](https://julioperezdev.atlassian.net/wiki/spaces/SD/pages/6684674/WCS+Conversational+Memory+Context+AgentCore+Plan)
 Related repository paths: `src/main/java/com/wally/customersupport/conversation`, `src/main/java/com/wally/customersupport/catalog`, `src/main/resources/db/migration`, `docs/ai.md`, `docs/architecture.md`
 Decision/source: plan aprobado para WCS el 2026-09-05
@@ -254,6 +254,13 @@ Hecho transaccional: “el pedido 123 está enviado”
 
 Se puede evaluar la estrategia semántica y de preferencias de AgentCore, pero su extracción asíncrona no reemplaza consultas transaccionales.
 
+`WCS-37` inicia esta fase con una implementación propia de WCS/PostgreSQL:
+preferencias explícitas o confirmadas, alcance de actor/conversación, TTL,
+ownership, borrado y un límite inicial a `preferred_color`. Las preferencias
+se entregan como contexto auxiliar y no reemplazan filtros actuales ni datos
+transaccionales. La extracción automática y AgentCore permanecen fuera del
+runtime hasta completar la evaluación de calidad, costo, latencia y privacidad.
+
 ### Fase 7 — Spike de Amazon Bedrock AgentCore Memory
 
 **Objetivo:** comparar AgentCore Memory contra la implementación PostgreSQL de WCS.
@@ -356,3 +363,4 @@ Métricas:
 | 2026-09-06 | Se inicia Fase 2 con contrato de memoria, límites de contexto y política propuesta de privacidad, retención, aislamiento y borrado en `WCS-34`. |
 | 2026-09-06 | `WCS-35` implementa la persistencia PostgreSQL de memoria de sesión con TTL, ownership, versión y activación controlada. |
 | 2026-09-06 | `WCS-36` inicia la Fase 5 con resumen versionado, ventana reciente y fallback detrás de configuración. |
+| 2026-09-06 | `WCS-37` inicia la Fase 6 con preferencias explícitas PostgreSQL, TTL, ownership, borrado y activación controlada. |

@@ -3,7 +3,7 @@
 Owner: Product/Tech Lead  
 Status: `Proposed — pending legal and business approval`  
 Last reviewed: 2026-09-06  
-Related Jira: `WCS-34`, `WCS-35`, `WCS-36`
+Related Jira: `WCS-34`, `WCS-35`, `WCS-36`, `WCS-37`
 Related decision: [`003-conversational-memory-boundary.md`](decisions/003-conversational-memory-boundary.md)
 
 ## Propósito y alcance
@@ -39,6 +39,7 @@ política sea aprobada.
 | Mensajes recientes | Contexto acotado para interpretar el siguiente turno | 24 horas desde la última actualización, pendiente de aprobación |
 | Resumen conversacional | Contexto comprimido del prefijo antiguo; no es autoridad transaccional | Igual que la memoria de sesión, pendiente de aprobación |
 | Filtros de búsqueda actuales | Estado temporal; se recalcula o limpia por turno | Igual que la memoria de sesión |
+| Preferencias explícitas | Preferencias de bajo riesgo expresadas o confirmadas por el cliente; contexto auxiliar | 24 horas desde `updated_at`, pendiente de aprobación |
 | Stock, precio, carrito y pedidos | Se consulta en PostgreSQL/servicio transaccional | No se convierte en memoria |
 | Respuestas y documentos RAG | Evidencia de la consulta actual | No se guarda como preferencia por esta fase |
 | Secretos y tokens | Nunca se almacenan en memoria | Nunca |
@@ -48,8 +49,11 @@ política sea aprobada.
 La política de WCS recomienda inicialmente:
 
 - TTL de memoria de sesión: `24h` desde `updatedAt`.
+- TTL de preferencias explícitas: `24h` desde `updatedAt`, sujeto al mismo gate
+  de aprobación de retención.
 - Máximo de `20` mensajes recientes.
 - Máximo de `2.000` caracteres por mensaje usado como contexto.
+- Máximo de `5` preferencias por contexto y `64` caracteres por valor.
 - Al superar el máximo de mensajes, conservar sólo los más recientes.
 - Eliminar mensajes vacíos y recortar espacios antes de guardar.
 - El resumen se activa sólo por umbral de cantidad o caracteres, conserva una
@@ -69,12 +73,20 @@ eso se evalúa con métricas de contexto, latencia y costo.
 - `clear(conversationId, actorId)` elimina el estado de memoria asociado al
   actor y conversación.
 - Un opt-out debe ejecutar el borrado de memoria antes de continuar el flujo.
+- El borrado de una conversación elimina también las preferencias con alcance
+  `CONVERSATION`; el borrado de un actor elimina sus preferencias de cualquier
+  alcance.
 - Una carga posterior a la expiración devuelve estado vacío y elimina la
   entrada vencida.
 - El borrado de filas históricas de `messages` es una operación diferente y
   requiere una política de retención y un caso de uso de eliminación propio.
 - No se deben reconstituir datos borrados desde logs, outbox, backups o un
   proveedor de memoria externo sin una base legal y operativa aprobada.
+
+La extracción automática de preferencias queda fuera de esta fase. Sólo se
+persisten preferencias explícitas o confirmadas y, inicialmente, el color
+preferido. No se guardan como preferencias hechos transaccionales, precios,
+stock, carritos, pedidos ni credenciales.
 
 ## Acceso y aislamiento
 

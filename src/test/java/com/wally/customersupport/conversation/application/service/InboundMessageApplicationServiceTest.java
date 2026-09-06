@@ -58,6 +58,8 @@ class InboundMessageApplicationServiceTest {
     private ConversationOrchestrator conversationOrchestrator;
     @Mock
     private ConversationSummaryService conversationSummaryService;
+    @Mock
+    private CustomerPreferenceService customerPreferenceService;
 
     private InboundMessageApplicationService service;
     private Conversation conversation;
@@ -73,11 +75,14 @@ class InboundMessageApplicationServiceTest {
                 outboxRepository,
                 conversationOrchestrator,
                 conversationSummaryService,
+                customerPreferenceService,
                 Clock.fixed(NOW, ZoneOffset.UTC));
         lenient().when(conversationOrchestrator.replyFor(any())).thenReturn("Respuesta segura");
         lenient().when(conversationSummaryService.summaryForContext(any())).thenReturn(null);
         lenient().when(conversationSummaryService.appendAndMaybeSummarize(any(), anyString(), any()))
                 .thenAnswer(invocation -> invocation.getArgument(0));
+        lenient().when(customerPreferenceService.findForContext(anyString(), any()))
+                .thenReturn(List.of());
         lenient().when(conversationMemory.load(any(), any())).thenReturn(Optional.empty());
         conversation = new Conversation(
                 UUID.randomUUID(), Channel.WHATSAPP, "conversation-1", "customer-1",

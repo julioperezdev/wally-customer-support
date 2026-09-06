@@ -3,7 +3,7 @@
 Owner: Tech Lead  
 Status: `Accepted`
 Last reviewed: 2026-08-30  
-Related Jira: `WCS-13`, `WCS-21`, `WCS-22`, `WCS-30`, `WCS-35`, `WCS-36`
+Related Jira: `WCS-13`, `WCS-21`, `WCS-22`, `WCS-30`, `WCS-35`, `WCS-36`, `WCS-37`
 Related repository paths: `src/main/resources`, `.github/workflows`, `infra/`
 
 ## Ambientes
@@ -142,6 +142,10 @@ wcs.conversation.summary.trigger-message-count
 wcs.conversation.summary.recent-message-count
 wcs.conversation.summary.trigger-characters
 wcs.conversation.summary.max-summary-characters
+wcs.conversation.preferences.enabled
+wcs.conversation.preferences.ttl
+wcs.conversation.preferences.max-preferences
+wcs.conversation.preferences.max-value-characters
 wcs.ai.provider
 wcs.ai.model
 wcs.ai.region
@@ -274,6 +278,26 @@ despliega la versión anterior y luego se verifica que ningún runtime lea la
 tabla. Las migraciones V6 y V7 no se editan ni se revierten automáticamente en producción;
 el borrado de la tabla requiere una migración posterior, revisión del plan y
 evidencia de que la retención, auditoría y backups fueron tratados.
+
+### Preferencias explícitas PostgreSQL
+
+`WCS-37` agrega la migración `V8__create_customer_preferences.sql` y un
+adapter PostgreSQL para preferencias explícitas de bajo riesgo. La
+configuración recomendada inicial es:
+
+```text
+wcs.conversation.preferences.enabled=false
+wcs.conversation.preferences.ttl=PT24H
+wcs.conversation.preferences.max-preferences=5
+wcs.conversation.preferences.max-value-characters=64
+```
+
+El servicio sólo acepta valores permitidos y confirmados; la primera
+preferencia soportada es `preferred_color`. El adapter no-op queda activo si
+la flag es falsa o falta. Para rollback funcional se vuelve a publicar la flag
+en `false`; la tabla se conserva para no modificar migraciones aplicadas.
+Antes de habilitarla en producción deben aprobarse retención, borrado,
+ownership y observabilidad sin PII.
 
 ### Precedencia y modos de ejecución
 

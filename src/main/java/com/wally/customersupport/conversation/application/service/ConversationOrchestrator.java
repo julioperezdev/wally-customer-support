@@ -110,7 +110,9 @@ public class ConversationOrchestrator {
                     context.externalCustomerId(),
                     context.latestMessage(),
                     context.recentMessages(),
-                    knowledge));
+                    knowledge,
+                    context.conversationSummary(),
+                    context.preferences()));
         } catch (RuntimeException exception) {
             Map<String, Object> fields = new LinkedHashMap<>();
             fields.put("errorType", exception.getClass().getSimpleName());
