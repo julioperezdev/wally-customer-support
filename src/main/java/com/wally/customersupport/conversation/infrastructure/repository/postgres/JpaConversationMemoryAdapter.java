@@ -15,8 +15,7 @@ import com.wally.customersupport.conversation.domain.model.ConversationMemoryPol
 import com.wally.customersupport.conversation.domain.model.ConversationState;
 import com.wally.customersupport.shared.infrastructure.observability.StructuredEventLog;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Repository;
@@ -28,9 +27,8 @@ import org.springframework.transaction.annotation.Transactional;
         havingValue = "true",
         matchIfMissing = false)
 @RequiredArgsConstructor
+@Slf4j
 public class JpaConversationMemoryAdapter implements ConversationMemory {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(JpaConversationMemoryAdapter.class);
 
     private final SpringDataConversationMemoryRepository repository;
     private final ConversationMemoryPolicy policy;
@@ -141,11 +139,11 @@ public class JpaConversationMemoryAdapter implements ConversationMemory {
         if (conversationId != null) {
             fields.put("correlationId", conversationId);
         }
-        StructuredEventLog.info(LOGGER, eventType, fields);
+        StructuredEventLog.info(log, eventType, fields);
     }
 
     private void recordConflict(UUID conversationId, RuntimeException exception) {
-        StructuredEventLog.warn(LOGGER, "MEMORY_STATE_CONFLICT", Map.of(
+        StructuredEventLog.warn(log, "MEMORY_STATE_CONFLICT", Map.of(
                 "operation", "conversation.memory.save",
                 "result", "CONFLICT",
                 "errorType", exception.getClass().getSimpleName(),

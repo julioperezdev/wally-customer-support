@@ -15,16 +15,15 @@ import com.wally.customersupport.conversation.domain.model.OutboxMessage;
 import com.wally.customersupport.conversation.domain.model.Channel;
 import com.wally.customersupport.shared.infrastructure.config.OutboxProperties;
 import com.wally.customersupport.shared.infrastructure.observability.StructuredEventLog;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
+@Slf4j
 public class OutboxDispatcher {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(OutboxDispatcher.class);
     private static final int BATCH_SIZE = 50;
     private static final Duration RETRY_DELAY = Duration.ofSeconds(30);
 
@@ -78,7 +77,7 @@ public class OutboxDispatcher {
             fields.put("result", "SENT");
             fields.put("durationMs", elapsedMillis(startedAt));
             fields.put("correlationId", outboxMessage.message().conversationId());
-            StructuredEventLog.info(LOGGER, "OUTBOUND_MESSAGE_DISPATCHED", fields);
+            StructuredEventLog.info(log, "OUTBOUND_MESSAGE_DISPATCHED", fields);
         } catch (RuntimeException exception) {
             outboxRepository.markFailed(
                     outboxMessage.id(),
@@ -91,7 +90,7 @@ public class OutboxDispatcher {
             fields.put("errorType", exception.getClass().getSimpleName());
             fields.put("durationMs", elapsedMillis(startedAt));
             fields.put("correlationId", outboxMessage.message().conversationId());
-            StructuredEventLog.warn(LOGGER, "OUTBOUND_MESSAGE_DISPATCHED", fields);
+            StructuredEventLog.warn(log, "OUTBOUND_MESSAGE_DISPATCHED", fields);
         }
     }
 

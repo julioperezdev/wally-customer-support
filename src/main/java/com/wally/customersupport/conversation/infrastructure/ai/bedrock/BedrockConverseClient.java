@@ -7,8 +7,7 @@ import java.util.stream.Collectors;
 import com.wally.customersupport.shared.infrastructure.config.AiProperties;
 import com.wally.customersupport.shared.infrastructure.observability.AiPricingCalculator;
 import com.wally.customersupport.shared.infrastructure.observability.StructuredEventLog;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseRequest;
@@ -18,9 +17,8 @@ import software.amazon.awssdk.services.bedrockruntime.model.InferenceConfigurati
 import software.amazon.awssdk.services.bedrockruntime.model.Message;
 import software.amazon.awssdk.services.bedrockruntime.model.SystemContentBlock;
 
+@Slf4j
 final class BedrockConverseClient {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(BedrockConverseClient.class);
 
     private final BedrockRuntimeClient client;
     private final AiProperties properties;
@@ -120,9 +118,9 @@ final class BedrockConverseClient {
         }
 
         if (success) {
-            StructuredEventLog.info(LOGGER, "AI_USAGE_RECORDED", fields);
+            StructuredEventLog.info(log, "AI_USAGE_RECORDED", fields);
         } else {
-            StructuredEventLog.warn(LOGGER, "AI_USAGE_RECORDED", fields);
+            StructuredEventLog.warn(log, "AI_USAGE_RECORDED", fields);
         }
     }
 

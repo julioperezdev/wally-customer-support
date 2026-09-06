@@ -9,8 +9,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -21,12 +20,11 @@ import org.springframework.web.servlet.HandlerMapping;
 /** Adds request correlation and emits one sanitized completion event per HTTP request. */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
+@Slf4j
 public class RequestObservabilityFilter extends OncePerRequestFilter {
 
     public static final String REQUEST_ID_HEADER = "X-Request-Id";
     public static final String REQUEST_ID_MDC_KEY = "requestId";
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(RequestObservabilityFilter.class);
 
     @Override
     protected void doFilterInternal(
@@ -59,9 +57,9 @@ public class RequestObservabilityFilter extends OncePerRequestFilter {
             }
 
             if (failure != null || httpStatus >= 400) {
-                StructuredEventLog.warn(LOGGER, "HTTP_REQUEST_COMPLETED", fields);
+                StructuredEventLog.warn(log, "HTTP_REQUEST_COMPLETED", fields);
             } else {
-                StructuredEventLog.info(LOGGER, "HTTP_REQUEST_COMPLETED", fields);
+                StructuredEventLog.info(log, "HTTP_REQUEST_COMPLETED", fields);
             }
 
             if (previousRequestId == null) {

@@ -3,17 +3,15 @@ package com.wally.customersupport.conversation.infrastructure.channel.telegram;
 import com.wally.customersupport.conversation.application.port.out.OutboundMessagePort;
 import com.wally.customersupport.conversation.domain.model.Channel;
 import com.wally.customersupport.conversation.domain.model.OutboundMessage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Component
 @ConditionalOnProperty(name = "wcs.telegram.enabled", havingValue = "true")
 @ConditionalOnProperty(name = "wcs.telegram.adapter", havingValue = "mock")
+@Slf4j
 public class MockTelegramOutboundAdapter implements OutboundMessagePort {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(MockTelegramOutboundAdapter.class);
 
     @Override
     public Channel channel() {
@@ -22,6 +20,6 @@ public class MockTelegramOutboundAdapter implements OutboundMessagePort {
 
     @Override
     public void send(OutboundMessage message) {
-        LOGGER.info("Mock Telegram outbound message dispatched: type={}", message.deliveryType());
+        log.info("Mock Telegram outbound message dispatched: type={}", message.deliveryType());
     }
 }
