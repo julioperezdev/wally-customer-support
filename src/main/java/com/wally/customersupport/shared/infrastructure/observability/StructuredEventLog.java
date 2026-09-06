@@ -3,8 +3,10 @@ package com.wally.customersupport.shared.infrastructure.observability;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
 
 import org.slf4j.Logger;
+import org.slf4j.MDC;
 import tools.jackson.databind.ObjectMapper;
 
 /** Emits one-line JSON events that can be queried without logging message content. */
@@ -30,6 +32,7 @@ public final class StructuredEventLog {
         Map<String, Object> event = new LinkedHashMap<>();
         event.put("eventFamily", EVENT_FAMILY);
         event.put("schemaVersion", SCHEMA_VERSION);
+        event.put("eventId", UUID.randomUUID().toString());
         event.put("eventType", eventType);
         event.put("service", SERVICE);
         event.put("occurredAt", Instant.now().toString());
@@ -39,6 +42,10 @@ public final class StructuredEventLog {
                     event.put(key, value);
                 }
             });
+        }
+        String requestId = MDC.get(RequestObservabilityFilter.REQUEST_ID_MDC_KEY);
+        if (requestId != null && !requestId.isBlank()) {
+            event.put("requestId", requestId);
         }
 
         try {
