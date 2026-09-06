@@ -1,6 +1,7 @@
 package com.wally.customersupport.conversation.infrastructure.repository.postgres;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
@@ -42,12 +43,12 @@ public class ConversationMemoryJpaEntity {
         this.conversationId = state.conversationId();
         this.actorId = state.actorId();
         this.recentMessages = state.recentMessages();
-        this.updatedAt = state.updatedAt();
+        this.updatedAt = databaseTimestamp(state.updatedAt());
     }
 
     public void updateFrom(ConversationState state) {
         this.recentMessages = state.recentMessages();
-        this.updatedAt = state.updatedAt();
+        this.updatedAt = databaseTimestamp(state.updatedAt());
     }
 
     public ConversationState toDomain() {
@@ -69,5 +70,9 @@ public class ConversationMemoryJpaEntity {
 
     public long version() {
         return version == null ? 0L : version;
+    }
+
+    private static Instant databaseTimestamp(Instant timestamp) {
+        return timestamp.truncatedTo(ChronoUnit.MICROS);
     }
 }
