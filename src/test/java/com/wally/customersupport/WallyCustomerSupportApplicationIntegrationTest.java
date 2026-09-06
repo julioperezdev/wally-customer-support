@@ -15,6 +15,7 @@ import com.wally.customersupport.catalog.application.service.CatalogConversation
 import com.wally.customersupport.catalog.application.service.CatalogQueryService;
 import com.wally.customersupport.catalog.domain.model.CatalogQuery;
 import com.wally.customersupport.conversation.application.port.out.ConversationMemory;
+import com.wally.customersupport.conversation.application.service.CustomerPreferenceService;
 import com.wally.customersupport.conversation.application.port.out.ConversationRepository;
 import com.wally.customersupport.conversation.domain.model.Channel;
 import com.wally.customersupport.conversation.domain.model.Conversation;
@@ -68,6 +69,9 @@ class WallyCustomerSupportApplicationIntegrationTest {
 
     @Autowired
     private ConversationMemory conversationMemory;
+
+    @Autowired
+    private CustomerPreferenceService customerPreferenceService;
 
     @Autowired
     private SpringDataConversationMemoryRepository conversationMemoryRepository;
@@ -197,5 +201,23 @@ class WallyCustomerSupportApplicationIntegrationTest {
         ConversationState loaded = conversationMemory.load(conversationId, "actor-summary").orElseThrow();
         assertEquals(summary, loaded.summary());
         assertEquals(saved.version(), loaded.version());
+    }
+
+    @Test
+    void persistsAndReplacesExplicitCustomerPreferenceInPostgres() {
+        String actorId = "preference-actor-" + UUID.randomUUID();
+        Instant now = Instant.now();
+
+        assertTrue(customerPreferenceService.recordExplicitColor(actorId, "Negro", now).isPresent());
+        assertTrue(customerPreferenceService.recordExplicitColor(actorId, "azul", now.plusSeconds(1)).isPresent());
+
+        var preferences = customerPreferenceService.findForContext(actorId, null);
+
+        assertEquals(1, preferences.size());
+        assertEquals("preferred_color", preferences.getFirst().key());
+        assertEquals("azul", preferences.getFirst().value());
+
+        customerPreferenceService.clearActor(actorId);
+        assertTrue(customerPreferenceService.findForContext(actorId, null).isEmpty());
     }
 }

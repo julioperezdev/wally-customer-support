@@ -42,6 +42,7 @@ public class InboundMessageApplicationService implements InboundMessagePort {
     private final OutboxRepository outboxRepository;
     private final ConversationOrchestrator conversationOrchestrator;
     private final ConversationSummaryService conversationSummaryService;
+    private final CustomerPreferenceService customerPreferenceService;
     private final Clock clock;
 
     @Override
@@ -83,13 +84,15 @@ public class InboundMessageApplicationService implements InboundMessagePort {
         String actorId = conversation.id().toString();
         ConversationState conversationState = loadConversationState(conversation.id(), actorId, now);
         conversationSummaryService.recordContextPrepared(conversationState);
+        var preferences = customerPreferenceService.findForContext(conversation.id().toString(), conversation.id());
         String reply = conversationOrchestrator.replyFor(new ConversationContext(
                     conversation.id(),
                     conversation.externalCustomerId(),
                     command.body(),
                     conversationState.recentMessages(),
                     List.of(),
-                    conversationSummaryService.summaryForContext(conversationState)));
+                    conversationSummaryService.summaryForContext(conversationState),
+                    preferences));
 
         saveConversationMemory(conversationSummaryService.appendAndMaybeSummarize(
                 conversationState,

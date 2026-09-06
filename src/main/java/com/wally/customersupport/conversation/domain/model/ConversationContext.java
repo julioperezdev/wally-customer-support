@@ -11,7 +11,8 @@ public record ConversationContext(
         String latestMessage,
         List<String> recentMessages,
         List<KnowledgeChunk> knowledge,
-        String conversationSummary) {
+        String conversationSummary,
+        List<CustomerPreference> preferences) {
 
     public ConversationContext(
             UUID conversationId,
@@ -19,12 +20,23 @@ public record ConversationContext(
             String latestMessage,
             List<String> recentMessages,
             List<KnowledgeChunk> knowledge) {
-        this(conversationId, externalCustomerId, latestMessage, recentMessages, knowledge, null);
+        this(conversationId, externalCustomerId, latestMessage, recentMessages, knowledge, null, List.of());
+    }
+
+    public ConversationContext(
+            UUID conversationId,
+            String externalCustomerId,
+            String latestMessage,
+            List<String> recentMessages,
+            List<KnowledgeChunk> knowledge,
+            String conversationSummary) {
+        this(conversationId, externalCustomerId, latestMessage, recentMessages, knowledge, conversationSummary, List.of());
     }
 
     public ConversationContext {
         recentMessages = recentMessages == null ? List.of() : List.copyOf(recentMessages);
         knowledge = knowledge == null ? List.of() : List.copyOf(knowledge);
         conversationSummary = conversationSummary == null ? null : conversationSummary.strip();
+        preferences = preferences == null ? List.of() : List.copyOf(preferences);
     }
 }

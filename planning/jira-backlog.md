@@ -106,6 +106,26 @@ desactivado por defecto.
 **Evidencia:** tests unitarios, persistencia PostgreSQL/Testcontainers,
 `mvn verify`, logs sin cuerpos completos ni PII y documentación actualizada.
 
+## WCS-37 — Persistir preferencias explícitas de cliente
+
+**Tipo:** Story · **Prioridad:** High · **Estimate:** 4d · **Estado:** In Progress ·
+**Depends on:** WCS-34, WCS-35, WCS-36
+
+Implementar preferencias de bajo riesgo separadas del contexto temporal. La
+primera entrega soporta sólo `preferred_color`, con valores permitidos,
+confirmación explícita, alcance de actor/conversación, TTL, ownership y
+borrado. Las preferencias llegan al contexto como información auxiliar y no
+reemplazan filtros actuales ni datos de catálogo, stock, precio, carrito o
+pedidos.
+
+Fuera de alcance: extracción automática desde texto, memoria semántica de
+AgentCore, acciones sensibles y cualquier autoridad transaccional basada en
+preferencias.
+
+**Evidencia:** migración V8, adapter PostgreSQL/no-op, unit tests,
+Testcontainers, `mvn verify`, configuración desactivada por defecto y
+documentación de privacidad, arquitectura, datos y operación.
+
 ## EPIC-WCS-01 — Gobierno y documentación
 
 ### WCS-9 — Definir espacio Confluence y matriz de fuentes de verdad
@@ -264,6 +284,7 @@ semántica o AgentCore.
 | 11 | WCS-34 | In Progress | Contrato de memoria, privacidad, retención, aislamiento y borrado | WCS-33 |
 | 12 | WCS-35 | In Progress | Memoria de sesión PostgreSQL, TTL, ownership, conflictos y activación controlada | WCS-34 |
 | 13 | WCS-36 | In Progress | Resumen versionado, ventana reciente, checkpoint y fallback controlado | WCS-35 |
+| 14 | WCS-37 | In Progress | Preferencias explícitas PostgreSQL, TTL, ownership, borrado y contexto auxiliar | WCS-34, WCS-35, WCS-36 |
 
 `WCS-14`–`WCS-16` y `WCS-17` ya tienen la fundación o el contrato inicial
 versionado; deben completarse/verificarse según la evidencia de cada issue antes

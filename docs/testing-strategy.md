@@ -85,6 +85,9 @@ necesitan iniciar el contenedor.
 | `TC-030` | P1 | Retención de metadatos de 90 días | Elimina metadatos fuera de plazo según configuración | Reporte de limpieza |
 | `TC-031` | P1 | Métricas agregadas | Conserva métricas sin teléfono ni contenido | Query agregada |
 | `TC-032` | P0 | Logs y errores | No contienen tokens, mensajes completos, teléfonos ni prompts | Revisión automatizada |
+| `TC-043` | P1 | Preferencia explícita permitida | Persiste/reemplaza `preferred_color` sólo con un color permitido y confirmado | Unit + Testcontainers |
+| `TC-044` | P1 | Preferencia vencida o inválida | No expone valores vencidos ni guarda colores no permitidos | Unit + Testcontainers |
+| `TC-045` | P1 | Ownership y borrado de preferencias | Un actor no lee preferencias ajenas y el borrado elimina el alcance solicitado | Unit + Testcontainers |
 | `TC-041` | P1 | Uso real de Bedrock | Emite `AI_USAGE_RECORDED` con modelo, tokens, latencia, pricing version y costo estimado | Test del adapter + log sanitizado |
 | `TC-042` | P1 | Consultas de observabilidad | CloudWatch agrega consultas, IA, RAG y entregas sin errores de campos | Logs Insights/Grafana |
 

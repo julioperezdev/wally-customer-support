@@ -10,6 +10,7 @@ import com.wally.customersupport.conversation.application.port.out.ConversationI
 import com.wally.customersupport.conversation.domain.model.ConversationContext;
 import com.wally.customersupport.conversation.domain.model.ConversationIntent;
 import com.wally.customersupport.conversation.domain.model.ConversationIntentDecision;
+import com.wally.customersupport.conversation.domain.model.CustomerPreference;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -136,6 +137,14 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
             prompt.append("\n<conversation_summary>\n")
                     .append(limit(context.conversationSummary()))
                     .append("\n</conversation_summary>");
+        }
+        if (!context.preferences().isEmpty()) {
+            prompt.append("\n<customer_preferences>\n");
+            for (CustomerPreference preference : context.preferences()) {
+                prompt.append(preference.key()).append("=").append(preference.value()).append("\n");
+            }
+            prompt.append("</customer_preferences>\n");
+            prompt.append("Las preferencias son contexto auxiliar y nunca reemplazan filtros explícitos del turno actual.");
         }
         return prompt.toString();
     }

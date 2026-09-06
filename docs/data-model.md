@@ -3,7 +3,7 @@
 Owner: Tech Lead  
 Status: `Proposed`  
 Last reviewed: 2026-09-06
-Related Jira: `WCS-13`, `WCS-14`, `WCS-15`, `WCS-16`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-33`, `WCS-34`, `WCS-35`
+Related Jira: `WCS-13`, `WCS-14`, `WCS-15`, `WCS-16`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-37`
 Related repository paths: `src/main/java/com/wally/customersupport/{conversation,catalog,support}/infrastructure/repository/postgres`, `src/main/resources/db/migration`
 
 ## Aislamiento en el RDS compartido
@@ -133,6 +133,34 @@ desactivado por defecto.
 
 El resumen conserva únicamente contexto conversacional y no será fuente de
 verdad para filtros tipados, stock, precio, carrito ni pedidos.
+
+### Preferencias explícitas — contrato en `WCS-37`, persistencia en `V8`
+
+`wcs.customer_preferences` mantiene preferencias de bajo riesgo que el cliente
+expresó o confirmó explícitamente. El modelo está separado de la memoria de
+sesión para que una preferencia durable no se confunda con el filtro de una
+consulta puntual:
+
+* `actor_id` identifica al cliente de forma pseudónima y es obligatorio para
+  ownership;
+* `preference_key` y `preference_value` contienen valores normalizados y
+  acotados por el servicio de aplicación;
+* `preference_scope` distingue `ACTOR` de `CONVERSATION`;
+* `confidence`, `origin`, `confirmed`, `updated_at` y `expires_at` permiten
+  auditar el origen y aplicar TTL;
+* índices únicos impiden duplicar una misma preferencia dentro de su alcance;
+* la foreign key de `conversation_id` sólo aplica a preferencias de alcance
+  `CONVERSATION`.
+
+La primera implementación sólo admite la preferencia explícita de color
+preferido (`preferred_color`) y no hace extracción automática desde texto. La
+migración `V8__create_customer_preferences.sql` es reversible mediante el
+procedimiento documentado en el propio archivo. El feature está desactivado
+por defecto con `wcs.conversation.preferences.enabled=false`.
+
+Las preferencias son contexto auxiliar: no pueden sobreescribir filtros
+actuales ni ser autoridad para stock, precio, carrito, pedidos o acciones
+sensibles.
 
 ### Otras entidades futuras
 

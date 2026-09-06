@@ -39,6 +39,9 @@ public class BedrockLlmClient implements LlmClient {
                 <conversation_summary>
                 %s
                 </conversation_summary>
+                <customer_preferences>
+                %s
+                </customer_preferences>
                 <approved_knowledge>
                 %s
                 </approved_knowledge>
@@ -46,6 +49,9 @@ public class BedrockLlmClient implements LlmClient {
                 limit(context.latestMessage(), 2_000),
                 limit(String.join("\n", context.recentMessages()), 4_000),
                 limit(context.conversationSummary(), 4_000),
+                limit(context.preferences().stream()
+                        .map(preference -> preference.key() + "=" + preference.value())
+                        .reduce("", (left, right) -> left + "\n" + right), 1_000),
                 limit(context.knowledge().stream()
                         .map(chunk -> "[" + chunk.sourceId() + "] " + chunk.content())
                         .reduce("", (left, right) -> left + "\n" + right), 8_000));
