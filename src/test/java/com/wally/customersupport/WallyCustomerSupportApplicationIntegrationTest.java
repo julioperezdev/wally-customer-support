@@ -60,6 +60,7 @@ class WallyCustomerSupportApplicationIntegrationTest {
 
         assertEquals(1, products.size());
         assertEquals("Remera NullPointer", products.getFirst().name());
+        assertEquals("remera", products.getFirst().productType());
         assertEquals("RP-REM-NP-NEG-M", products.getFirst().variants().getFirst().sku());
         assertEquals("ARS", products.getFirst().variants().getFirst().currency());
         assertEquals(12, products.getFirst().variants().getFirst().stock());

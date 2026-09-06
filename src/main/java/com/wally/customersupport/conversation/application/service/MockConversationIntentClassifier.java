@@ -7,6 +7,7 @@ import java.util.regex.Pattern;
 
 import com.wally.customersupport.catalog.application.service.CatalogQueryParser;
 import com.wally.customersupport.conversation.application.port.out.ConversationIntentClassifier;
+import com.wally.customersupport.conversation.domain.model.ConversationContext;
 import com.wally.customersupport.conversation.domain.model.ConversationIntent;
 import com.wally.customersupport.conversation.domain.model.ConversationIntentDecision;
 import com.wally.customersupport.catalog.domain.model.CatalogQuery;
@@ -23,7 +24,8 @@ public class MockConversationIntentClassifier implements ConversationIntentClass
     private static final Pattern HANDOFF = Pattern.compile("\\b(persona|agente|humano|asesor)\\b");
 
     @Override
-    public ConversationIntentDecision classify(String message) {
+    public ConversationIntentDecision classify(ConversationContext context) {
+        String message = context == null ? null : context.latestMessage();
         String normalized = normalize(message);
         if (normalized.isBlank()) {
             return ConversationIntentDecision.unknown();
@@ -43,7 +45,8 @@ public class MockConversationIntentClassifier implements ConversationIntentClass
             return new ConversationIntentDecision(ConversationIntent.POLICY_QUERY, 0.96, null, policyKey);
         }
 
-        Optional<CatalogQuery> catalogQuery = CatalogQueryParser.parse(message);
+        Optional<CatalogQuery> catalogQuery = CatalogQueryParser.parseConversation(
+                context == null ? java.util.List.of() : context.recentMessages(), message);
         if (catalogQuery.isPresent()) {
             return new ConversationIntentDecision(ConversationIntent.CATALOG_SEARCH, 0.95,
                     catalogQuery.get(), null);

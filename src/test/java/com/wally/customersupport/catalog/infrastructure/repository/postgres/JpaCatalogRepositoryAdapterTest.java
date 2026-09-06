@@ -23,12 +23,12 @@ class JpaCatalogRepositoryAdapterTest {
         CatalogProduct product = mock(CatalogProduct.class);
         CatalogQuery query = new CatalogQuery("Remera", null, "M", "Negro");
 
-        when(repository.search("remera", "", "m", "negro")).thenReturn(List.of(entity));
+        when(repository.search("remera", "", "m", "negro", "")).thenReturn(List.of(entity));
         when(entity.toDomain(query)).thenReturn(product);
         when(product.variants()).thenReturn(List.of(mock(CatalogVariant.class)));
 
         new JpaCatalogRepositoryAdapter(repository).search(query);
 
-        verify(repository).search(eq("remera"), eq(""), eq("m"), eq("negro"));
+        verify(repository).search(eq("remera"), eq(""), eq("m"), eq("negro"), eq(""));
     }
 }

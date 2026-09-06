@@ -37,6 +37,9 @@ public class CatalogProductJpaEntity {
     @Column(nullable = false)
     private boolean demo;
 
+    @Column(name = "product_type", nullable = false, length = 32)
+    private String productType;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -56,7 +59,7 @@ public class CatalogProductJpaEntity {
                 .map(CatalogVariantJpaEntity::toDomain)
                 .toList();
 
-        return new CatalogProduct(id, name, description, imageObjectKey, active, demo, matchingVariants);
+        return new CatalogProduct(id, name, description, imageObjectKey, active, demo, matchingVariants, productType);
     }
 
     private static boolean matches(CatalogVariantJpaEntity variant, CatalogQuery query) {

@@ -22,11 +22,13 @@ public interface SpringDataCatalogProductRepository extends JpaRepository<Catalo
               and (:sku = '' or lower(variant.sku) = :sku)
               and (:sizeLabel = '' or lower(variant.sizeLabel) = :sizeLabel)
               and (:color = '' or lower(variant.color) = :color)
+              and (:productType = '' or lower(product.productType) = :productType)
             order by product.name
             """)
     List<CatalogProductJpaEntity> search(
             @Param("name") String name,
             @Param("sku") String sku,
             @Param("sizeLabel") String sizeLabel,
-            @Param("color") String color);
+            @Param("color") String color,
+            @Param("productType") String productType);
 }

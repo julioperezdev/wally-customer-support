@@ -31,6 +31,29 @@ El Space Jira `WCS` fue creado el 2026-08-29 y el backlog inicial fue cargado. L
 | WCS-BL-17 | WCS-23 |
 | WCS-BL-18 | WCS-29 |
 
+## WCS-33 — Mantener contexto conversacional en búsquedas multi-turno
+
+**Tipo:** Story · **Priority:** Highest · **Estimate:** 4d · **Estado:** In Progress
+
+Implementar la Fase 1 del plan de memoria conversacional: conservar el estado
+tipado de una búsqueda entre turnos, incorporar `productType`, fusionar filtros
+de manera explícita y responder de forma segura cuando no hay coincidencias.
+
+**Dependencias:** WCS-20, WCS-21 y WCS-25 cuando sus cambios de catálogo aún no
+estén disponibles.
+
+**Fuera de alcance:** AgentCore Memory, LangChain, LangGraph, preferencias
+persistentes, resúmenes, Knowledge Base, infraestructura AWS y datos
+transaccionales provenientes de memoria.
+
+**Evidencia:** pruebas unitarias y de aplicación, Testcontainers con
+PostgreSQL, contratos del clasificador, `mvn verify` y logs sanitizados.
+
+**Documentación:**
+`docs/conversational-memory-and-agentcore-plan.md`, `docs/architecture.md`,
+`docs/data-model.md` y [WCS — Conversational Memory, Context & AgentCore
+Plan](https://julioperezdev.atlassian.net/wiki/spaces/SD/pages/6684674/WCS+Conversational+Memory+Context+AgentCore+Plan).
+
 ## EPIC-WCS-01 — Gobierno y documentación
 
 ### WCS-9 — Definir espacio Confluence y matriz de fuentes de verdad
@@ -165,12 +188,12 @@ Bedrock/RAG, cambio de RDS o publicación productiva.
 
 **Métricas:** resolución, handoff, fallback, latencia, costo, fallos, duplicados y feedback.
 
-## Orden de ejecución vigente — 2026-09-03
+## Orden de ejecución vigente — 2026-09-05
 
 El backlog se reordenó por dependencia funcional y por el estado real del
-repositorio. La rama de trabajo parte de `main` y concentra el primer vertical
-slice de datos de negocio en `WCS-25`; `WCS-28` se implementa junto con él
-porque ambos comparten migraciones, seeds y consulta de configuración.
+repositorio. La siguiente entrega parte de `main` y comienza con `WCS-33`, que
+resuelve la pérdida de contexto observada en búsquedas de catálogo antes de
+introducir memoria de largo plazo o AgentCore.
 
 | Orden | Jira | Estado al iniciar | Entrega | Dependencias relevantes |
 | ---: | --- | --- | --- | --- |
@@ -184,6 +207,7 @@ porque ambos comparten migraciones, seeds y consulta de configuración.
 | 7 | WCS-19 | To Do | Prueba controlada end-to-end con Meta | WCS-18, WCS-26, WCS-27 |
 | 8 | WCS-22 | In Progress | Deploy, health, smoke, observabilidad y rollback productivo | WCS-18, WCS-21 |
 | 9 | WCS-29 | In Progress | Canal Telegram, routing por canal, webhook, secret y configuración AWS | WCS-14, WCS-15, WCS-22 |
+| 10 | WCS-33 | In Progress | Contexto conversacional, filtros multi-turno y `productType` | WCS-20, WCS-25 |
 
 `WCS-14`–`WCS-16` y `WCS-17` ya tienen la fundación o el contrato inicial
 versionado; deben completarse/verificarse según la evidencia de cada issue antes

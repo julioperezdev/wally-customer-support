@@ -3,7 +3,7 @@
 Owner: AI/Tech Lead  
 Status: `Accepted`
 Last reviewed: 2026-09-03
-Related Jira: `WCS-11`, `WCS-20`, `WCS-21`, `WCS-30`
+Related Jira: `WCS-11`, `WCS-20`, `WCS-21`, `WCS-30`, `WCS-33`
 Related repository paths: `src/main/java/com/wally/customersupport/conversation/infrastructure/ai`, `src/main/resources/prompts`, `src/test/resources/fixtures`
 
 ## Registro de modelos
@@ -56,6 +56,13 @@ ingesta se inicia de forma explícita después de revisar el contenido publicado
 S3 Vectors es apropiado para consultas documentales de baja frecuencia y
 búsqueda semántica. Si WCS requiere búsqueda híbrida o filtros avanzados, se
 reevaluará OpenSearch o un índice propio.
+
+La memoria conversacional se diseña separada de RAG. El contexto de sesión y
+los filtros activos pertenecen a WCS; AgentCore Memory sólo se evaluará como
+adapter opcional después de una implementación inicial en PostgreSQL. El plan
+completo está en
+[`conversational-memory-and-agentcore-plan.md`](conversational-memory-and-agentcore-plan.md)
+y la decisión en `ADR-003`.
 
 Cada modelo real debe registrar proveedor, model ID, versión, límites, timeout, precio vigente, fecha de revisión y casos permitidos.
 

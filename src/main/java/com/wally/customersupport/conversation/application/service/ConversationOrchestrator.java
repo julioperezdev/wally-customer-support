@@ -57,7 +57,7 @@ public class ConversationOrchestrator {
 
         ConversationIntentDecision decision;
         try {
-            decision = intentClassifier.classify(context.latestMessage());
+            decision = intentClassifier.classify(context);
         } catch (RuntimeException exception) {
             StructuredEventLog.warn(LOGGER, "INTENT_CLASSIFICATION_FAILED", Map.of(
                     "errorType", exception.getClass().getSimpleName(),
