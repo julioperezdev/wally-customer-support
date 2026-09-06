@@ -3,7 +3,7 @@
 Owner: Tech Lead  
 Status: `Accepted`
 Last reviewed: 2026-08-30  
-Related Jira: `WCS-13`, `WCS-21`, `WCS-22`, `WCS-30`, `WCS-35`
+Related Jira: `WCS-13`, `WCS-21`, `WCS-22`, `WCS-30`, `WCS-35`, `WCS-36`
 Related repository paths: `src/main/resources`, `.github/workflows`, `infra/`
 
 ## Ambientes
@@ -137,6 +137,11 @@ wcs.conversation.memory.enabled
 wcs.conversation.memory.ttl
 wcs.conversation.memory.max-messages
 wcs.conversation.memory.max-message-characters
+wcs.conversation.summary.enabled
+wcs.conversation.summary.trigger-message-count
+wcs.conversation.summary.recent-message-count
+wcs.conversation.summary.trigger-characters
+wcs.conversation.summary.max-summary-characters
 wcs.ai.provider
 wcs.ai.model
 wcs.ai.region
@@ -235,6 +240,12 @@ versión para control de concurrencia. El adapter elimina estados vencidos al
 cargarlos y registra sólo operación, resultado, cantidad, duración y un
 identificador interno de correlación.
 
+`WCS-36` agrega mediante `V7__add_conversation_summary.sql` un resumen
+opcional, su versión, cantidad de mensajes incluidos y fecha de actualización.
+El resumen se genera detrás de `ConversationSummarizer`, con implementación
+Bedrock cuando `wcs.ai.provider=bedrock` y un doble determinístico cuando el
+provider es `mock`. No se activa por defecto.
+
 La persistencia está protegida por `wcs.conversation.memory.enabled=false` en
 el bootstrap. Con ese valor se usa un adapter no-op y los canales no retienen
 memoria; los tests de integración lo habilitan explícitamente. Sólo después de
@@ -245,15 +256,22 @@ wcs.conversation.memory.enabled=true
 wcs.conversation.memory.ttl=PT24H
 wcs.conversation.memory.max-messages=20
 wcs.conversation.memory.max-message-characters=2000
+wcs.conversation.summary.enabled=false
+wcs.conversation.summary.trigger-message-count=12
+wcs.conversation.summary.recent-message-count=6
+wcs.conversation.summary.trigger-characters=12000
+wcs.conversation.summary.max-summary-characters=4000
 ```
 
 #### Rollback operativo
 
 Ante un problema del adapter, volver a publicar la configuración con
 `wcs.conversation.memory.enabled=false` detiene nuevas lecturas y escrituras sin
-borrar el estado. Si se necesita revertir la versión de aplicación, primero se
+borrar el estado. `wcs.conversation.summary.enabled=false` deja de generar y
+usar resúmenes sin borrar la ventana ni el resumen almacenado. Si se necesita
+revertir la versión de aplicación, primero se
 despliega la versión anterior y luego se verifica que ningún runtime lea la
-tabla. La migración V6 no se edita ni se revierte automáticamente en producción;
+tabla. Las migraciones V6 y V7 no se editan ni se revierten automáticamente en producción;
 el borrado de la tabla requiere una migración posterior, revisión del plan y
 evidencia de que la retención, auditoría y backups fueron tratados.
 

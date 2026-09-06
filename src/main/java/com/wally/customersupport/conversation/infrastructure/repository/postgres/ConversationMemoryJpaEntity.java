@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.UUID;
 
 import com.wally.customersupport.conversation.domain.model.ConversationState;
+import com.wally.customersupport.conversation.domain.model.ConversationSummary;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -36,6 +37,18 @@ public class ConversationMemoryJpaEntity {
     @Column(nullable = false)
     private Long version;
 
+    @Column(name = "conversation_summary", columnDefinition = "text")
+    private String conversationSummary;
+
+    @Column(name = "summary_version", nullable = false)
+    private Long summaryVersion;
+
+    @Column(name = "summarized_message_count", nullable = false)
+    private Integer summarizedMessageCount;
+
+    @Column(name = "summary_updated_at")
+    private Instant summaryUpdatedAt;
+
     protected ConversationMemoryJpaEntity() {
     }
 
@@ -44,20 +57,32 @@ public class ConversationMemoryJpaEntity {
         this.actorId = state.actorId();
         this.recentMessages = state.recentMessages();
         this.updatedAt = databaseTimestamp(state.updatedAt());
+        updateSummaryFrom(state.summary());
     }
 
     public void updateFrom(ConversationState state) {
         this.recentMessages = state.recentMessages();
         this.updatedAt = databaseTimestamp(state.updatedAt());
+        updateSummaryFrom(state.summary());
     }
 
     public ConversationState toDomain() {
+        ConversationSummary summary = conversationSummary == null
+                || conversationSummary.isBlank()
+                || summaryUpdatedAt == null
+                ? null
+                : new ConversationSummary(
+                        conversationSummary,
+                        summaryVersion == null ? 0L : summaryVersion,
+                        summarizedMessageCount == null ? 0 : summarizedMessageCount,
+                        summaryUpdatedAt);
         return new ConversationState(
                 conversationId,
                 actorId,
                 recentMessages,
                 updatedAt,
-                version == null ? 0L : version);
+                version == null ? 0L : version,
+                summary);
     }
 
     public UUID conversationId() {
@@ -70,6 +95,20 @@ public class ConversationMemoryJpaEntity {
 
     public long version() {
         return version == null ? 0L : version;
+    }
+
+    private void updateSummaryFrom(ConversationSummary summary) {
+        if (summary == null) {
+            this.conversationSummary = null;
+            this.summaryVersion = 0L;
+            this.summarizedMessageCount = 0;
+            this.summaryUpdatedAt = null;
+            return;
+        }
+        this.conversationSummary = summary.text();
+        this.summaryVersion = summary.version();
+        this.summarizedMessageCount = summary.summarizedMessageCount();
+        this.summaryUpdatedAt = databaseTimestamp(summary.updatedAt());
     }
 
     private static Instant databaseTimestamp(Instant timestamp) {

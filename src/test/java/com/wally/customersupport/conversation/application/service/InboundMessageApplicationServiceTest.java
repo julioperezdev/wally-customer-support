@@ -2,6 +2,7 @@ package com.wally.customersupport.conversation.application.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.lenient;
@@ -55,6 +56,8 @@ class InboundMessageApplicationServiceTest {
     private OutboxRepository outboxRepository;
     @Mock
     private ConversationOrchestrator conversationOrchestrator;
+    @Mock
+    private ConversationSummaryService conversationSummaryService;
 
     private InboundMessageApplicationService service;
     private Conversation conversation;
@@ -69,8 +72,12 @@ class InboundMessageApplicationServiceTest {
                 processingAttemptRepository,
                 outboxRepository,
                 conversationOrchestrator,
+                conversationSummaryService,
                 Clock.fixed(NOW, ZoneOffset.UTC));
         lenient().when(conversationOrchestrator.replyFor(any())).thenReturn("Respuesta segura");
+        lenient().when(conversationSummaryService.summaryForContext(any())).thenReturn(null);
+        lenient().when(conversationSummaryService.appendAndMaybeSummarize(any(), anyString(), any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
         lenient().when(conversationMemory.load(any(), any())).thenReturn(Optional.empty());
         conversation = new Conversation(
                 UUID.randomUUID(), Channel.WHATSAPP, "conversation-1", "customer-1",

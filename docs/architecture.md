@@ -3,7 +3,7 @@
 Owner: Tech Lead  
 Status: `Accepted`
 Last reviewed: 2026-09-03
-Related Jira: `WCS-13`, `WCS-17`, `WCS-18`, `WCS-20`, `WCS-21`, `WCS-22`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-32`, `WCS-33`, `WCS-34`, `WCS-35`
+Related Jira: `WCS-13`, `WCS-17`, `WCS-18`, `WCS-20`, `WCS-21`, `WCS-22`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-32`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-36`
 Related repository paths: `src/main/java/com/wally/customersupport/{conversation,catalog,support,knowledge,shared}`, `src/main/resources`, `db/migration`
 Decision/source: specification de WhatsApp y re-baseline solicitada el 2026-08-30
 
@@ -225,6 +225,15 @@ antes de guardar. Las lecturas y borrados requieren `conversationId` y un
 `actorId` pseudónimo para evitar mezclar estados. La política completa está en
 [`privacy-retention.md`](privacy-retention.md).
 
+WCS-36 agrega un resumen opcional y versionado para el prefijo antiguo de una
+conversación extensa. La ventana reciente permanece separada y se entrega
+siempre al clasificador/orquestador. El resumen se persiste junto al estado de
+memoria mediante `V7__add_conversation_summary.sql`, tiene un checkpoint por
+cantidad de mensajes y control de versión propio, y se ignora cuando
+`wcs.conversation.summary.enabled=false`. Los filtros tipados de catálogo y
+las fuentes transaccionales continúan siendo autoridad; el resumen sólo aporta
+contexto.
+
 ## Puertos principales
 
 ```java
@@ -247,6 +256,10 @@ interface ConversationIntentClassifier {
 
 interface KnowledgeRetriever {
     List<KnowledgeChunk> retrieve(KnowledgeQuery query);
+}
+
+interface ConversationSummarizer {
+    String summarize(String previousSummary, List<String> olderMessages);
 }
 
 interface CatalogRepository {

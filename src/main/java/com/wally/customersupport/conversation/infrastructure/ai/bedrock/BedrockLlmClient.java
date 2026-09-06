@@ -36,12 +36,16 @@ public class BedrockLlmClient implements LlmClient {
                 <recent_messages>
                 %s
                 </recent_messages>
+                <conversation_summary>
+                %s
+                </conversation_summary>
                 <approved_knowledge>
                 %s
                 </approved_knowledge>
                 """.formatted(
                 limit(context.latestMessage(), 2_000),
                 limit(String.join("\n", context.recentMessages()), 4_000),
+                limit(context.conversationSummary(), 4_000),
                 limit(context.knowledge().stream()
                         .map(chunk -> "[" + chunk.sourceId() + "] " + chunk.content())
                         .reduce("", (left, right) -> left + "\n" + right), 8_000));

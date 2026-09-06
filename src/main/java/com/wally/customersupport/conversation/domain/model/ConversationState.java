@@ -17,14 +17,24 @@ public record ConversationState(
         String actorId,
         List<String> recentMessages,
         Instant updatedAt,
-        long version) {
+        long version,
+        ConversationSummary summary) {
 
     public ConversationState(
             UUID conversationId,
             String actorId,
             List<String> recentMessages,
             Instant updatedAt) {
-        this(conversationId, actorId, recentMessages, updatedAt, 0L);
+        this(conversationId, actorId, recentMessages, updatedAt, 0L, null);
+    }
+
+    public ConversationState(
+            UUID conversationId,
+            String actorId,
+            List<String> recentMessages,
+            Instant updatedAt,
+            long version) {
+        this(conversationId, actorId, recentMessages, updatedAt, version, null);
     }
 
     public ConversationState {
