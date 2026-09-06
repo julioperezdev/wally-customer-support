@@ -265,11 +265,11 @@
           "logsMode": "Insights",
           "logsQueryScope": "namePrefix",
           "logGroupClass": "STANDARD",
-          "logGroupPrefixes": ["/aws/apprunner/$service_name"],
+          "logGroupPrefixes": ["/aws/apprunner/wally-customer-support-prod-backend"],
           "queryLanguage": "CWLI",
           "queryMode": "Logs",
           "refId": "A",
-          "region": "$region",
+          "region": "us-east-1",
           "statsGroups": ["parsedStage", "parsedOperation", "parsedProvider", "parsedModel", "parsedPricingVersion"]
         }
       ]
@@ -300,11 +300,11 @@
           "logsMode": "Insights",
           "logsQueryScope": "namePrefix",
           "logGroupClass": "STANDARD",
-          "logGroupPrefixes": ["/aws/apprunner/$service_name"],
+          "logGroupPrefixes": ["/aws/apprunner/wally-customer-support-prod-backend"],
           "queryLanguage": "CWLI",
           "queryMode": "Logs",
           "refId": "A",
-          "region": "$region",
+          "region": "us-east-1",
           "statsGroups": ["parsedQueryType", "parsedOutcome"]
         }
       ]
@@ -335,11 +335,11 @@
           "logsMode": "Insights",
           "logsQueryScope": "namePrefix",
           "logGroupClass": "STANDARD",
-          "logGroupPrefixes": ["/aws/apprunner/$service_name"],
+          "logGroupPrefixes": ["/aws/apprunner/wally-customer-support-prod-backend"],
           "queryLanguage": "CWLI",
           "queryMode": "Logs",
           "refId": "A",
-          "region": "$region",
+          "region": "us-east-1",
           "statsGroups": []
         }
       ]
@@ -370,11 +370,11 @@
           "logsMode": "Insights",
           "logsQueryScope": "namePrefix",
           "logGroupClass": "STANDARD",
-          "logGroupPrefixes": ["/aws/apprunner/$service_name"],
+          "logGroupPrefixes": ["/aws/apprunner/wally-customer-support-prod-backend"],
           "queryLanguage": "CWLI",
           "queryMode": "Logs",
           "refId": "A",
-          "region": "$region",
+          "region": "us-east-1",
           "statsGroups": []
         }
       ]

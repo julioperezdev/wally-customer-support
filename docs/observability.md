@@ -124,6 +124,11 @@ El dashboard `WCS · Observabilidad local` usa por defecto:
 - Log group por prefijo: `/aws/apprunner/wally-customer-support-prod-backend`.
 - Ventana: últimos 7 días.
 
+Los paneles de Logs usan directamente la región `us-east-1` y el prefijo
+productivo. El datasource de CloudWatch no resuelve de forma confiable las
+variables de dashboard dentro de `logGroupPrefixes`; las variables de región y
+servicio se mantienen para los paneles de métricas de App Runner.
+
 Para detener Grafana:
 
 ```bash
