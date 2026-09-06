@@ -126,6 +126,22 @@ preferencias.
 Testcontainers, `mvn verify`, configuración desactivada por defecto y
 documentación de privacidad, arquitectura, datos y operación.
 
+## WCS-38 — Integrar captura explícita de preferencias en el flujo conversacional
+
+**Tipo:** Task · **Prioridad:** High · **Estimate:** 3d · **Estado:** In Progress ·
+**Depends on:** WCS-37, WCS-20
+
+Conectar la persistencia de WCS-37 al flujo común de inbound mediante un parser
+determinístico y acotado. Sólo frases como “prefiero el negro” pueden guardar
+una preferencia; “busco una remera negra” debe seguir siendo un filtro de
+catálogo. La respuesta confirma el guardado y el LLM no decide qué persistir.
+
+Fuera de alcance: extracción automática, AgentCore, preferencias sensibles y
+autoridad transaccional basada en memoria.
+
+**Evidencia:** tests del parser, flujo común de WhatsApp/Telegram,
+Testcontainers, logs sanitizados y documentación actualizada.
+
 ## EPIC-WCS-01 — Gobierno y documentación
 
 ### WCS-9 — Definir espacio Confluence y matriz de fuentes de verdad
@@ -285,6 +301,7 @@ semántica o AgentCore.
 | 12 | WCS-35 | In Progress | Memoria de sesión PostgreSQL, TTL, ownership, conflictos y activación controlada | WCS-34 |
 | 13 | WCS-36 | In Progress | Resumen versionado, ventana reciente, checkpoint y fallback controlado | WCS-35 |
 | 14 | WCS-37 | In Progress | Preferencias explícitas PostgreSQL, TTL, ownership, borrado y contexto auxiliar | WCS-34, WCS-35, WCS-36 |
+| 15 | WCS-38 | In Progress | Captura determinística de preferencias explícitas en inbound | WCS-20, WCS-37 |
 
 `WCS-14`–`WCS-16` y `WCS-17` ya tienen la fundación o el contrato inicial
 versionado; deben completarse/verificarse según la evidencia de cada issue antes

@@ -43,6 +43,7 @@ public class InboundMessageApplicationService implements InboundMessagePort {
     private final ConversationOrchestrator conversationOrchestrator;
     private final ConversationSummaryService conversationSummaryService;
     private final CustomerPreferenceService customerPreferenceService;
+    private final ExplicitPreferenceCaptureService explicitPreferenceCaptureService;
     private final Clock clock;
 
     @Override
@@ -84,15 +85,19 @@ public class InboundMessageApplicationService implements InboundMessagePort {
         String actorId = conversation.id().toString();
         ConversationState conversationState = loadConversationState(conversation.id(), actorId, now);
         conversationSummaryService.recordContextPrepared(conversationState);
+        ExplicitPreferenceCaptureService.CaptureResult preferenceCapture =
+                explicitPreferenceCaptureService.capture(actorId, command.body(), now);
         var preferences = customerPreferenceService.findForContext(conversation.id().toString(), conversation.id());
-        String reply = conversationOrchestrator.replyFor(new ConversationContext(
-                    conversation.id(),
-                    conversation.externalCustomerId(),
-                    command.body(),
-                    conversationState.recentMessages(),
-                    List.of(),
-                    conversationSummaryService.summaryForContext(conversationState),
-                    preferences));
+        String reply = preferenceCapture.shouldAcknowledge()
+                ? preferenceReply(preferenceCapture)
+                : conversationOrchestrator.replyFor(new ConversationContext(
+                        conversation.id(),
+                        conversation.externalCustomerId(),
+                        command.body(),
+                        conversationState.recentMessages(),
+                        List.of(),
+                        conversationSummaryService.summaryForContext(conversationState),
+                        preferences));
 
         saveConversationMemory(conversationSummaryService.appendAndMaybeSummarize(
                 conversationState,
@@ -138,6 +143,14 @@ public class InboundMessageApplicationService implements InboundMessagePort {
                     messageRepository.findRecentBodies(conversationId, 20),
                     now);
         }
+    }
+
+    private static String preferenceReply(ExplicitPreferenceCaptureService.CaptureResult result) {
+        if (result.status() == ExplicitPreferenceCaptureService.Status.SAVED) {
+            return "Perfecto, voy a tener en cuenta que preferís el " + result.color() + ".";
+        }
+        return "Puedo recordar como preferencia estos colores: negro, blanco, gris, azul, rojo, "
+                + "verde, amarillo, rosa o violeta.";
     }
 
     private void saveConversationMemory(ConversationState state) {

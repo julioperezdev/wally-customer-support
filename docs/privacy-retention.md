@@ -88,6 +88,10 @@ persisten preferencias explícitas o confirmadas y, inicialmente, el color
 preferido. No se guardan como preferencias hechos transaccionales, precios,
 stock, carritos, pedidos ni credenciales.
 
+`WCS-38` permite capturar frases explícitas mediante un parser determinístico
+del flujo común de inbound. Una mención incidental de color dentro de una
+consulta de catálogo no se persiste y el LLM no puede autorizar una captura.
+
 ## Acceso y aislamiento
 
 Cada operación de lectura y borrado recibe ambos valores, `conversationId` y

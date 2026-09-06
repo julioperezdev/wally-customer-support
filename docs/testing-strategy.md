@@ -88,6 +88,7 @@ necesitan iniciar el contenedor.
 | `TC-043` | P1 | Preferencia explícita permitida | Persiste/reemplaza `preferred_color` sólo con un color permitido y confirmado | Unit + Testcontainers |
 | `TC-044` | P1 | Preferencia vencida o inválida | No expone valores vencidos ni guarda colores no permitidos | Unit + Testcontainers |
 | `TC-045` | P1 | Ownership y borrado de preferencias | Un actor no lee preferencias ajenas y el borrado elimina el alcance solicitado | Unit + Testcontainers |
+| `TC-046` | P1 | Captura explícita en inbound | Confirma una frase explícita, no captura colores incidentales y no invoca al LLM para guardar | Unit + flujo común |
 | `TC-041` | P1 | Uso real de Bedrock | Emite `AI_USAGE_RECORDED` con modelo, tokens, latencia, pricing version y costo estimado | Test del adapter + log sanitizado |
 | `TC-042` | P1 | Consultas de observabilidad | CloudWatch agrega consultas, IA, RAG y entregas sin errores de campos | Logs Insights/Grafana |
 
@@ -104,6 +105,9 @@ necesitan iniciar el contenedor.
   de proveedor.
 - `TC-042`: las queries versionadas de CloudWatch funcionan tanto con campos JSON
   descubiertos como con mensajes que tengan prefijo textual de Spring.
+- `TC-046`: con preferencias habilitadas, enviar `Prefiero el negro` debe
+  confirmar la captura; enviar `Busco una remera negra talle M` debe ejecutar
+  catálogo y no guardar una preferencia.
 
 ### Prueba manual de catálogo por Telegram
 
