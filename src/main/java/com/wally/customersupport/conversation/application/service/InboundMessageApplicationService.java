@@ -27,16 +27,14 @@ import com.wally.customersupport.conversation.domain.model.ProcessingAttempt;
 import com.wally.customersupport.conversation.domain.model.ProcessingAttemptStatus;
 import com.wally.customersupport.shared.infrastructure.observability.StructuredEventLog;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class InboundMessageApplicationService implements InboundMessagePort {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(InboundMessageApplicationService.class);
 
     private final ConversationRepository conversationRepository;
     private final ConversationMemory conversationMemory;
@@ -120,7 +118,7 @@ public class InboundMessageApplicationService implements InboundMessagePort {
                     .map(ConversationState::recentMessages)
                     .orElseGet(() -> messageRepository.findRecentBodies(conversationId, 20));
         } catch (RuntimeException exception) {
-            StructuredEventLog.warn(LOGGER, "MEMORY_STATE_LOAD_FAILED", java.util.Map.of(
+            StructuredEventLog.warn(log, "MEMORY_STATE_LOAD_FAILED", java.util.Map.of(
                     "errorType", exception.getClass().getSimpleName(),
                     "correlationId", conversationId));
             return messageRepository.findRecentBodies(conversationId, 20);
@@ -144,7 +142,7 @@ public class InboundMessageApplicationService implements InboundMessagePort {
                     stateMessages,
                     updatedAt));
         } catch (RuntimeException exception) {
-            StructuredEventLog.warn(LOGGER, "MEMORY_STATE_SAVE_FAILED", java.util.Map.of(
+            StructuredEventLog.warn(log, "MEMORY_STATE_SAVE_FAILED", java.util.Map.of(
                     "errorType", exception.getClass().getSimpleName(),
                     "correlationId", conversationId));
         }
