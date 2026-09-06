@@ -107,7 +107,7 @@ Se agregan cuando el producto acepta el alcance de conocimiento:
 
 Si se elige pgvector, la columna vectorial se agrega en una migración posterior cuando estén aprobados modelo de embeddings y dimensión. Knowledge Bases no requiere almacenar embeddings en WCS.
 
-### Estado conversacional — contrato en `WCS-34`, persistencia en `WCS-35`
+### Estado conversacional — contrato en `WCS-34`, persistencia en `WCS-35` y resumen en `WCS-36`
 
 La primera entrega reconstruye los filtros activos a partir de una ventana
 acotada de mensajes inbound persistidos. `WCS-34` define el contrato
@@ -120,13 +120,19 @@ separado del historial, mediante la tabla `wcs.conversation_memory_states`:
 * `recent_messages` JSONB con la ventana normalizada;
 * `updated_at` para aplicar el TTL;
 * `version` para evitar que dos turnos concurrentes mezclen contexto.
+* `conversation_summary` opcional con el resumen del prefijo antiguo;
+* `summary_version` y `summarized_message_count` como checkpoint versionado;
+* `summary_updated_at` para aplicar la retención del estado completo.
 
 La carga elimina de forma transaccional un estado vencido. El guardado valida
 ownership y versión; una versión obsoleta se rechaza como conflicto. La tabla
-se crea con `V6__create_conversation_memory_states.sql` y el adapter se puede
-activar sólo con `wcs.conversation.memory.enabled=true`.
+se crea con `V6__create_conversation_memory_states.sql` y se amplía con
+`V7__add_conversation_summary.sql`. El adapter se puede activar sólo con
+`wcs.conversation.memory.enabled=true`; el resumen adicional permanece
+desactivado por defecto.
 
-Ese estado no será fuente de verdad para stock, precio, carrito ni pedidos.
+El resumen conserva únicamente contexto conversacional y no será fuente de
+verdad para filtros tipados, stock, precio, carrito ni pedidos.
 
 ### Otras entidades futuras
 

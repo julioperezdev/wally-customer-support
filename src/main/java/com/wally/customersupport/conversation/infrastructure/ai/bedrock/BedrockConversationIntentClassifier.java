@@ -132,6 +132,11 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
         prompt.append("</conversation_history>\n<latest_customer_message>\n")
                 .append(limit(messages.getLast()))
                 .append("\n</latest_customer_message>");
+        if (context.conversationSummary() != null && !context.conversationSummary().isBlank()) {
+            prompt.append("\n<conversation_summary>\n")
+                    .append(limit(context.conversationSummary()))
+                    .append("\n</conversation_summary>");
+        }
         return prompt.toString();
     }
 

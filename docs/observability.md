@@ -2,7 +2,7 @@
 
 Owner: Tech Lead
 Status: `In Progress`
-Related Jira: `WCS-21`, `WCS-22`
+Related Jira: `WCS-21`, `WCS-22`, `WCS-36`
 Related repository paths: `observability/grafana/`, `src/main/java/com/wally/customersupport/conversation/infrastructure/http/`, `src/main/java/com/wally/customersupport/conversation/application/service/`, `src/main/java/com/wally/customersupport/shared/infrastructure/observability/`
 
 ## Objetivo de esta iteración
@@ -49,6 +49,9 @@ operacional necesario para diagnóstico y costo, pero sin contenido de negocio.
 | `INTENT_CLASSIFICATION_FAILED` | `errorType`, `durationMs` | Fallo del clasificador |
 | `CONVERSATION_QUERY_COMPLETED` | `queryType`, `outcome`, `responseGenerated`, `durationMs`, `correlationId` | Resultado y latencia total de la consulta |
 | `GENERAL_SUPPORT_FAILED` | `errorType`, `correlationId` | Fallback de conocimiento/LLM |
+| `CONVERSATION_CONTEXT_PREPARED` | `recentMessageCount`, `recentCharacters`, `summaryPresent`, `summaryCharacters`, `summaryEnabled` | Tamaño del contexto y activación del resumen, sin contenido |
+| `CONVERSATION_SUMMARY_CREATED` | `summaryVersion`, `summarizedMessageCount`, `recentMessageCount`, `summaryCharacters`, `durationMs` | Resumen versionado, tamaño y latencia |
+| `CONVERSATION_SUMMARY_FALLBACK` | `errorType`, `recentMessageCount`, `correlationId`, `durationMs` | Fallo de resumen, latencia y uso de ventana reciente |
 | `RAG_RETRIEVAL_RECORDED` | `provider`, `success`, `resultCount`, `durationMs`, `errorType` | Resultado y latencia de Knowledge Base |
 | `AI_USAGE_RECORDED` | `stage`, `operation`, `provider`, `model`, `success`, `inputTokens`, `outputTokens`, `totalTokens`, `estimatedCostUsd`, `pricingVersion`, `durationMs`, `providerLatencyMs`, `errorType` | Cada llamada real a un proveedor de IA |
 | `OUTBOUND_MESSAGE_DISPATCHED` | `channel`, `result`, `errorType`, `durationMs`, `correlationId` | Entrega o reintento del outbox |

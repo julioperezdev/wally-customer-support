@@ -87,6 +87,25 @@ ownership, conflicto de versión, expiración, borrado y fallback no-op; `mvn
 verify`; logs sanitizados; actualización de arquitectura, modelo, operaciones,
 plan de memoria y política de retención.
 
+## WCS-36 — Implementar resumen controlado de conversaciones extensas
+
+**Tipo:** Task · **Prioridad:** High · **Estimate:** 4d · **Estado:** In Progress ·
+**Depends on:** WCS-35
+
+Implementar la Fase 5 del plan de memoria con un resumen opcional y versionado
+del prefijo antiguo, una ventana reciente separada, checkpoint de cantidad de
+mensajes y fallback seguro. PostgreSQL continúa siendo la fuente de verdad; el
+resumen no reemplaza filtros tipados, catálogo, stock, precio, carrito ni
+pedidos.
+
+La primera entrega agrega `ConversationSummarizer`, adapters Bedrock/mock,
+configuración `wcs.conversation.summary.*`, migración V7 y eventos
+sanitizados para medir tamaño, activación, éxito y fallback. El flag queda
+desactivado por defecto.
+
+**Evidencia:** tests unitarios, persistencia PostgreSQL/Testcontainers,
+`mvn verify`, logs sin cuerpos completos ni PII y documentación actualizada.
+
 ## EPIC-WCS-01 — Gobierno y documentación
 
 ### WCS-9 — Definir espacio Confluence y matriz de fuentes de verdad
@@ -244,6 +263,7 @@ semántica o AgentCore.
 | 10 | WCS-33 | Done | Contexto conversacional, filtros multi-turno y `productType` | WCS-20, WCS-25 |
 | 11 | WCS-34 | In Progress | Contrato de memoria, privacidad, retención, aislamiento y borrado | WCS-33 |
 | 12 | WCS-35 | In Progress | Memoria de sesión PostgreSQL, TTL, ownership, conflictos y activación controlada | WCS-34 |
+| 13 | WCS-36 | In Progress | Resumen versionado, ventana reciente, checkpoint y fallback controlado | WCS-35 |
 
 `WCS-14`–`WCS-16` y `WCS-17` ya tienen la fundación o el contrato inicial
 versionado; deben completarse/verificarse según la evidencia de cada issue antes

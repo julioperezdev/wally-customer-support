@@ -10,10 +10,21 @@ public record ConversationContext(
         String externalCustomerId,
         String latestMessage,
         List<String> recentMessages,
-        List<KnowledgeChunk> knowledge) {
+        List<KnowledgeChunk> knowledge,
+        String conversationSummary) {
+
+    public ConversationContext(
+            UUID conversationId,
+            String externalCustomerId,
+            String latestMessage,
+            List<String> recentMessages,
+            List<KnowledgeChunk> knowledge) {
+        this(conversationId, externalCustomerId, latestMessage, recentMessages, knowledge, null);
+    }
 
     public ConversationContext {
         recentMessages = recentMessages == null ? List.of() : List.copyOf(recentMessages);
         knowledge = knowledge == null ? List.of() : List.copyOf(knowledge);
+        conversationSummary = conversationSummary == null ? null : conversationSummary.strip();
     }
 }

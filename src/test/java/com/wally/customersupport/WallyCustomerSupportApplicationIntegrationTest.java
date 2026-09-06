@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import javax.sql.DataSource;
@@ -20,6 +21,7 @@ import com.wally.customersupport.conversation.domain.model.Conversation;
 import com.wally.customersupport.conversation.domain.model.ConversationMemoryConflictException;
 import com.wally.customersupport.conversation.domain.model.ConversationMemoryOwnershipException;
 import com.wally.customersupport.conversation.domain.model.ConversationState;
+import com.wally.customersupport.conversation.domain.model.ConversationSummary;
 import com.wally.customersupport.conversation.domain.model.ConversationStatus;
 import com.wally.customersupport.conversation.infrastructure.repository.postgres.ConversationMemoryJpaEntity;
 import com.wally.customersupport.conversation.infrastructure.repository.postgres.SpringDataConversationMemoryRepository;
@@ -164,5 +166,36 @@ class WallyCustomerSupportApplicationIntegrationTest {
 
         assertTrue(conversationMemory.load(conversationId, "actor-expired").isEmpty());
         assertTrue(conversationMemoryRepository.findById(conversationId).isEmpty());
+    }
+
+    @Test
+    void persistsAndLoadsVersionedConversationSummary() {
+        Instant now = Instant.now();
+        UUID conversationId = UUID.randomUUID();
+        conversationRepository.save(new Conversation(
+                conversationId,
+                Channel.TELEGRAM,
+                "summary-chat-" + conversationId,
+                "telegram-user",
+                ConversationStatus.OPEN,
+                now,
+                now));
+        ConversationSummary summary = new ConversationSummary(
+                "El cliente busca un buzo negro y todavía no confirmó talle.",
+                1L,
+                8,
+                now.truncatedTo(ChronoUnit.MICROS));
+
+        ConversationState saved = conversationMemory.save(new ConversationState(
+                conversationId,
+                "actor-summary",
+                List.of("¿Qué talles tienen?"),
+                now,
+                0L,
+                summary));
+
+        ConversationState loaded = conversationMemory.load(conversationId, "actor-summary").orElseThrow();
+        assertEquals(summary, loaded.summary());
+        assertEquals(saved.version(), loaded.version());
     }
 }

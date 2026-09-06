@@ -3,7 +3,7 @@
 Owner: Product/Tech Lead  
 Status: `Proposed — pending legal and business approval`  
 Last reviewed: 2026-09-06  
-Related Jira: `WCS-34`, `WCS-35`
+Related Jira: `WCS-34`, `WCS-35`, `WCS-36`
 Related decision: [`003-conversational-memory-boundary.md`](decisions/003-conversational-memory-boundary.md)
 
 ## Propósito y alcance
@@ -37,6 +37,7 @@ política sea aprobada.
 | `conversationId` interno | Identificador de ownership | Mientras exista la conversación operativa |
 | `actorId` pseudónimo | Identificador técnico, no teléfono | Mientras exista la conversación operativa |
 | Mensajes recientes | Contexto acotado para interpretar el siguiente turno | 24 horas desde la última actualización, pendiente de aprobación |
+| Resumen conversacional | Contexto comprimido del prefijo antiguo; no es autoridad transaccional | Igual que la memoria de sesión, pendiente de aprobación |
 | Filtros de búsqueda actuales | Estado temporal; se recalcula o limpia por turno | Igual que la memoria de sesión |
 | Stock, precio, carrito y pedidos | Se consulta en PostgreSQL/servicio transaccional | No se convierte en memoria |
 | Respuestas y documentos RAG | Evidencia de la consulta actual | No se guarda como preferencia por esta fase |
@@ -51,6 +52,12 @@ La política de WCS recomienda inicialmente:
 - Máximo de `2.000` caracteres por mensaje usado como contexto.
 - Al superar el máximo de mensajes, conservar sólo los más recientes.
 - Eliminar mensajes vacíos y recortar espacios antes de guardar.
+- El resumen se activa sólo por umbral de cantidad o caracteres, conserva una
+  ventana reciente y se versiona junto al checkpoint de memoria.
+- Si el resumen falla o es inválido, se usa la ventana reciente acotada y no se
+  bloquea la atención.
+- No incluir en el resumen teléfonos, emails, tokens, secretos, pagos ni PII
+  innecesaria.
 
 Estos valores están codificados en `ConversationMemoryPolicy.recommended()` y
 deben convertirse en configuración administrada antes de la persistencia

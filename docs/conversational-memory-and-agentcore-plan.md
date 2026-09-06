@@ -3,7 +3,7 @@
 Owner: Product/Tech Lead
 Status: `Accepted for phased implementation`
 Last reviewed: 2026-09-05
-Related Jira: `WCS-20`, `WCS-21`, `WCS-30`, `WCS-33`, `WCS-34`, `WCS-35`
+Related Jira: `WCS-20`, `WCS-21`, `WCS-30`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-36`
 Canonical Confluence: [WCS — Conversational Memory, Context & AgentCore Plan](https://julioperezdev.atlassian.net/wiki/spaces/SD/pages/6684674/WCS+Conversational+Memory+Context+AgentCore+Plan)
 Related repository paths: `src/main/java/com/wally/customersupport/conversation`, `src/main/java/com/wally/customersupport/catalog`, `src/main/resources/db/migration`, `docs/ai.md`, `docs/architecture.md`
 Decision/source: plan aprobado para WCS el 2026-09-05
@@ -211,6 +211,9 @@ los tests de integración lo cambian a `true`.
 
 Esta fase corresponde principalmente a `WCS-30`. La KB histórica `bigg-rag-sales-offhours` continúa siendo sólo referencia técnica.
 
+`WCS-30` ya está versionado y mergeado. La validación de infraestructura,
+ingesta y activación de la KB continúa siendo un gate operativo separado.
+
 ### Fase 5 — Resumen de conversaciones extensas
 
 **Objetivo:** reducir tokens y latencia cuando el historial real lo justifique.
@@ -225,6 +228,10 @@ Esta fase corresponde principalmente a `WCS-30`. La KB histórica `bigg-rag-sale
 - evaluación de calidad del resumen.
 
 Primero se implementará en WCS/PostgreSQL. AgentCore Summary Strategy queda como alternativa posterior.
+
+`WCS-36` implementa esta fase con un resumen opcional, una ventana reciente
+separada, checkpoint de mensajes y fallback seguro. El flag queda desactivado
+por defecto hasta medir calidad, costo, latencia y retención.
 
 ### Fase 6 — Memoria semántica y preferencias
 
@@ -348,3 +355,4 @@ Métricas:
 | 2026-09-05 | Se documentan siete fases, frontera PostgreSQL/Knowledge Base/AgentCore y exclusión de LangChain/LangGraph como dependencias. |
 | 2026-09-06 | Se inicia Fase 2 con contrato de memoria, límites de contexto y política propuesta de privacidad, retención, aislamiento y borrado en `WCS-34`. |
 | 2026-09-06 | `WCS-35` implementa la persistencia PostgreSQL de memoria de sesión con TTL, ownership, versión y activación controlada. |
+| 2026-09-06 | `WCS-36` inicia la Fase 5 con resumen versionado, ventana reciente y fallback detrás de configuración. |

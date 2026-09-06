@@ -2,7 +2,6 @@ package com.wally.customersupport.conversation.application.service;
 
 import java.time.Clock;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -42,6 +41,7 @@ public class InboundMessageApplicationService implements InboundMessagePort {
     private final ProcessingAttemptRepository processingAttemptRepository;
     private final OutboxRepository outboxRepository;
     private final ConversationOrchestrator conversationOrchestrator;
+    private final ConversationSummaryService conversationSummaryService;
     private final Clock clock;
 
     @Override
@@ -81,15 +81,20 @@ public class InboundMessageApplicationService implements InboundMessagePort {
                 now));
 
         String actorId = conversation.id().toString();
-        List<String> recentMessages = recentMessages(conversation.id(), actorId);
+        ConversationState conversationState = loadConversationState(conversation.id(), actorId, now);
+        conversationSummaryService.recordContextPrepared(conversationState);
         String reply = conversationOrchestrator.replyFor(new ConversationContext(
                     conversation.id(),
                     conversation.externalCustomerId(),
                     command.body(),
-                    recentMessages,
-                    List.of()));
+                    conversationState.recentMessages(),
+                    List.of(),
+                    conversationSummaryService.summaryForContext(conversationState)));
 
-        saveConversationMemory(conversation.id(), actorId, recentMessages, command.body(), now);
+        saveConversationMemory(conversationSummaryService.appendAndMaybeSummarize(
+                conversationState,
+                command.body(),
+                now));
 
         processingAttemptRepository.save(new ProcessingAttempt(
                 UUID.randomUUID(),
@@ -112,39 +117,33 @@ public class InboundMessageApplicationService implements InboundMessagePort {
         return InboundMessageResult.accepted();
     }
 
-    private List<String> recentMessages(UUID conversationId, String actorId) {
+    private ConversationState loadConversationState(UUID conversationId, String actorId, Instant now) {
         try {
             return conversationMemory.load(conversationId, actorId)
-                    .map(ConversationState::recentMessages)
-                    .orElseGet(() -> messageRepository.findRecentBodies(conversationId, 20));
+                    .orElseGet(() -> new ConversationState(
+                            conversationId,
+                            actorId,
+                            messageRepository.findRecentBodies(conversationId, 20),
+                            now));
         } catch (RuntimeException exception) {
             StructuredEventLog.warn(log, "MEMORY_STATE_LOAD_FAILED", java.util.Map.of(
                     "errorType", exception.getClass().getSimpleName(),
                     "correlationId", conversationId));
-            return messageRepository.findRecentBodies(conversationId, 20);
+            return new ConversationState(
+                    conversationId,
+                    actorId,
+                    messageRepository.findRecentBodies(conversationId, 20),
+                    now);
         }
     }
 
-    private void saveConversationMemory(
-            UUID conversationId,
-            String actorId,
-            List<String> recentMessages,
-            String latestMessage,
-            Instant updatedAt) {
-        List<String> stateMessages = new ArrayList<>(recentMessages);
-        if (stateMessages.isEmpty() || !latestMessage.equals(stateMessages.getFirst())) {
-            stateMessages.addFirst(latestMessage);
-        }
+    private void saveConversationMemory(ConversationState state) {
         try {
-            conversationMemory.save(new ConversationState(
-                    conversationId,
-                    actorId,
-                    stateMessages,
-                    updatedAt));
+            conversationMemory.save(state);
         } catch (RuntimeException exception) {
             StructuredEventLog.warn(log, "MEMORY_STATE_SAVE_FAILED", java.util.Map.of(
                     "errorType", exception.getClass().getSimpleName(),
-                    "correlationId", conversationId));
+                    "correlationId", state.conversationId()));
         }
     }
 
