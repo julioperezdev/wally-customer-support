@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import javax.sql.DataSource;
@@ -183,7 +184,7 @@ class WallyCustomerSupportApplicationIntegrationTest {
                 "El cliente busca un buzo negro y todavía no confirmó talle.",
                 1L,
                 8,
-                now);
+                now.truncatedTo(ChronoUnit.MICROS));
 
         ConversationState saved = conversationMemory.save(new ConversationState(
                 conversationId,
