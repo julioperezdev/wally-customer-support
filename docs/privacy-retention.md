@@ -3,7 +3,7 @@
 Owner: Product/Tech Lead  
 Status: `Proposed — pending legal and business approval`  
 Last reviewed: 2026-09-06  
-Related Jira: `WCS-34`  
+Related Jira: `WCS-34`, `WCS-35`
 Related decision: [`003-conversational-memory-boundary.md`](decisions/003-conversational-memory-boundary.md)
 
 ## Propósito y alcance
@@ -13,9 +13,10 @@ usar para continuar una conversación. No constituye por sí sola la política
 legal definitiva de la tienda ni reemplaza los requisitos aplicables de
 privacidad, consumo o protección de datos.
 
-El alcance de esta entrega es el contrato de memoria y sus límites. La
-persistencia productiva en PostgreSQL corresponde a la Fase 3 y deberá respetar
-esta política antes de ser activada.
+El alcance de esta política es el contrato de memoria y sus límites. `WCS-35`
+implementa la primera persistencia en PostgreSQL, pero no la activa por defecto:
+`wcs.conversation.memory.enabled=false` mantiene el adapter no-op hasta que la
+política sea aprobada.
 
 ## Principios
 
@@ -94,6 +95,7 @@ Antes de activar memoria persistente en producción se debe aprobar:
 - estrategia de backup y expiración;
 - pruebas de aislamiento, expiración, borrado y recuperación.
 
-Hasta completar ese gate, el adapter en memoria de WCS se utiliza sólo en tests
-y desarrollo controlado. AgentCore Memory no se incorpora como dependencia
-obligatoria.
+Hasta completar ese gate, la memoria persistente permanece desactivada en
+producción. El adapter PostgreSQL se verifica con Testcontainers y el adapter
+no-op conserva los flujos disponibles sin retener estado. AgentCore Memory no
+se incorpora como dependencia obligatoria.

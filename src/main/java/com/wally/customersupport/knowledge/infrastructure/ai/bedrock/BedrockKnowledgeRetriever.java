@@ -10,8 +10,7 @@ import com.wally.customersupport.knowledge.domain.model.KnowledgeChunk;
 import com.wally.customersupport.knowledge.domain.model.KnowledgeQuery;
 import com.wally.customersupport.shared.infrastructure.config.RagProperties;
 import com.wally.customersupport.shared.infrastructure.observability.StructuredEventLog;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.services.bedrockagentruntime.BedrockAgentRuntimeClient;
 import software.amazon.awssdk.services.bedrockagentruntime.model.KnowledgeBaseQuery;
 import software.amazon.awssdk.services.bedrockagentruntime.model.KnowledgeBaseRetrievalConfiguration;
@@ -22,9 +21,8 @@ import software.amazon.awssdk.services.bedrockagentruntime.model.RetrieveRespons
 import software.amazon.awssdk.services.bedrockagentruntime.model.RetrievalResultContent;
 
 /** Retrieves approved static knowledge without exposing Bedrock types to the application layer. */
+@Slf4j
 public final class BedrockKnowledgeRetriever implements KnowledgeRetriever {
-
-    private static final Logger log = LoggerFactory.getLogger(BedrockKnowledgeRetriever.class);
 
     private final BedrockAgentRuntimeClient client;
     private final RagProperties properties;

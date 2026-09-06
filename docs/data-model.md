@@ -2,8 +2,8 @@
 
 Owner: Tech Lead  
 Status: `Proposed`  
-Last reviewed: 2026-09-03
-Related Jira: `WCS-13`, `WCS-14`, `WCS-15`, `WCS-16`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-33`
+Last reviewed: 2026-09-06
+Related Jira: `WCS-13`, `WCS-14`, `WCS-15`, `WCS-16`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-33`, `WCS-34`, `WCS-35`
 Related repository paths: `src/main/java/com/wally/customersupport/{conversation,catalog,support}/infrastructure/repository/postgres`, `src/main/resources/db/migration`
 
 ## Aislamiento en el RDS compartido
@@ -107,25 +107,24 @@ Se agregan cuando el producto acepta el alcance de conocimiento:
 
 Si se elige pgvector, la columna vectorial se agrega en una migración posterior cuando estén aprobados modelo de embeddings y dimensión. Knowledge Bases no requiere almacenar embeddings en WCS.
 
-### Estado conversacional — contrato en `WCS-34`, persistencia planificada en Fase 3
+### Estado conversacional — contrato en `WCS-34`, persistencia en `WCS-35`
 
 La primera entrega reconstruye los filtros activos a partir de una ventana
-acotada de mensajes inbound persistidos. La siguiente iteración persistirá un
-estado tipado por conversación, separado del historial. `WCS-34` define el
-contrato `ConversationMemory`, el modelo inmutable `ConversationState` y los
-límites de privacidad/retención; el adapter en memoria sólo se usa en tests y
-desarrollo controlado:
+acotada de mensajes inbound persistidos. `WCS-34` define el contrato
+`ConversationMemory`, el modelo inmutable `ConversationState` y los límites de
+privacidad/retención. `WCS-35` persiste el estado tipado por conversación,
+separado del historial, mediante la tabla `wcs.conversation_memory_states`:
 
-* `conversationId` y `actorId` pseudónimo como ownership;
-* mensajes recientes limitados por TTL, cantidad y caracteres;
-* carga que expira y elimina el estado vencido;
-* limpieza explícita por conversación y actor.
+* `conversation_id` UUID como clave y referencia a `wcs.conversations`;
+* `actor_id` pseudónimo para ownership y aislamiento;
+* `recent_messages` JSONB con la ventana normalizada;
+* `updated_at` para aplicar el TTL;
+* `version` para evitar que dos turnos concurrentes mezclen contexto.
 
-La persistencia de Fase 3 agregará:
-
-* filtros de catálogo activos y sus reglas de reemplazo/limpieza;
-* último intent y timestamp de actualización;
-* versión para evitar que dos turnos concurrentes mezclen contexto.
+La carga elimina de forma transaccional un estado vencido. El guardado valida
+ownership y versión; una versión obsoleta se rechaza como conflicto. La tabla
+se crea con `V6__create_conversation_memory_states.sql` y el adapter se puede
+activar sólo con `wcs.conversation.memory.enabled=true`.
 
 Ese estado no será fuente de verdad para stock, precio, carrito ni pedidos.
 

@@ -31,6 +31,7 @@ El Space Jira `WCS` fue creado el 2026-08-29 y el backlog inicial fue cargado. L
 | WCS-BL-17 | WCS-23 |
 | WCS-BL-18 | WCS-29 |
 | WCS-BL-19 | WCS-34 |
+| WCS-BL-20 | WCS-35 |
 
 ## WCS-33 — Mantener contexto conversacional en búsquedas multi-turno
 
@@ -66,6 +67,25 @@ Fase 3 y AgentCore continúa fuera de alcance.
 
 **Evidencia:** tests de aislamiento/expiración/borrado/límites, `mvn verify`,
 `docs/privacy-retention.md` y actualización de arquitectura, modelo y plan.
+
+## WCS-35 — Persistir memoria de sesión conversacional en PostgreSQL
+
+**Tipo:** Story · **Prioridad:** High · **Estimate:** 5d · **Estado:** In Progress
+
+Implementar la Fase 3 del plan de memoria: migración V6, entidad y repositorio
+JPA, adapter detrás de `ConversationMemory`, TTL, ownership, versión optimista,
+limpieza de estados vencidos e integración tolerante a fallos con el flujo
+inbound. La activación productiva queda protegida por
+`wcs.conversation.memory.enabled` y requiere aprobación previa de la política
+de retención.
+
+**Fuera de alcance:** AgentCore Memory, LangChain/LangGraph, memoria semántica,
+preferencias persistentes, resumen de conversaciones y cambio de RDS.
+
+**Evidencia:** migración aplicada en Testcontainers, pruebas de reinicio,
+ownership, conflicto de versión, expiración, borrado y fallback no-op; `mvn
+verify`; logs sanitizados; actualización de arquitectura, modelo, operaciones,
+plan de memoria y política de retención.
 
 ## EPIC-WCS-01 — Gobierno y documentación
 
@@ -205,9 +225,9 @@ Bedrock/RAG, cambio de RDS o publicación productiva.
 
 El backlog se reordenó por dependencia funcional y por el estado real del
 repositorio. `WCS-33` ya resolvió la pérdida de contexto observada en búsquedas
-de catálogo. La entrega actual parte de `main` y continúa con `WCS-34`, que fija
-el contrato y los límites de memoria antes de introducir persistencia o
-AgentCore.
+de catálogo. `WCS-34` fijó el contrato y los límites de memoria; `WCS-35`
+continúa con la persistencia PostgreSQL antes de evaluar resumen, memoria
+semántica o AgentCore.
 
 | Orden | Jira | Estado al iniciar | Entrega | Dependencias relevantes |
 | ---: | --- | --- | --- | --- |
@@ -223,6 +243,7 @@ AgentCore.
 | 9 | WCS-29 | In Progress | Canal Telegram, routing por canal, webhook, secret y configuración AWS | WCS-14, WCS-15, WCS-22 |
 | 10 | WCS-33 | Done | Contexto conversacional, filtros multi-turno y `productType` | WCS-20, WCS-25 |
 | 11 | WCS-34 | In Progress | Contrato de memoria, privacidad, retención, aislamiento y borrado | WCS-33 |
+| 12 | WCS-35 | In Progress | Memoria de sesión PostgreSQL, TTL, ownership, conflictos y activación controlada | WCS-34 |
 
 `WCS-14`–`WCS-16` y `WCS-17` ya tienen la fundación o el contrato inicial
 versionado; deben completarse/verificarse según la evidencia de cada issue antes

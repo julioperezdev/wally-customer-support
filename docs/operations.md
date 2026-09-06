@@ -3,7 +3,7 @@
 Owner: Tech Lead  
 Status: `Accepted`
 Last reviewed: 2026-08-30  
-Related Jira: `WCS-13`, `WCS-21`, `WCS-22`, `WCS-30`
+Related Jira: `WCS-13`, `WCS-21`, `WCS-22`, `WCS-30`, `WCS-35`
 Related repository paths: `src/main/resources`, `.github/workflows`, `infra/`
 
 ## Ambientes
@@ -133,6 +133,10 @@ wcs.telegram.allowed-chat-id
 wcs.telegram.connect-timeout
 wcs.telegram.read-timeout
 wcs.outbox.max-attempts
+wcs.conversation.memory.enabled
+wcs.conversation.memory.ttl
+wcs.conversation.memory.max-messages
+wcs.conversation.memory.max-message-characters
 wcs.ai.provider
 wcs.ai.model
 wcs.ai.region
@@ -221,6 +225,37 @@ El `secret-id` legacy sólo se usa como referencia genérica cuando no hay
 referencias dedicadas. Los campos desconocidos se ignoran deliberadamente.
 Esto evita que un nuevo campo agregado a un secret se convierta de forma
 accidental en una propiedad de Spring.
+
+### Memoria conversacional PostgreSQL
+
+`WCS-35` agrega la migración `V6__create_conversation_memory_states.sql` y la
+tabla `wcs.conversation_memory_states` en el RDS compartido. El estado contiene
+una ventana acotada de mensajes, `actor_id` pseudónimo, `updated_at` y una
+versión para control de concurrencia. El adapter elimina estados vencidos al
+cargarlos y registra sólo operación, resultado, cantidad, duración y un
+identificador interno de correlación.
+
+La persistencia está protegida por `wcs.conversation.memory.enabled=false` en
+el bootstrap. Con ese valor se usa un adapter no-op y los canales no retienen
+memoria; los tests de integración lo habilitan explícitamente. Sólo después de
+aprobar la política de retención se puede publicar en AppConfig:
+
+```text
+wcs.conversation.memory.enabled=true
+wcs.conversation.memory.ttl=PT24H
+wcs.conversation.memory.max-messages=20
+wcs.conversation.memory.max-message-characters=2000
+```
+
+#### Rollback operativo
+
+Ante un problema del adapter, volver a publicar la configuración con
+`wcs.conversation.memory.enabled=false` detiene nuevas lecturas y escrituras sin
+borrar el estado. Si se necesita revertir la versión de aplicación, primero se
+despliega la versión anterior y luego se verifica que ningún runtime lea la
+tabla. La migración V6 no se edita ni se revierte automáticamente en producción;
+el borrado de la tabla requiere una migración posterior, revisión del plan y
+evidencia de que la retención, auditoría y backups fueron tratados.
 
 ### Precedencia y modos de ejecución
 

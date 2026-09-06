@@ -21,15 +21,14 @@ import com.wally.customersupport.support.domain.model.SupportPolicy;
 import com.wally.customersupport.shared.infrastructure.config.RagProperties;
 import com.wally.customersupport.shared.infrastructure.observability.StructuredEventLog;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ConversationOrchestrator {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ConversationOrchestrator.class);
     private static final double MIN_CONFIDENCE = 0.65;
     private static final String GREETING = "Hola, ¿cómo te puedo ayudar?";
     private static final String LOW_CONFIDENCE = "No estoy seguro de haber entendido tu consulta. "
@@ -59,7 +58,7 @@ public class ConversationOrchestrator {
         try {
             decision = intentClassifier.classify(context);
         } catch (RuntimeException exception) {
-            StructuredEventLog.warn(LOGGER, "INTENT_CLASSIFICATION_FAILED", Map.of(
+            StructuredEventLog.warn(log, "INTENT_CLASSIFICATION_FAILED", Map.of(
                     "errorType", exception.getClass().getSimpleName(),
                     "durationMs", elapsedMillis(startedAt)));
             return completeQuery(
@@ -70,12 +69,12 @@ public class ConversationOrchestrator {
                     startedAt);
         }
         if (decision == null) {
-            StructuredEventLog.warn(LOGGER, "INTENT_CLASSIFICATION_FAILED", Map.of(
+            StructuredEventLog.warn(log, "INTENT_CLASSIFICATION_FAILED", Map.of(
                     "errorType", "null_decision",
                     "durationMs", elapsedMillis(startedAt)));
             return completeQuery(context, "UNKNOWN", "CLASSIFICATION_FAILED", SAFE_FALLBACK, startedAt);
         }
-        StructuredEventLog.info(LOGGER, "INTENT_CLASSIFIED", Map.of(
+        StructuredEventLog.info(log, "INTENT_CLASSIFIED", Map.of(
                 "intent", decision.intent().name(),
                 "confidence", decision.confidence(),
                 "durationMs", elapsedMillis(startedAt)));
@@ -116,7 +115,7 @@ public class ConversationOrchestrator {
             Map<String, Object> fields = new LinkedHashMap<>();
             fields.put("errorType", exception.getClass().getSimpleName());
             addCorrelationId(fields, context);
-            StructuredEventLog.warn(LOGGER, "GENERAL_SUPPORT_FAILED", fields);
+            StructuredEventLog.warn(log, "GENERAL_SUPPORT_FAILED", fields);
             return SAFE_FALLBACK;
         }
     }
@@ -133,7 +132,7 @@ public class ConversationOrchestrator {
         fields.put("responseGenerated", reply != null && !reply.isBlank());
         fields.put("durationMs", elapsedMillis(startedAt));
         addCorrelationId(fields, context);
-        StructuredEventLog.info(LOGGER, "CONVERSATION_QUERY_COMPLETED", fields);
+        StructuredEventLog.info(log, "CONVERSATION_QUERY_COMPLETED", fields);
         return reply;
     }
 

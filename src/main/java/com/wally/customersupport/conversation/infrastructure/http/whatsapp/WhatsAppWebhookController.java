@@ -11,8 +11,7 @@ import com.wally.customersupport.conversation.domain.model.InboundMessageCommand
 import com.wally.customersupport.conversation.domain.model.InboundMessageResult;
 import com.wally.customersupport.shared.infrastructure.config.WhatsAppProperties;
 import com.wally.customersupport.shared.infrastructure.observability.StructuredEventLog;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,9 +24,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/webhook/whatsapp")
+@Slf4j
 public class WhatsAppWebhookController {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(WhatsAppWebhookController.class);
 
     private final WhatsAppProperties properties;
     private final HmacVerifier hmacVerifier;
@@ -65,7 +63,7 @@ public class WhatsAppWebhookController {
             @RequestBody String rawBody,
             @RequestHeader(name = "X-Hub-Signature-256", required = false) String signature) {
         if (!hmacVerifier.isValid(rawBody, signature, properties.appSecret())) {
-            StructuredEventLog.warn(LOGGER, "WEBHOOK_REJECTED", Map.of(
+            StructuredEventLog.warn(log, "WEBHOOK_REJECTED", Map.of(
                     "channel", "whatsapp",
                     "reason", "invalid_signature"));
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -73,7 +71,7 @@ public class WhatsAppWebhookController {
 
         try {
             List<InboundMessageCommand> commands = payloadParser.parse(rawBody);
-            StructuredEventLog.info(LOGGER, "WEBHOOK_ACCEPTED", Map.of(
+            StructuredEventLog.info(log, "WEBHOOK_ACCEPTED", Map.of(
                     "channel", "whatsapp",
                     "commandCount", commands.size()));
             for (InboundMessageCommand command : commands) {
@@ -83,11 +81,11 @@ public class WhatsAppWebhookController {
                 fields.put("channel", command.channel().name().toLowerCase(java.util.Locale.ROOT));
                 fields.put("result", result.result().name());
                 fields.put("durationMs", elapsedMillis(startedAt));
-                StructuredEventLog.info(LOGGER, "INBOUND_MESSAGE_PROCESSED", fields);
+                StructuredEventLog.info(log, "INBOUND_MESSAGE_PROCESSED", fields);
             }
             return ResponseEntity.ok().build();
         } catch (WhatsAppPayloadException exception) {
-            StructuredEventLog.warn(LOGGER, "WEBHOOK_REJECTED", Map.of(
+            StructuredEventLog.warn(log, "WEBHOOK_REJECTED", Map.of(
                     "channel", "whatsapp",
                     "reason", "malformed_payload"));
             return ResponseEntity.badRequest().build();

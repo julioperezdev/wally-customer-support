@@ -11,9 +11,8 @@ import com.wally.customersupport.conversation.domain.model.InboundMessageCommand
 import com.wally.customersupport.conversation.domain.model.InboundMessageResult;
 import com.wally.customersupport.shared.infrastructure.config.TelegramProperties;
 import com.wally.customersupport.shared.infrastructure.observability.StructuredEventLog;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -25,10 +24,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/webhook/telegram")
 @ConditionalOnProperty(name = "wcs.telegram.enabled", havingValue = "true")
+@Slf4j
 public class TelegramWebhookController {
 
     private static final String SECRET_HEADER = "X-Telegram-Bot-Api-Secret-Token";
-    private static final Logger LOGGER = LoggerFactory.getLogger(TelegramWebhookController.class);
 
     private final TelegramProperties properties;
     private final TelegramInboundPayloadParser payloadParser;
@@ -48,7 +47,7 @@ public class TelegramWebhookController {
             @RequestBody String rawBody,
             @RequestHeader(name = SECRET_HEADER, required = false) String secretToken) {
         if (!constantTimeEquals(secretToken, properties.webhookSecretToken())) {
-            StructuredEventLog.warn(LOGGER, "WEBHOOK_REJECTED", Map.of(
+            StructuredEventLog.warn(log, "WEBHOOK_REJECTED", Map.of(
                     "channel", "telegram",
                     "reason", "invalid_secret"));
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -56,7 +55,7 @@ public class TelegramWebhookController {
 
         try {
             List<InboundMessageCommand> commands = payloadParser.parse(rawBody);
-            StructuredEventLog.info(LOGGER, "WEBHOOK_ACCEPTED", Map.of(
+            StructuredEventLog.info(log, "WEBHOOK_ACCEPTED", Map.of(
                     "channel", "telegram",
                     "commandCount", commands.size()));
             for (InboundMessageCommand command : commands) {
@@ -66,11 +65,11 @@ public class TelegramWebhookController {
                 fields.put("channel", command.channel().name().toLowerCase(java.util.Locale.ROOT));
                 fields.put("result", result.result().name());
                 fields.put("durationMs", elapsedMillis(startedAt));
-                StructuredEventLog.info(LOGGER, "INBOUND_MESSAGE_PROCESSED", fields);
+                StructuredEventLog.info(log, "INBOUND_MESSAGE_PROCESSED", fields);
             }
             return ResponseEntity.ok().build();
         } catch (TelegramPayloadException exception) {
-            StructuredEventLog.warn(LOGGER, "WEBHOOK_REJECTED", Map.of(
+            StructuredEventLog.warn(log, "WEBHOOK_REJECTED", Map.of(
                     "channel", "telegram",
                     "reason", "malformed_payload"));
             return ResponseEntity.badRequest().build();

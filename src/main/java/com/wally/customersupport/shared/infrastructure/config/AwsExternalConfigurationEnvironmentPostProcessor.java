@@ -4,8 +4,7 @@ import java.util.Map;
 
 import tools.jackson.databind.ObjectMapper;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.EnvironmentPostProcessor;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.context.properties.bind.Binder;
@@ -25,10 +24,10 @@ import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
  * provider chain, so the same code works with a local AWS profile and an AWS
  * workload role.
  */
+@Slf4j
 public final class AwsExternalConfigurationEnvironmentPostProcessor
         implements EnvironmentPostProcessor, Ordered {
 
-    private static final Logger log = LoggerFactory.getLogger(AwsExternalConfigurationEnvironmentPostProcessor.class);
     private static final String CONFIG_PREFIX = "wcs.external-config";
     private static final String APPCONFIG_SOURCE = "awsAppConfig";
     private static final String SECRETS_SOURCE = "awsSecretsManager";

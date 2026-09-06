@@ -3,7 +3,7 @@
 Owner: Product/Tech Lead
 Status: `Accepted for phased implementation`
 Last reviewed: 2026-09-05
-Related Jira: `WCS-20`, `WCS-21`, `WCS-30`, `WCS-33`, `WCS-34`
+Related Jira: `WCS-20`, `WCS-21`, `WCS-30`, `WCS-33`, `WCS-34`, `WCS-35`
 Canonical Confluence: [WCS — Conversational Memory, Context & AgentCore Plan](https://julioperezdev.atlassian.net/wiki/spaces/SD/pages/6684674/WCS+Conversational+Memory+Context+AgentCore+Plan)
 Related repository paths: `src/main/java/com/wally/customersupport/conversation`, `src/main/java/com/wally/customersupport/catalog`, `src/main/resources/db/migration`, `docs/ai.md`, `docs/architecture.md`
 Decision/source: plan aprobado para WCS el 2026-09-05
@@ -160,9 +160,9 @@ La persistencia independiente de `ConversationState` se implementa en la Fase
 **Criterio de salida:** Confluence y repositorio contienen la política aceptada; la configuración de retención es explícita; existen pruebas de aislamiento y borrado.
 
 `WCS-34` implementa el contrato `ConversationMemory`, `ConversationState`, la
-política recomendada y un adapter en memoria para tests. La persistencia real y
-la configuración productiva quedan fuera de esta fase y corresponden a la
-Fase 3, una vez aprobado el gate legal y de negocio.
+política recomendada y un adapter en memoria para tests. La persistencia real
+queda en la Fase 3 y su activación productiva continúa bloqueada por el gate
+legal y de negocio.
 
 La política legal de retención sigue siendo un gate previo a producción.
 
@@ -173,14 +173,25 @@ La política legal de retención sigue siendo un gate previo a producción.
 **Alcance:**
 
 - nueva migración Flyway, sin modificar migraciones aplicadas;
-- tabla o estructura de estado por conversación;
-- repositorio y adapter PostgreSQL;
+- tabla de estado por conversación en el schema `wcs`;
+- repositorio JPA y adapter PostgreSQL detrás de `ConversationMemory`;
 - versionado optimista o control equivalente;
 - limpieza por TTL;
 - recuperación después de reinicio;
-- métricas de lecturas, escrituras, conflictos y expiración.
+- integración tolerante a fallos en el flujo inbound;
+- métricas de lecturas, escrituras, conflictos y expiración;
+- Testcontainers con PostgreSQL y activación explícita para integración.
 
-**Criterio de salida:** el estado sobrevive a reinicios, no se mezcla entre conversaciones y el costo incremental se mantiene dentro del RDS existente.
+**Criterio de salida:** el estado sobrevive a reinicios, no se mezcla entre
+conversaciones, los conflictos se rechazan, el costo incremental se mantiene
+dentro del RDS existente y producción conserva la memoria desactivada hasta la
+aprobación de retención.
+
+`WCS-35` implementa `V6__create_conversation_memory_states.sql`, la entidad,
+repositorio y adapter JPA, la integración opcional del flujo inbound y las
+pruebas de persistencia, ownership, versión y expiración. El flag
+`wcs.conversation.memory.enabled=false` deja un adapter no-op como fallback;
+los tests de integración lo cambian a `true`.
 
 ### Fase 4 — Knowledge Base estática de WCS
 
@@ -336,3 +347,4 @@ Métricas:
 | --- | --- |
 | 2026-09-05 | Se documentan siete fases, frontera PostgreSQL/Knowledge Base/AgentCore y exclusión de LangChain/LangGraph como dependencias. |
 | 2026-09-06 | Se inicia Fase 2 con contrato de memoria, límites de contexto y política propuesta de privacidad, retención, aislamiento y borrado en `WCS-34`. |
+| 2026-09-06 | `WCS-35` implementa la persistencia PostgreSQL de memoria de sesión con TTL, ownership, versión y activación controlada. |
