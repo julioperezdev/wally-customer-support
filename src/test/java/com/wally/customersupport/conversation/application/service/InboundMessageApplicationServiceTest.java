@@ -60,6 +60,8 @@ class InboundMessageApplicationServiceTest {
     private ConversationSummaryService conversationSummaryService;
     @Mock
     private CustomerPreferenceService customerPreferenceService;
+    @Mock
+    private ExplicitPreferenceCaptureService explicitPreferenceCaptureService;
 
     private InboundMessageApplicationService service;
     private Conversation conversation;
@@ -76,6 +78,7 @@ class InboundMessageApplicationServiceTest {
                 conversationOrchestrator,
                 conversationSummaryService,
                 customerPreferenceService,
+                explicitPreferenceCaptureService,
                 Clock.fixed(NOW, ZoneOffset.UTC));
         lenient().when(conversationOrchestrator.replyFor(any())).thenReturn("Respuesta segura");
         lenient().when(conversationSummaryService.summaryForContext(any())).thenReturn(null);
@@ -83,6 +86,8 @@ class InboundMessageApplicationServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
         lenient().when(customerPreferenceService.findForContext(anyString(), any()))
                 .thenReturn(List.of());
+        lenient().when(explicitPreferenceCaptureService.capture(anyString(), anyString(), any()))
+                .thenReturn(ExplicitPreferenceCaptureService.CaptureResult.notDetected());
         lenient().when(conversationMemory.load(any(), any())).thenReturn(Optional.empty());
         conversation = new Conversation(
                 UUID.randomUUID(), Channel.WHATSAPP, "conversation-1", "customer-1",
@@ -168,5 +173,28 @@ class InboundMessageApplicationServiceTest {
 
         verify(conversationOrchestrator).replyFor(any());
         verify(outboxRepository).save(any(OutboxMessage.class));
+    }
+
+    @Test
+    void acknowledgesExplicitPreferenceWithoutCallingTheOrchestrator() {
+        when(messageRepository.existsByExternalMessageId(Channel.WHATSAPP, "message-1")).thenReturn(false);
+        when(conversationRepository.findByChannelAndExternalConversationId(Channel.WHATSAPP, "conversation-1"))
+                .thenReturn(Optional.of(conversation));
+        Message message = new Message(
+                UUID.randomUUID(), conversation.id(), Channel.WHATSAPP, "message-1", MessageDirection.INBOUND,
+                MessageType.TEXT, "Prefiero el negro", NOW, NOW);
+        when(messageRepository.save(any(Message.class))).thenReturn(message);
+        when(explicitPreferenceCaptureService.capture(anyString(), anyString(), any()))
+                .thenReturn(ExplicitPreferenceCaptureService.CaptureResult.saved("negro"));
+
+        service.accept(new InboundMessageCommand(
+                Channel.WHATSAPP, "message-1", "conversation-1", "customer-1",
+                "Prefiero el negro", NOW));
+
+        verify(conversationOrchestrator, never()).replyFor(any());
+        ArgumentCaptor<OutboxMessage> outboxCaptor = ArgumentCaptor.forClass(OutboxMessage.class);
+        verify(outboxRepository).save(outboxCaptor.capture());
+        assertEquals("Perfecto, voy a tener en cuenta que preferís el negro.",
+                outboxCaptor.getValue().message().body());
     }
 }

@@ -261,6 +261,11 @@ se entregan como contexto auxiliar y no reemplazan filtros actuales ni datos
 transaccionales. La extracción automática y AgentCore permanecen fuera del
 runtime hasta completar la evaluación de calidad, costo, latencia y privacidad.
 
+`WCS-38` conecta la preferencia explícita al inbound de ambos canales mediante
+un parser determinístico. Sólo reconoce frases de preferencia acotadas, evita
+confundir “busco una remera negra” con una preferencia y confirma el guardado
+sin invocar al LLM para decidir qué persistir.
+
 ### Fase 7 — Spike de Amazon Bedrock AgentCore Memory
 
 **Objetivo:** comparar AgentCore Memory contra la implementación PostgreSQL de WCS.

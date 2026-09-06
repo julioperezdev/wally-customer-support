@@ -15,6 +15,7 @@ import com.wally.customersupport.catalog.application.service.CatalogConversation
 import com.wally.customersupport.catalog.application.service.CatalogQueryService;
 import com.wally.customersupport.catalog.domain.model.CatalogQuery;
 import com.wally.customersupport.conversation.application.port.out.ConversationMemory;
+import com.wally.customersupport.conversation.application.service.ExplicitPreferenceCaptureService;
 import com.wally.customersupport.conversation.application.service.CustomerPreferenceService;
 import com.wally.customersupport.conversation.application.port.out.ConversationRepository;
 import com.wally.customersupport.conversation.domain.model.Channel;
@@ -72,6 +73,9 @@ class WallyCustomerSupportApplicationIntegrationTest {
 
     @Autowired
     private CustomerPreferenceService customerPreferenceService;
+
+    @Autowired
+    private ExplicitPreferenceCaptureService explicitPreferenceCaptureService;
 
     @Autowired
     private SpringDataConversationMemoryRepository conversationMemoryRepository;
@@ -219,5 +223,19 @@ class WallyCustomerSupportApplicationIntegrationTest {
 
         customerPreferenceService.clearActor(actorId);
         assertTrue(customerPreferenceService.findForContext(actorId, null).isEmpty());
+    }
+
+    @Test
+    void capturesExplicitPreferenceInCommonInboundContract() {
+        String actorId = "capture-actor-" + UUID.randomUUID();
+        Instant now = Instant.now();
+
+        var saved = explicitPreferenceCaptureService.capture(actorId, "Prefiero el negro", now);
+        var incidental = explicitPreferenceCaptureService.capture(actorId, "Busco una remera negra", now);
+
+        assertEquals(ExplicitPreferenceCaptureService.Status.SAVED, saved.status());
+        assertEquals("negro", saved.color());
+        assertEquals(ExplicitPreferenceCaptureService.Status.NOT_DETECTED, incidental.status());
+        assertEquals("negro", customerPreferenceService.findForContext(actorId, null).getFirst().value());
     }
 }

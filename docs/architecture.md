@@ -246,6 +246,12 @@ auxiliar para el clasificador y el LLM. Las instrucciones de ambos adapters
 impiden que una preferencia reemplace los filtros explícitos del turno o una
 fuente transaccional.
 
+`WCS-38` conecta la captura explícita al flujo común de inbound con un parser
+determinístico y acotado. Una frase como “prefiero el negro” puede guardar la
+preferencia y recibe una confirmación; una frase como “busco una remera negra”
+continúa siendo sólo una consulta de catálogo. No se usa el LLM para decidir
+qué dato persistir.
+
 ## Puertos principales
 
 ```java
