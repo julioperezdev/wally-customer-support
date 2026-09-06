@@ -31,6 +31,12 @@ La Knowledge Base histórica `bigg-rag-sales-offhours` sólo se utiliza como
 referencia de implementación. Sus documentos y recursos no se comparten con
 WCS.
 
+La estrategia detallada para contexto conversacional, memoria de sesión,
+resúmenes, preferencias y evaluación opcional de AgentCore está en
+[`conversational-memory-and-agentcore-plan.md`](conversational-memory-and-agentcore-plan.md).
+LangChain y LangGraph se mantienen como referencias conceptuales, no como
+dependencias del backend.
+
 ## Fases y gates
 
 ### Fase 0 — Gobierno y documentación

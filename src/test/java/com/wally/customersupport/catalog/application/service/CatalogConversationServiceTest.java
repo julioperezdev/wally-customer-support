@@ -27,7 +27,8 @@ class CatalogConversationServiceTest {
     void buildsReplyFromDeterministicCatalogData() {
         CatalogProduct product = product("Remera NullPointer", "RP-REM-NP-NEG-M", "M", "Negro", 12);
         when(catalogQueryService.search(argThat(query ->
-                "remera".equals(query.name()) && "m".equals(query.size()) && "negro".equals(query.color()))))
+                query.name() == null && "m".equals(query.size()) && "negro".equals(query.color())
+                        && "remera".equals(query.productType()))))
                 .thenReturn(List.of(product));
 
         java.util.Optional<String> reply = new CatalogConversationService(catalogQueryService)
@@ -38,12 +39,14 @@ class CatalogConversationServiceTest {
         assertTrue(reply.get().contains("18.900,00 ARS"));
         assertTrue(reply.get().contains("stock disponible: 12"));
         verify(catalogQueryService).search(argThat(query ->
-                "remera".equals(query.name()) && "m".equals(query.size()) && "negro".equals(query.color())));
+                query.name() == null && "m".equals(query.size()) && "negro".equals(query.color())
+                        && "remera".equals(query.productType())));
     }
 
     @Test
     void doesNotInventAProductWhenThereAreNoMatches() {
-        when(catalogQueryService.search(argThat(query -> "remera fantasma".equals(query.name()))))
+        when(catalogQueryService.search(argThat(query ->
+                "fantasma".equals(query.name()) && "remera".equals(query.productType()))))
                 .thenReturn(List.of());
 
         String reply = new CatalogConversationService(catalogQueryService)
@@ -63,7 +66,7 @@ class CatalogConversationServiceTest {
                 .orElseThrow();
 
         assertEquals(
-                "Para buscar en el catálogo, indicame el nombre del producto, SKU, talle o color.",
+                "Para buscar en el catálogo, indicame el nombre, tipo de producto, SKU, talle o color.",
                 reply);
     }
 

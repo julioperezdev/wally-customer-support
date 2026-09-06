@@ -10,9 +10,22 @@ public record CatalogProduct(
         String imageObjectKey,
         boolean active,
         boolean demo,
-        List<CatalogVariant> variants) {
+        List<CatalogVariant> variants,
+        String productType) {
+
+    public CatalogProduct(
+            UUID id,
+            String name,
+            String description,
+            String imageObjectKey,
+            boolean active,
+            boolean demo,
+            List<CatalogVariant> variants) {
+        this(id, name, description, imageObjectKey, active, demo, variants, null);
+    }
 
     public CatalogProduct {
         variants = variants == null ? List.of() : List.copyOf(variants);
+        productType = productType == null || productType.isBlank() ? null : productType.trim();
     }
 }

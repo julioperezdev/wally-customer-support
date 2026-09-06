@@ -24,7 +24,7 @@ import org.springframework.stereotype.Service;
 public class CatalogConversationService {
 
     private static final String CATALOG_CLARIFICATION =
-            "Para buscar en el catálogo, indicame el nombre del producto, SKU, talle o color.";
+            "Para buscar en el catálogo, indicame el nombre, tipo de producto, SKU, talle o color.";
     private static final String NO_MATCH =
             "No encontré coincidencias en el catálogo demo para esa consulta. "
                     + "No puedo confirmar disponibilidad fuera de los datos registrados.";
@@ -48,20 +48,30 @@ public class CatalogConversationService {
         }
 
         List<CatalogProduct> products = catalogQueryService.search(query);
-        return format(query, products);
+        if (products != null && !products.isEmpty()) {
+            return format(products);
+        }
+        if (query.productType() != null) {
+            List<CatalogProduct> alternatives = catalogQueryService.search(query.withoutProductType());
+            if (!alternatives.isEmpty()) {
+                return formatNoMatchWithAlternatives(query, alternatives);
+            }
+        }
+        return NO_MATCH;
     }
 
-    private static String format(CatalogQuery query, List<CatalogProduct> products) {
-        if (products == null || products.isEmpty()) {
-            return NO_MATCH;
-        }
-
+    private static String format(List<CatalogProduct> products) {
         StringBuilder response = new StringBuilder("Encontré estos productos:\n");
         products.stream()
                 .flatMap(product -> product.variants().stream()
                         .map(variant -> new ProductVariant(product, variant)))
                 .forEach(productVariant -> appendVariant(response, productVariant));
         return response.toString().trim();
+    }
+
+    private static String formatNoMatchWithAlternatives(CatalogQuery query, List<CatalogProduct> alternatives) {
+        return "No encontré " + query.productType() + " para esa consulta. Como alternativa, encontré:\n"
+                + format(alternatives);
     }
 
     private static void appendVariant(StringBuilder response, ProductVariant productVariant) {

@@ -3,7 +3,7 @@
 Owner: Tech Lead  
 Status: `Proposed`  
 Last reviewed: 2026-09-03
-Related Jira: `WCS-13`, `WCS-14`, `WCS-15`, `WCS-16`, `WCS-25`, `WCS-28`, `WCS-29`
+Related Jira: `WCS-13`, `WCS-14`, `WCS-15`, `WCS-16`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-33`
 Related repository paths: `src/main/java/com/wally/customersupport/{conversation,catalog,support}/infrastructure/repository/postgres`, `src/main/resources/db/migration`
 
 ## Aislamiento en el RDS compartido
@@ -67,11 +67,13 @@ El catálogo demo de **Ropa de Programador** se separa en producto y variante:
 
 * `catalog_products`: nombre, descripción, referencia `image_object_key` para
   un objeto futuro en S3, estado `active` y marca `demo`.
+* `product_type`: tipo normalizado (`remera`, `buzo`, `campera` u `other`),
+  utilizado para no confundir el tipo de prenda con el nombre del diseño.
 * `catalog_variants`: SKU único, talle, color, importe, moneda, stock y estado
   `active`.
 * El acceso se realiza mediante `CatalogRepository` y filtros determinísticos
-  por nombre, SKU, talle y color. El adapter no recibe SQL ni datos generados
-  por el LLM.
+  por nombre, tipo, SKU, talle y color. El adapter no recibe SQL ni datos
+  generados por el LLM.
 * `V3` contiene sólo datos sintéticos versionados. La referencia S3 no implica
   que el MVP envíe imágenes como media por WhatsApp.
 
@@ -105,7 +107,19 @@ Se agregan cuando el producto acepta el alcance de conocimiento:
 
 Si se elige pgvector, la columna vectorial se agrega en una migración posterior cuando estén aprobados modelo de embeddings y dimensión. Knowledge Bases no requiere almacenar embeddings en WCS.
 
-### Entidades futuras
+### Estado conversacional — planificado en `WCS-33`
+
+La primera entrega reconstruye los filtros activos a partir de una ventana
+acotada de mensajes inbound persistidos. La siguiente iteración persistirá un
+estado tipado por conversación, separado del historial:
+
+* filtros de catálogo activos y sus reglas de reemplazo/limpieza;
+* último intent y timestamp de actualización;
+* versión para evitar que dos turnos concurrentes mezclen contexto.
+
+Ese estado no será fuente de verdad para stock, precio, carrito ni pedidos.
+
+### Otras entidades futuras
 
 - `store`/`store_id` para aislamiento multi-tienda; el MVP mantiene una tienda
   demo y no usa `external_customer_id` como ownership.

@@ -3,7 +3,7 @@
 Owner: Tech Lead  
 Status: `Accepted`
 Last reviewed: 2026-09-03
-Related Jira: `WCS-13`, `WCS-17`, `WCS-18`, `WCS-20`, `WCS-21`, `WCS-22`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-32`
+Related Jira: `WCS-13`, `WCS-17`, `WCS-18`, `WCS-20`, `WCS-21`, `WCS-22`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-32`, `WCS-33`
 Related repository paths: `src/main/java/com/wally/customersupport/{conversation,catalog,support,knowledge,shared}`, `src/main/resources`, `db/migration`
 Decision/source: specification de WhatsApp y re-baseline solicitada el 2026-08-30
 
@@ -306,3 +306,8 @@ deshabilitan las fuentes externas y usan datos sintéticos.
 - Topología de hosting y terminación HTTPS/mTLS.
 - Retención, borrado, acceso y estrategia de cifrado.
 - Persistencia del handoff humano y ownership de la tarea priorizada.
+
+La frontera de memoria conversacional y la evaluación opcional de AgentCore
+están documentadas en
+[`conversational-memory-and-agentcore-plan.md`](conversational-memory-and-agentcore-plan.md)
+y en `ADR-003`. LangChain y LangGraph no son dependencias del backend.

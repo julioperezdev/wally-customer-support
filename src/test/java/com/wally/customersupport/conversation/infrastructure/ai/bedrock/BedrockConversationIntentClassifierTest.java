@@ -1,6 +1,7 @@
 package com.wally.customersupport.conversation.infrastructure.ai.bedrock;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyFloat;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -9,6 +10,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
+
+import com.wally.customersupport.conversation.domain.model.ConversationContext;
 import com.wally.customersupport.conversation.domain.model.ConversationIntent;
 import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -34,6 +38,25 @@ class BedrockConversationIntentClassifierTest {
         assertEquals("M", decision.catalogQuery().size());
         assertEquals("negro", decision.catalogQuery().color());
         verify(converseClient).complete(anyString(), anyString(), anyString(), anyString(), eq(1_024), eq(0.0f));
+    }
+
+    @Test
+    void sendsBoundedConversationHistoryToResolveRefinements() {
+        BedrockConverseClient converseClient = mock(BedrockConverseClient.class);
+        when(converseClient.complete(anyString(), anyString(), anyString(), anyString(), anyInt(), anyFloat()))
+                .thenReturn("{\"intent\":\"CATALOG_SEARCH\",\"confidence\":0.94,"
+                        + "\"catalogQuery\":{\"name\":\"nullpointer\",\"sku\":null,\"size\":null,"
+                        + "\"color\":\"negro\",\"productType\":\"buzo\"},\"policyKey\":null}");
+
+        var classifier = new BedrockConversationIntentClassifier(converseClient, new ObjectMapper());
+        var decision = classifier.classify(new ConversationContext(
+                null, "customer-1", "que sea negro", List.of("que sea negro", "quiero un buzo"), List.of()));
+
+        assertEquals("buzo", decision.catalogQuery().productType());
+        org.mockito.ArgumentCaptor<String> prompt = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(converseClient).complete(anyString(), anyString(), anyString(), prompt.capture(), eq(1_024), eq(0.0f));
+        assertTrue(prompt.getValue().contains("quiero un buzo"));
+        assertTrue(prompt.getValue().contains("que sea negro"));
     }
 
     @Test

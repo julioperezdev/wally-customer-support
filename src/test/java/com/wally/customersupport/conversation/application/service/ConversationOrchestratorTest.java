@@ -65,7 +65,7 @@ class ConversationOrchestratorTest {
     @Test
     void routesCatalogIntentWithStructuredFilters() {
         CatalogQuery query = new CatalogQuery("camiseta", null, "M", "negro");
-        when(intentClassifier.classify("consulta"))
+        when(intentClassifier.classify(any(ConversationContext.class)))
                 .thenReturn(new ConversationIntentDecision(ConversationIntent.CATALOG_SEARCH, 0.95, query, null));
         when(catalogConversationService.replyFor(query)).thenReturn(Optional.of("resultado del catálogo"));
 
@@ -78,7 +78,7 @@ class ConversationOrchestratorTest {
 
     @Test
     void routesBusinessHoursToDatabaseUseCase() {
-        when(intentClassifier.classify("consulta"))
+        when(intentClassifier.classify(any(ConversationContext.class)))
                 .thenReturn(new ConversationIntentDecision(ConversationIntent.BUSINESS_HOURS, 0.98, null, null));
         when(supportConfigurationQueryService.businessHours()).thenReturn(List.of(
                 new BusinessHour(UUID.randomUUID(), 1, LocalTime.of(9, 0), LocalTime.of(18, 0), false,
@@ -96,7 +96,7 @@ class ConversationOrchestratorTest {
 
     @Test
     void routesPolicyIntentToPublishedPolicy() {
-        when(intentClassifier.classify("consulta"))
+        when(intentClassifier.classify(any(ConversationContext.class)))
                 .thenReturn(new ConversationIntentDecision(ConversationIntent.POLICY_QUERY, 0.97, null, "shipping"));
         when(supportConfigurationQueryService.activePolicy("shipping"))
                 .thenReturn(Optional.of(new SupportPolicy(
@@ -108,7 +108,7 @@ class ConversationOrchestratorTest {
 
     @Test
     void usesKnowledgeAndLlmOnlyForGeneralSupport() {
-        when(intentClassifier.classify("consulta"))
+        when(intentClassifier.classify(any(ConversationContext.class)))
                 .thenReturn(new ConversationIntentDecision(ConversationIntent.GENERAL_SUPPORT, 0.90, null, null));
         when(knowledgeRetriever.retrieve(any())).thenReturn(List.of(new KnowledgeChunk("fuente", 0.9, "policy-1")));
         when(llmClient.generateReply(any())).thenReturn("respuesta respaldada");
@@ -122,7 +122,7 @@ class ConversationOrchestratorTest {
 
     @Test
     void doesNotRouteLowConfidenceIntentToAUseCase() {
-        when(intentClassifier.classify("consulta"))
+        when(intentClassifier.classify(any(ConversationContext.class)))
                 .thenReturn(new ConversationIntentDecision(ConversationIntent.CATALOG_SEARCH, 0.40, null, null));
 
         assertEquals("No estoy seguro de haber entendido tu consulta. Podés preguntarme por productos, stock, "

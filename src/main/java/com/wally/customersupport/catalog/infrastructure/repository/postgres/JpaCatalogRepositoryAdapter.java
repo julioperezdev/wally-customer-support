@@ -22,7 +22,7 @@ public class JpaCatalogRepositoryAdapter implements CatalogRepository {
     public List<CatalogProduct> search(CatalogQuery query) {
         // PostgreSQL cannot infer the type of a null parameter used in an optional filter.
         return repository.search(filterValue(query.name()), filterValue(query.sku()),
-                        filterValue(query.size()), filterValue(query.color())).stream()
+                        filterValue(query.size()), filterValue(query.color()), filterValue(query.productType())).stream()
                 .map(product -> product.toDomain(query))
                 .filter(product -> !product.variants().isEmpty())
                 .toList();
