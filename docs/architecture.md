@@ -157,6 +157,7 @@ com.wally.customersupport/
 │       ├── http/{telegram,whatsapp}/
 │       ├── channel/{telegram,whatsapp}/
 │       ├── ai/{bedrock,mock}/
+│       ├── memory/mock/             # sólo contrato y desarrollo controlado
 │       └── repository/postgres/
 ├── catalog/
 │   ├── application/{port,service}/
@@ -205,6 +206,18 @@ mantiene ese patrón porque construye el registro de adapters por canal.
 El tiempo se inyecta mediante el bean `Clock` de infraestructura, configurado
 en UTC. Los tests pueden reemplazarlo por `Clock.fixed(...)` para conservar
 resultados determinísticos.
+
+### Memoria conversacional y privacidad
+
+La memoria de corto plazo se abstrae mediante `ConversationMemory` y el estado
+inmutable `ConversationState`. La Fase 2 define el contrato y un adapter en
+memoria para tests; no se registra como bean ni reemplaza el runtime productivo.
+La implementación PostgreSQL corresponde a la Fase 3.
+
+`ConversationMemoryPolicy` aplica TTL, límite de mensajes y límite de caracteres
+antes de guardar. Las lecturas y borrados requieren `conversationId` y un
+`actorId` pseudónimo para evitar mezclar estados. La política completa está en
+[`privacy-retention.md`](privacy-retention.md).
 
 ## Puertos principales
 

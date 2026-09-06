@@ -1,0 +1,99 @@
+# Política de privacidad y retención de memoria conversacional — WCS
+
+Owner: Product/Tech Lead  
+Status: `Proposed — pending legal and business approval`  
+Last reviewed: 2026-09-06  
+Related Jira: `WCS-34`  
+Related decision: [`003-conversational-memory-boundary.md`](decisions/003-conversational-memory-boundary.md)
+
+## Propósito y alcance
+
+Esta política define la memoria conversacional de corto plazo que WCS puede
+usar para continuar una conversación. No constituye por sí sola la política
+legal definitiva de la tienda ni reemplaza los requisitos aplicables de
+privacidad, consumo o protección de datos.
+
+El alcance de esta entrega es el contrato de memoria y sus límites. La
+persistencia productiva en PostgreSQL corresponde a la Fase 3 y deberá respetar
+esta política antes de ser activada.
+
+## Principios
+
+1. WCS es responsable del estado que usa para responder.
+2. `conversationId` interno y `actorId` pseudónimo son la frontera de
+   ownership.
+3. Un canal nunca puede consultar la memoria de otro actor o conversación.
+4. La memoria no es fuente de verdad para stock, precio, carrito, pedidos ni
+   otros datos transaccionales.
+5. Se guarda el mínimo contexto necesario, durante el mínimo tiempo necesario.
+6. Los secretos, tokens, payloads completos de proveedores y PII innecesaria no
+   forman parte de la memoria.
+
+## Clasificación de datos
+
+| Dato | Tratamiento | Retención inicial recomendada |
+| --- | --- | --- |
+| `conversationId` interno | Identificador de ownership | Mientras exista la conversación operativa |
+| `actorId` pseudónimo | Identificador técnico, no teléfono | Mientras exista la conversación operativa |
+| Mensajes recientes | Contexto acotado para interpretar el siguiente turno | 24 horas desde la última actualización, pendiente de aprobación |
+| Filtros de búsqueda actuales | Estado temporal; se recalcula o limpia por turno | Igual que la memoria de sesión |
+| Stock, precio, carrito y pedidos | Se consulta en PostgreSQL/servicio transaccional | No se convierte en memoria |
+| Respuestas y documentos RAG | Evidencia de la consulta actual | No se guarda como preferencia por esta fase |
+| Secretos y tokens | Nunca se almacenan en memoria | Nunca |
+
+## Límites por defecto
+
+La política de WCS recomienda inicialmente:
+
+- TTL de memoria de sesión: `24h` desde `updatedAt`.
+- Máximo de `20` mensajes recientes.
+- Máximo de `2.000` caracteres por mensaje usado como contexto.
+- Al superar el máximo de mensajes, conservar sólo los más recientes.
+- Eliminar mensajes vacíos y recortar espacios antes de guardar.
+
+Estos valores están codificados en `ConversationMemoryPolicy.recommended()` y
+deben convertirse en configuración administrada antes de la persistencia
+productiva. La ventana no debe ampliarse para compensar una mala clasificación;
+eso se evalúa con métricas de contexto, latencia y costo.
+
+## Borrado, opt-out y expiración
+
+- `clear(conversationId, actorId)` elimina el estado de memoria asociado al
+  actor y conversación.
+- Un opt-out debe ejecutar el borrado de memoria antes de continuar el flujo.
+- Una carga posterior a la expiración devuelve estado vacío y elimina la
+  entrada vencida.
+- El borrado de filas históricas de `messages` es una operación diferente y
+  requiere una política de retención y un caso de uso de eliminación propio.
+- No se deben reconstituir datos borrados desde logs, outbox, backups o un
+  proveedor de memoria externo sin una base legal y operativa aprobada.
+
+## Acceso y aislamiento
+
+Cada operación de lectura y borrado recibe ambos valores, `conversationId` y
+`actorId`. Los adapters deben rechazar o devolver vacío ante identificadores
+inválidos y no deben aceptar un teléfono como clave de memoria. La futura
+persistencia deberá agregar control de concurrencia y, antes del multi-tenant,
+una frontera explícita de `storeId`/`accountId`.
+
+## Observabilidad segura
+
+Los eventos pueden registrar operación, resultado, tamaño del contexto,
+retención aplicada, latencia y error sanitizado. No deben registrar el cuerpo
+del mensaje, teléfono, token, prompt completo, respuesta completa del modelo ni
+payload completo del proveedor.
+
+## Gate de aprobación
+
+Antes de activar memoria persistente en producción se debe aprobar:
+
+- período de retención legal y comercial;
+- mecanismo de eliminación y auditoría;
+- tratamiento de solicitudes de acceso/borrado;
+- límites de acceso operativo;
+- estrategia de backup y expiración;
+- pruebas de aislamiento, expiración, borrado y recuperación.
+
+Hasta completar ese gate, el adapter en memoria de WCS se utiliza sólo en tests
+y desarrollo controlado. AgentCore Memory no se incorpora como dependencia
+obligatoria.

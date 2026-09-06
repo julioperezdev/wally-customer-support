@@ -30,10 +30,11 @@ El Space Jira `WCS` fue creado el 2026-08-29 y el backlog inicial fue cargado. L
 | WCS-BL-16 | WCS-22 |
 | WCS-BL-17 | WCS-23 |
 | WCS-BL-18 | WCS-29 |
+| WCS-BL-19 | WCS-34 |
 
 ## WCS-33 — Mantener contexto conversacional en búsquedas multi-turno
 
-**Tipo:** Story · **Priority:** Highest · **Estimate:** 4d · **Estado:** In Progress
+**Tipo:** Story · **Priority:** Highest · **Estimate:** 4d · **Estado:** Done
 
 Implementar la Fase 1 del plan de memoria conversacional: conservar el estado
 tipado de una búsqueda entre turnos, incorporar `productType`, fusionar filtros
@@ -53,6 +54,18 @@ PostgreSQL, contratos del clasificador, `mvn verify` y logs sanitizados.
 `docs/conversational-memory-and-agentcore-plan.md`, `docs/architecture.md`,
 `docs/data-model.md` y [WCS — Conversational Memory, Context & AgentCore
 Plan](https://julioperezdev.atlassian.net/wiki/spaces/SD/pages/6684674/WCS+Conversational+Memory+Context+AgentCore+Plan).
+
+## WCS-34 — Definir contrato de memoria conversacional, privacidad y retención
+
+**Tipo:** Task · **Prioridad:** High · **Estimate:** 3d · **Estado:** In Progress
+
+Implementar la Fase 2 del plan: contrato `ConversationMemory`, estado inmutable,
+ownership por actor/conversación, límites de contexto, expiración, borrado y
+adapter en memoria para pruebas. La persistencia PostgreSQL corresponde a la
+Fase 3 y AgentCore continúa fuera de alcance.
+
+**Evidencia:** tests de aislamiento/expiración/borrado/límites, `mvn verify`,
+`docs/privacy-retention.md` y actualización de arquitectura, modelo y plan.
 
 ## EPIC-WCS-01 — Gobierno y documentación
 
@@ -188,12 +201,13 @@ Bedrock/RAG, cambio de RDS o publicación productiva.
 
 **Métricas:** resolución, handoff, fallback, latencia, costo, fallos, duplicados y feedback.
 
-## Orden de ejecución vigente — 2026-09-05
+## Orden de ejecución vigente — 2026-09-06
 
 El backlog se reordenó por dependencia funcional y por el estado real del
-repositorio. La siguiente entrega parte de `main` y comienza con `WCS-33`, que
-resuelve la pérdida de contexto observada en búsquedas de catálogo antes de
-introducir memoria de largo plazo o AgentCore.
+repositorio. `WCS-33` ya resolvió la pérdida de contexto observada en búsquedas
+de catálogo. La entrega actual parte de `main` y continúa con `WCS-34`, que fija
+el contrato y los límites de memoria antes de introducir persistencia o
+AgentCore.
 
 | Orden | Jira | Estado al iniciar | Entrega | Dependencias relevantes |
 | ---: | --- | --- | --- | --- |
@@ -207,7 +221,8 @@ introducir memoria de largo plazo o AgentCore.
 | 7 | WCS-19 | To Do | Prueba controlada end-to-end con Meta | WCS-18, WCS-26, WCS-27 |
 | 8 | WCS-22 | In Progress | Deploy, health, smoke, observabilidad y rollback productivo | WCS-18, WCS-21 |
 | 9 | WCS-29 | In Progress | Canal Telegram, routing por canal, webhook, secret y configuración AWS | WCS-14, WCS-15, WCS-22 |
-| 10 | WCS-33 | In Progress | Contexto conversacional, filtros multi-turno y `productType` | WCS-20, WCS-25 |
+| 10 | WCS-33 | Done | Contexto conversacional, filtros multi-turno y `productType` | WCS-20, WCS-25 |
+| 11 | WCS-34 | In Progress | Contrato de memoria, privacidad, retención, aislamiento y borrado | WCS-33 |
 
 `WCS-14`–`WCS-16` y `WCS-17` ya tienen la fundación o el contrato inicial
 versionado; deben completarse/verificarse según la evidencia de cada issue antes
