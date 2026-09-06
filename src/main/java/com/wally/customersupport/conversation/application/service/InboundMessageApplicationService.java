@@ -2,16 +2,19 @@ package com.wally.customersupport.conversation.application.service;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 import com.wally.customersupport.conversation.application.port.in.InboundMessagePort;
+import com.wally.customersupport.conversation.application.port.out.ConversationMemory;
 import com.wally.customersupport.conversation.application.port.out.ConversationRepository;
 import com.wally.customersupport.conversation.application.port.out.MessageRepository;
 import com.wally.customersupport.conversation.application.port.out.OutboxRepository;
 import com.wally.customersupport.conversation.application.port.out.ProcessingAttemptRepository;
 import com.wally.customersupport.conversation.domain.model.Conversation;
 import com.wally.customersupport.conversation.domain.model.ConversationContext;
+import com.wally.customersupport.conversation.domain.model.ConversationState;
 import com.wally.customersupport.conversation.domain.model.ConversationStatus;
 import com.wally.customersupport.conversation.domain.model.InboundMessageCommand;
 import com.wally.customersupport.conversation.domain.model.InboundMessageResult;
@@ -22,7 +25,10 @@ import com.wally.customersupport.conversation.domain.model.OutboxMessage;
 import com.wally.customersupport.conversation.domain.model.OutboundMessage;
 import com.wally.customersupport.conversation.domain.model.ProcessingAttempt;
 import com.wally.customersupport.conversation.domain.model.ProcessingAttemptStatus;
+import com.wally.customersupport.shared.infrastructure.observability.StructuredEventLog;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,7 +36,10 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class InboundMessageApplicationService implements InboundMessagePort {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(InboundMessageApplicationService.class);
+
     private final ConversationRepository conversationRepository;
+    private final ConversationMemory conversationMemory;
     private final MessageRepository messageRepository;
     private final ProcessingAttemptRepository processingAttemptRepository;
     private final OutboxRepository outboxRepository;
@@ -73,13 +82,16 @@ public class InboundMessageApplicationService implements InboundMessagePort {
                 command.occurredAt() == null ? now : command.occurredAt(),
                 now));
 
-        List<String> recentMessages = messageRepository.findRecentBodies(conversation.id(), 20);
+        String actorId = conversation.id().toString();
+        List<String> recentMessages = recentMessages(conversation.id(), actorId);
         String reply = conversationOrchestrator.replyFor(new ConversationContext(
                     conversation.id(),
                     conversation.externalCustomerId(),
                     command.body(),
                     recentMessages,
                     List.of()));
+
+        saveConversationMemory(conversation.id(), actorId, recentMessages, command.body(), now);
 
         processingAttemptRepository.save(new ProcessingAttempt(
                 UUID.randomUUID(),
@@ -100,6 +112,42 @@ public class InboundMessageApplicationService implements InboundMessagePort {
                     now));
         }
         return InboundMessageResult.accepted();
+    }
+
+    private List<String> recentMessages(UUID conversationId, String actorId) {
+        try {
+            return conversationMemory.load(conversationId, actorId)
+                    .map(ConversationState::recentMessages)
+                    .orElseGet(() -> messageRepository.findRecentBodies(conversationId, 20));
+        } catch (RuntimeException exception) {
+            StructuredEventLog.warn(LOGGER, "MEMORY_STATE_LOAD_FAILED", java.util.Map.of(
+                    "errorType", exception.getClass().getSimpleName(),
+                    "correlationId", conversationId));
+            return messageRepository.findRecentBodies(conversationId, 20);
+        }
+    }
+
+    private void saveConversationMemory(
+            UUID conversationId,
+            String actorId,
+            List<String> recentMessages,
+            String latestMessage,
+            Instant updatedAt) {
+        List<String> stateMessages = new ArrayList<>(recentMessages);
+        if (stateMessages.isEmpty() || !latestMessage.equals(stateMessages.getFirst())) {
+            stateMessages.addFirst(latestMessage);
+        }
+        try {
+            conversationMemory.save(new ConversationState(
+                    conversationId,
+                    actorId,
+                    stateMessages,
+                    updatedAt));
+        } catch (RuntimeException exception) {
+            StructuredEventLog.warn(LOGGER, "MEMORY_STATE_SAVE_FAILED", java.util.Map.of(
+                    "errorType", exception.getClass().getSimpleName(),
+                    "correlationId", conversationId));
+        }
     }
 
     private static boolean isBlank(String value) {

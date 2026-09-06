@@ -2,12 +2,27 @@ package com.wally.customersupport;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
 import javax.sql.DataSource;
 import com.wally.customersupport.catalog.application.service.CatalogConversationService;
 import com.wally.customersupport.catalog.application.service.CatalogQueryService;
 import com.wally.customersupport.catalog.domain.model.CatalogQuery;
+import com.wally.customersupport.conversation.application.port.out.ConversationMemory;
+import com.wally.customersupport.conversation.application.port.out.ConversationRepository;
+import com.wally.customersupport.conversation.domain.model.Channel;
+import com.wally.customersupport.conversation.domain.model.Conversation;
+import com.wally.customersupport.conversation.domain.model.ConversationMemoryConflictException;
+import com.wally.customersupport.conversation.domain.model.ConversationMemoryOwnershipException;
+import com.wally.customersupport.conversation.domain.model.ConversationState;
+import com.wally.customersupport.conversation.domain.model.ConversationStatus;
+import com.wally.customersupport.conversation.infrastructure.repository.postgres.ConversationMemoryJpaEntity;
+import com.wally.customersupport.conversation.infrastructure.repository.postgres.SpringDataConversationMemoryRepository;
 import com.wally.customersupport.support.application.service.SupportConfigurationQueryService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,6 +60,15 @@ class WallyCustomerSupportApplicationIntegrationTest {
 
     @Autowired
     private CatalogConversationService catalogConversationService;
+
+    @Autowired
+    private ConversationRepository conversationRepository;
+
+    @Autowired
+    private ConversationMemory conversationMemory;
+
+    @Autowired
+    private SpringDataConversationMemoryRepository conversationMemoryRepository;
 
     @Autowired
     private SupportConfigurationQueryService supportConfigurationQueryService;
@@ -88,5 +112,57 @@ class WallyCustomerSupportApplicationIntegrationTest {
         assertTrue(reply.contains("Remera NullPointer"));
         assertTrue(reply.contains("18.900,00 ARS"));
         assertTrue(reply.contains("stock disponible: 12"));
+    }
+
+    @Test
+    void persistsConversationMemoryWithVersionAndOwnershipInPostgres() {
+        Instant now = Instant.now();
+        UUID conversationId = UUID.randomUUID();
+        conversationRepository.save(new Conversation(
+                conversationId,
+                Channel.TELEGRAM,
+                "memory-chat-" + conversationId,
+                "telegram-user",
+                ConversationStatus.OPEN,
+                now,
+                now));
+
+        ConversationState initial = conversationMemory.save(new ConversationState(
+                conversationId, "actor-1", List.of("buzo", "negro"), now));
+
+        assertEquals(0L, initial.version());
+        assertEquals(initial, conversationMemory.load(conversationId, "actor-1").orElseThrow());
+        assertTrue(conversationMemory.load(conversationId, "actor-2").isEmpty());
+        assertThrows(ConversationMemoryOwnershipException.class, () -> conversationMemory.save(
+                new ConversationState(conversationId, "actor-2", List.of("no debe mezclarse"), now)));
+
+        ConversationState updated = conversationMemory.save(new ConversationState(
+                conversationId, "actor-1", List.of("buzo", "negro", "talle M"), now.plusSeconds(1), initial.version()));
+        assertEquals(1L, updated.version());
+
+        assertThrows(ConversationMemoryConflictException.class, () -> conversationMemory.save(
+                new ConversationState(conversationId, "actor-1", List.of("estado obsoleto"), now, initial.version())));
+
+        conversationMemory.clear(conversationId, "actor-1");
+        assertTrue(conversationMemory.load(conversationId, "actor-1").isEmpty());
+    }
+
+    @Test
+    void removesExpiredConversationMemoryFromPostgresOnLoad() {
+        Instant expiredAt = Instant.now().minus(Duration.ofDays(2));
+        UUID conversationId = UUID.randomUUID();
+        conversationRepository.save(new Conversation(
+                conversationId,
+                Channel.WHATSAPP,
+                "expired-conversation-" + conversationId,
+                "customer",
+                ConversationStatus.OPEN,
+                expiredAt,
+                expiredAt));
+        conversationMemoryRepository.saveAndFlush(new ConversationMemoryJpaEntity(
+                new ConversationState(conversationId, "actor-expired", List.of("contexto"), expiredAt)));
+
+        assertTrue(conversationMemory.load(conversationId, "actor-expired").isEmpty());
+        assertTrue(conversationMemoryRepository.findById(conversationId).isEmpty());
     }
 }

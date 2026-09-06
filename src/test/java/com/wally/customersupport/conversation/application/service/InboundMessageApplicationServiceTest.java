@@ -18,6 +18,7 @@ import java.util.UUID;
 import org.mockito.ArgumentCaptor;
 
 import com.wally.customersupport.conversation.application.port.out.ConversationRepository;
+import com.wally.customersupport.conversation.application.port.out.ConversationMemory;
 import com.wally.customersupport.conversation.application.port.out.MessageRepository;
 import com.wally.customersupport.conversation.application.port.out.OutboxRepository;
 import com.wally.customersupport.conversation.application.port.out.ProcessingAttemptRepository;
@@ -45,6 +46,8 @@ class InboundMessageApplicationServiceTest {
     @Mock
     private ConversationRepository conversationRepository;
     @Mock
+    private ConversationMemory conversationMemory;
+    @Mock
     private MessageRepository messageRepository;
     @Mock
     private ProcessingAttemptRepository processingAttemptRepository;
@@ -61,12 +64,14 @@ class InboundMessageApplicationServiceTest {
     void setUp() {
         service = new InboundMessageApplicationService(
                 conversationRepository,
+                conversationMemory,
                 messageRepository,
                 processingAttemptRepository,
                 outboxRepository,
                 conversationOrchestrator,
                 Clock.fixed(NOW, ZoneOffset.UTC));
         lenient().when(conversationOrchestrator.replyFor(any())).thenReturn("Respuesta segura");
+        lenient().when(conversationMemory.load(any(), any())).thenReturn(Optional.empty());
         conversation = new Conversation(
                 UUID.randomUUID(), Channel.WHATSAPP, "conversation-1", "customer-1",
                 ConversationStatus.OPEN, NOW, NOW);

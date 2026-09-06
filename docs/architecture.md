@@ -3,7 +3,7 @@
 Owner: Tech Lead  
 Status: `Accepted`
 Last reviewed: 2026-09-03
-Related Jira: `WCS-13`, `WCS-17`, `WCS-18`, `WCS-20`, `WCS-21`, `WCS-22`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-32`, `WCS-33`
+Related Jira: `WCS-13`, `WCS-17`, `WCS-18`, `WCS-20`, `WCS-21`, `WCS-22`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-32`, `WCS-33`, `WCS-34`, `WCS-35`
 Related repository paths: `src/main/java/com/wally/customersupport/{conversation,catalog,support,knowledge,shared}`, `src/main/resources`, `db/migration`
 Decision/source: specification de WhatsApp y re-baseline solicitada el 2026-08-30
 
@@ -157,7 +157,7 @@ com.wally.customersupport/
 │       ├── http/{telegram,whatsapp}/
 │       ├── channel/{telegram,whatsapp}/
 │       ├── ai/{bedrock,mock}/
-│       ├── memory/mock/             # sólo contrato y desarrollo controlado
+│       ├── memory/{mock,noop}/      # dobles y memoria desactivada
 │       └── repository/postgres/
 ├── catalog/
 │   ├── application/{port,service}/
@@ -210,9 +210,15 @@ resultados determinísticos.
 ### Memoria conversacional y privacidad
 
 La memoria de corto plazo se abstrae mediante `ConversationMemory` y el estado
-inmutable `ConversationState`. La Fase 2 define el contrato y un adapter en
-memoria para tests; no se registra como bean ni reemplaza el runtime productivo.
-La implementación PostgreSQL corresponde a la Fase 3.
+inmutable `ConversationState`. `WCS-35` agrega la implementación PostgreSQL
+detrás del mismo contrato, con migración Flyway, ownership por actor, TTL,
+limpieza al detectar expiración y control de concurrencia optimista.
+
+La persistencia está protegida por `wcs.conversation.memory.enabled`: el valor
+base es `false` y el adapter no se activa en producción hasta aprobar el gate de
+retención. Mientras está desactivada, el adapter no-op mantiene disponibles los
+flujos de canales. Los tests de integración la habilitan explícitamente para
+verificar la persistencia real en PostgreSQL.
 
 `ConversationMemoryPolicy` aplica TTL, límite de mensajes y límite de caracteres
 antes de guardar. Las lecturas y borrados requieren `conversationId` y un

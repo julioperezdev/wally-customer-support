@@ -14,7 +14,8 @@ import com.wally.customersupport.conversation.domain.model.ConversationState;
 /**
  * In-memory adapter used by contract tests and controlled local development.
  * It is intentionally not a Spring component and must not be used as
- * production storage. PostgreSQL is the next implementation phase.
+ * production storage. PostgreSQL is the production-capable adapter, subject
+ * to the explicit memory activation gate.
  */
 public final class InMemoryConversationMemoryAdapter implements ConversationMemory {
 

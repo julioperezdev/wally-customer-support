@@ -16,7 +16,16 @@ public record ConversationState(
         UUID conversationId,
         String actorId,
         List<String> recentMessages,
-        Instant updatedAt) {
+        Instant updatedAt,
+        long version) {
+
+    public ConversationState(
+            UUID conversationId,
+            String actorId,
+            List<String> recentMessages,
+            Instant updatedAt) {
+        this(conversationId, actorId, recentMessages, updatedAt, 0L);
+    }
 
     public ConversationState {
         conversationId = Objects.requireNonNull(conversationId, "conversationId is required");
@@ -26,5 +35,8 @@ public record ConversationState(
         }
         recentMessages = recentMessages == null ? List.of() : List.copyOf(recentMessages);
         updatedAt = Objects.requireNonNull(updatedAt, "updatedAt is required");
+        if (version < 0) {
+            throw new IllegalArgumentException("version must not be negative");
+        }
     }
 }
