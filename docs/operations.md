@@ -3,7 +3,7 @@
 Owner: Tech Lead  
 Status: `Accepted`
 Last reviewed: 2026-08-30  
-Related Jira: `WCS-13`, `WCS-21`, `WCS-22`, `WCS-30`, `WCS-35`, `WCS-36`, `WCS-37`
+Related Jira: `WCS-13`, `WCS-21`, `WCS-22`, `WCS-30`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-38`, `WCS-39`
 Related repository paths: `src/main/resources`, `.github/workflows`, `infra/`
 
 ## Ambientes
@@ -181,6 +181,11 @@ wcs/{environment}/providers
 Bedrock debe autenticarse preferentemente con IAM Role del workload; no se crea una API key para Bedrock. Los valores de Secrets Manager no se pasan a Jira, Confluence, la base de datos ni los logs.
 
 El runtime implementa `AwsExternalConfigurationEnvironmentPostProcessor` como fuente temprana de configuración de Spring. Primero carga un snapshot de AWS AppConfig Data API y luego resuelve únicamente campos allow-listed de los secretos referenciados en AWS Secrets Manager. El nombre de la aplicación y el environment `prod` están versionados en `application.properties`; la región AWS es temporalmente `us-east-1`. Las credenciales se resuelven mediante la cadena estándar del SDK. El starter agrega los valores como `PropertySource` en memoria antes del binding de Spring: no genera ni modifica un `application.properties` en runtime. Los valores nunca se escriben en `application.properties`, el repositorio ni los logs.
+
+El baseline no sensible de AppConfig v5 se mantiene en
+`infra/environments/prod/main.tf`. La configuración remota continúa siendo la
+fuente de runtime; el módulo de Terraform conserva `ignore_changes` sobre el
+contenido hosted para no reemplazar cambios operativos hechos en AppConfig.
 
 ### Contrato del documento de AppConfig
 
