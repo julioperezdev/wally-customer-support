@@ -3,7 +3,7 @@
 Owner: Tech Lead  
 Status: `Proposed`  
 Last reviewed: 2026-09-06
-Related Jira: `WCS-13`, `WCS-14`, `WCS-15`, `WCS-16`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-37`, `WCS-47`, `WCS-48`
+Related Jira: `WCS-13`, `WCS-14`, `WCS-15`, `WCS-16`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-37`, `WCS-47`, `WCS-48`, `WCS-51`
 Related repository paths: `src/main/java/com/wally/customersupport/{conversation,catalog,support,agent}/infrastructure/repository/postgres`, `src/main/resources/db/migration`
 
 ## Aislamiento en el RDS compartido
@@ -188,7 +188,13 @@ AppConfig ni al backoffice.
 para una clave de agente, ambiente, canal y caso de uso devuelve la referencia
 exacta o un fallback sin `agentId` ni `agentVersion`. `NOT_CONFIGURED`,
 `DISABLED`, `KILL_SWITCH` y `REGISTRY_UNAVAILABLE` son razones controladas y
-no contienen PII. Esta resolución tampoco se consume aún desde el runtime.
+no contienen PII. `AgentRuntimeDefinitionResolver` agrega la segunda frontera:
+carga la versión exacta, valida que sea publicable y devuelve un snapshot
+inmutable de modelo, límites, contratos y allowlists. El snapshot no persiste
+ni contiene prompts; sólo conserva metadatos de prompt. Los fallbacks
+`VERSION_NOT_FOUND`, `VERSION_MISMATCH`, `VERSION_NOT_PUBLISHABLE`,
+`INVALID_DEFINITION` y `REGISTRY_UNAVAILABLE` no interrumpen el flujo actual.
+La definición todavía no se usa para ejecutar el caso de uso desde el runtime.
 
 ### Otras entidades futuras
 

@@ -202,9 +202,16 @@ dominio: todavía no persiste versiones ni cambia la configuración activa de
 los ambientes.
 
 La persistencia se implementa en `WCS-48` mediante PostgreSQL/Flyway `V9`, la
-frontera de resolución segura en `WCS-49` y el consumo opcional desde el runtime
-en `WCS-50`. La activación continúa deshabilitada por configuración hasta que
+frontera de resolución segura en `WCS-49`, el consumo opcional desde el runtime
+en `WCS-50` y la construcción de una definición ejecutable validada en
+`WCS-51`. La activación continúa deshabilitada por configuración hasta que
 exista una aprobación explícita y una activación persistida válida.
+
+`WCS-51` no ejecuta prompts ni tools. Convierte la referencia `agentId +
+agentVersion` en un snapshot inmutable con modelo, límites, contratos y
+allowlists validados. Si la versión falta, no coincide, no está aprobada o el
+registry falla, devuelve un fallback tipado y el runtime actual permanece sin
+cambios.
 
 El registry debe separar borradores de artefactos publicados:
 
