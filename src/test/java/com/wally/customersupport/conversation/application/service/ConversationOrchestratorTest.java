@@ -1,6 +1,7 @@
 package com.wally.customersupport.conversation.application.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -57,7 +58,8 @@ class ConversationOrchestratorTest {
                 supportConfigurationQueryService,
                 knowledgeRetriever,
                 llmClient,
-                new RagProperties("mock", 5, null, null));
+                new RagProperties("mock", 5, null, null),
+                new ConversationExecutionPlanFactory());
         context = new ConversationContext(
                 UUID.randomUUID(), "customer-1", "consulta", List.of("consulta"), List.of());
     }
@@ -132,5 +134,18 @@ class ConversationOrchestratorTest {
         verify(catalogConversationService, never()).replyFor(any(CatalogQuery.class));
         verify(knowledgeRetriever, never()).retrieve(any());
         verify(llmClient, never()).generateReply(any());
+    }
+
+    @Test
+    void fallsBackSafelyWhenTheSelectedUseCaseFails() {
+        CatalogQuery query = new CatalogQuery("camiseta", null, "M", "negro");
+        when(intentClassifier.classify(any(ConversationContext.class)))
+                .thenReturn(new ConversationIntentDecision(ConversationIntent.CATALOG_SEARCH, 0.95, query, null));
+        when(catalogConversationService.replyFor(query, context.recentMessages(), context.latestMessage()))
+                .thenThrow(new IllegalStateException("catalog unavailable"));
+
+        String reply = orchestrator.replyFor(context);
+
+        assertTrue(reply.startsWith("No pude interpretar la consulta."));
     }
 }

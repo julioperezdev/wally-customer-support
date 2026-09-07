@@ -13,6 +13,8 @@ import com.wally.customersupport.conversation.application.port.out.LlmClient;
 import com.wally.customersupport.support.application.service.SupportConfigurationQueryService;
 import com.wally.customersupport.support.domain.model.BusinessHour;
 import com.wally.customersupport.conversation.domain.model.ConversationContext;
+import com.wally.customersupport.conversation.domain.model.ConversationExecutionPlan;
+import com.wally.customersupport.conversation.domain.model.ConversationExecutionResult;
 import com.wally.customersupport.conversation.domain.model.ConversationIntent;
 import com.wally.customersupport.conversation.domain.model.ConversationIntentDecision;
 import com.wally.customersupport.knowledge.domain.model.KnowledgeChunk;
@@ -29,7 +31,6 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class ConversationOrchestrator {
 
-    private static final double MIN_CONFIDENCE = 0.65;
     private static final String GREETING = "Hola, ¿cómo te puedo ayudar?";
     private static final String LOW_CONFIDENCE = "No estoy seguro de haber entendido tu consulta. "
             + "Podés preguntarme por productos, stock, horarios, envíos o cambios.";
@@ -47,11 +48,16 @@ public class ConversationOrchestrator {
     private final KnowledgeRetriever knowledgeRetriever;
     private final LlmClient llmClient;
     private final RagProperties ragProperties;
+    private final ConversationExecutionPlanFactory executionPlanFactory;
 
     public String replyFor(ConversationContext context) {
         long startedAt = System.nanoTime();
         if (context == null || context.latestMessage() == null || context.latestMessage().isBlank()) {
-            return completeQuery(context, "UNKNOWN", "INVALID_INPUT", SAFE_FALLBACK, startedAt);
+            return completeQuery(
+                    context,
+                    executionPlanFactory.safeFallback("INVALID_INPUT"),
+                    SAFE_FALLBACK,
+                    startedAt);
         }
 
         ConversationIntentDecision decision;
@@ -61,43 +67,89 @@ public class ConversationOrchestrator {
             StructuredEventLog.warn(log, "INTENT_CLASSIFICATION_FAILED", Map.of(
                     "errorType", exception.getClass().getSimpleName(),
                     "durationMs", elapsedMillis(startedAt)));
-            return completeQuery(
+            return executePlan(
                     context,
-                    "UNKNOWN",
-                    "CLASSIFICATION_FAILED",
-                    safeGeneralSupport(context),
+                    executionPlanFactory.classificationFailure("CLASSIFICATION_FAILED"),
                     startedAt);
         }
         if (decision == null) {
             StructuredEventLog.warn(log, "INTENT_CLASSIFICATION_FAILED", Map.of(
                     "errorType", "null_decision",
                     "durationMs", elapsedMillis(startedAt)));
-            return completeQuery(context, "UNKNOWN", "CLASSIFICATION_FAILED", SAFE_FALLBACK, startedAt);
+            return executePlan(
+                    context,
+                    executionPlanFactory.safeFallback("NULL_DECISION"),
+                    startedAt);
         }
         StructuredEventLog.info(log, "INTENT_CLASSIFIED", Map.of(
                 "intent", decision.intent().name(),
                 "confidence", decision.confidence(),
                 "durationMs", elapsedMillis(startedAt)));
-        if (decision.confidence() < MIN_CONFIDENCE) {
-            return completeQuery(
-                    context,
-                    decision.intent().name(),
-                    "LOW_CONFIDENCE",
-                    LOW_CONFIDENCE,
-                    startedAt);
-        }
+        return executePlan(context, executionPlanFactory.create(decision), decision, startedAt);
+    }
 
-        String reply = switch (decision.intent()) {
-            case GREETING -> GREETING;
-            case CATALOG_SEARCH -> catalogConversationService.replyFor(
-                            decision.catalogQuery(), context.recentMessages(), context.latestMessage())
-                    .orElse(LOW_CONFIDENCE);
-            case BUSINESS_HOURS -> formatBusinessHours();
-            case POLICY_QUERY -> formatPolicy(decision.policyKey());
-            case HUMAN_HANDOFF -> HUMAN_HANDOFF;
-            case GENERAL_SUPPORT, UNKNOWN -> safeGeneralSupport(context);
-        };
-        return completeQuery(context, decision.intent().name(), "REPLIED", reply, startedAt);
+    private String executePlan(
+            ConversationContext context,
+            ConversationExecutionPlan plan,
+            long startedAt) {
+        return executePlan(context, plan, null, startedAt);
+    }
+
+    private String executePlan(
+            ConversationContext context,
+            ConversationExecutionPlan plan,
+            ConversationIntentDecision decision,
+            long startedAt) {
+        Map<String, Object> routeFields = new LinkedHashMap<>();
+        routeFields.put("workflowVersion", plan.workflowVersion());
+        routeFields.put("useCase", plan.useCase());
+        routeFields.put("action", plan.action().name());
+        routeFields.put("stepCount", plan.stepCount());
+        routeFields.put("maxSteps", plan.maxSteps());
+        routeFields.put("fallbackAllowed", plan.fallbackAllowed());
+        if (decision != null) {
+            routeFields.put("intent", decision.intent().name());
+            routeFields.put("confidence", decision.confidence());
+        }
+        StructuredEventLog.info(log, "AGENT_ROUTED", routeFields);
+        StructuredEventLog.info(log, "AGENT_EXECUTION_STARTED", Map.of(
+                "workflowVersion", plan.workflowVersion(),
+                "useCase", plan.useCase(),
+                "stepCount", plan.stepCount()));
+
+        ConversationExecutionResult result;
+        try {
+            String reply = switch (plan.action()) {
+                case DIRECT_RESPONSE -> GREETING;
+                case CATALOG_SEARCH -> catalogConversationService.replyFor(
+                                decision == null ? null : decision.catalogQuery(),
+                                context.recentMessages(),
+                                context.latestMessage())
+                        .orElse(LOW_CONFIDENCE);
+                case BUSINESS_HOURS -> formatBusinessHours();
+                case POLICY_QUERY -> formatPolicy(decision == null ? null : decision.policyKey());
+                case HUMAN_HANDOFF -> HUMAN_HANDOFF;
+                case GENERAL_SUPPORT -> safeGeneralSupport(context);
+                case LOW_CONFIDENCE -> LOW_CONFIDENCE;
+                case SAFE_FALLBACK -> SAFE_FALLBACK;
+            };
+            result = SAFE_FALLBACK.equals(reply)
+                    ? ConversationExecutionResult.fallback(
+                            plan,
+                            reply,
+                            plan.fallbackReason() == null ? "SAFE_GENERAL_SUPPORT_FALLBACK" : plan.fallbackReason())
+                    : ConversationExecutionResult.completed(plan, reply);
+        } catch (RuntimeException exception) {
+            Map<String, Object> fields = new LinkedHashMap<>();
+            fields.put("workflowVersion", plan.workflowVersion());
+            fields.put("useCase", plan.useCase());
+            fields.put("errorType", exception.getClass().getSimpleName());
+            fields.put("durationMs", elapsedMillis(startedAt));
+            StructuredEventLog.warn(log, "AGENT_EXECUTION_FAILED", fields);
+            ConversationExecutionPlan fallback = executionPlanFactory.safeFallback("EXECUTION_FAILED");
+            result = ConversationExecutionResult.fallback(fallback, SAFE_FALLBACK, "EXECUTION_FAILED");
+        }
+        return completeQuery(context, result, startedAt);
     }
 
     private String safeGeneralSupport(ConversationContext context) {
@@ -125,18 +177,33 @@ public class ConversationOrchestrator {
 
     private String completeQuery(
             ConversationContext context,
-            String queryType,
-            String outcome,
+            ConversationExecutionPlan plan,
             String reply,
             long startedAt) {
+        return completeQuery(
+                context,
+                ConversationExecutionResult.completed(plan, reply),
+                startedAt);
+    }
+
+    private String completeQuery(
+            ConversationContext context,
+            ConversationExecutionResult result,
+            long startedAt) {
         Map<String, Object> fields = new LinkedHashMap<>();
-        fields.put("queryType", queryType);
-        fields.put("outcome", outcome);
-        fields.put("responseGenerated", reply != null && !reply.isBlank());
+        fields.put("queryType", result.useCase());
+        fields.put("outcome", result.outcome());
+        fields.put("workflowVersion", result.workflowVersion());
+        fields.put("executionStepCount", result.stepCount());
+        fields.put("responseGenerated", result.response() != null && !result.response().isBlank());
+        if (result.fallbackReason() != null) {
+            fields.put("fallbackReason", result.fallbackReason());
+        }
         fields.put("durationMs", elapsedMillis(startedAt));
         addCorrelationId(fields, context);
+        StructuredEventLog.info(log, "AGENT_EXECUTION_COMPLETED", fields);
         StructuredEventLog.info(log, "CONVERSATION_QUERY_COMPLETED", fields);
-        return reply;
+        return result.response();
     }
 
     private static void addCorrelationId(Map<String, Object> fields, ConversationContext context) {
