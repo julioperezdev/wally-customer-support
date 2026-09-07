@@ -40,4 +40,12 @@ class CatalogQueryParserTest {
     void doesNotTreatGeneralStoreQuestionAsCatalogRefinement() {
         assertTrue(CatalogQueryParser.parseConversation(List.of(), "¿Qué vendés?").isEmpty());
     }
+
+    @Test
+    void recognizesCatalogFollowUpQuestions() {
+        assertEquals(CatalogQueryParser.FollowUpKind.AVAILABILITY,
+                CatalogQueryParser.followUpKind("¿Está disponible?"));
+        assertEquals(CatalogQueryParser.FollowUpKind.PRICE,
+                CatalogQueryParser.followUpKind("¿Cuánto cuesta?"));
+    }
 }

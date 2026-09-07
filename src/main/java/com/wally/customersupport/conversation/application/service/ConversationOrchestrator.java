@@ -89,7 +89,8 @@ public class ConversationOrchestrator {
 
         String reply = switch (decision.intent()) {
             case GREETING -> GREETING;
-            case CATALOG_SEARCH -> catalogConversationService.replyFor(decision.catalogQuery())
+            case CATALOG_SEARCH -> catalogConversationService.replyFor(
+                            decision.catalogQuery(), context.recentMessages(), context.latestMessage())
                     .orElse(LOW_CONFIDENCE);
             case BUSINESS_HOURS -> formatBusinessHours();
             case POLICY_QUERY -> formatPolicy(decision.policyKey());

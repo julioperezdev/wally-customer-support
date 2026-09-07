@@ -42,6 +42,9 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
             productType permitido: remera, buzo, campera. Color, nombre y productType deben quedar en español
             normalizado. Si un dato no aparece, usa null. Usa también el historial para resolver refinamientos
             como "quiero un buzo" seguido de "que sea negro" y devuelve la consulta activa combinada.
+            Una consulta general como "¿qué productos tienen?" también es CATALOG_SEARCH con todos los filtros null.
+            Preguntas de seguimiento como "¿está disponible?", "¿cuánto cuesta?" o "¿qué talle es?"
+            deben ser CATALOG_SEARCH y usar el historial para devolver la consulta activa del producto anterior.
             confidence siempre debe ser un numero JSON entre 0 y 1, nunca null.
             Para una pregunta clara de ubicacion como "¿Dónde están ubicados?", usa GENERAL_SUPPORT
             con confidence >= 0.90.

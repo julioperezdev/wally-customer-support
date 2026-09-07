@@ -11,6 +11,14 @@ import com.wally.customersupport.catalog.domain.model.CatalogQuery;
 
 public final class CatalogQueryParser {
 
+    public enum FollowUpKind {
+        NONE,
+        AVAILABILITY,
+        PRICE,
+        SIZE,
+        COLOR
+    }
+
     private static final Pattern SKU = Pattern.compile("\\b[a-z]{2}(?:-[a-z0-9]+){2,}\\b");
     private static final Pattern SIZE = Pattern.compile("\\b(?:talle|tamano|size)?\\s*(xxl|xl|xs|l|m|s)\\b");
     private static final Pattern COLOR = Pattern.compile("\\b(negro|negra|blanco|blanca|gris|azul|rojo|roja|verde)\\b");
@@ -20,6 +28,14 @@ public final class CatalogQueryParser {
     private static final Pattern CATALOG_MARKER = Pattern.compile(
             "\\b(remera|remeras|buzo|buzos|campera|camperas|producto|productos|catalogo|stock|disponible|"
                     + "disponibilidad|talle|tamano|size|sku|precio|precios|color)\\b");
+    private static final Pattern AVAILABILITY_FOLLOW_UP = Pattern.compile(
+            "\\b(disponible|disponibilidad|hay stock|tiene stock)\\b");
+    private static final Pattern PRICE_FOLLOW_UP = Pattern.compile(
+            "\\b(cuanto|cuesta|precio|sale|valor)\\b");
+    private static final Pattern SIZE_FOLLOW_UP = Pattern.compile(
+            "\\b(que talle|cual talle|que tamano|cual tamano|que size)\\b");
+    private static final Pattern COLOR_FOLLOW_UP = Pattern.compile(
+            "\\b(que color|cual color|en que color)\\b");
     private static final Pattern STOP_WORDS = Pattern.compile(
             "\\b(tienen|tenes|hay|venden|vende|quiero|busco|necesito|una|un|el|la|los|las|del|de|en|con|"
                     + "vendes|"
@@ -91,6 +107,26 @@ public final class CatalogQueryParser {
         return Optional.ofNullable(activeQuery);
     }
 
+    public static FollowUpKind followUpKind(String message) {
+        if (message == null || message.isBlank()) {
+            return FollowUpKind.NONE;
+        }
+        String normalized = normalize(message);
+        if (AVAILABILITY_FOLLOW_UP.matcher(normalized).find()) {
+            return FollowUpKind.AVAILABILITY;
+        }
+        if (PRICE_FOLLOW_UP.matcher(normalized).find()) {
+            return FollowUpKind.PRICE;
+        }
+        if (SIZE_FOLLOW_UP.matcher(normalized).find()) {
+            return FollowUpKind.SIZE;
+        }
+        if (COLOR_FOLLOW_UP.matcher(normalized).find()) {
+            return FollowUpKind.COLOR;
+        }
+        return FollowUpKind.NONE;
+    }
+
     private static Optional<CatalogQuery> parseRefinement(String message) {
         String normalized = normalize(message);
         String size = extract(SIZE, normalized);
@@ -113,7 +149,8 @@ public final class CatalogQueryParser {
                 || SKU.matcher(normalized).find()
                 || SIZE.matcher(normalized).find()
                 || COLOR.matcher(normalized).find()
-                || REFINEMENT_MARKER.matcher(normalized).find();
+                || REFINEMENT_MARKER.matcher(normalized).find()
+                || followUpKind(normalized) != FollowUpKind.NONE;
     }
 
     private static String extract(Pattern pattern, String input) {

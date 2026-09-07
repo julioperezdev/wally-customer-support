@@ -151,6 +151,14 @@ Las preguntas documentales pasan por `KnowledgeRetriever`; las preguntas
 dinámicas pasan por tools de aplicación. Una pregunta mixta puede combinar
 ambos caminos antes de redactar la respuesta final.
 
+Una consulta general de catálogo, por ejemplo `¿Qué productos tienen?`, se
+resuelve como `search_catalog` sin filtros y devuelve una lista acotada de
+variantes reales. Las preguntas de seguimiento de bajo riesgo, como `¿Está
+disponible?` o `¿Cuánto cuesta?`, reutilizan el último contexto de catálogo
+cuando existe una única coincidencia; si hay varias, el bot solicita el SKU o
+una identificación más precisa. La disponibilidad y el precio se vuelven a
+consultar en PostgreSQL y nunca se toman de la memoria o del texto generado.
+
 ## Contrato de aplicación
 
 ```text
