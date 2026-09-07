@@ -2,7 +2,7 @@
 
 Owner: Product/Tech Lead  
 Status: `Proposed`  
-Last reviewed: 2026-09-03
+Last reviewed: 2026-09-07
 
 ## Visión
 
@@ -89,6 +89,37 @@ sí misma la activación productiva.
 ### Fase 7 — Piloto y evolución
 
 **Salida:** métricas de resolución, derivación, latencia, costo y satisfacción; backlog para FAQ/RAG, herramientas, media y multi-tenant sólo si la evidencia lo justifica.
+
+## Programa siguiente — Plataforma de agentes
+
+**Estado:** `Proposed` · Jira `WCS-45`
+
+Después de proteger el baseline actual, WCS puede evolucionar hacia una
+plataforma para crear, versionar, evaluar y operar agentes especialistas. Esta
+línea no reemplaza el roadmap del piloto ni autoriza por sí sola cambios de
+runtime.
+
+La propuesta completa está en
+[`agent-platform-roadmap.md`](agent-platform-roadmap.md) y su frontera
+arquitectónica en
+[`decisions/004-agent-platform-boundary.md`](decisions/004-agent-platform-boundary.md).
+La página canónica es [WCS — Agent Platform Roadmap & Architecture Proposal](https://julioperezdev.atlassian.net/wiki/spaces/SD/pages/7569410/WCS+Agent+Platform+Roadmap+Architecture+Proposal).
+
+Las etapas propuestas son:
+
+1. contrato y arquitectura del orquestador;
+2. runtime acotado compatible con los casos de uso actuales;
+3. registry y versionado de agentes, prompts y modelos;
+4. agentes core y tools determinísticas;
+5. evaluación, observabilidad y costos;
+6. backoffice React/TypeScript;
+7. migración canary con feature flags y rollback;
+8. evaluación opcional de MCP read-only y AgentCore.
+
+El primer gate es aceptar la propuesta, el ADR, el modelo mínimo de agente,
+los permisos del backoffice y los criterios de evaluación. Hasta entonces el
+runtime actual y el baseline `wcs-baseline-2026-09-07` continúan siendo la
+referencia operativa.
 
 ## Estimación preliminar
 
