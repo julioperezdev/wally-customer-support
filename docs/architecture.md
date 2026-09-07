@@ -220,6 +220,11 @@ retención. Mientras está desactivada, el adapter no-op mantiene disponibles lo
 flujos de canales. Los tests de integración la habilitan explícitamente para
 verificar la persistencia real en PostgreSQL.
 
+La selección de ambos adapters es explícita: `JpaConversationMemoryAdapter` se
+activa con `true` y `NoOpConversationMemoryAdapter` con `false` o cuando la
+propiedad no está definida. Esto evita que el arranque dependa del orden en que
+Spring evalúe `@ConditionalOnMissingBean`.
+
 `ConversationMemoryPolicy` aplica TTL, límite de mensajes y límite de caracteres
 antes de guardar. Las lecturas y borrados requieren `conversationId` y un
 `actorId` pseudónimo para evitar mezclar estados. La política completa está en

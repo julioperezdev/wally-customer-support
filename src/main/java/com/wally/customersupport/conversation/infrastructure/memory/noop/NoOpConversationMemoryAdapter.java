@@ -5,7 +5,7 @@ import java.util.UUID;
 
 import com.wally.customersupport.conversation.application.port.out.ConversationMemory;
 import com.wally.customersupport.conversation.domain.model.ConversationState;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
@@ -17,7 +17,10 @@ import org.springframework.stereotype.Component;
  * prerequisite for the channel flows.</p>
  */
 @Component
-@ConditionalOnMissingBean(ConversationMemory.class)
+@ConditionalOnProperty(
+        name = "wcs.conversation.memory.enabled",
+        havingValue = "false",
+        matchIfMissing = true)
 public class NoOpConversationMemoryAdapter implements ConversationMemory {
 
     @Override
