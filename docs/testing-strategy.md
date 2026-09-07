@@ -150,6 +150,21 @@ Las consultas deben enrutarse respectivamente a catálogo, horarios, política y
 saludo. Verificar que una consulta ambigua solicite aclaración, que el precio y
 stock sigan viniendo de PostgreSQL y que el LLM no pueda inventar esos valores.
 
+Para catálogo general y seguimiento conversacional, verificar también:
+
+```text
+¿Qué productos tienen?
+Busco una remera negra talle M que cueste menos de 20.000 pesos
+¿Está disponible?
+¿Cuánto cuesta?
+```
+
+La consulta general debe devolver una lista acotada desde PostgreSQL. Si el
+último resultado es único, los seguimientos deben volver a consultar la
+variante y responder el stock o precio vigente. Si hay múltiples variantes o
+no existe contexto previo, el bot debe pedir el SKU o una identificación más
+precisa sin elegir arbitrariamente.
+
 ## Datos y fixtures
 
 - Catálogo, horarios y políticas demo versionados y marcados como `DEMO`.

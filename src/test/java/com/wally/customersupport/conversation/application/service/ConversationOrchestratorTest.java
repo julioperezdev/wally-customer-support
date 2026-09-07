@@ -67,11 +67,12 @@ class ConversationOrchestratorTest {
         CatalogQuery query = new CatalogQuery("camiseta", null, "M", "negro");
         when(intentClassifier.classify(any(ConversationContext.class)))
                 .thenReturn(new ConversationIntentDecision(ConversationIntent.CATALOG_SEARCH, 0.95, query, null));
-        when(catalogConversationService.replyFor(query)).thenReturn(Optional.of("resultado del catálogo"));
+        when(catalogConversationService.replyFor(query, context.recentMessages(), context.latestMessage()))
+                .thenReturn(Optional.of("resultado del catálogo"));
 
         assertEquals("resultado del catálogo", orchestrator.replyFor(context));
 
-        verify(catalogConversationService).replyFor(query);
+        verify(catalogConversationService).replyFor(query, context.recentMessages(), context.latestMessage());
         verify(knowledgeRetriever, never()).retrieve(any());
         verify(llmClient, never()).generateReply(any());
     }

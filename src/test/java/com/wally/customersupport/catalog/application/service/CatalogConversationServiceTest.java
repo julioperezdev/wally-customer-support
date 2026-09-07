@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.UUID;
 
 import com.wally.customersupport.catalog.domain.model.CatalogProduct;
+import com.wally.customersupport.catalog.domain.model.CatalogQuery;
 import com.wally.customersupport.catalog.domain.model.CatalogVariant;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -60,14 +61,92 @@ class CatalogConversationServiceTest {
     }
 
     @Test
-    void asksForAFilterInsteadOfRunningAnUnboundedQuery() {
+    void returnsABoundedGeneralCatalogWhenNoFilterIsProvided() {
+        when(catalogQueryService.search(argThat(CatalogQuery::isEmpty)))
+                .thenReturn(List.of(
+                        product("Buzo Spring Boot", "RP-BUZ-SB-GRI-L", "L", "Gris", 5),
+                        product("Remera NullPointer", "RP-REM-NP-NEG-M", "M", "Negro", 12)));
+
         String reply = new CatalogConversationService(catalogQueryService)
                 .replyFor("¿Qué productos tienen?")
                 .orElseThrow();
 
+        assertTrue(reply.startsWith("Encontré estos productos:"));
+        assertTrue(reply.contains("Buzo Spring Boot"));
+        assertTrue(reply.contains("Remera NullPointer"));
+    }
+
+    @Test
+    void answersAvailabilityUsingTheSinglePreviousCatalogResult() {
+        CatalogProduct product = product("Remera NullPointer", "RP-REM-NP-NEG-M", "M", "Negro", 12);
+        when(catalogQueryService.search(argThat(query ->
+                "nullpointer".equals(query.name()) && "m".equalsIgnoreCase(query.size())
+                        && "negro".equalsIgnoreCase(query.color()))))
+                .thenReturn(List.of(product));
+
+        String reply = new CatalogConversationService(catalogQueryService)
+                .replyFor(
+                        new com.wally.customersupport.catalog.domain.model.CatalogQuery(
+                                "nullpointer", null, "M", "negro"),
+                        List.of("Busco una remera NullPointer negra talle M"),
+                        "¿Está disponible?")
+                .orElseThrow();
+
         assertEquals(
-                "Para buscar en el catálogo, indicame el nombre, tipo de producto, SKU, talle o color.",
+                "Sí, Remera NullPointer (SKU: RP-REM-NP-NEG-M) está disponible. Stock actual: 12 unidades.",
                 reply);
+    }
+
+    @Test
+    void answersPriceUsingTheSinglePreviousCatalogResult() {
+        CatalogProduct product = product("Remera NullPointer", "RP-REM-NP-NEG-M", "M", "Negro", 12);
+        when(catalogQueryService.search(argThat(query ->
+                "nullpointer".equals(query.name()) && "m".equalsIgnoreCase(query.size())
+                        && "negro".equalsIgnoreCase(query.color()))))
+                .thenReturn(List.of(product));
+
+        String reply = new CatalogConversationService(catalogQueryService)
+                .replyFor(
+                        new CatalogQuery("nullpointer", null, "M", "negro"),
+                        List.of("Busco una remera NullPointer negra talle M"),
+                        "¿Cuánto cuesta?")
+                .orElseThrow();
+
+        assertEquals(
+                "El precio actual de Remera NullPointer (SKU: RP-REM-NP-NEG-M) es 18.900,00 ARS.",
+                reply);
+    }
+
+    @Test
+    void asksToDisambiguateAvailabilityWhenSeveralVariantsMatch() {
+        when(catalogQueryService.search(argThat(query -> "remera".equals(query.productType()))))
+                .thenReturn(List.of(
+                        product("Remera NullPointer", "RP-REM-NP-NEG-M", "M", "Negro", 12),
+                        product("Remera NullPointer", "RP-REM-NP-NEG-L", "L", "Negro", 7)));
+
+        String reply = new CatalogConversationService(catalogQueryService)
+                .replyFor(
+                        new com.wally.customersupport.catalog.domain.model.CatalogQuery(
+                                null, null, null, null, "remera"),
+                        List.of("¿Qué remeras tienen?"),
+                        "¿Está disponible?")
+                .orElseThrow();
+
+        assertEquals(
+                "Encontré varias opciones. Indicame el SKU o el producto exacto que querés consultar.",
+                reply);
+    }
+
+    @Test
+    void asksForProductWhenAvailabilityHasNoConversationContext() {
+        String reply = new CatalogConversationService(catalogQueryService)
+                .replyFor(new com.wally.customersupport.catalog.domain.model.CatalogQuery(
+                                null, null, null, null),
+                        List.of(),
+                        "¿Está disponible?")
+                .orElseThrow();
+
+        assertEquals("¿De qué producto o SKU querés conocer ese dato?", reply);
     }
 
     private static CatalogProduct product(String name, String sku, String size, String color, int stock) {
