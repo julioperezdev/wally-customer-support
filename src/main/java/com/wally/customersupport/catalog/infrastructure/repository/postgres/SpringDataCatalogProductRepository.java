@@ -3,7 +3,7 @@ package com.wally.customersupport.catalog.infrastructure.repository.postgres;
 import java.util.List;
 import java.util.UUID;
 
-import com.wally.customersupport.catalog.infrastructure.repository.postgres.CatalogProductJpaEntity;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -23,6 +23,8 @@ public interface SpringDataCatalogProductRepository extends JpaRepository<Catalo
               and (:sizeLabel = '' or lower(variant.sizeLabel) = :sizeLabel)
               and (:color = '' or lower(variant.color) = :color)
               and (:productType = '' or lower(product.productType) = :productType)
+              and (:minPrice is null or variant.price >= :minPrice)
+              and (:maxPrice is null or variant.price <= :maxPrice)
             order by product.name
             """)
     List<CatalogProductJpaEntity> search(
@@ -30,5 +32,8 @@ public interface SpringDataCatalogProductRepository extends JpaRepository<Catalo
             @Param("sku") String sku,
             @Param("sizeLabel") String sizeLabel,
             @Param("color") String color,
-            @Param("productType") String productType);
+            @Param("productType") String productType,
+            @Param("minPrice") java.math.BigDecimal minPrice,
+            @Param("maxPrice") java.math.BigDecimal maxPrice,
+            Pageable pageable);
 }

@@ -1,5 +1,6 @@
 package com.wally.customersupport.conversation.infrastructure.ai.bedrock;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -39,8 +40,10 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
             de la tienda que no sean catalogo, horarios, politicas o solicitud de agente.
             policyKey permitido: shipping, payments, changes, returns.
             Para CATALOG_SEARCH, extrae solo filtros presentes y usa talle XS, S, M, L, XL o XXL;
-            productType permitido: remera, buzo, campera. Color, nombre y productType deben quedar en español
-            normalizado. Si un dato no aparece, usa null. Usa también el historial para resolver refinamientos
+            productType permitido: remera, buzo, campera. Extrae minPrice y maxPrice como números decimales
+            en ARS cuando el cliente indique límites como "menos de 20000" o "entre 18000 y 20000".
+            Color, nombre y productType deben quedar en español normalizado. Si un dato no aparece, usa null.
+            Usa también el historial para resolver refinamientos
             como "quiero un buzo" seguido de "que sea negro" y devuelve la consulta activa combinada.
             Una consulta general como "¿qué productos tienen?" también es CATALOG_SEARCH con todos los filtros null.
             Preguntas de seguimiento como "¿está disponible?", "¿cuánto cuesta?" o "¿qué talle es?"
@@ -50,7 +53,7 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
             con confidence >= 0.90.
 
             Formato obligatorio:
-            {"intent":"GENERAL_SUPPORT","confidence":0.0,"catalogQuery":{"name":null,"sku":null,"size":null,"color":null,"productType":null},"policyKey":null}
+            {"intent":"GENERAL_SUPPORT","confidence":0.0,"catalogQuery":{"name":null,"sku":null,"size":null,"color":null,"productType":null,"minPrice":null,"maxPrice":null},"policyKey":null}
             """;
 
     private final BedrockConverseClient converseClient;
@@ -115,7 +118,21 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
             return new CatalogQuery(null, null, null, null);
         }
         return new CatalogQuery(textOrNull(node, "name"), textOrNull(node, "sku"),
-                textOrNull(node, "size"), textOrNull(node, "color"), textOrNull(node, "productType"));
+                textOrNull(node, "size"), textOrNull(node, "color"), textOrNull(node, "productType"),
+                decimalOrNull(node, "minPrice"), decimalOrNull(node, "maxPrice"));
+    }
+
+    private BigDecimal decimalOrNull(JsonNode node, String field) {
+        JsonNode value = node.path(field);
+        if (value.isMissingNode() || value.isNull() || value.asText(null) == null
+                || value.asText().isBlank()) {
+            return null;
+        }
+        try {
+            return new BigDecimal(value.asText().trim().replace(',', '.'));
+        } catch (NumberFormatException exception) {
+            return null;
+        }
     }
 
     private String buildUserMessage(ConversationContext context) {

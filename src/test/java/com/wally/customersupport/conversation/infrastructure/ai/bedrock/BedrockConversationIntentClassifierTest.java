@@ -10,6 +10,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import com.wally.customersupport.conversation.domain.model.ConversationContext;
@@ -25,7 +26,8 @@ class BedrockConversationIntentClassifierTest {
         when(converseClient.complete(anyString(), anyString(), anyString(), anyString(), anyInt(), anyFloat()))
                 .thenReturn("""
                         {"intent":"CATALOG_SEARCH","confidence":0.94,
-                         "catalogQuery":{"name":"camiseta","sku":null,"size":"M","color":"negro"},
+                         "catalogQuery":{"name":"camiseta","sku":null,"size":"M","color":"negro",
+                         "minPrice":null,"maxPrice":20000},
                          "policyKey":null}
                         """);
 
@@ -37,6 +39,7 @@ class BedrockConversationIntentClassifierTest {
         assertEquals("camiseta", decision.catalogQuery().name());
         assertEquals("M", decision.catalogQuery().size());
         assertEquals("negro", decision.catalogQuery().color());
+        assertEquals(new BigDecimal("20000"), decision.catalogQuery().maxPrice());
         verify(converseClient).complete(anyString(), anyString(), anyString(), anyString(), eq(1_024), eq(0.0f));
     }
 

@@ -7,11 +7,10 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 
-import com.wally.customersupport.catalog.infrastructure.repository.postgres.CatalogProductJpaEntity;
-import com.wally.customersupport.catalog.infrastructure.repository.postgres.SpringDataCatalogProductRepository;
 import com.wally.customersupport.catalog.domain.model.CatalogProduct;
 import com.wally.customersupport.catalog.domain.model.CatalogQuery;
 import com.wally.customersupport.catalog.domain.model.CatalogVariant;
+import org.springframework.data.domain.Pageable;
 import org.junit.jupiter.api.Test;
 
 class JpaCatalogRepositoryAdapterTest {
@@ -23,12 +22,14 @@ class JpaCatalogRepositoryAdapterTest {
         CatalogProduct product = mock(CatalogProduct.class);
         CatalogQuery query = new CatalogQuery("Remera", null, "M", "Negro");
 
-        when(repository.search("remera", "", "m", "negro", "")).thenReturn(List.of(entity));
+        when(repository.search("remera", "", "m", "negro", "", null, null, Pageable.unpaged()))
+                .thenReturn(List.of(entity));
         when(entity.toDomain(query)).thenReturn(product);
         when(product.variants()).thenReturn(List.of(mock(CatalogVariant.class)));
 
         new JpaCatalogRepositoryAdapter(repository).search(query);
 
-        verify(repository).search(eq("remera"), eq(""), eq("m"), eq("negro"), eq(""));
+        verify(repository).search(
+                eq("remera"), eq(""), eq("m"), eq("negro"), eq(""), eq(null), eq(null), eq(Pageable.unpaged()));
     }
 }

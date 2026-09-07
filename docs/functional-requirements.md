@@ -82,7 +82,7 @@ Estado: `Accepted` para el MVP. Aprobado por el Product Owner el 2026-09-03. La 
 
 ### UC-008 — Consulta de catálogo
 
-**Dado** un producto o filtro de nombre, SKU, talle o color, **cuando** el cliente consulta, **entonces** el sistema obtiene precio y stock desde PostgreSQL y el bot redacta la respuesta usando únicamente esos resultados.
+**Dado** un producto o filtro de nombre, SKU, tipo, talle, color o rango de precio, **cuando** el cliente consulta, **entonces** el sistema obtiene precio y stock desde PostgreSQL y el bot redacta la respuesta usando únicamente esos resultados. Si no hay filtros, devuelve una lista acotada del catálogo; si la consulta continúa un resultado único, conserva el contexto sólo durante la ventana de memoria configurada.
 
 ### UC-009 — Consulta ambigua o sin evidencia
 

@@ -45,12 +45,16 @@ necesitan iniciar el contenedor.
 | `TC-002` | P0 | Consulta de política demo | Usa sólo el contenido configurado como `DEMO` | JUnit + fixture |
 | `TC-003` | P0 | Consulta de producto por nombre/SKU | Devuelve producto, precio, moneda y disponibilidad desde PostgreSQL | JUnit + SQL agregado |
 | `TC-004` | P0 | Filtros por talle/color | Sólo devuelve variantes que cumplen todos los filtros | JUnit |
+| `TC-004A` | P0 | Filtros por rango de precio | Sólo devuelve variantes dentro del mínimo/máximo solicitado | JUnit + Testcontainers |
 | `TC-005` | P0 | Producto inexistente o sin stock | No inventa datos y ofrece aclaración o seguimiento | JUnit |
 | `TC-006` | P1 | Consulta ambigua | Hace una pregunta concreta de aclaración | JUnit |
 | `TC-007` | P0 | Solicitud de atención humana | El bot responde, crea una tarea priorizada con contexto mínimo y vencimiento dentro de 24 horas | JUnit + SQL agregado |
 | `TC-008` | P0 | `BAJA`, `STOP` o “no me escribas más” | Marca `DO_NOT_CONTACT` y no crea respuestas ni seguimientos automáticos | JUnit + SQL agregado |
 | `TC-009` | P1 | Mensaje posterior a la baja | No envía mensajes proactivos mientras la supresión esté activa | JUnit |
 | `TC-010` | P1 | Fuera del horario demo | Informa el horario configurado y mantiene la conversación en estado correcto | JUnit |
+| `TC-010A` | P0 | Catálogo general sin filtros | Devuelve una lista acotada desde PostgreSQL | JUnit + Testcontainers |
+| `TC-010B` | P0 | Seguimiento de variante única | Reconsulta stock/precio vigente usando el contexto previo | Application + Testcontainers |
+| `TC-010C` | P1 | Seguimiento ambiguo | Solicita SKU o producto exacto sin elegir arbitrariamente | Application |
 | `TC-011` | P0 | Acción sensible | No ejecuta cancelaciones, reembolsos, pagos ni cambios; crea seguimiento | JUnit |
 | `TC-012` | P1 | Imagen de catálogo | Persiste una referencia S3 válida; no intenta enviar media en el MVP | Integration |
 | `TC-039` | P0 | Seed demo de catálogo | Carga productos, variantes, SKU únicos y stock no negativo | Spring Boot + Flyway |
@@ -187,5 +191,5 @@ No alcanza con que compile. Para aceptar el MVP:
 ## Evidencia actual
 
 - `mvn clean test`: tests unitarios de HMAC, parser, controller, servicio de aplicación y adapter Meta.
-- `WallyCustomerSupportApplicationIntegrationTest`: arranque Spring Boot con JPA, migraciones Flyway V1–V4, consulta del catálogo demo, horarios y políticas contra PostgreSQL 16 de Testcontainers.
+- `WallyCustomerSupportApplicationIntegrationTest`: arranque Spring Boot con JPA, migraciones Flyway V1–V9, consulta filtrada y general del catálogo demo, filtros de precio, seguimiento conversacional, horarios y políticas contra PostgreSQL 16 de Testcontainers.
 - La integración PostgreSQL real se ejecuta de forma reproducible con Testcontainers antes de cerrar WCS-12; no se usa H2 para validar el esquema, las queries ni las migraciones.
