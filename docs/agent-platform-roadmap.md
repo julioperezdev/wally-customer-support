@@ -224,7 +224,10 @@ una política determinística versionada; el siguiente paso puede evaluar un
 humanizador Bedrock sin permitir que agregue hechos de negocio. `WCS-56`
 agrega el contrato `AgentEvaluationScenario`, el dataset sintético
 `catalog-response-v1` y un evaluador determinístico para detectar regresiones
-antes de comparar modelos reales.
+antes de comparar modelos reales. `WCS-57` agrega `AgentEvaluationRunner` y
+`AgentEvaluationSuiteResult` para ejecutar la suite en orden determinístico y
+obtener pass rate, score promedio y razones agregadas sin persistir respuestas
+ni invocar Bedrock.
 
 El registry debe separar borradores de artefactos publicados:
 
