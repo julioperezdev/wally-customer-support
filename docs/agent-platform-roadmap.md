@@ -221,7 +221,10 @@ determinística. `WCS-54` completa la frontera de datos: el ejecutor entrega
 `CatalogSearchResult` y `CatalogFact`, mientras una política de presentación
 separada renderiza la respuesta. `WCS-55` formaliza `ResponseHumanizer` con
 una política determinística versionada; el siguiente paso puede evaluar un
-humanizador Bedrock sin permitir que agregue hechos de negocio.
+humanizador Bedrock sin permitir que agregue hechos de negocio. `WCS-56`
+agrega el contrato `AgentEvaluationScenario`, el dataset sintético
+`catalog-response-v1` y un evaluador determinístico para detectar regresiones
+antes de comparar modelos reales.
 
 El registry debe separar borradores de artefactos publicados:
 
