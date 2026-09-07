@@ -3,7 +3,7 @@
 Owner: Tech Lead  
 Status: `Accepted`
 Last reviewed: 2026-09-06  
-Related Jira: `WCS-13`, `WCS-21`, `WCS-22`, `WCS-30`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-38`, `WCS-39`, `WCS-40`, `WCS-41`
+Related Jira: `WCS-13`, `WCS-21`, `WCS-22`, `WCS-30`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-38`, `WCS-39`, `WCS-40`, `WCS-41`, `WCS-42`
 Related repository paths: `src/main/resources`, `.github/workflows`, `infra/`
 
 ## Ambientes
@@ -390,6 +390,11 @@ La Knowledge Base propia se administra mediante el módulo
 recursos separados de cualquier KB histórica. Los documentos aprobados viven
 en `knowledge-base/wcs/` y Terraform los publica bajo `documents/` con
 versionado y cifrado SSE-S3.
+
+`knowledge-base/wcs/location.md` contiene una ubicación ficticia marcada como
+`DEMO` para validar recuperación documental. No debe presentarse como una sede
+real ni reemplazar la fuente operativa cuando se defina la ubicación de la
+tienda.
 
 La configuración objetivo es:
 
