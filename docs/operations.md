@@ -3,7 +3,7 @@
 Owner: Tech Lead  
 Status: `Accepted`
 Last reviewed: 2026-09-06  
-Related Jira: `WCS-13`, `WCS-21`, `WCS-22`, `WCS-30`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-38`, `WCS-39`, `WCS-40`
+Related Jira: `WCS-13`, `WCS-21`, `WCS-22`, `WCS-30`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-38`, `WCS-39`, `WCS-40`, `WCS-41`
 Related repository paths: `src/main/resources`, `.github/workflows`, `infra/`
 
 ## Ambientes
@@ -69,6 +69,7 @@ infra/modules/github-backend-deploy/  OIDC y permisos de despliegue
 ci/backend-deploy.sh              despliegue por digest y health-check
 .github/workflows/backend.yml     verify; deploy manual
 .github/workflows/backend-restart.yml  restart manual para recargar AppConfig
+.github/workflows/knowledge-base-sync.yml  ingesta manual de la KB WCS
 .github/workflows/terraform.yml   validate; plan/apply manual
 knowledge-base/wcs/                documentos Markdown versionados para la KB
 ```
@@ -411,6 +412,52 @@ Después del apply, iniciar y revisar la ingesta de manera explícita:
 La operación debe registrar en Jira el job de ingesta, cantidad indexada y
 cantidad fallida. No se incluyen conversaciones reales, PII, secretos ni
 contenido del catálogo dinámico en esta fuente.
+
+### Sincronización operativa de la Knowledge Base
+
+La ingesta de documentos no ocurre automáticamente con cada commit ni con cada
+reinicio de App Runner. Después de un `terraform apply` que publique o cambie
+documentos, ejecutar el workflow manual
+`.github/workflows/knowledge-base-sync.yml`. El workflow:
+
+1. sólo acepta ejecuciones desde `main` con `confirm_sync=true`;
+2. requiere aprobación del Environment `production`;
+3. usa OIDC con `AWS_TERRAFORM_ROLE_ARN`;
+4. valida que los IDs apunten a `wally-customer-support-prod-knowledge-base` y
+   `wcs-markdown-source`;
+5. espera la ingesta, aplica timeout y reporta documentos escaneados,
+   indexados, fallidos y eliminados;
+6. falla si el job termina en `FAILED`/`STOPPED` o si hay documentos fallidos.
+
+Configurar en el Environment `production` las variables no sensibles
+`WCS_KNOWLEDGE_BASE_ID` y `WCS_KNOWLEDGE_BASE_DATA_SOURCE_ID` con los outputs de
+Terraform `knowledge_base_id` y `knowledge_base_data_source_id`. El nombre
+esperado puede dejarse con su valor por defecto o definirse explícitamente como
+`WCS_KNOWLEDGE_BASE_NAME`.
+
+El rol Terraform requiere también `bedrock:GetIngestionJob` para poder esperar
+el resultado y leer las estadísticas del job. El cambio de IAM debe pasar por
+el workflow de Terraform: revisar primero el plan y aprobar el `apply`; esta
+issue no ejecuta el `apply` automáticamente.
+
+Ejecución por CLI:
+
+```bash
+gh workflow run "Sync WCS Knowledge Base" \
+  --ref main \
+  -f confirm_sync=true
+```
+
+La ingesta sólo actualiza el índice documental. No requiere reiniciar App
+Runner: el runtime ya consulta la misma Knowledge Base por su ID de AppConfig.
+El workflow `backend-restart.yml` se reserva para cambios de AppConfig o
+Secrets Manager que deban ser leídos durante el bootstrap.
+
+Después de una ejecución exitosa, realizar smoke tests sintéticos por el canal
+habilitado: ubicación, horarios, envíos, cambios/devoluciones y una pregunta
+sin evidencia. Las consultas de producto, precio, talle, color y stock deben
+seguir pasando por PostgreSQL; una respuesta documental no puede reemplazar
+esos datos dinámicos.
 
 ## Observabilidad mínima
 

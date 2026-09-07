@@ -1,0 +1,102 @@
+name: Sync WCS Knowledge Base
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_sync:
+        description: "Confirm ingestion of the versioned WCS Markdown source"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  sync:
+    name: Ingest and verify WCS Knowledge Base
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: production
+    env:
+      AWS_TERRAFORM_ROLE_ARN: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      WCS_KNOWLEDGE_BASE_NAME: ${{ vars.WCS_KNOWLEDGE_BASE_NAME || 'wally-customer-support-prod-knowledge-base' }}
+      WCS_KNOWLEDGE_BASE_ID: ${{ vars.WCS_KNOWLEDGE_BASE_ID }}
+      WCS_KNOWLEDGE_BASE_DATA_SOURCE_ID: ${{ vars.WCS_KNOWLEDGE_BASE_DATA_SOURCE_ID }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check sync guardrails
+        env:
+          CONFIRM_SYNC: ${{ inputs.confirm_sync }}
+        run: |
+          set -euo pipefail
+          [ "$GITHUB_REF" = "refs/heads/main" ] || {
+            echo "::error::Knowledge Base sync is allowed only from main"
+            exit 1
+          }
+          [ "$CONFIRM_SYNC" = "true" ] || {
+            echo "::error::Set confirm_sync=true to ingest the WCS Markdown source"
+            exit 1
+          }
+
+      - name: Check Knowledge Base configuration
+        run: |
+          set -euo pipefail
+          missing=()
+          [ -n "$AWS_TERRAFORM_ROLE_ARN" ] || missing+=("AWS_TERRAFORM_ROLE_ARN")
+          [ -n "$AWS_REGION" ] || missing+=("AWS_REGION")
+          [ -n "$WCS_KNOWLEDGE_BASE_NAME" ] || missing+=("WCS_KNOWLEDGE_BASE_NAME")
+          [ -n "$WCS_KNOWLEDGE_BASE_ID" ] || missing+=("WCS_KNOWLEDGE_BASE_ID")
+          [ -n "$WCS_KNOWLEDGE_BASE_DATA_SOURCE_ID" ] || missing+=("WCS_KNOWLEDGE_BASE_DATA_SOURCE_ID")
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::Knowledge Base sync configuration is incomplete: ${missing[*]}"
+            exit 1
+          fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_TERRAFORM_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify WCS Knowledge Base and data source
+        run: |
+          set -euo pipefail
+          kb_name="$(aws bedrock-agent get-knowledge-base \
+            --knowledge-base-id "$WCS_KNOWLEDGE_BASE_ID" \
+            --query 'knowledgeBase.name' \
+            --output text)"
+          [ "$kb_name" = "$WCS_KNOWLEDGE_BASE_NAME" ] || {
+            echo "::error::Knowledge Base name does not match the configured WCS resource"
+            exit 1
+          }
+
+          data_source_name="$(aws bedrock-agent get-data-source \
+            --knowledge-base-id "$WCS_KNOWLEDGE_BASE_ID" \
+            --data-source-id "$WCS_KNOWLEDGE_BASE_DATA_SOURCE_ID" \
+            --query 'dataSource.name' \
+            --output text)"
+          [ "$data_source_name" = "wcs-markdown-source" ] || {
+            echo "::error::Data source name does not match the WCS Markdown source"
+            exit 1
+          }
+
+          echo "Verified WCS Knowledge Base: $kb_name"
+          echo "Verified WCS data source: $data_source_name"
+
+      - name: Start ingestion and verify statistics
+        run: |
+          chmod +x scripts/start-wcs-knowledge-ingestion.sh
+          ./scripts/start-wcs-knowledge-ingestion.sh \
+            --knowledge-base-id "$WCS_KNOWLEDGE_BASE_ID" \
+            --data-source-id "$WCS_KNOWLEDGE_BASE_DATA_SOURCE_ID" \
+            --region "$AWS_REGION" \
+            --wait \
+            --timeout-seconds 1200 \
+            --min-indexed-documents 1

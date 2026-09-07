@@ -168,6 +168,7 @@ data "aws_iam_policy_document" "terraform" {
     effect = "Allow"
     actions = [
       "bedrock:GetDataSource",
+      "bedrock:GetIngestionJob",
       "bedrock:GetKnowledgeBase",
       "bedrock:ListDataSources",
       "bedrock:ListTagsForResource",
