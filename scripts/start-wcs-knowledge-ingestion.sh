@@ -8,7 +8,7 @@ region=""
 wait_for_completion="false"
 timeout_seconds=900
 poll_seconds=10
-min_indexed_documents=1
+min_scanned_documents=1
 
 usage() {
   cat <<'EOF'
@@ -26,7 +26,7 @@ Options:
   --wait                         Poll until ingestion completes or fails
   --timeout-seconds <seconds>    Maximum wait time (default: 900)
   --poll-seconds <seconds>       Poll interval (default: 10)
-  --min-indexed-documents <n>    Minimum indexed documents when waiting (default: 1)
+  --min-scanned-documents <n>    Minimum scanned documents when waiting (default: 1)
   -h, --help                     Show this help
 
 The command uses the AWS CLI credential chain already configured on the
@@ -75,9 +75,9 @@ while (($# > 0)); do
       poll_seconds="$2"
       shift 2
       ;;
-    --min-indexed-documents)
-      (($# >= 2)) || die "--min-indexed-documents requires a value"
-      min_indexed_documents="$2"
+    --min-scanned-documents)
+      (($# >= 2)) || die "--min-scanned-documents requires a value"
+      min_scanned_documents="$2"
       shift 2
       ;;
     -h|--help)
@@ -94,7 +94,7 @@ done
 [[ -n "$data_source_id" ]] || die "data source ID cannot be empty"
 [[ "$timeout_seconds" =~ ^[1-9][0-9]*$ ]] || die "timeout must be a positive integer"
 [[ "$poll_seconds" =~ ^[1-9][0-9]*$ ]] || die "poll interval must be a positive integer"
-[[ "$min_indexed_documents" =~ ^[0-9]+$ ]] || die "minimum indexed documents must be a non-negative integer"
+[[ "$min_scanned_documents" =~ ^[0-9]+$ ]] || die "minimum scanned documents must be a non-negative integer"
 
 require_command aws
 require_command jq
@@ -155,11 +155,15 @@ while true; do
     COMPLETE)
       statistics="$(get_statistics)"
       print_statistics "$statistics"
+      scanned="$(jq -r '.numberOfDocumentsScanned // 0' <<<"$statistics")"
       indexed="$(jq -r '.numberOfDocumentsIndexed // 0' <<<"$statistics")"
       failed="$(jq -r '.numberOfDocumentsFailed // 0' <<<"$statistics")"
       (( failed == 0 )) || die "ingestion completed with failed documents: $failed"
-      (( indexed >= min_indexed_documents )) || die \
-        "ingestion indexed $indexed documents; expected at least $min_indexed_documents"
+      (( scanned >= min_scanned_documents )) || die \
+        "ingestion scanned $scanned documents; expected at least $min_scanned_documents"
+      if (( indexed == 0 )); then
+        printf 'Ingestion completed without new or modified documents to index\n'
+      fi
       exit 0
       ;;
     FAILED|STOPPED)
