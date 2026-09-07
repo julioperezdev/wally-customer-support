@@ -314,7 +314,11 @@ antes de ejecutar el plan. Esta frontera sólo agrega metadatos sanitizados de
 activación (`agentId` y `agentVersion` cuando corresponde); la ejecución
 determinística existente no cambia cuando la flag
 `wcs.agent-runtime.activation-enabled` es falsa, falta la activación o el
-registry no está disponible.
+registry no está disponible. Desde `WCS-52`, con la misma flag habilitada, el
+orquestador también consulta `AgentRuntimeDefinitionResolver` y agrega al
+plan el estado, razón y metadata del modelo de la definición validada. Esta
+resolución no selecciona todavía prompts, modelos ni tools para ejecutar: un
+fallback de definición conserva exactamente el mismo caso de uso y respuesta.
 
 En `CATALOG_SEARCH`, el clasificador sólo extrae filtros
 `name`/`sku`/`size`/`color`. El catálogo se consulta con esos filtros y

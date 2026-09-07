@@ -18,6 +18,9 @@ import java.util.UUID;
 import com.wally.customersupport.agent.application.service.AgentActivationKey;
 import com.wally.customersupport.agent.application.service.AgentActivationResolution;
 import com.wally.customersupport.agent.application.service.AgentActivationResolver;
+import com.wally.customersupport.agent.application.service.AgentDefinitionResolutionReason;
+import com.wally.customersupport.agent.application.service.AgentRuntimeDefinitionResolution;
+import com.wally.customersupport.agent.application.service.AgentRuntimeDefinitionResolver;
 import com.wally.customersupport.conversation.application.port.out.ConversationIntentClassifier;
 import com.wally.customersupport.catalog.application.service.CatalogConversationService;
 import com.wally.customersupport.support.application.service.SupportConfigurationQueryService;
@@ -54,6 +57,8 @@ class ConversationOrchestratorTest {
     private LlmClient llmClient;
     @Mock
     private AgentActivationResolver agentActivationResolver;
+    @Mock
+    private AgentRuntimeDefinitionResolver agentRuntimeDefinitionResolver;
 
     private ConversationOrchestrator orchestrator;
     private ConversationContext context;
@@ -69,6 +74,7 @@ class ConversationOrchestratorTest {
                 new RagProperties("mock", 5, null, null),
                 new ConversationExecutionPlanFactory(),
                 agentActivationResolver,
+                agentRuntimeDefinitionResolver,
                 new AgentRuntimeProperties(false, "prod"));
         context = new ConversationContext(
                 UUID.randomUUID(), "customer-1", "consulta", List.of("consulta"), List.of());
@@ -109,6 +115,7 @@ class ConversationOrchestratorTest {
                 new RagProperties("mock", 5, null, null),
                 new ConversationExecutionPlanFactory(),
                 agentActivationResolver,
+                agentRuntimeDefinitionResolver,
                 new AgentRuntimeProperties(true, "prod"));
         when(intentClassifier.classify(any(ConversationContext.class)))
                 .thenReturn(new ConversationIntentDecision(ConversationIntent.GREETING, 0.98, null, null));
@@ -119,6 +126,44 @@ class ConversationOrchestratorTest {
         assertEquals("Hola, ¿cómo te puedo ayudar?", enabledOrchestrator.replyFor(channelContext));
         verify(agentActivationResolver).resolve(new AgentActivationKey(
                 "response-humanizer", "prod", "telegram", "GREETING"));
+        verify(agentRuntimeDefinitionResolver).resolve(new AgentActivationKey(
+                "response-humanizer", "prod", "telegram", "GREETING"));
+    }
+
+    @Test
+    void keepsCurrentResponseWhenDefinitionResolutionFallsBack() {
+        ConversationContext channelContext = new ConversationContext(
+                context.conversationId(),
+                context.externalCustomerId(),
+                context.latestMessage(),
+                context.recentMessages(),
+                context.knowledge(),
+                context.conversationSummary(),
+                context.preferences(),
+                Channel.TELEGRAM);
+        ConversationOrchestrator enabledOrchestrator = new ConversationOrchestrator(
+                intentClassifier,
+                catalogConversationService,
+                supportConfigurationQueryService,
+                knowledgeRetriever,
+                llmClient,
+                new RagProperties("mock", 5, null, null),
+                new ConversationExecutionPlanFactory(),
+                agentActivationResolver,
+                agentRuntimeDefinitionResolver,
+                new AgentRuntimeProperties(true, "prod"));
+        AgentActivationKey key = new AgentActivationKey(
+                "response-humanizer", "prod", "telegram", "GREETING");
+        when(intentClassifier.classify(any(ConversationContext.class)))
+                .thenReturn(new ConversationIntentDecision(ConversationIntent.GREETING, 0.98, null, null));
+        when(agentActivationResolver.resolve(key))
+                .thenReturn(AgentActivationResolution.active("response-humanizer", 1));
+        when(agentRuntimeDefinitionResolver.resolve(key))
+                .thenReturn(AgentRuntimeDefinitionResolution.fallback(
+                        AgentDefinitionResolutionReason.VERSION_NOT_FOUND));
+
+        assertEquals("Hola, ¿cómo te puedo ayudar?", enabledOrchestrator.replyFor(channelContext));
+        verify(agentRuntimeDefinitionResolver).resolve(key);
     }
 
     @Test
