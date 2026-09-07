@@ -1,7 +1,7 @@
 # ADR-004 — Frontera de la plataforma de agentes
 
 - Owner: Product/Tech Lead
-- Status: `Proposed`
+- Status: `Accepted`
 - Last reviewed: 2026-09-07
 - Related Jira: `WCS-45`
 - Related document: [`agent-platform-roadmap.md`](../agent-platform-roadmap.md)

@@ -92,7 +92,7 @@ sí misma la activación productiva.
 
 ## Programa siguiente — Plataforma de agentes
 
-**Estado:** `Proposed` · Jira `WCS-45`
+**Estado:** `Accepted` · Jira `WCS-45`
 
 Después de proteger el baseline actual, WCS puede evolucionar hacia una
 plataforma para crear, versionar, evaluar y operar agentes especialistas. Esta

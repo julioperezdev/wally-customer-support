@@ -1,7 +1,7 @@
 # WCS — Plataforma de agentes conversacionales
 
 - Owner: Product/Tech Lead
-- Status: `Proposed`
+- Status: `Accepted`
 - Last reviewed: 2026-09-07
 - Related Jira: `WCS-45`
 - Baseline: [`wcs-baseline-2026-09-07`](baselines/wcs-baseline-2026-09-07.md)
