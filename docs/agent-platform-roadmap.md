@@ -201,9 +201,10 @@ La primera parte del contrato se implementa en `WCS-47` y se documenta en
 dominio: todavía no persiste versiones ni cambia la configuración activa de
 los ambientes.
 
-La persistencia se implementa en `WCS-48` mediante PostgreSQL/Flyway `V9` y la
-frontera de resolución segura en `WCS-49`. Ninguna de las dos tareas conecta
-todavía el registry al `ConversationOrchestrator` ni activa agentes nuevos.
+La persistencia se implementa en `WCS-48` mediante PostgreSQL/Flyway `V9`, la
+frontera de resolución segura en `WCS-49` y el consumo opcional desde el runtime
+en `WCS-50`. La activación continúa deshabilitada por configuración hasta que
+exista una aprobación explícita y una activación persistida válida.
 
 El registry debe separar borradores de artefactos publicados:
 

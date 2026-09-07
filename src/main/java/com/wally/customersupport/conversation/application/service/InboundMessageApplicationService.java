@@ -97,7 +97,8 @@ public class InboundMessageApplicationService implements InboundMessagePort {
                         conversationState.recentMessages(),
                         List.of(),
                         conversationSummaryService.summaryForContext(conversationState),
-                        preferences));
+                        preferences,
+                        command.channel()));
 
         saveConversationMemory(conversationSummaryService.appendAndMaybeSummarize(
                 conversationState,

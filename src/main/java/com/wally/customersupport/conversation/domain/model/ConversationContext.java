@@ -12,7 +12,8 @@ public record ConversationContext(
         List<String> recentMessages,
         List<KnowledgeChunk> knowledge,
         String conversationSummary,
-        List<CustomerPreference> preferences) {
+        List<CustomerPreference> preferences,
+        Channel channel) {
 
     public ConversationContext(
             UUID conversationId,
@@ -20,7 +21,7 @@ public record ConversationContext(
             String latestMessage,
             List<String> recentMessages,
             List<KnowledgeChunk> knowledge) {
-        this(conversationId, externalCustomerId, latestMessage, recentMessages, knowledge, null, List.of());
+        this(conversationId, externalCustomerId, latestMessage, recentMessages, knowledge, null, List.of(), null);
     }
 
     public ConversationContext(
@@ -30,7 +31,7 @@ public record ConversationContext(
             List<String> recentMessages,
             List<KnowledgeChunk> knowledge,
             String conversationSummary) {
-        this(conversationId, externalCustomerId, latestMessage, recentMessages, knowledge, conversationSummary, List.of());
+        this(conversationId, externalCustomerId, latestMessage, recentMessages, knowledge, conversationSummary, List.of(), null);
     }
 
     public ConversationContext {

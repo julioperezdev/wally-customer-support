@@ -342,6 +342,24 @@ en `false`; la tabla se conserva para no modificar migraciones aplicadas.
 Antes de habilitarla en producción deben aprobarse retención, borrado,
 ownership y observabilidad sin PII.
 
+### Activación de agentes desde el runtime
+
+`WCS-50` agrega una lectura opcional del registry antes de ejecutar el plan
+conversacional. El bootstrap mantiene:
+
+```text
+wcs.agent-runtime.activation-enabled=false
+wcs.agent-runtime.environment=prod
+```
+
+La flag falsa evita toda consulta al registry y conserva el flujo
+determinístico. Sólo después de aprobar una activación persistida y revisar
+sus métricas se puede publicar `true` en AppConfig. Si la activación no existe,
+está deshabilitada, tiene kill switch o el registry no está disponible, el
+orquestador continúa con el flujo anterior y registra únicamente la razón
+sanitizada. Para rollback se vuelve a publicar la flag en `false`; no se
+eliminan activaciones ni se modifica la migración V9.
+
 ### Precedencia y modos de ejecución
 
 La precedencia efectiva es: argumentos de línea de comandos y propiedades del
