@@ -27,6 +27,7 @@
   - [`010-agent-definition-runtime-observability.md`](decisions/010-agent-definition-runtime-observability.md): integración observacional del snapshot al orquestador.
   - [`011-catalog-specialist-deterministic-boundary.md`](decisions/011-catalog-specialist-deterministic-boundary.md): primer límite ejecutable con tool de catálogo determinística.
   - [`012-structured-catalog-facts.md`](decisions/012-structured-catalog-facts.md): hechos tipados separados de la presentación de respuesta.
+  - [`013-safe-response-humanization.md`](decisions/013-safe-response-humanization.md): política de presentación reemplazable sin autoridad sobre los hechos.
 
 ## Calidad y operación
 

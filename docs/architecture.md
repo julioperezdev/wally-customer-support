@@ -123,7 +123,9 @@ WCS-54 separa el resultado de la consulta de su presentación. El especialista
 entrega `CatalogSearchResult` con `CatalogFact` tipados; el formatter es una
 política independiente que sólo puede renderizar esos hechos. Así, una futura
 etapa de humanización puede cambiar tono y formato sin convertirse en fuente
-de precio, stock, SKU, talle o color.
+de precio, stock, SKU, talle o color. WCS-55 formaliza esa frontera con
+`ResponseHumanizer` y la implementación `DeterministicResponseHumanizer` v1;
+un futuro adapter Bedrock deberá mantener el mismo contrato y fallback.
 
 Los horarios y políticas que gobiernan reglas operativas permanecen en datos
 estructurados y versionados. La Knowledge Base puede contener una copia
