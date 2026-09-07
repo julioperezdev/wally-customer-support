@@ -170,6 +170,19 @@ imagen, modificación de secrets y cambios de Terraform.
 **Evidencia:** validación del workflow, ejecución manual sin pasos de Maven o
 Docker, operación App Runner, health check y documentación de rollout/rollback.
 
+### WCS-41 — Sincronizar y validar la Knowledge Base documental de WCS
+
+**Tipo:** Task · **Prioridad:** High · **Estimate:** 2d · **Depends on:** WCS-30, WCS-39, WCS-40 · **Estado:** In Progress
+
+Agregar una operación manual y aprobada para iniciar la ingesta de los
+documentos Markdown de WCS y verificar que la data source pertenece a la
+Knowledge Base propia. El flujo reporta estadísticas sanitizadas, aplica
+timeout y falla si hay documentos fallidos. No cambia PostgreSQL, catálogo,
+stock, la imagen de App Runner ni la KB histórica.
+
+**Evidencia:** workflow manual, script con timeout/estadísticas, validación de
+shell/YAML/Terraform, job de ingesta exitoso y smoke tests documentales.
+
 ## EPIC-WCS-01 — Gobierno y documentación
 
 ### WCS-9 — Definir espacio Confluence y matriz de fuentes de verdad
@@ -331,7 +344,8 @@ semántica o AgentCore.
 | 14 | WCS-37 | In Progress | Preferencias explícitas PostgreSQL, TTL, ownership, borrado y contexto auxiliar | WCS-34, WCS-35, WCS-36 |
 | 15 | WCS-38 | In Progress | Captura determinística de preferencias explícitas en inbound | WCS-20, WCS-37 |
 | 16 | WCS-39 | Done | Baseline AppConfig v5 y preferencias explícitas declarados en Terraform | WCS-22, WCS-38 |
-| 17 | WCS-40 | In Progress | Restart manual de App Runner para recargar AppConfig sin recompilar | WCS-22, WCS-39 |
+| 17 | WCS-40 | Done | Restart manual de App Runner para recargar AppConfig sin recompilar | WCS-22, WCS-39 |
+| 18 | WCS-41 | In Progress | Ingesta manual, validación y smoke de Knowledge Base documental WCS | WCS-30, WCS-39, WCS-40 |
 
 `WCS-14`–`WCS-16` y `WCS-17` ya tienen la fundación o el contrato inicial
 versionado; deben completarse/verificarse según la evidencia de cada issue antes
