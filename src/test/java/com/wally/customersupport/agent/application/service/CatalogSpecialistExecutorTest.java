@@ -9,11 +9,12 @@ import static org.mockito.Mockito.when;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
 import com.wally.customersupport.agent.domain.model.AgentInferenceParameters;
 import com.wally.customersupport.catalog.application.service.CatalogConversationService;
+import com.wally.customersupport.catalog.application.service.CatalogFact;
+import com.wally.customersupport.catalog.application.service.CatalogSearchResult;
 import com.wally.customersupport.catalog.domain.model.CatalogQuery;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,15 +31,15 @@ class CatalogSpecialistExecutorTest {
     void delegatesActiveDefinitionToTheDeterministicCatalogCapability() {
         CatalogSpecialistExecutor executor = new CatalogSpecialistExecutor(catalogConversationService);
         CatalogSpecialistExecutionRequest request = request(definition(Set.of("catalog.search")));
-        when(catalogConversationService.replyFor(
+        when(catalogConversationService.search(
                 request.catalogQuery(), request.recentMessages(), request.latestMessage()))
-                .thenReturn(Optional.of("resultado desde postgres"));
+                .thenReturn(java.util.Optional.of(structuredResult()));
 
         CatalogSpecialistExecutionResult result = executor.execute(request);
 
         assertThat(result.status()).isEqualTo(CatalogSpecialistExecutionResult.Status.EXECUTED);
-        assertThat(result.response()).isEqualTo("resultado desde postgres");
-        verify(catalogConversationService).replyFor(
+        assertThat(result.result().facts().getFirst().sku()).isEqualTo("RP-REM-NP-NEG-M");
+        verify(catalogConversationService).search(
                 request.catalogQuery(), request.recentMessages(), request.latestMessage());
     }
 
@@ -51,21 +52,37 @@ class CatalogSpecialistExecutorTest {
 
         assertThat(result.status()).isEqualTo(CatalogSpecialistExecutionResult.Status.FALLBACK);
         assertThat(result.reason()).isEqualTo("TOOL_NOT_ALLOWED");
-        verify(catalogConversationService, never()).replyFor(any(CatalogQuery.class), any(), any());
+        verify(catalogConversationService, never()).search(any(CatalogQuery.class), any(), any());
     }
 
     @Test
     void convertsAnEmptySpecialistResponseToFallback() {
         CatalogSpecialistExecutor executor = new CatalogSpecialistExecutor(catalogConversationService);
         CatalogSpecialistExecutionRequest request = request(definition(Set.of("catalog.search")));
-        when(catalogConversationService.replyFor(
+        when(catalogConversationService.search(
                 request.catalogQuery(), request.recentMessages(), request.latestMessage()))
-                .thenReturn(Optional.empty());
+                .thenReturn(java.util.Optional.empty());
 
         CatalogSpecialistExecutionResult result = executor.execute(request);
 
         assertThat(result.status()).isEqualTo(CatalogSpecialistExecutionResult.Status.FALLBACK);
         assertThat(result.reason()).isEqualTo("NO_RESPONSE");
+    }
+
+    private static CatalogSearchResult structuredResult() {
+        return new CatalogSearchResult(
+                CatalogSearchResult.Status.MATCHED,
+                List.of(new CatalogFact(
+                        "Remera NullPointer",
+                        "RP-REM-NP-NEG-M",
+                        "M",
+                        "Negro",
+                        new BigDecimal("18900.00"),
+                        "ARS",
+                        12)),
+                null,
+                CatalogSearchResult.FollowUpKind.NONE,
+                "MATCHED");
     }
 
     private static CatalogSpecialistExecutionRequest request(AgentRuntimeDefinition definition) {

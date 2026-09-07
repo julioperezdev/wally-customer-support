@@ -2,7 +2,7 @@
 
 Owner: Tech Lead
 Status: `In Progress`
-Related Jira: `WCS-21`, `WCS-22`, `WCS-36`, `WCS-50`, `WCS-51`, `WCS-52`, `WCS-53`
+Related Jira: `WCS-21`, `WCS-22`, `WCS-36`, `WCS-50`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`
 Related repository paths: `observability/grafana/`, `src/main/java/com/wally/customersupport/conversation/infrastructure/http/`, `src/main/java/com/wally/customersupport/conversation/application/service/`, `src/main/java/com/wally/customersupport/shared/infrastructure/observability/`
 
 ## Objetivo de esta iteración
@@ -54,9 +54,9 @@ operacional necesario para diagnóstico y costo, pero sin contenido de negocio.
 | `AGENT_DEFINITION_RESOLUTION_FALLBACK` | `environment`, `channel`, `useCase`, `definitionStatus`, `definitionReason` | Versión ausente, desalineada, no publicable o registry no disponible |
 | `AGENT_ROUTED` | `workflowVersion`, `useCase`, `activationStatus`, `activationReason`, `definitionStatus`, `definitionReason`, `agentId`, `agentVersion`, `modelProvider`, `model` | Plan validado y definición observada |
 | `AGENT_EXECUTION_STARTED` | `workflowVersion`, `useCase`, `stepCount`, `activationStatus`, `activationReason`, `definitionStatus`, `definitionReason`, `agentId`, `agentVersion`, `modelProvider`, `model` | Inicio de ejecución acotada |
-| `AGENT_SPECIALIST_EXECUTION_COMPLETED` | `agentId`, `agentVersion`, `useCase`, `executionMode`, `outcome`, `reason`, `durationMs` | Ejecución de un especialista con tool determinística |
-| `AGENT_SPECIALIST_EXECUTION_FALLBACK` | `agentId`, `agentVersion`, `useCase`, `executionMode`, `outcome`, `reason`, `durationMs` | Especialista omitido por allowlist, configuración o ausencia de respuesta |
-| `AGENT_SPECIALIST_EXECUTION_FAILED` | `agentId`, `agentVersion`, `useCase`, `executionMode`, `outcome`, `reason`, `durationMs`, `errorType` | Fallo controlado de la ejecución especializada |
+| `AGENT_SPECIALIST_EXECUTION_COMPLETED` | `agentId`, `agentVersion`, `useCase`, `executionMode`, `outcome`, `reason`, `resultStatus`, `resultCount`, `durationMs` | Ejecución de un especialista con tool determinística |
+| `AGENT_SPECIALIST_EXECUTION_FALLBACK` | `agentId`, `agentVersion`, `useCase`, `executionMode`, `outcome`, `reason`, `resultStatus`, `resultCount`, `durationMs` | Especialista omitido por allowlist, configuración o ausencia de respuesta |
+| `AGENT_SPECIALIST_EXECUTION_FAILED` | `agentId`, `agentVersion`, `useCase`, `executionMode`, `outcome`, `reason`, `resultStatus`, `resultCount`, `durationMs`, `errorType` | Fallo controlado de la ejecución especializada |
 | `CONVERSATION_QUERY_COMPLETED` | `queryType`, `outcome`, `responseGenerated`, `durationMs`, `correlationId` | Resultado y latencia total de la consulta |
 | `GENERAL_SUPPORT_FAILED` | `errorType`, `correlationId` | Fallback de conocimiento/LLM |
 | `CONVERSATION_CONTEXT_PREPARED` | `recentMessageCount`, `recentCharacters`, `summaryPresent`, `summaryCharacters`, `summaryEnabled` | Tamaño del contexto y activación del resumen, sin contenido |

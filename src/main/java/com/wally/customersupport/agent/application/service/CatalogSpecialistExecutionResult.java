@@ -2,11 +2,13 @@ package com.wally.customersupport.agent.application.service;
 
 import java.util.Objects;
 
+import com.wally.customersupport.catalog.application.service.CatalogSearchResult;
+
 /** Outcome of one bounded, deterministic catalog specialist execution. */
 public record CatalogSpecialistExecutionResult(
         Status status,
         String reason,
-        String response,
+        CatalogSearchResult result,
         long durationMs) {
 
     public enum Status {
@@ -20,11 +22,11 @@ public record CatalogSpecialistExecutionResult(
         if (durationMs < 0) {
             throw new IllegalArgumentException("durationMs must not be negative");
         }
-        if (status == Status.EXECUTED && (response == null || response.isBlank())) {
-            throw new IllegalArgumentException("executed result requires a response");
+        if (status == Status.EXECUTED && result == null) {
+            throw new IllegalArgumentException("executed result requires structured facts");
         }
-        if (status == Status.FALLBACK && response != null) {
-            throw new IllegalArgumentException("fallback result must not expose a response");
+        if (status == Status.FALLBACK && result != null) {
+            throw new IllegalArgumentException("fallback result must not expose structured facts");
         }
     }
 

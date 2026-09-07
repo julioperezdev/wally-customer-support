@@ -26,6 +26,7 @@
   - [`009-agent-runtime-definition.md`](decisions/009-agent-runtime-definition.md): definición ejecutable inmutable y validación de allowlists.
   - [`010-agent-definition-runtime-observability.md`](decisions/010-agent-definition-runtime-observability.md): integración observacional del snapshot al orquestador.
   - [`011-catalog-specialist-deterministic-boundary.md`](decisions/011-catalog-specialist-deterministic-boundary.md): primer límite ejecutable con tool de catálogo determinística.
+  - [`012-structured-catalog-facts.md`](decisions/012-structured-catalog-facts.md): hechos tipados separados de la presentación de respuesta.
 
 ## Calidad y operación
 

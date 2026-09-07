@@ -15,6 +15,7 @@ import com.wally.customersupport.agent.application.service.CatalogSpecialistExec
 import com.wally.customersupport.agent.application.service.AgentRuntimeDefinitionResolution;
 import com.wally.customersupport.agent.application.service.AgentRuntimeDefinitionResolver;
 import com.wally.customersupport.catalog.application.service.CatalogConversationService;
+import com.wally.customersupport.catalog.application.service.CatalogResponseFormatter;
 import com.wally.customersupport.conversation.application.port.out.ConversationIntentClassifier;
 import com.wally.customersupport.knowledge.application.port.out.KnowledgeRetriever;
 import com.wally.customersupport.conversation.application.port.out.LlmClient;
@@ -183,7 +184,7 @@ public class ConversationOrchestrator {
                             context.recentMessages(),
                             context.latestMessage()));
             if (specialistResult.executed()) {
-                return specialistResult.response();
+                return CatalogResponseFormatter.render(specialistResult.result());
             }
         }
         return catalogConversationService.replyFor(

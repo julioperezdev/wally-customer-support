@@ -4,6 +4,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import com.wally.customersupport.catalog.application.service.CatalogConversationService;
+import com.wally.customersupport.catalog.application.service.CatalogSearchResult;
 import com.wally.customersupport.shared.infrastructure.observability.StructuredEventLog;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,15 +40,14 @@ public class CatalogSpecialistExecutor {
         }
 
         try {
-            return catalogConversationService.replyFor(
+            return catalogConversationService.search(
                             request.catalogQuery(),
                             request.recentMessages(),
                             request.latestMessage())
-                    .filter(response -> !response.isBlank())
-                    .map(response -> completed(request, response, startedAt))
+                    .map(result -> completed(request, result, startedAt))
                     .orElseGet(() -> fallback(request, "NO_RESPONSE", startedAt));
         } catch (RuntimeException exception) {
-            Map<String, Object> fields = fields(request, "FAILED", "EXECUTION_FAILED", startedAt);
+            Map<String, Object> fields = fields(request, "FAILED", "EXECUTION_FAILED", null, startedAt);
             fields.put("errorType", exception.getClass().getSimpleName());
             StructuredEventLog.warn(log, "AGENT_SPECIALIST_EXECUTION_FAILED", fields);
             return new CatalogSpecialistExecutionResult(
@@ -60,15 +60,15 @@ public class CatalogSpecialistExecutor {
 
     private CatalogSpecialistExecutionResult completed(
             CatalogSpecialistExecutionRequest request,
-            String response,
+            CatalogSearchResult structuredResult,
             long startedAt) {
         CatalogSpecialistExecutionResult result = new CatalogSpecialistExecutionResult(
                 CatalogSpecialistExecutionResult.Status.EXECUTED,
                 "EXECUTED",
-                response,
+                structuredResult,
                 elapsedMillis(startedAt));
         StructuredEventLog.info(log, "AGENT_SPECIALIST_EXECUTION_COMPLETED",
-                fields(request, result.status().name(), result.reason(), startedAt));
+                fields(request, result.status().name(), result.reason(), structuredResult, startedAt));
         return result;
     }
 
@@ -82,7 +82,7 @@ public class CatalogSpecialistExecutor {
                 null,
                 elapsedMillis(startedAt));
         StructuredEventLog.info(log, "AGENT_SPECIALIST_EXECUTION_FALLBACK",
-                fields(request, result.status().name(), result.reason(), startedAt));
+                fields(request, result.status().name(), result.reason(), null, startedAt));
         return result;
     }
 
@@ -90,6 +90,7 @@ public class CatalogSpecialistExecutor {
             CatalogSpecialistExecutionRequest request,
             String outcome,
             String reason,
+            CatalogSearchResult result,
             long startedAt) {
         Map<String, Object> fields = new LinkedHashMap<>();
         fields.put("agentId", request.definition().agentId());
@@ -98,6 +99,8 @@ public class CatalogSpecialistExecutor {
         fields.put("executionMode", "DETERMINISTIC_TOOL");
         fields.put("outcome", outcome);
         fields.put("reason", reason);
+        fields.put("resultStatus", result == null ? "FALLBACK" : result.status().name());
+        fields.put("resultCount", result == null ? 0 : result.resultCount());
         fields.put("durationMs", elapsedMillis(startedAt));
         return fields;
     }

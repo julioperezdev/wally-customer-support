@@ -27,7 +27,9 @@ import com.wally.customersupport.agent.application.service.AgentRuntimeDefinitio
 import com.wally.customersupport.agent.application.service.AgentRuntimeDefinitionResolver;
 import com.wally.customersupport.agent.application.service.CatalogSpecialistExecutionResult;
 import com.wally.customersupport.conversation.application.port.out.ConversationIntentClassifier;
+import com.wally.customersupport.catalog.application.service.CatalogFact;
 import com.wally.customersupport.catalog.application.service.CatalogConversationService;
+import com.wally.customersupport.catalog.application.service.CatalogSearchResult;
 import com.wally.customersupport.support.application.service.SupportConfigurationQueryService;
 import com.wally.customersupport.knowledge.application.port.out.KnowledgeRetriever;
 import com.wally.customersupport.conversation.application.port.out.LlmClient;
@@ -247,10 +249,24 @@ class ConversationOrchestratorTest {
                 .thenReturn(new CatalogSpecialistExecutionResult(
                         CatalogSpecialistExecutionResult.Status.EXECUTED,
                         "EXECUTED",
-                        "resultado especializado",
+                        new CatalogSearchResult(
+                                CatalogSearchResult.Status.MATCHED,
+                                List.of(new CatalogFact(
+                                        "Remera NullPointer",
+                                        "RP-REM-NP-NEG-M",
+                                        "M",
+                                        "Negro",
+                                        new BigDecimal("18900.00"),
+                                        "ARS",
+                                        12)),
+                                null,
+                                CatalogSearchResult.FollowUpKind.NONE,
+                                "MATCHED"),
                         1));
 
-        assertEquals("resultado especializado", enabledOrchestrator.replyFor(channelContext));
+        assertEquals("Encontré estos productos:\n"
+                + "- Remera NullPointer — Negro, talle M — 18.900,00 ARS — stock disponible: 12 "
+                + "(SKU: RP-REM-NP-NEG-M)", enabledOrchestrator.replyFor(channelContext));
 
         verify(catalogSpecialistExecutor).execute(any());
         verify(catalogConversationService, never()).replyFor(
