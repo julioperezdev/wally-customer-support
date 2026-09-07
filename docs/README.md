@@ -30,6 +30,7 @@
   - [`013-safe-response-humanization.md`](decisions/013-safe-response-humanization.md): política de presentación reemplazable sin autoridad sobre los hechos.
   - [`014-agent-evaluation-contract.md`](decisions/014-agent-evaluation-contract.md): escenarios sintéticos versionados y evaluación determinística.
   - [`015-agent-evaluation-runner.md`](decisions/015-agent-evaluation-runner.md): ejecución determinística y métricas agregadas de una suite.
+  - [`016-agent-evaluation-metadata.md`](decisions/016-agent-evaluation-metadata.md): metadata operativa separada para latencia, tokens y costo.
 
 ## Calidad y operación
 

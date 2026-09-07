@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.wally.customersupport.agent.domain.model.AgentEvaluationResult;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationScenario;
+import com.wally.customersupport.agent.domain.model.AgentEvaluationExecutionMetadata;
 import com.wally.customersupport.conversation.domain.model.ResponseHumanizationResult;
 import org.springframework.stereotype.Component;
 
@@ -18,6 +19,13 @@ public class ResponsePolicyEvaluator {
     public AgentEvaluationResult evaluate(
             AgentEvaluationScenario scenario,
             ResponseHumanizationResult actual) {
+        return evaluate(scenario, actual, null);
+    }
+
+    public AgentEvaluationResult evaluate(
+            AgentEvaluationScenario scenario,
+            ResponseHumanizationResult actual,
+            AgentEvaluationExecutionMetadata executionMetadata) {
         if (scenario == null) {
             throw new IllegalArgumentException("scenario must not be null");
         }
@@ -60,6 +68,7 @@ public class ResponsePolicyEvaluator {
                 scenario.datasetVersion(),
                 passed,
                 score,
-                reasons);
+                reasons,
+                executionMetadata);
     }
 }
