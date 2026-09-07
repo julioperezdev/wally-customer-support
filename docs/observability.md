@@ -2,7 +2,7 @@
 
 Owner: Tech Lead
 Status: `In Progress`
-Related Jira: `WCS-21`, `WCS-22`, `WCS-36`, `WCS-50`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`
+Related Jira: `WCS-21`, `WCS-22`, `WCS-36`, `WCS-50`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-55`, `WCS-56`, `WCS-57`, `WCS-58`, `WCS-59`, `WCS-60`
 Related repository paths: `observability/grafana/`, `src/main/java/com/wally/customersupport/conversation/infrastructure/http/`, `src/main/java/com/wally/customersupport/conversation/application/service/`, `src/main/java/com/wally/customersupport/shared/infrastructure/observability/`
 
 ## Objetivo de esta iteración
@@ -64,6 +64,8 @@ operacional necesario para diagnóstico y costo, pero sin contenido de negocio.
 | `CONVERSATION_SUMMARY_FALLBACK` | `errorType`, `recentMessageCount`, `correlationId`, `durationMs` | Fallo de resumen, latencia y uso de ventana reciente |
 | `RAG_RETRIEVAL_RECORDED` | `provider`, `success`, `resultCount`, `durationMs`, `errorType` | Resultado y latencia de Knowledge Base |
 | `AI_USAGE_RECORDED` | `stage`, `operation`, `provider`, `model`, `success`, `inputTokens`, `outputTokens`, `totalTokens`, `estimatedCostUsd`, `pricingVersion`, `durationMs`, `providerLatencyMs`, `errorType` | Cada llamada real a un proveedor de IA |
+| `AGENT_EVALUATION_COMPLETED` | `runId`, `datasetVersion`, `agentId`, `agentVersion`, `provider`, `model`, `totalScenarios`, `passedScenarios`, `failedScenarios`, `passRate`, `averageScore`, `durationMs` | Resultado agregado de una suite sintética, sin respuestas |
+| `AGENT_EVALUATION_FAILED` | `runId`, `datasetVersion`, `agentId`, `agentVersion`, `provider`, `model`, `durationMs`, `errorType` | Fallo sanitizado de una ejecución de evaluación |
 | `OUTBOUND_MESSAGE_DISPATCHED` | `channel`, `result`, `errorType`, `durationMs`, `correlationId` | Entrega o reintento del outbox |
 
 No se registran texto de usuario, prompts, respuestas completas, números de
@@ -82,6 +84,13 @@ precio por millón de tokens de entrada/salida vigente en la configuración
 efectiva y `pricingVersion` identifica la tabla utilizada. Es una estimación
 operativa y no una conciliación de facturación. Si el provider está en `mock`,
 no existe una llamada de IA real y no se emite este evento.
+
+Las evaluaciones offline emiten un evento agregado al finalizar cada run. El
+`runId` es un identificador interno, mientras que `datasetVersion` y la
+identidad del agente/modelo permiten agrupar resultados comparables. El runner
+conserva sólo resultados sanitizados por escenario y el evento no registra los
+textos evaluados. Un fallo sólo registra el tipo de excepción, nunca su mensaje,
+stack trace o contenido de la evaluación.
 
 Configuración no sensible relacionada:
 

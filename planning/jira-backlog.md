@@ -347,6 +347,20 @@ semántica o AgentCore.
 | 17 | WCS-40 | Done | Restart manual de App Runner para recargar AppConfig sin recompilar | WCS-22, WCS-39 |
 | 18 | WCS-41 | In Progress | Ingesta manual, validación y smoke de Knowledge Base documental WCS | WCS-30, WCS-39, WCS-40 |
 
+## Extensión de plataforma de agentes — 2026-09-07
+
+| Jira | Estado | Entrega |
+| --- | --- | --- |
+| WCS-56 | In Review | Contrato y dataset sintético de evaluación |
+| WCS-57 | In Review | Runner determinístico de suites |
+| WCS-58 | In Review | Metadata de latencia, tokens y costo |
+| WCS-59 | In Review | Consultas conversacionales del catálogo |
+| WCS-60 | In Progress | Entrada interna y run trazable de evaluaciones |
+
+WCS-60 no agrega todavía API, persistencia ni ejecución de Bedrock. La
+siguiente evolución debe definir autorización, retención y formato de
+exportación antes de permitir ejecuciones desde un backoffice o job compartido.
+
 `WCS-14`–`WCS-16` y `WCS-17` ya tienen la fundación o el contrato inicial
 versionado; deben completarse/verificarse según la evidencia de cada issue antes
 de cerrar las dependencias. El orden no implica cerrar automáticamente issues:

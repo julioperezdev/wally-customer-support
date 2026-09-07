@@ -132,6 +132,14 @@ estructurados y versionados. La Knowledge Base puede contener una copia
 editorial para responder preguntas generales sólo si se mantiene sincronizada
 con la fuente de verdad.
 
+La evaluación de agentes vive en el bounded context `agent`, detrás de una
+frontera de aplicación independiente del runtime conversacional. El catálogo
+resuelve datasets sintéticos por versión y el servicio de evaluación devuelve
+un run sanitizado con métricas agregadas. Esta entrada no se expone por HTTP ni
+persiste resultados hasta que se definan autorización y retención; así puede
+ser reutilizada por tests, jobs y el futuro backoffice sin acoplarlos a
+Spring MVC o Bedrock.
+
 ## Topología AWS base
 
 La primera base de infraestructura sigue la separación de `tesis-dev` sin
