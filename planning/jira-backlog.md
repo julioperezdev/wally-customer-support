@@ -154,6 +154,22 @@ sobrescribir cambios administrados desde AWS.
 **Evidencia:** diff de Terraform, `terraform fmt`, `terraform validate` y
 revisión de valores contra la versión 5 activa en AWS.
 
+### WCS-40 — Agregar workflow manual para reiniciar App Runner y recargar AppConfig
+
+**Tipo:** Task · **Prioridad:** High · **Estimate:** 1d · **Depends on:** WCS-22, WCS-39
+
+Agregar un workflow manual que reinicie App Runner usando la imagen actualmente
+configurada para que el bootstrap de WCS consuma la última versión desplegada de
+AppConfig sin repetir Maven Verify, build de Docker ni push a ECR. El workflow
+requiere aprobación del Environment `production`, espera la operación y valida
+health.
+
+Fuera de alcance: refresh dinámico de propiedades Spring sin restart, cambio de
+imagen, modificación de secrets y cambios de Terraform.
+
+**Evidencia:** validación del workflow, ejecución manual sin pasos de Maven o
+Docker, operación App Runner, health check y documentación de rollout/rollback.
+
 ## EPIC-WCS-01 — Gobierno y documentación
 
 ### WCS-9 — Definir espacio Confluence y matriz de fuentes de verdad
@@ -314,7 +330,8 @@ semántica o AgentCore.
 | 13 | WCS-36 | In Progress | Resumen versionado, ventana reciente, checkpoint y fallback controlado | WCS-35 |
 | 14 | WCS-37 | In Progress | Preferencias explícitas PostgreSQL, TTL, ownership, borrado y contexto auxiliar | WCS-34, WCS-35, WCS-36 |
 | 15 | WCS-38 | In Progress | Captura determinística de preferencias explícitas en inbound | WCS-20, WCS-37 |
-| 16 | WCS-39 | In Progress | Baseline AppConfig v5 y preferencias explícitas declarados en Terraform | WCS-22, WCS-38 |
+| 16 | WCS-39 | Done | Baseline AppConfig v5 y preferencias explícitas declarados en Terraform | WCS-22, WCS-38 |
+| 17 | WCS-40 | In Progress | Restart manual de App Runner para recargar AppConfig sin recompilar | WCS-22, WCS-39 |
 
 `WCS-14`–`WCS-16` y `WCS-17` ya tienen la fundación o el contrato inicial
 versionado; deben completarse/verificarse según la evidencia de cada issue antes
