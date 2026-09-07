@@ -184,6 +184,12 @@ tipadas; el adapter rechaza sobrescribir una versión ya persistida. La
 persistencia todavía no está conectada al `ConversationOrchestrator`, a
 AppConfig ni al backoffice.
 
+`AgentActivationResolver` agrega una frontera de lectura sin mutar el estado:
+para una clave de agente, ambiente, canal y caso de uso devuelve la referencia
+exacta o un fallback sin `agentId` ni `agentVersion`. `NOT_CONFIGURED`,
+`DISABLED`, `KILL_SWITCH` y `REGISTRY_UNAVAILABLE` son razones controladas y
+no contienen PII. Esta resolución tampoco se consume aún desde el runtime.
+
 ### Otras entidades futuras
 
 - `store`/`store_id` para aislamiento multi-tienda; el MVP mantiene una tienda

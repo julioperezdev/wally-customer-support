@@ -57,7 +57,7 @@ public class JpaAgentRegistryRepositoryAdapter implements AgentRegistryRepositor
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<AgentActivation> findActiveActivation(
+    public Optional<AgentActivation> findLatestActivation(
             String agentId,
             String environment,
             String channel,
@@ -65,7 +65,17 @@ public class JpaAgentRegistryRepositoryAdapter implements AgentRegistryRepositor
         return activationRepository
                 .findFirstByAgentIdAndEnvironmentAndChannelAndUseCaseOrderByActivatedAtDesc(
                         agentId, environment, channel, useCase)
-                .map(AgentActivationJpaEntity::toDomain)
+                .map(AgentActivationJpaEntity::toDomain);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<AgentActivation> findActiveActivation(
+            String agentId,
+            String environment,
+            String channel,
+            String useCase) {
+        return findLatestActivation(agentId, environment, channel, useCase)
                 .filter(activation -> activation.enabled() && !activation.killSwitch());
     }
 }

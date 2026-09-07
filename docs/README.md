@@ -21,6 +21,7 @@
   - [`004-agent-platform-boundary.md`](decisions/004-agent-platform-boundary.md): orquestador, agentes especialistas, tools determinísticas y límites de MCP.
   - [`005-agent-registry-contract.md`](decisions/005-agent-registry-contract.md): versiones inmutables, lifecycle, activación, kill switch y rollback.
   - [`006-agent-registry-persistence.md`](decisions/006-agent-registry-persistence.md): persistencia PostgreSQL del registry y referencias de activación.
+  - [`007-agent-activation-resolution.md`](decisions/007-agent-activation-resolution.md): resolución por contexto y fallback seguro.
 
 ## Calidad y operación
 
