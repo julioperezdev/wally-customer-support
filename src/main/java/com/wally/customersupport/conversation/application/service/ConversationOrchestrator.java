@@ -9,6 +9,9 @@ import java.util.Map;
 import com.wally.customersupport.agent.application.service.AgentActivationKey;
 import com.wally.customersupport.agent.application.service.AgentActivationResolution;
 import com.wally.customersupport.agent.application.service.AgentActivationResolver;
+import com.wally.customersupport.agent.application.service.CatalogSpecialistExecutionRequest;
+import com.wally.customersupport.agent.application.service.CatalogSpecialistExecutionResult;
+import com.wally.customersupport.agent.application.service.CatalogSpecialistExecutor;
 import com.wally.customersupport.agent.application.service.AgentRuntimeDefinitionResolution;
 import com.wally.customersupport.agent.application.service.AgentRuntimeDefinitionResolver;
 import com.wally.customersupport.catalog.application.service.CatalogConversationService;
@@ -58,6 +61,7 @@ public class ConversationOrchestrator {
     private final AgentActivationResolver agentActivationResolver;
     private final AgentRuntimeDefinitionResolver agentRuntimeDefinitionResolver;
     private final AgentRuntimeProperties agentRuntimeProperties;
+    private final CatalogSpecialistExecutor catalogSpecialistExecutor;
 
     public String replyFor(ConversationContext context) {
         long startedAt = System.nanoTime();
@@ -140,11 +144,7 @@ public class ConversationOrchestrator {
         try {
             String reply = switch (plan.action()) {
                 case DIRECT_RESPONSE -> GREETING;
-                case CATALOG_SEARCH -> catalogConversationService.replyFor(
-                                decision == null ? null : decision.catalogQuery(),
-                                context.recentMessages(),
-                                context.latestMessage())
-                        .orElse(LOW_CONFIDENCE);
+                case CATALOG_SEARCH -> executeCatalogSearch(context, decision, definition);
                 case BUSINESS_HOURS -> formatBusinessHours();
                 case POLICY_QUERY -> formatPolicy(decision == null ? null : decision.policyKey());
                 case HUMAN_HANDOFF -> HUMAN_HANDOFF;
@@ -169,6 +169,28 @@ public class ConversationOrchestrator {
             result = ConversationExecutionResult.fallback(fallback, SAFE_FALLBACK, "EXECUTION_FAILED");
         }
         return completeQuery(context, result, startedAt);
+    }
+
+    private String executeCatalogSearch(
+            ConversationContext context,
+            ConversationIntentDecision decision,
+            AgentRuntimeDefinitionResolution definition) {
+        if (definition != null && definition.isActive()) {
+            CatalogSpecialistExecutionResult specialistResult = catalogSpecialistExecutor.execute(
+                    new CatalogSpecialistExecutionRequest(
+                            definition.definition(),
+                            decision == null ? null : decision.catalogQuery(),
+                            context.recentMessages(),
+                            context.latestMessage()));
+            if (specialistResult.executed()) {
+                return specialistResult.response();
+            }
+        }
+        return catalogConversationService.replyFor(
+                        decision == null ? null : decision.catalogQuery(),
+                        context.recentMessages(),
+                        context.latestMessage())
+                .orElse(LOW_CONFIDENCE);
     }
 
     private AgentActivationKey resolveActivationKey(

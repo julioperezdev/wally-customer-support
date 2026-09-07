@@ -3,7 +3,7 @@
 Owner: AI/Tech Lead  
 Status: `Accepted`
 Last reviewed: 2026-09-03
-Related Jira: `WCS-11`, `WCS-20`, `WCS-21`, `WCS-30`, `WCS-33`
+Related Jira: `WCS-11`, `WCS-20`, `WCS-21`, `WCS-30`, `WCS-33`, `WCS-51`, `WCS-52`, `WCS-53`
 Related repository paths: `src/main/java/com/wally/customersupport/conversation/infrastructure/ai`, `src/main/resources/prompts`, `src/test/resources/fixtures`
 
 ## Registro de modelos
@@ -182,3 +182,18 @@ CATALOG_SEARCH / STOCK / CART / ORDER
 Los tests deben poder ejecutar el mismo flujo con `MockKnowledgeRetriever`,
 `MockLlmClient` y `MockWhatsAppAdapter`, sin convertir esos dobles en el modo
 normal de ejecución.
+
+## Primer límite de ejecución especialista
+
+`catalog-specialist` es la primera implementación del contrato de agente
+ejecutable. Su definición publicada puede autorizar la capacidad
+`catalog.search`, pero el ejecutor sólo acepta filtros del tipo `CatalogQuery`
+y delega la consulta en el servicio de catálogo existente. No acepta SQL,
+prompts ni argumentos arbitrarios. La salida sigue siendo texto construido a
+partir de resultados PostgreSQL determinísticos.
+
+La ruta se habilita únicamente cuando la definición runtime está activa. Ante
+una definición ausente, un tool no permitido, un resultado vacío o una
+excepción, se conserva el flujo legacy y se emite un evento de fallback. Esta
+decisión permite probar el límite y sus métricas sin cambiar el comportamiento
+productivo ni requerir una llamada adicional a Bedrock.

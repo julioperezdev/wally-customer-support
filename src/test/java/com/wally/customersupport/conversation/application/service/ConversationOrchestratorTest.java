@@ -11,16 +11,21 @@ import static org.mockito.Mockito.when;
 import java.time.Instant;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.time.Duration;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import com.wally.customersupport.agent.application.service.AgentActivationKey;
 import com.wally.customersupport.agent.application.service.AgentActivationResolution;
 import com.wally.customersupport.agent.application.service.AgentActivationResolver;
 import com.wally.customersupport.agent.application.service.AgentDefinitionResolutionReason;
+import com.wally.customersupport.agent.application.service.AgentRuntimeDefinition;
 import com.wally.customersupport.agent.application.service.AgentRuntimeDefinitionResolution;
 import com.wally.customersupport.agent.application.service.AgentRuntimeDefinitionResolver;
+import com.wally.customersupport.agent.application.service.CatalogSpecialistExecutionResult;
 import com.wally.customersupport.conversation.application.port.out.ConversationIntentClassifier;
 import com.wally.customersupport.catalog.application.service.CatalogConversationService;
 import com.wally.customersupport.support.application.service.SupportConfigurationQueryService;
@@ -28,6 +33,7 @@ import com.wally.customersupport.knowledge.application.port.out.KnowledgeRetriev
 import com.wally.customersupport.conversation.application.port.out.LlmClient;
 import com.wally.customersupport.support.domain.model.BusinessHour;
 import com.wally.customersupport.catalog.domain.model.CatalogQuery;
+import com.wally.customersupport.agent.domain.model.AgentInferenceParameters;
 import com.wally.customersupport.conversation.domain.model.ConversationContext;
 import com.wally.customersupport.conversation.domain.model.Channel;
 import com.wally.customersupport.conversation.domain.model.ConversationIntent;
@@ -59,6 +65,8 @@ class ConversationOrchestratorTest {
     private AgentActivationResolver agentActivationResolver;
     @Mock
     private AgentRuntimeDefinitionResolver agentRuntimeDefinitionResolver;
+    @Mock
+    private com.wally.customersupport.agent.application.service.CatalogSpecialistExecutor catalogSpecialistExecutor;
 
     private ConversationOrchestrator orchestrator;
     private ConversationContext context;
@@ -75,7 +83,8 @@ class ConversationOrchestratorTest {
                 new ConversationExecutionPlanFactory(),
                 agentActivationResolver,
                 agentRuntimeDefinitionResolver,
-                new AgentRuntimeProperties(false, "prod"));
+                new AgentRuntimeProperties(false, "prod"),
+                catalogSpecialistExecutor);
         context = new ConversationContext(
                 UUID.randomUUID(), "customer-1", "consulta", List.of("consulta"), List.of());
     }
@@ -116,7 +125,8 @@ class ConversationOrchestratorTest {
                 new ConversationExecutionPlanFactory(),
                 agentActivationResolver,
                 agentRuntimeDefinitionResolver,
-                new AgentRuntimeProperties(true, "prod"));
+                new AgentRuntimeProperties(true, "prod"),
+                catalogSpecialistExecutor);
         when(intentClassifier.classify(any(ConversationContext.class)))
                 .thenReturn(new ConversationIntentDecision(ConversationIntent.GREETING, 0.98, null, null));
         when(agentActivationResolver.resolve(new AgentActivationKey(
@@ -151,7 +161,8 @@ class ConversationOrchestratorTest {
                 new ConversationExecutionPlanFactory(),
                 agentActivationResolver,
                 agentRuntimeDefinitionResolver,
-                new AgentRuntimeProperties(true, "prod"));
+                new AgentRuntimeProperties(true, "prod"),
+                catalogSpecialistExecutor);
         AgentActivationKey key = new AgentActivationKey(
                 "response-humanizer", "prod", "telegram", "GREETING");
         when(intentClassifier.classify(any(ConversationContext.class)))
@@ -198,6 +209,52 @@ class ConversationOrchestratorTest {
         verify(catalogConversationService).replyFor(query, context.recentMessages(), context.latestMessage());
         verify(knowledgeRetriever, never()).retrieve(any());
         verify(llmClient, never()).generateReply(any());
+    }
+
+    @Test
+    void routesActiveCatalogDefinitionThroughTheTypedSpecialistBoundary() {
+        ConversationContext channelContext = new ConversationContext(
+                context.conversationId(),
+                context.externalCustomerId(),
+                context.latestMessage(),
+                context.recentMessages(),
+                context.knowledge(),
+                context.conversationSummary(),
+                context.preferences(),
+                Channel.TELEGRAM);
+        ConversationOrchestrator enabledOrchestrator = new ConversationOrchestrator(
+                intentClassifier,
+                catalogConversationService,
+                supportConfigurationQueryService,
+                knowledgeRetriever,
+                llmClient,
+                new RagProperties("mock", 5, null, null),
+                new ConversationExecutionPlanFactory(),
+                agentActivationResolver,
+                agentRuntimeDefinitionResolver,
+                new AgentRuntimeProperties(true, "prod"),
+                catalogSpecialistExecutor);
+        CatalogQuery query = new CatalogQuery("nullpointer", null, "M", "negro");
+        AgentActivationKey key = new AgentActivationKey(
+                "catalog-specialist", "prod", "telegram", "CATALOG_SEARCH");
+        when(intentClassifier.classify(any(ConversationContext.class)))
+                .thenReturn(new ConversationIntentDecision(ConversationIntent.CATALOG_SEARCH, 0.95, query, null));
+        when(agentActivationResolver.resolve(key))
+                .thenReturn(AgentActivationResolution.active("catalog-specialist", 2));
+        when(agentRuntimeDefinitionResolver.resolve(key))
+                .thenReturn(AgentRuntimeDefinitionResolution.active(catalogDefinition()));
+        when(catalogSpecialistExecutor.execute(any()))
+                .thenReturn(new CatalogSpecialistExecutionResult(
+                        CatalogSpecialistExecutionResult.Status.EXECUTED,
+                        "EXECUTED",
+                        "resultado especializado",
+                        1));
+
+        assertEquals("resultado especializado", enabledOrchestrator.replyFor(channelContext));
+
+        verify(catalogSpecialistExecutor).execute(any());
+        verify(catalogConversationService, never()).replyFor(
+                any(CatalogQuery.class), any(), any());
     }
 
     @Test
@@ -268,5 +325,31 @@ class ConversationOrchestratorTest {
         String reply = orchestrator.replyFor(context);
 
         assertTrue(reply.startsWith("No pude interpretar la consulta."));
+    }
+
+    private static AgentRuntimeDefinition catalogDefinition() {
+        return new AgentRuntimeDefinition(
+                "catalog-specialist",
+                2,
+                "Catalog specialist",
+                "Search products using deterministic catalog tools",
+                "bedrock",
+                "openai.gpt-oss-20b-1:0",
+                AgentInferenceParameters.deterministic(),
+                "system-v1",
+                "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                "catalog-input-v1",
+                "catalog-output-v1",
+                Set.of("catalog.search"),
+                Set.of(),
+                "conversation-summary-v1",
+                "grounded-customer-support-v1",
+                Duration.ofSeconds(10),
+                2,
+                2_000,
+                1_000,
+                BigDecimal.valueOf(0.05),
+                "safe-fallback",
+                "catalog-eval-v1");
     }
 }
