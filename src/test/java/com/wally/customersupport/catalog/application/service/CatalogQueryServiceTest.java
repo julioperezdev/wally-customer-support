@@ -2,8 +2,12 @@ package com.wally.customersupport.catalog.application.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.util.List;
 
 import com.wally.customersupport.catalog.application.port.out.CatalogRepository;
 import com.wally.customersupport.catalog.domain.model.CatalogQuery;
@@ -34,5 +38,16 @@ class CatalogQueryServiceTest {
         assertEquals("RP-1", query.sku());
         assertEquals("L", query.size());
         assertEquals("Gris", query.color());
+    }
+
+    @Test
+    void usesASeparateBoundedPortOperationForGeneralCatalogListings() {
+        when(catalogRepository.search(eq(CatalogQuery.empty()), eq(5)))
+                .thenReturn(List.of());
+
+        CatalogQueryService service = new CatalogQueryService(catalogRepository);
+
+        assertTrue(service.searchAll(5).isEmpty());
+        verify(catalogRepository).search(eq(CatalogQuery.empty()), eq(5));
     }
 }

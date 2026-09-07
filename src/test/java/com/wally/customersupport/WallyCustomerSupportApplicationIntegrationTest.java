@@ -15,6 +15,7 @@ import com.wally.customersupport.catalog.application.service.CatalogConversation
 import com.wally.customersupport.catalog.application.service.CatalogQueryService;
 import com.wally.customersupport.catalog.domain.model.CatalogQuery;
 import com.wally.customersupport.conversation.application.port.out.ConversationMemory;
+import com.wally.customersupport.conversation.application.service.ConversationOrchestrator;
 import com.wally.customersupport.conversation.application.service.ExplicitPreferenceCaptureService;
 import com.wally.customersupport.conversation.application.service.CustomerPreferenceService;
 import com.wally.customersupport.conversation.application.port.out.ConversationRepository;
@@ -64,6 +65,9 @@ class WallyCustomerSupportApplicationIntegrationTest {
 
     @Autowired
     private CatalogConversationService catalogConversationService;
+
+    @Autowired
+    private ConversationOrchestrator conversationOrchestrator;
 
     @Autowired
     private ConversationRepository conversationRepository;
@@ -122,6 +126,49 @@ class WallyCustomerSupportApplicationIntegrationTest {
         assertTrue(reply.contains("Remera NullPointer"));
         assertTrue(reply.contains("18.900,00 ARS"));
         assertTrue(reply.contains("stock disponible: 12"));
+    }
+
+    @Test
+    void answersGeneralCatalogListingFromPostgresWithAnApplicationLimit() {
+        String reply = catalogConversationService
+                .replyFor("¿Qué productos tienen?")
+                .orElseThrow();
+
+        assertTrue(reply.startsWith("Encontré estos productos:"));
+        assertTrue(reply.contains("Remera NullPointer"));
+        assertTrue(reply.contains("Buzo Spring Boot"));
+        assertTrue(reply.contains("Campera Deploy Friday"));
+    }
+
+    @Test
+    void appliesMaximumPriceTogetherWithCatalogFilters() {
+        String reply = catalogConversationService
+                .replyFor("Busco una remera negra talle M que cueste menos de 20.000 pesos")
+                .orElseThrow();
+
+        assertTrue(reply.contains("Remera NullPointer"));
+        assertTrue(reply.contains("18.900,00 ARS"));
+        assertTrue(!reply.contains("Buzo Spring Boot"));
+    }
+
+    @Test
+    void resolvesCatalogFollowUpThroughTheCommonConversationOrchestrator() {
+        UUID conversationId = UUID.randomUUID();
+        String initialMessage = "Busco una remera negra talle M";
+
+        String reply = conversationOrchestrator.replyFor(new com.wally.customersupport.conversation.domain.model.ConversationContext(
+                conversationId,
+                "synthetic-customer",
+                "¿Está disponible?",
+                List.of(initialMessage),
+                List.of(),
+                null,
+                List.of(),
+                Channel.TELEGRAM));
+
+        assertTrue(reply.contains("está disponible"));
+        assertTrue(reply.contains("RP-REM-NP-NEG-M"));
+        assertTrue(reply.contains("12 unidades"));
     }
 
     @Test

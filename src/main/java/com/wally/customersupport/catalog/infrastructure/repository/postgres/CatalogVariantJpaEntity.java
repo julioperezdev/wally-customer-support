@@ -73,4 +73,8 @@ public class CatalogVariantJpaEntity {
     public String getColor() {
         return color;
     }
+
+    public BigDecimal getPrice() {
+        return price;
+    }
 }

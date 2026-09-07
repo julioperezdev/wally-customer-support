@@ -62,7 +62,7 @@ class CatalogConversationServiceTest {
 
     @Test
     void returnsABoundedGeneralCatalogWhenNoFilterIsProvided() {
-        when(catalogQueryService.search(argThat(CatalogQuery::isEmpty)))
+        when(catalogQueryService.searchAll(5))
                 .thenReturn(List.of(
                         product("Buzo Spring Boot", "RP-BUZ-SB-GRI-L", "L", "Gris", 5),
                         product("Remera NullPointer", "RP-REM-NP-NEG-M", "M", "Negro", 12)));

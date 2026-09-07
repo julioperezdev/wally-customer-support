@@ -52,12 +52,13 @@ public class CatalogConversationService {
     }
 
     private CatalogSearchResult searchQuery(CatalogQuery query) {
-        List<CatalogFact> facts = facts(catalogQueryService.search(query));
         if (query.isEmpty()) {
-            return facts.isEmpty()
+            List<CatalogFact> generalFacts = facts(catalogQueryService.searchAll(MAX_GENERAL_RESULTS));
+            return generalFacts.isEmpty()
                     ? noMatch()
-                    : matched(facts.stream().limit(MAX_GENERAL_RESULTS).toList());
+                    : matched(generalFacts.stream().limit(MAX_GENERAL_RESULTS).toList());
         }
+        List<CatalogFact> facts = facts(catalogQueryService.search(query));
         if (!facts.isEmpty()) {
             return matched(facts);
         }

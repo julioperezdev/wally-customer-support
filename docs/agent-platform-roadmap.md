@@ -229,7 +229,10 @@ antes de comparar modelos reales. `WCS-57` agrega `AgentEvaluationRunner` y
 obtener pass rate, score promedio y razones agregadas sin persistir respuestas
 ni invocar Bedrock. `WCS-58` agrega metadata operativa separada para asociar
 agente, modelo, latencia, tokens y costo estimado sin inventar valores cuando
-el proveedor no entrega usage.
+el proveedor no entrega usage. `WCS-59` refuerza el primer flujo de negocio
+con consultas generales acotadas, filtros de precio y seguimiento de una
+variante única; la consulta sigue siendo una tool determinística sobre
+PostgreSQL y no delega hechos de catálogo al modelo.
 
 El registry debe separar borradores de artefactos publicados:
 

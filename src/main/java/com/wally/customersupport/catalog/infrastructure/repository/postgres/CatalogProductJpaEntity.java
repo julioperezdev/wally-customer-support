@@ -66,7 +66,9 @@ public class CatalogProductJpaEntity {
         return query == null
                 || (query.sku() == null || query.sku().equalsIgnoreCase(variant.getSku()))
                 && (query.size() == null || query.size().equalsIgnoreCase(variant.getSizeLabel()))
-                && (query.color() == null || query.color().equalsIgnoreCase(variant.getColor()));
+                && (query.color() == null || query.color().equalsIgnoreCase(variant.getColor()))
+                && (query.minPrice() == null || query.minPrice().compareTo(variant.getPrice()) <= 0)
+                && (query.maxPrice() == null || query.maxPrice().compareTo(variant.getPrice()) >= 0);
     }
 
     public String getName() {
