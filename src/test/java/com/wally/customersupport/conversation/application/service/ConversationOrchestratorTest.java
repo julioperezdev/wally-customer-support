@@ -3,6 +3,7 @@ package com.wally.customersupport.conversation.application.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -14,6 +15,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.wally.customersupport.agent.application.service.AgentActivationKey;
+import com.wally.customersupport.agent.application.service.AgentActivationResolution;
+import com.wally.customersupport.agent.application.service.AgentActivationResolver;
 import com.wally.customersupport.conversation.application.port.out.ConversationIntentClassifier;
 import com.wally.customersupport.catalog.application.service.CatalogConversationService;
 import com.wally.customersupport.support.application.service.SupportConfigurationQueryService;
@@ -22,10 +26,12 @@ import com.wally.customersupport.conversation.application.port.out.LlmClient;
 import com.wally.customersupport.support.domain.model.BusinessHour;
 import com.wally.customersupport.catalog.domain.model.CatalogQuery;
 import com.wally.customersupport.conversation.domain.model.ConversationContext;
+import com.wally.customersupport.conversation.domain.model.Channel;
 import com.wally.customersupport.conversation.domain.model.ConversationIntent;
 import com.wally.customersupport.conversation.domain.model.ConversationIntentDecision;
 import com.wally.customersupport.knowledge.domain.model.KnowledgeChunk;
 import com.wally.customersupport.support.domain.model.SupportPolicy;
+import com.wally.customersupport.shared.infrastructure.config.AgentRuntimeProperties;
 import com.wally.customersupport.shared.infrastructure.config.RagProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -46,6 +52,8 @@ class ConversationOrchestratorTest {
     private KnowledgeRetriever knowledgeRetriever;
     @Mock
     private LlmClient llmClient;
+    @Mock
+    private AgentActivationResolver agentActivationResolver;
 
     private ConversationOrchestrator orchestrator;
     private ConversationContext context;
@@ -59,9 +67,77 @@ class ConversationOrchestratorTest {
                 knowledgeRetriever,
                 llmClient,
                 new RagProperties("mock", 5, null, null),
-                new ConversationExecutionPlanFactory());
+                new ConversationExecutionPlanFactory(),
+                agentActivationResolver,
+                new AgentRuntimeProperties(false, "prod"));
         context = new ConversationContext(
                 UUID.randomUUID(), "customer-1", "consulta", List.of("consulta"), List.of());
+    }
+
+    @Test
+    void keepsCurrentExecutionWhenActivationGateIsDisabled() {
+        when(intentClassifier.classify(any(ConversationContext.class)))
+                .thenReturn(new ConversationIntentDecision(ConversationIntent.BUSINESS_HOURS, 0.98, null, null));
+        when(supportConfigurationQueryService.businessHours()).thenReturn(List.of(
+                new BusinessHour(UUID.randomUUID(), 1, LocalTime.of(9, 0), LocalTime.of(18, 0), false,
+                        ZoneId.of("America/Argentina/Buenos_Aires"), true, true, 1)));
+
+        assertEquals("Nuestro horario de atención es:\n"
+                + "- Lunes: 09:00 a 18:00\n"
+                + "Zona horaria: America/Argentina/Buenos_Aires", orchestrator.replyFor(context));
+
+        verify(agentActivationResolver, never()).resolve(any(AgentActivationKey.class));
+    }
+
+    @Test
+    void resolvesActiveAgentWithoutChangingTheDeterministicResponse() {
+        ConversationContext channelContext = new ConversationContext(
+                context.conversationId(),
+                context.externalCustomerId(),
+                context.latestMessage(),
+                context.recentMessages(),
+                context.knowledge(),
+                context.conversationSummary(),
+                context.preferences(),
+                Channel.TELEGRAM);
+        ConversationOrchestrator enabledOrchestrator = new ConversationOrchestrator(
+                intentClassifier,
+                catalogConversationService,
+                supportConfigurationQueryService,
+                knowledgeRetriever,
+                llmClient,
+                new RagProperties("mock", 5, null, null),
+                new ConversationExecutionPlanFactory(),
+                agentActivationResolver,
+                new AgentRuntimeProperties(true, "prod"));
+        when(intentClassifier.classify(any(ConversationContext.class)))
+                .thenReturn(new ConversationIntentDecision(ConversationIntent.GREETING, 0.98, null, null));
+        when(agentActivationResolver.resolve(new AgentActivationKey(
+                "response-humanizer", "prod", "telegram", "GREETING")))
+                .thenReturn(AgentActivationResolution.active("response-humanizer", 1));
+
+        assertEquals("Hola, ¿cómo te puedo ayudar?", enabledOrchestrator.replyFor(channelContext));
+        verify(agentActivationResolver).resolve(new AgentActivationKey(
+                "response-humanizer", "prod", "telegram", "GREETING"));
+    }
+
+    @Test
+    void preservesWhatsAppChannelInTheClassifierContext() {
+        ConversationContext channelContext = new ConversationContext(
+                context.conversationId(),
+                context.externalCustomerId(),
+                context.latestMessage(),
+                context.recentMessages(),
+                context.knowledge(),
+                context.conversationSummary(),
+                context.preferences(),
+                Channel.WHATSAPP);
+        when(intentClassifier.classify(any(ConversationContext.class)))
+                .thenReturn(new ConversationIntentDecision(ConversationIntent.GREETING, 0.98, null, null));
+
+        assertEquals("Hola, ¿cómo te puedo ayudar?", orchestrator.replyFor(channelContext));
+        verify(intentClassifier).classify(argThat((ConversationContext candidate) ->
+                candidate.channel() == Channel.WHATSAPP));
     }
 
     @Test

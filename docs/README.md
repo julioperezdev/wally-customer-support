@@ -22,6 +22,7 @@
   - [`005-agent-registry-contract.md`](decisions/005-agent-registry-contract.md): versiones inmutables, lifecycle, activación, kill switch y rollback.
   - [`006-agent-registry-persistence.md`](decisions/006-agent-registry-persistence.md): persistencia PostgreSQL del registry y referencias de activación.
   - [`007-agent-activation-resolution.md`](decisions/007-agent-activation-resolution.md): resolución por contexto y fallback seguro.
+  - [`008-agent-runtime-activation.md`](decisions/008-agent-runtime-activation.md): consumo opcional del resolver desde el runtime con rollback seguro.
 
 ## Calidad y operación
 

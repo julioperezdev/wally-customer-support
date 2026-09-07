@@ -2,7 +2,7 @@
 
 Owner: Tech Lead
 Status: `In Progress`
-Related Jira: `WCS-21`, `WCS-22`, `WCS-36`
+Related Jira: `WCS-21`, `WCS-22`, `WCS-36`, `WCS-50`
 Related repository paths: `observability/grafana/`, `src/main/java/com/wally/customersupport/conversation/infrastructure/http/`, `src/main/java/com/wally/customersupport/conversation/application/service/`, `src/main/java/com/wally/customersupport/shared/infrastructure/observability/`
 
 ## Objetivo de esta iteración
@@ -47,6 +47,11 @@ operacional necesario para diagnóstico y costo, pero sin contenido de negocio.
 | `INBOUND_MESSAGE_PROCESSED` | `channel`, `result`, `durationMs` | Mensaje aceptado, duplicado o ignorado |
 | `INTENT_CLASSIFIED` | `intent`, `confidence`, `durationMs` | Clasificación del orquestador |
 | `INTENT_CLASSIFICATION_FAILED` | `errorType`, `durationMs` | Fallo del clasificador |
+| `AGENT_ACTIVATION_RESOLUTION_SKIPPED` | `useCase`, `reason` | Registry no consultado porque la flag está deshabilitada |
+| `AGENT_ACTIVATION_RESOLVED` | `useCase`, `channel`, `activationStatus`, `activationReason`, `agentId`, `agentVersion` | Activación seleccionada o fallback sanitizado |
+| `AGENT_ACTIVATION_FALLBACK` | `useCase`, `reason` | No se pudo resolver por falta de canal sin interrumpir la respuesta |
+| `AGENT_ROUTED` | `workflowVersion`, `useCase`, `activationStatus`, `activationReason`, `agentId`, `agentVersion` | Plan validado y referencia de agente observada |
+| `AGENT_EXECUTION_STARTED` | `workflowVersion`, `useCase`, `stepCount`, `activationStatus`, `activationReason`, `agentId`, `agentVersion` | Inicio de ejecución acotada |
 | `CONVERSATION_QUERY_COMPLETED` | `queryType`, `outcome`, `responseGenerated`, `durationMs`, `correlationId` | Resultado y latencia total de la consulta |
 | `GENERAL_SUPPORT_FAILED` | `errorType`, `correlationId` | Fallback de conocimiento/LLM |
 | `CONVERSATION_CONTEXT_PREPARED` | `recentMessageCount`, `recentCharacters`, `summaryPresent`, `summaryCharacters`, `summaryEnabled` | Tamaño del contexto y activación del resumen, sin contenido |

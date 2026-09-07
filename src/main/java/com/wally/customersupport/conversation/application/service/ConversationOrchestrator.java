@@ -6,6 +6,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import com.wally.customersupport.agent.application.service.AgentActivationKey;
+import com.wally.customersupport.agent.application.service.AgentActivationResolution;
+import com.wally.customersupport.agent.application.service.AgentActivationResolver;
 import com.wally.customersupport.catalog.application.service.CatalogConversationService;
 import com.wally.customersupport.conversation.application.port.out.ConversationIntentClassifier;
 import com.wally.customersupport.knowledge.application.port.out.KnowledgeRetriever;
@@ -20,6 +23,7 @@ import com.wally.customersupport.conversation.domain.model.ConversationIntentDec
 import com.wally.customersupport.knowledge.domain.model.KnowledgeChunk;
 import com.wally.customersupport.knowledge.domain.model.KnowledgeQuery;
 import com.wally.customersupport.support.domain.model.SupportPolicy;
+import com.wally.customersupport.shared.infrastructure.config.AgentRuntimeProperties;
 import com.wally.customersupport.shared.infrastructure.config.RagProperties;
 import com.wally.customersupport.shared.infrastructure.observability.StructuredEventLog;
 import lombok.RequiredArgsConstructor;
@@ -49,6 +53,8 @@ public class ConversationOrchestrator {
     private final LlmClient llmClient;
     private final RagProperties ragProperties;
     private final ConversationExecutionPlanFactory executionPlanFactory;
+    private final AgentActivationResolver agentActivationResolver;
+    private final AgentRuntimeProperties agentRuntimeProperties;
 
     public String replyFor(ConversationContext context) {
         long startedAt = System.nanoTime();
@@ -100,6 +106,7 @@ public class ConversationOrchestrator {
             ConversationExecutionPlan plan,
             ConversationIntentDecision decision,
             long startedAt) {
+        AgentActivationResolution activation = resolveActivation(context, plan);
         Map<String, Object> routeFields = new LinkedHashMap<>();
         routeFields.put("workflowVersion", plan.workflowVersion());
         routeFields.put("useCase", plan.useCase());
@@ -107,15 +114,20 @@ public class ConversationOrchestrator {
         routeFields.put("stepCount", plan.stepCount());
         routeFields.put("maxSteps", plan.maxSteps());
         routeFields.put("fallbackAllowed", plan.fallbackAllowed());
+        addActivationFields(routeFields, activation);
         if (decision != null) {
             routeFields.put("intent", decision.intent().name());
             routeFields.put("confidence", decision.confidence());
         }
         StructuredEventLog.info(log, "AGENT_ROUTED", routeFields);
-        StructuredEventLog.info(log, "AGENT_EXECUTION_STARTED", Map.of(
-                "workflowVersion", plan.workflowVersion(),
-                "useCase", plan.useCase(),
-                "stepCount", plan.stepCount()));
+        Map<String, Object> startedFields = new LinkedHashMap<>();
+        startedFields.put("workflowVersion", plan.workflowVersion());
+        startedFields.put("useCase", plan.useCase());
+        startedFields.put("stepCount", plan.stepCount());
+        if (activation != null) {
+            addActivationFields(startedFields, activation);
+        }
+        StructuredEventLog.info(log, "AGENT_EXECUTION_STARTED", startedFields);
 
         ConversationExecutionResult result;
         try {
@@ -152,6 +164,51 @@ public class ConversationOrchestrator {
         return completeQuery(context, result, startedAt);
     }
 
+    private AgentActivationResolution resolveActivation(
+            ConversationContext context,
+            ConversationExecutionPlan plan) {
+        if (!agentRuntimeProperties.activationEnabled()) {
+            StructuredEventLog.info(log, "AGENT_ACTIVATION_RESOLUTION_SKIPPED", Map.of(
+                    "useCase", plan.useCase(),
+                    "reason", "CONFIG_DISABLED"));
+            return null;
+        }
+        if (context == null || context.channel() == null) {
+            StructuredEventLog.warn(log, "AGENT_ACTIVATION_FALLBACK", Map.of(
+                    "useCase", plan.useCase(),
+                    "reason", "CHANNEL_UNAVAILABLE"));
+            return null;
+        }
+
+        String channel = context.channel().name().toLowerCase(Locale.ROOT);
+        AgentActivationKey key = new AgentActivationKey(
+                plan.steps().getFirst().owner(),
+                agentRuntimeProperties.effectiveEnvironment(),
+                channel,
+                plan.useCase());
+        AgentActivationResolution resolution = agentActivationResolver.resolve(key);
+        Map<String, Object> fields = new LinkedHashMap<>();
+        fields.put("useCase", plan.useCase());
+        fields.put("channel", channel);
+        addActivationFields(fields, resolution);
+        StructuredEventLog.info(log, "AGENT_ACTIVATION_RESOLVED", fields);
+        return resolution;
+    }
+
+    private static void addActivationFields(
+            Map<String, Object> fields,
+            AgentActivationResolution activation) {
+        if (activation == null) {
+            return;
+        }
+        fields.put("activationStatus", activation.status().name());
+        fields.put("activationReason", activation.reason().name());
+        if (activation.isActive()) {
+            fields.put("agentId", activation.agentId());
+            fields.put("agentVersion", activation.agentVersion());
+        }
+    }
+
     private String safeGeneralSupport(ConversationContext context) {
         try {
             List<KnowledgeChunk> knowledge = knowledgeRetriever.retrieve(new KnowledgeQuery(
@@ -165,7 +222,8 @@ public class ConversationOrchestrator {
                     context.recentMessages(),
                     knowledge,
                     context.conversationSummary(),
-                    context.preferences()));
+                    context.preferences(),
+                    context.channel()));
         } catch (RuntimeException exception) {
             Map<String, Object> fields = new LinkedHashMap<>();
             fields.put("errorType", exception.getClass().getSimpleName());
