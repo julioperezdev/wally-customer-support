@@ -227,7 +227,9 @@ agrega el contrato `AgentEvaluationScenario`, el dataset sintético
 antes de comparar modelos reales. `WCS-57` agrega `AgentEvaluationRunner` y
 `AgentEvaluationSuiteResult` para ejecutar la suite en orden determinístico y
 obtener pass rate, score promedio y razones agregadas sin persistir respuestas
-ni invocar Bedrock.
+ni invocar Bedrock. `WCS-58` agrega metadata operativa separada para asociar
+agente, modelo, latencia, tokens y costo estimado sin inventar valores cuando
+el proveedor no entrega usage.
 
 El registry debe separar borradores de artefactos publicados:
 

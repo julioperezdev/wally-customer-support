@@ -9,7 +9,8 @@ public record AgentEvaluationResult(
         String datasetVersion,
         boolean passed,
         double score,
-        List<String> reasons) {
+        List<String> reasons,
+        AgentEvaluationExecutionMetadata executionMetadata) {
 
     public AgentEvaluationResult {
         scenarioId = required(scenarioId, "scenarioId");

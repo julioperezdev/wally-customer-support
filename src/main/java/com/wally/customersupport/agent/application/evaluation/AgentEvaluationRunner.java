@@ -10,6 +10,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import com.wally.customersupport.agent.domain.model.AgentEvaluationResult;
+import com.wally.customersupport.agent.domain.model.AgentEvaluationExecution;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationScenario;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationSuiteResult;
 import org.springframework.stereotype.Component;
@@ -30,7 +31,7 @@ public class AgentEvaluationRunner {
         List<AgentEvaluationScenario> orderedScenarios = validateAndOrder(scenarios, executor);
         String datasetVersion = orderedScenarios.getFirst().datasetVersion();
         List<AgentEvaluationResult> results = orderedScenarios.stream()
-                .map(scenario -> evaluator.evaluate(scenario, executor.execute(scenario)))
+                .map(scenario -> evaluate(scenario, executor.execute(scenario)))
                 .toList();
 
         int passedScenarios = (int) results.stream().filter(AgentEvaluationResult::passed).count();
@@ -56,6 +57,15 @@ public class AgentEvaluationRunner {
                 (double) passedScenarios / results.size(),
                 averageScore,
                 failureReasons);
+    }
+
+    private AgentEvaluationResult evaluate(
+            AgentEvaluationScenario scenario,
+            AgentEvaluationExecution execution) {
+        if (execution == null) {
+            return evaluator.evaluate(scenario, null);
+        }
+        return evaluator.evaluate(scenario, execution.response(), execution.metadata());
     }
 
     private static List<AgentEvaluationScenario> validateAndOrder(

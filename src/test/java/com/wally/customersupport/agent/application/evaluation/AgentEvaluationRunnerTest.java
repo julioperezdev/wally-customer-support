@@ -7,6 +7,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import java.math.BigDecimal;
+
+import com.wally.customersupport.agent.domain.model.AgentEvaluationExecution;
+import com.wally.customersupport.agent.domain.model.AgentEvaluationExecutionMetadata;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationScenario;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationSuiteResult;
 import com.wally.customersupport.conversation.application.service.DeterministicResponseHumanizer;
@@ -22,7 +26,7 @@ class AgentEvaluationRunnerTest {
         List<AgentEvaluationScenario> scenarios = new ArrayList<>(CatalogResponseEvaluationDataset.scenarios());
         Collections.reverse(scenarios);
 
-        AgentEvaluationSuiteResult result = runner.run(scenarios, scenario -> humanizer.humanize(scenario.request()));
+        AgentEvaluationSuiteResult result = runner.run(scenarios, this::executeWithMetadata);
 
         assertThat(result.datasetVersion()).isEqualTo(CatalogResponseEvaluationDataset.VERSION);
         assertThat(result.scenarioResults()).extracting("scenarioId")
@@ -38,6 +42,8 @@ class AgentEvaluationRunnerTest {
         assertThat(result.passRate()).isEqualTo(1.0);
         assertThat(result.averageScore()).isEqualTo(1.0);
         assertThat(result.failureReasons()).isEmpty();
+        assertThat(result.scenarioResults().getFirst().executionMetadata().modelId())
+                .isEqualTo("deterministic-v1");
     }
 
     @Test
@@ -46,7 +52,7 @@ class AgentEvaluationRunnerTest {
                 CatalogResponseEvaluationDataset.scenarios(),
                 scenario -> scenario.scenarioId().equals("catalog-matched")
                         ? null
-                        : humanizer.humanize(scenario.request()));
+                        : executeWithMetadata(scenario));
 
         assertThat(result.totalScenarios()).isEqualTo(5);
         assertThat(result.passedScenarios()).isEqualTo(4);
@@ -55,6 +61,63 @@ class AgentEvaluationRunnerTest {
         assertThat(result.averageScore()).isEqualTo(0.8);
         assertThat(result.failureReasons()).containsEntry("RESPONSE_MISSING", 1);
         assertThat(result.toString()).doesNotContain("Remera NullPointer");
+    }
+
+    @Test
+    void preservesUnavailableUsageAsUnavailableMetadata() {
+        AgentEvaluationScenario scenario = CatalogResponseEvaluationDataset.scenarios().getFirst();
+        AgentEvaluationSuiteResult result = runner.run(
+                List.of(scenario),
+                ignored -> new AgentEvaluationExecution(
+                        humanizer.humanize(scenario.request()),
+                        new AgentEvaluationExecutionMetadata(
+                                "catalog-specialist",
+                                "v1",
+                                "mock",
+                                "deterministic-v1",
+                                12,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null)));
+
+        assertThat(result.scenarioResults().getFirst().executionMetadata().inputTokens()).isNull();
+        assertThat(result.scenarioResults().getFirst().executionMetadata().estimatedCostUsd()).isNull();
+    }
+
+    @Test
+    void rejectsNegativeOperationalMetadata() {
+        assertThatThrownBy(() -> new AgentEvaluationExecutionMetadata(
+                "catalog-specialist",
+                "v1",
+                "mock",
+                "deterministic-v1",
+                -1,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("durationMs must not be negative");
+
+        assertThatThrownBy(() -> new AgentEvaluationExecutionMetadata(
+                "catalog-specialist",
+                "v1",
+                "mock",
+                "deterministic-v1",
+                1,
+                null,
+                -1,
+                null,
+                null,
+                null,
+                null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("inputTokens must not be negative");
     }
 
     @Test
@@ -90,5 +153,22 @@ class AgentEvaluationRunnerTest {
         assertThatThrownBy(() -> runner.run(List.of(first, differentIdAndVersion), scenario -> null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("all scenarios must use the same datasetVersion");
+    }
+
+    private AgentEvaluationExecution executeWithMetadata(AgentEvaluationScenario scenario) {
+        return new AgentEvaluationExecution(
+                humanizer.humanize(scenario.request()),
+                new AgentEvaluationExecutionMetadata(
+                        "catalog-specialist",
+                        "v1",
+                        "mock",
+                        "deterministic-v1",
+                        12,
+                        8L,
+                        100,
+                        40,
+                        140,
+                        new BigDecimal("0.0001"),
+                        "test-pricing-v1"));
     }
 }
