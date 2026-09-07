@@ -427,7 +427,12 @@ documentos, ejecutar el workflow manual
    `wcs-markdown-source`;
 5. espera la ingesta, aplica timeout y reporta documentos escaneados,
    indexados, fallidos y eliminados;
-6. falla si el job termina en `FAILED`/`STOPPED` o si hay documentos fallidos.
+6. falla si el job termina en `FAILED`/`STOPPED`, si hay documentos fallidos o
+   si la fuente no escanea ningún documento.
+
+Una reejecución sin cambios puede reportar `indexed=0`: significa que no hay
+documentos nuevos o modificados para indexar y no es un error si el job termina
+en `COMPLETE` y no reporta documentos fallidos.
 
 Configurar en el Environment `production` las variables no sensibles
 `WCS_KNOWLEDGE_BASE_ID` y `WCS_KNOWLEDGE_BASE_DATA_SOURCE_ID` con los outputs de

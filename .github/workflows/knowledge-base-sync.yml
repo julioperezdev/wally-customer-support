@@ -99,4 +99,4 @@ jobs:
             --region "$AWS_REGION" \
             --wait \
             --timeout-seconds 1200 \
-            --min-indexed-documents 1
+            --min-scanned-documents 1
