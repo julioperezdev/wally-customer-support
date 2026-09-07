@@ -3,8 +3,8 @@
 Owner: Tech Lead  
 Status: `Proposed`  
 Last reviewed: 2026-09-06
-Related Jira: `WCS-13`, `WCS-14`, `WCS-15`, `WCS-16`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-37`
-Related repository paths: `src/main/java/com/wally/customersupport/{conversation,catalog,support}/infrastructure/repository/postgres`, `src/main/resources/db/migration`
+Related Jira: `WCS-13`, `WCS-14`, `WCS-15`, `WCS-16`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-37`, `WCS-47`, `WCS-48`
+Related repository paths: `src/main/java/com/wally/customersupport/{conversation,catalog,support,agent}/infrastructure/repository/postgres`, `src/main/resources/db/migration`
 
 ## Aislamiento en el RDS compartido
 
@@ -162,6 +162,28 @@ Las preferencias son contexto auxiliar: no pueden sobreescribir filtros
 actuales ni ser autoridad para stock, precio, carrito, pedidos o acciones
 sensibles.
 
+### Registry de agentes y activaciones — contrato en `WCS-47`, persistencia en `V9`/`WCS-48`
+
+El control plane inicial persiste dos grupos separados:
+
+* `wcs.agent_versions`: una fila por `agent_id + agent_version`, con estado de
+  lifecycle, modelo, parámetros acotados, hash/version de prompt, schemas,
+  allowlists, políticas, límites, presupuesto y metadatos de aprobación;
+* `wcs.agent_activations`: referencias auditables por ambiente, canal y caso de
+  uso, con motivo, rollout, actor, timestamp, versión anterior y kill switch.
+
+Las allowlists se almacenan como JSONB porque son colecciones estructuradas y
+no deben convertirse en texto libre. La foreign key de la activación sólo
+permite apuntar a una versión existente. La activación más reciente es la que
+determina si existe una referencia activa; una activación con kill switch
+oculta las anteriores sin borrar historial.
+
+La migración `V9__create_agent_registry.sql` es nueva y no modifica las
+migraciones aplicadas. `AgentRegistryRepository` expone lecturas y escrituras
+tipadas; el adapter rechaza sobrescribir una versión ya persistida. La
+persistencia todavía no está conectada al `ConversationOrchestrator`, a
+AppConfig ni al backoffice.
+
 ### Otras entidades futuras
 
 - `store`/`store_id` para aislamiento multi-tienda; el MVP mantiene una tienda
@@ -180,3 +202,4 @@ sensibles.
 - La implementación inicial puede operar con una tienda, pero las claves internas deben permitir incorporar `store_id`/`account_id` sin redefinir un identificador de canal como ownership.
 - JPA/Hibernate no reemplaza Flyway: el schema productivo se versiona con migraciones explícitas.
 - No persistir payloads completos de Meta, prompts completos ni respuestas del proveedor salvo que exista una política de retención aprobada.
+- No guardar el contenido del prompt en `agent_versions`: sólo su versión y hash.
