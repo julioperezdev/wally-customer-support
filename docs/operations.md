@@ -357,8 +357,13 @@ determinístico. Sólo después de aprobar una activación persistida y revisar
 sus métricas se puede publicar `true` en AppConfig. Si la activación no existe,
 está deshabilitada, tiene kill switch o el registry no está disponible, el
 orquestador continúa con el flujo anterior y registra únicamente la razón
-sanitizada. Para rollback se vuelve a publicar la flag en `false`; no se
-eliminan activaciones ni se modifica la migración V9.
+sanitizada. `WCS-51` valida además la versión exacta y sus límites antes de
+construir una definición ejecutable; `WCS-52` expone esa resolución en
+`AGENT_ROUTED` y `AGENT_EXECUTION_STARTED`, pero no cambia el modelo ni el
+prompt utilizado. Si falta la versión, hay mismatch, el estado no es publicable
+o falla el registry, se conserva el flujo anterior. Para rollback se vuelve a
+publicar la flag en `false`; no se eliminan activaciones ni se modifica la
+migración V9.
 
 ### Precedencia y modos de ejecución
 

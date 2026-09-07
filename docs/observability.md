@@ -2,7 +2,7 @@
 
 Owner: Tech Lead
 Status: `In Progress`
-Related Jira: `WCS-21`, `WCS-22`, `WCS-36`, `WCS-50`, `WCS-51`
+Related Jira: `WCS-21`, `WCS-22`, `WCS-36`, `WCS-50`, `WCS-51`, `WCS-52`
 Related repository paths: `observability/grafana/`, `src/main/java/com/wally/customersupport/conversation/infrastructure/http/`, `src/main/java/com/wally/customersupport/conversation/application/service/`, `src/main/java/com/wally/customersupport/shared/infrastructure/observability/`
 
 ## Objetivo de esta iteración
@@ -52,8 +52,8 @@ operacional necesario para diagnóstico y costo, pero sin contenido de negocio.
 | `AGENT_ACTIVATION_FALLBACK` | `useCase`, `reason` | No se pudo resolver por falta de canal sin interrumpir la respuesta |
 | `AGENT_DEFINITION_RESOLVED` | `environment`, `channel`, `useCase`, `definitionStatus`, `definitionReason`, `agentId`, `agentVersion`, `modelProvider`, `model` | Snapshot ejecutable validado sin prompt ni PII |
 | `AGENT_DEFINITION_RESOLUTION_FALLBACK` | `environment`, `channel`, `useCase`, `definitionStatus`, `definitionReason` | Versión ausente, desalineada, no publicable o registry no disponible |
-| `AGENT_ROUTED` | `workflowVersion`, `useCase`, `activationStatus`, `activationReason`, `agentId`, `agentVersion` | Plan validado y referencia de agente observada |
-| `AGENT_EXECUTION_STARTED` | `workflowVersion`, `useCase`, `stepCount`, `activationStatus`, `activationReason`, `agentId`, `agentVersion` | Inicio de ejecución acotada |
+| `AGENT_ROUTED` | `workflowVersion`, `useCase`, `activationStatus`, `activationReason`, `definitionStatus`, `definitionReason`, `agentId`, `agentVersion`, `modelProvider`, `model` | Plan validado y definición observada |
+| `AGENT_EXECUTION_STARTED` | `workflowVersion`, `useCase`, `stepCount`, `activationStatus`, `activationReason`, `definitionStatus`, `definitionReason`, `agentId`, `agentVersion`, `modelProvider`, `model` | Inicio de ejecución acotada |
 | `CONVERSATION_QUERY_COMPLETED` | `queryType`, `outcome`, `responseGenerated`, `durationMs`, `correlationId` | Resultado y latencia total de la consulta |
 | `GENERAL_SUPPORT_FAILED` | `errorType`, `correlationId` | Fallback de conocimiento/LLM |
 | `CONVERSATION_CONTEXT_PREPARED` | `recentMessageCount`, `recentCharacters`, `summaryPresent`, `summaryCharacters`, `summaryEnabled` | Tamaño del contexto y activación del resumen, sin contenido |

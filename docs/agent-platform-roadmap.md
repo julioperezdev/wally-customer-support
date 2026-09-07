@@ -211,7 +211,9 @@ exista una aprobación explícita y una activación persistida válida.
 agentVersion` en un snapshot inmutable con modelo, límites, contratos y
 allowlists validados. Si la versión falta, no coincide, no está aprobada o el
 registry falla, devuelve un fallback tipado y el runtime actual permanece sin
-cambios.
+cambios. `WCS-52` conecta ese resolver al `ConversationOrchestrator` sólo para
+enriquecer eventos y conservar observabilidad; el ejecutor determinístico sigue
+siendo la fuente de comportamiento.
 
 El registry debe separar borradores de artefactos publicados:
 

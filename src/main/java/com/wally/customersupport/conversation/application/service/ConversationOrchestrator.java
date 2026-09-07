@@ -9,6 +9,8 @@ import java.util.Map;
 import com.wally.customersupport.agent.application.service.AgentActivationKey;
 import com.wally.customersupport.agent.application.service.AgentActivationResolution;
 import com.wally.customersupport.agent.application.service.AgentActivationResolver;
+import com.wally.customersupport.agent.application.service.AgentRuntimeDefinitionResolution;
+import com.wally.customersupport.agent.application.service.AgentRuntimeDefinitionResolver;
 import com.wally.customersupport.catalog.application.service.CatalogConversationService;
 import com.wally.customersupport.conversation.application.port.out.ConversationIntentClassifier;
 import com.wally.customersupport.knowledge.application.port.out.KnowledgeRetriever;
@@ -54,6 +56,7 @@ public class ConversationOrchestrator {
     private final RagProperties ragProperties;
     private final ConversationExecutionPlanFactory executionPlanFactory;
     private final AgentActivationResolver agentActivationResolver;
+    private final AgentRuntimeDefinitionResolver agentRuntimeDefinitionResolver;
     private final AgentRuntimeProperties agentRuntimeProperties;
 
     public String replyFor(ConversationContext context) {
@@ -106,7 +109,9 @@ public class ConversationOrchestrator {
             ConversationExecutionPlan plan,
             ConversationIntentDecision decision,
             long startedAt) {
-        AgentActivationResolution activation = resolveActivation(context, plan);
+        AgentActivationKey activationKey = resolveActivationKey(context, plan);
+        AgentActivationResolution activation = resolveActivation(activationKey, plan);
+        AgentRuntimeDefinitionResolution definition = resolveDefinition(activationKey);
         Map<String, Object> routeFields = new LinkedHashMap<>();
         routeFields.put("workflowVersion", plan.workflowVersion());
         routeFields.put("useCase", plan.useCase());
@@ -115,6 +120,7 @@ public class ConversationOrchestrator {
         routeFields.put("maxSteps", plan.maxSteps());
         routeFields.put("fallbackAllowed", plan.fallbackAllowed());
         addActivationFields(routeFields, activation);
+        addDefinitionFields(routeFields, definition);
         if (decision != null) {
             routeFields.put("intent", decision.intent().name());
             routeFields.put("confidence", decision.confidence());
@@ -127,6 +133,7 @@ public class ConversationOrchestrator {
         if (activation != null) {
             addActivationFields(startedFields, activation);
         }
+        addDefinitionFields(startedFields, definition);
         StructuredEventLog.info(log, "AGENT_EXECUTION_STARTED", startedFields);
 
         ConversationExecutionResult result;
@@ -164,7 +171,7 @@ public class ConversationOrchestrator {
         return completeQuery(context, result, startedAt);
     }
 
-    private AgentActivationResolution resolveActivation(
+    private AgentActivationKey resolveActivationKey(
             ConversationContext context,
             ConversationExecutionPlan plan) {
         if (!agentRuntimeProperties.activationEnabled()) {
@@ -181,18 +188,33 @@ public class ConversationOrchestrator {
         }
 
         String channel = context.channel().name().toLowerCase(Locale.ROOT);
-        AgentActivationKey key = new AgentActivationKey(
+        return new AgentActivationKey(
                 plan.steps().getFirst().owner(),
                 agentRuntimeProperties.effectiveEnvironment(),
                 channel,
                 plan.useCase());
+    }
+
+    private AgentActivationResolution resolveActivation(
+            AgentActivationKey key,
+            ConversationExecutionPlan plan) {
+        if (key == null) {
+            return null;
+        }
         AgentActivationResolution resolution = agentActivationResolver.resolve(key);
         Map<String, Object> fields = new LinkedHashMap<>();
         fields.put("useCase", plan.useCase());
-        fields.put("channel", channel);
+        fields.put("channel", key.channel());
         addActivationFields(fields, resolution);
         StructuredEventLog.info(log, "AGENT_ACTIVATION_RESOLVED", fields);
         return resolution;
+    }
+
+    private AgentRuntimeDefinitionResolution resolveDefinition(AgentActivationKey key) {
+        if (key == null) {
+            return null;
+        }
+        return agentRuntimeDefinitionResolver.resolve(key);
     }
 
     private static void addActivationFields(
@@ -206,6 +228,22 @@ public class ConversationOrchestrator {
         if (activation.isActive()) {
             fields.put("agentId", activation.agentId());
             fields.put("agentVersion", activation.agentVersion());
+        }
+    }
+
+    private static void addDefinitionFields(
+            Map<String, Object> fields,
+            AgentRuntimeDefinitionResolution definition) {
+        if (definition == null) {
+            return;
+        }
+        fields.put("definitionStatus", definition.status().name());
+        fields.put("definitionReason", definition.reason().name());
+        if (definition.isActive()) {
+            fields.put("agentId", definition.definition().agentId());
+            fields.put("agentVersion", definition.definition().agentVersion());
+            fields.put("modelProvider", definition.definition().modelProvider());
+            fields.put("model", definition.definition().modelId());
         }
     }
 

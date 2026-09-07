@@ -24,6 +24,7 @@
   - [`007-agent-activation-resolution.md`](decisions/007-agent-activation-resolution.md): resolución por contexto y fallback seguro.
   - [`008-agent-runtime-activation.md`](decisions/008-agent-runtime-activation.md): consumo opcional del resolver desde el runtime con rollback seguro.
   - [`009-agent-runtime-definition.md`](decisions/009-agent-runtime-definition.md): definición ejecutable inmutable y validación de allowlists.
+  - [`010-agent-definition-runtime-observability.md`](decisions/010-agent-definition-runtime-observability.md): integración observacional del snapshot al orquestador.
 
 ## Calidad y operación
 
