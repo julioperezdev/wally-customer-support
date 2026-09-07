@@ -19,6 +19,12 @@ public interface AgentRegistryRepository {
 
     AgentActivation saveActivation(AgentActivation activation);
 
+    Optional<AgentActivation> findLatestActivation(
+            String agentId,
+            String environment,
+            String channel,
+            String useCase);
+
     Optional<AgentActivation> findActiveActivation(
             String agentId,
             String environment,
