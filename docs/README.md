@@ -19,6 +19,8 @@
   - [`002-static-knowledge-and-dynamic-data.md`](decisions/002-static-knowledge-and-dynamic-data.md): Knowledge Base para documentos y tools para datos dinámicos.
   - [`003-conversational-memory-boundary.md`](decisions/003-conversational-memory-boundary.md): PostgreSQL como memoria inicial y AgentCore como adapter opcional.
   - [`004-agent-platform-boundary.md`](decisions/004-agent-platform-boundary.md): orquestador, agentes especialistas, tools determinísticas y límites de MCP.
+  - [`005-agent-registry-contract.md`](decisions/005-agent-registry-contract.md): versiones inmutables, lifecycle, activación, kill switch y rollback.
+  - [`006-agent-registry-persistence.md`](decisions/006-agent-registry-persistence.md): persistencia PostgreSQL del registry y referencias de activación.
 
 ## Calidad y operación
 
