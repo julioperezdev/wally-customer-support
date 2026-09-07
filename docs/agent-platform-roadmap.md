@@ -196,6 +196,11 @@ completo ni el contenido de conversaciones en logs operativos.
 
 ## Registry, publicación y feature flags
 
+La primera parte del contrato se implementa en `WCS-47` y se documenta en
+[`ADR-005`](decisions/005-agent-registry-contract.md). Ese contrato es sólo de
+dominio: todavía no persiste versiones ni cambia la configuración activa de
+los ambientes.
+
 El registry debe separar borradores de artefactos publicados:
 
 ```text
