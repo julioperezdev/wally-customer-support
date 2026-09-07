@@ -3,7 +3,7 @@
 Owner: Tech Lead  
 Status: `Accepted`
 Last reviewed: 2026-09-03
-Related Jira: `WCS-13`, `WCS-17`, `WCS-18`, `WCS-20`, `WCS-21`, `WCS-22`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-32`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-36`, `WCS-37`
+Related Jira: `WCS-13`, `WCS-17`, `WCS-18`, `WCS-20`, `WCS-21`, `WCS-22`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-32`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-51`, `WCS-52`, `WCS-53`
 Related repository paths: `src/main/java/com/wally/customersupport/{conversation,catalog,support,knowledge,shared}`, `src/main/resources`, `db/migration`
 Decision/source: specification de WhatsApp y re-baseline solicitada el 2026-08-30
 
@@ -109,6 +109,15 @@ El LLM no tiene acceso directo a credenciales, no genera SQL ejecutable y no
 puede inventar precios, stock, carrito ni estados de pedidos. PostgreSQL usa
 consultas parametrizadas y allow-listed; DynamoDB u otra fuente futura se
 integra mediante un adapter equivalente.
+
+El primer límite ejecutable de esta arquitectura es `catalog-specialist`.
+Cuando una definición runtime activa autoriza `catalog.search`, el
+`CatalogSpecialistExecutor` recibe un contrato tipado con filtros acotados y
+delega en `CatalogConversationService`. Si la definición no está activa, el
+tool no está permitido o el especialista no obtiene una respuesta válida, el
+orquestador conserva la ruta determinística existente. Esta etapa no ejecuta
+prompts dinámicos ni selecciona modelos en caliente; establece el límite de
+seguridad antes de incorporar agentes Bedrock especializados.
 
 Los horarios y políticas que gobiernan reglas operativas permanecen en datos
 estructurados y versionados. La Knowledge Base puede contener una copia
