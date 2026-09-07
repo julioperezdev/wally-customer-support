@@ -5,6 +5,7 @@
 - [`roadmap.md`](roadmap.md)
 - [`functional-requirements.md`](functional-requirements.md)
 - [`specification-baseline.md`](specification-baseline.md)
+- [`baselines/wcs-baseline-2026-09-07.md`](baselines/wcs-baseline-2026-09-07.md): punto de restauración antes de la plataforma de agentes.
 
 ## Diseño técnico
 
