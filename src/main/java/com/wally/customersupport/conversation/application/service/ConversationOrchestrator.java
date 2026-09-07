@@ -15,10 +15,10 @@ import com.wally.customersupport.agent.application.service.CatalogSpecialistExec
 import com.wally.customersupport.agent.application.service.AgentRuntimeDefinitionResolution;
 import com.wally.customersupport.agent.application.service.AgentRuntimeDefinitionResolver;
 import com.wally.customersupport.catalog.application.service.CatalogConversationService;
-import com.wally.customersupport.catalog.application.service.CatalogResponseFormatter;
 import com.wally.customersupport.conversation.application.port.out.ConversationIntentClassifier;
 import com.wally.customersupport.knowledge.application.port.out.KnowledgeRetriever;
 import com.wally.customersupport.conversation.application.port.out.LlmClient;
+import com.wally.customersupport.conversation.application.port.out.ResponseHumanizer;
 import com.wally.customersupport.support.application.service.SupportConfigurationQueryService;
 import com.wally.customersupport.support.domain.model.BusinessHour;
 import com.wally.customersupport.conversation.domain.model.ConversationContext;
@@ -26,6 +26,8 @@ import com.wally.customersupport.conversation.domain.model.ConversationExecution
 import com.wally.customersupport.conversation.domain.model.ConversationExecutionResult;
 import com.wally.customersupport.conversation.domain.model.ConversationIntent;
 import com.wally.customersupport.conversation.domain.model.ConversationIntentDecision;
+import com.wally.customersupport.conversation.domain.model.ResponseHumanizationRequest;
+import com.wally.customersupport.conversation.domain.model.ResponseHumanizationResult;
 import com.wally.customersupport.knowledge.domain.model.KnowledgeChunk;
 import com.wally.customersupport.knowledge.domain.model.KnowledgeQuery;
 import com.wally.customersupport.support.domain.model.SupportPolicy;
@@ -63,6 +65,7 @@ public class ConversationOrchestrator {
     private final AgentRuntimeDefinitionResolver agentRuntimeDefinitionResolver;
     private final AgentRuntimeProperties agentRuntimeProperties;
     private final CatalogSpecialistExecutor catalogSpecialistExecutor;
+    private final ResponseHumanizer responseHumanizer;
 
     public String replyFor(ConversationContext context) {
         long startedAt = System.nanoTime();
@@ -184,7 +187,12 @@ public class ConversationOrchestrator {
                             context.recentMessages(),
                             context.latestMessage()));
             if (specialistResult.executed()) {
-                return CatalogResponseFormatter.render(specialistResult.result());
+                ResponseHumanizationResult humanized = responseHumanizer.humanize(
+                        new ResponseHumanizationRequest(
+                                "CATALOG_SEARCH",
+                                context.channel(),
+                                specialistResult.result()));
+                return humanized == null ? SAFE_FALLBACK : humanized.text();
             }
         }
         return catalogConversationService.replyFor(

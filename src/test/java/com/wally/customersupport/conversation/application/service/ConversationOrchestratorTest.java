@@ -27,6 +27,7 @@ import com.wally.customersupport.agent.application.service.AgentRuntimeDefinitio
 import com.wally.customersupport.agent.application.service.AgentRuntimeDefinitionResolver;
 import com.wally.customersupport.agent.application.service.CatalogSpecialistExecutionResult;
 import com.wally.customersupport.conversation.application.port.out.ConversationIntentClassifier;
+import com.wally.customersupport.conversation.application.port.out.ResponseHumanizer;
 import com.wally.customersupport.catalog.application.service.CatalogFact;
 import com.wally.customersupport.catalog.application.service.CatalogConversationService;
 import com.wally.customersupport.catalog.application.service.CatalogSearchResult;
@@ -40,6 +41,7 @@ import com.wally.customersupport.conversation.domain.model.ConversationContext;
 import com.wally.customersupport.conversation.domain.model.Channel;
 import com.wally.customersupport.conversation.domain.model.ConversationIntent;
 import com.wally.customersupport.conversation.domain.model.ConversationIntentDecision;
+import com.wally.customersupport.conversation.domain.model.ResponseHumanizationResult;
 import com.wally.customersupport.knowledge.domain.model.KnowledgeChunk;
 import com.wally.customersupport.support.domain.model.SupportPolicy;
 import com.wally.customersupport.shared.infrastructure.config.AgentRuntimeProperties;
@@ -69,6 +71,8 @@ class ConversationOrchestratorTest {
     private AgentRuntimeDefinitionResolver agentRuntimeDefinitionResolver;
     @Mock
     private com.wally.customersupport.agent.application.service.CatalogSpecialistExecutor catalogSpecialistExecutor;
+    @Mock
+    private ResponseHumanizer responseHumanizer;
 
     private ConversationOrchestrator orchestrator;
     private ConversationContext context;
@@ -86,7 +90,8 @@ class ConversationOrchestratorTest {
                 agentActivationResolver,
                 agentRuntimeDefinitionResolver,
                 new AgentRuntimeProperties(false, "prod"),
-                catalogSpecialistExecutor);
+                catalogSpecialistExecutor,
+                responseHumanizer);
         context = new ConversationContext(
                 UUID.randomUUID(), "customer-1", "consulta", List.of("consulta"), List.of());
     }
@@ -128,7 +133,8 @@ class ConversationOrchestratorTest {
                 agentActivationResolver,
                 agentRuntimeDefinitionResolver,
                 new AgentRuntimeProperties(true, "prod"),
-                catalogSpecialistExecutor);
+                catalogSpecialistExecutor,
+                responseHumanizer);
         when(intentClassifier.classify(any(ConversationContext.class)))
                 .thenReturn(new ConversationIntentDecision(ConversationIntent.GREETING, 0.98, null, null));
         when(agentActivationResolver.resolve(new AgentActivationKey(
@@ -164,7 +170,8 @@ class ConversationOrchestratorTest {
                 agentActivationResolver,
                 agentRuntimeDefinitionResolver,
                 new AgentRuntimeProperties(true, "prod"),
-                catalogSpecialistExecutor);
+                catalogSpecialistExecutor,
+                responseHumanizer);
         AgentActivationKey key = new AgentActivationKey(
                 "response-humanizer", "prod", "telegram", "GREETING");
         when(intentClassifier.classify(any(ConversationContext.class)))
@@ -235,7 +242,8 @@ class ConversationOrchestratorTest {
                 agentActivationResolver,
                 agentRuntimeDefinitionResolver,
                 new AgentRuntimeProperties(true, "prod"),
-                catalogSpecialistExecutor);
+                catalogSpecialistExecutor,
+                responseHumanizer);
         CatalogQuery query = new CatalogQuery("nullpointer", null, "M", "negro");
         AgentActivationKey key = new AgentActivationKey(
                 "catalog-specialist", "prod", "telegram", "CATALOG_SEARCH");
@@ -263,6 +271,13 @@ class ConversationOrchestratorTest {
                                 CatalogSearchResult.FollowUpKind.NONE,
                                 "MATCHED"),
                         1));
+        when(responseHumanizer.humanize(any()))
+                .thenReturn(ResponseHumanizationResult.applied(
+                        "Encontré estos productos:\n"
+                                + "- Remera NullPointer — Negro, talle M — 18.900,00 ARS — stock disponible: 12 "
+                                + "(SKU: RP-REM-NP-NEG-M)",
+                        "deterministic-response-humanizer",
+                        "v1"));
 
         assertEquals("Encontré estos productos:\n"
                 + "- Remera NullPointer — Negro, talle M — 18.900,00 ARS — stock disponible: 12 "
