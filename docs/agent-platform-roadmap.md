@@ -215,6 +215,13 @@ cambios. `WCS-52` conecta ese resolver al `ConversationOrchestrator` sólo para
 enriquecer eventos y conservar observabilidad; el ejecutor determinístico sigue
 siendo la fuente de comportamiento.
 
+`WCS-53` establece el primer ejecutor concreto: `catalog-specialist` puede
+autorizar únicamente `catalog.search` y delega en PostgreSQL mediante una tool
+determinística. `WCS-54` completa la frontera de datos: el ejecutor entrega
+`CatalogSearchResult` y `CatalogFact`, mientras una política de presentación
+separada renderiza la respuesta. El siguiente paso puede evaluar un
+humanizador Bedrock sin permitir que agregue hechos de negocio.
+
 El registry debe separar borradores de artefactos publicados:
 
 ```text

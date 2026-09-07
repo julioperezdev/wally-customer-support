@@ -3,7 +3,7 @@
 Owner: AI/Tech Lead  
 Status: `Accepted`
 Last reviewed: 2026-09-03
-Related Jira: `WCS-11`, `WCS-20`, `WCS-21`, `WCS-30`, `WCS-33`, `WCS-51`, `WCS-52`, `WCS-53`
+Related Jira: `WCS-11`, `WCS-20`, `WCS-21`, `WCS-30`, `WCS-33`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`
 Related repository paths: `src/main/java/com/wally/customersupport/conversation/infrastructure/ai`, `src/main/resources/prompts`, `src/test/resources/fixtures`
 
 ## Registro de modelos
@@ -197,3 +197,10 @@ una definición ausente, un tool no permitido, un resultado vacío o una
 excepción, se conserva el flujo legacy y se emite un evento de fallback. Esta
 decisión permite probar el límite y sus métricas sin cambiar el comportamiento
 productivo ni requerir una llamada adicional a Bedrock.
+
+El resultado de catálogo no es texto libre: `CatalogSearchResult` define el
+estado (`MATCHED`, `NO_MATCH`, `CLARIFICATION`, `AMBIGUOUS` o `ALTERNATIVES`)
+y una lista limitada de `CatalogFact`. `CatalogResponseFormatter` convierte
+esos hechos en el texto actual del canal. Un futuro `response-humanizer` podrá
+adaptar tono, idioma y formato, pero no podrá agregar hechos que no estén en
+el resultado validado.
