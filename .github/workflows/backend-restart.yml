@@ -1,0 +1,75 @@
+name: Restart Backend (AppConfig)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_restart:
+        description: "Confirm restart to reload the latest deployed AppConfig version"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  restart:
+    name: Restart App Runner and verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: production
+    env:
+      AWS_BACKEND_DEPLOY_ROLE_ARN: ${{ secrets.AWS_BACKEND_DEPLOY_ROLE_ARN }}
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      BACKEND_APPRUNNER_SERVICE_ARN: ${{ vars.BACKEND_APPRUNNER_SERVICE_ARN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check restart guardrails
+        env:
+          CONFIRM_RESTART: ${{ inputs.confirm_restart }}
+        run: |
+          set -euo pipefail
+          [ "$GITHUB_REF" = "refs/heads/main" ] || {
+            echo "::error::App Runner restart is allowed only from main"
+            exit 1
+          }
+          [ "$CONFIRM_RESTART" = "true" ] || {
+            echo "::error::Set confirm_restart=true to reload AppConfig"
+            exit 1
+          }
+
+      - name: Check backend restart configuration
+        run: |
+          set -euo pipefail
+          missing=()
+          [ -n "$AWS_BACKEND_DEPLOY_ROLE_ARN" ] || missing+=("AWS_BACKEND_DEPLOY_ROLE_ARN")
+          [ -n "$AWS_REGION" ] || missing+=("AWS_REGION")
+          [ -n "$BACKEND_APPRUNNER_SERVICE_ARN" ] || missing+=("BACKEND_APPRUNNER_SERVICE_ARN")
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::Backend restart configuration is incomplete: ${missing[*]}"
+            exit 1
+          fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_BACKEND_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify restart target
+        run: |
+          set -euo pipefail
+          aws apprunner describe-service \
+            --service-arn "$BACKEND_APPRUNNER_SERVICE_ARN" \
+            --query 'Service.{status:Status,serviceUrl:ServiceUrl,image:SourceConfiguration.ImageRepository.ImageIdentifier}' \
+            --output table
+
+      - name: Restart and health-check backend
+        run: |
+          chmod +x ci/backend-restart.sh
+          ./ci/backend-restart.sh

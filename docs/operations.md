@@ -2,8 +2,8 @@
 
 Owner: Tech Lead  
 Status: `Accepted`
-Last reviewed: 2026-08-30  
-Related Jira: `WCS-13`, `WCS-21`, `WCS-22`, `WCS-30`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-38`, `WCS-39`
+Last reviewed: 2026-09-06  
+Related Jira: `WCS-13`, `WCS-21`, `WCS-22`, `WCS-30`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-38`, `WCS-39`, `WCS-40`
 Related repository paths: `src/main/resources`, `.github/workflows`, `infra/`
 
 ## Ambientes
@@ -68,6 +68,7 @@ infra/modules/backend-apprunner/  ECR, IAM, App Runner opcional
 infra/modules/github-backend-deploy/  OIDC y permisos de despliegue
 ci/backend-deploy.sh              despliegue por digest y health-check
 .github/workflows/backend.yml     verify; deploy manual
+.github/workflows/backend-restart.yml  restart manual para recargar AppConfig
 .github/workflows/terraform.yml   validate; plan/apply manual
 knowledge-base/wcs/                documentos Markdown versionados para la KB
 ```
@@ -80,6 +81,42 @@ resumen del workflow y el apply sólo puede ejecutarse desde `main`, con
 `production`. El workflow bloquea destrucciones y reemplazos, y aplica el plan
 generado en esa misma ejecución. El deploy de backend también es manual y usa
 una imagen identificada por digest.
+
+### Recargar AppConfig sin recompilar
+
+WCS carga AppConfig una vez durante el arranque del proceso. Cuando sólo cambia
+la configuración desplegada en AppConfig y la imagen actual ya contiene el
+código compatible, no es necesario ejecutar Maven, construir una imagen ni
+publicar otra versión en ECR. El workflow manual
+`.github/workflows/backend-restart.yml` ejecuta `aws apprunner start-deployment`
+contra la imagen actualmente configurada, espera la operación y valida
+`/actuator/health`.
+
+El workflow sólo puede ejecutarse desde `main`, requiere
+`confirm_restart=true` y aprobación del Environment `production`. Mantiene el
+rol OIDC de deploy existente y no modifica AppConfig, Secrets Manager,
+Terraform ni la imagen del servicio. App Runner igualmente tarda lo necesario
+para crear el contenedor y ejecutar sus health checks, pero se evita el build y
+el push de la pipeline completa.
+
+Usar este flujo para cambios de AppConfig o rotación de secrets que sólo
+requieren que el bootstrap vuelva a leer la configuración. Usar
+`.github/workflows/backend.yml` para cambios de código, Dockerfile, dependencias
+o cualquier cambio que requiera una nueva imagen. Si la operación devuelve
+`FAILED`, `ERROR` o cualquier estado `ROLLBACK_*`, el workflow falla de forma
+explícita y no declara el restart como exitoso.
+
+Ejecución por CLI:
+
+```bash
+gh workflow run "Restart Backend (AppConfig)" \
+  --ref main \
+  -f confirm_restart=true
+```
+
+El refresh dinámico sin reiniciar queda fuera de alcance: requeriría polling
+con `GetLatestConfiguration` o AppConfig Agent y un diseño explícito para
+actualizar beans que hoy se seleccionan con propiedades de Spring al arranque.
 
 Para habilitar Terraform en GitHub se deben configurar en el Environment
 `production`:
