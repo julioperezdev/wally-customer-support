@@ -2,7 +2,7 @@
 
 Owner: Tech Lead
 Status: `In Progress`
-Related Jira: `WCS-21`, `WCS-22`, `WCS-36`, `WCS-50`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-55`, `WCS-56`, `WCS-57`, `WCS-58`, `WCS-59`, `WCS-60`, `WCS-61`
+Related Jira: `WCS-21`, `WCS-22`, `WCS-36`, `WCS-50`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-55`, `WCS-56`, `WCS-57`, `WCS-58`, `WCS-59`, `WCS-60`, `WCS-61`, `WCS-68`, `WCS-69`
 Related repository paths: `observability/grafana/`, `src/main/java/com/wally/customersupport/conversation/infrastructure/http/`, `src/main/java/com/wally/customersupport/conversation/application/service/`, `src/main/java/com/wally/customersupport/shared/infrastructure/observability/`
 
 ## Objetivo de esta iteración
@@ -66,6 +66,10 @@ operacional necesario para diagnóstico y costo, pero sin contenido de negocio.
 | `AI_USAGE_RECORDED` | `stage`, `operation`, `provider`, `model`, `success`, `inputTokens`, `outputTokens`, `totalTokens`, `estimatedCostUsd`, `pricingVersion`, `durationMs`, `providerLatencyMs`, `errorType` | Cada llamada real a un proveedor de IA |
 | `AGENT_EVALUATION_COMPLETED` | `runId`, `datasetVersion`, `agentId`, `agentVersion`, `provider`, `model`, `totalScenarios`, `passedScenarios`, `failedScenarios`, `passRate`, `averageScore`, `durationMs` | Resultado agregado de una suite sintética, sin respuestas |
 | `AGENT_EVALUATION_FAILED` | `runId`, `datasetVersion`, `agentId`, `agentVersion`, `provider`, `model`, `durationMs`, `errorType` | Fallo sanitizado de una ejecución de evaluación |
+| `AGENT_EVALUATION_TRIGGER_DENIED` | `status`, `reason`, `datasetVersion`, `agentId`, `agentVersion`, `provider`, `model` | Trigger rechazado antes de idempotencia y ejecución |
+| `AGENT_EVALUATION_TRIGGER_DUPLICATE` | `status`, `reason`, `datasetVersion`, `agentId`, `agentVersion`, `provider`, `model` | Key ya reclamada; no se repite la evaluación |
+| `AGENT_EVALUATION_TRIGGER_COMPLETED` | `status`, `reason`, `runId`, `datasetVersion`, `agentId`, `agentVersion`, `provider`, `model` | Trigger autorizado y evaluación delegada |
+| `AGENT_EVALUATION_TRIGGER_FAILED` | `status`, `reason`, `datasetVersion`, `agentId`, `agentVersion`, `provider`, `model`, `errorType` | Fallo del guard o de la evaluación sin mensaje de excepción |
 | `OUTBOUND_MESSAGE_DISPATCHED` | `channel`, `result`, `errorType`, `durationMs`, `correlationId` | Entrega o reintento del outbox |
 
 No se registran texto de usuario, prompts, respuestas completas, números de

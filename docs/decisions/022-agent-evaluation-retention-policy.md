@@ -50,3 +50,10 @@ WCS-68 deja la autorización técnica detrás de un contrato independiente del
 proveedor. La capacidad exacta y el ambiente deben validarse antes de invocar un
 adaptador futuro; cualquier ausencia, discrepancia o error termina en
 denegación. La aprobación operativa de WCS-67 nunca sustituye este control.
+
+WCS-69 conecta esa frontera con la ejecución interna de una evaluación. La
+idempotency key se reclama sólo después de una autorización exitosa y un
+resultado previamente reclamado no vuelve a ejecutar el run. El guard de
+idempotencia queda detrás de un port y debe ofrecer atomicidad en el adapter
+que lo implemente; esta tarea no selecciona almacenamiento ni expone un
+trigger remoto.

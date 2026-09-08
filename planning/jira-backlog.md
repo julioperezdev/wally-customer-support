@@ -364,6 +364,7 @@ semántica o AgentCore.
 | WCS-66 | In Progress | Revisión paginada de retención de evidencia |
 | WCS-67 | In Progress | Gate auditable para activar la retención de evaluaciones |
 | WCS-68 | In Progress | Frontera de autorización del disparador interno de evaluaciones |
+| WCS-69 | In Progress | Ejecución interna idempotente después de autorización |
 
 WCS-60 no agrega todavía API, persistencia ni ejecución de Bedrock. WCS-61
 agrega persistencia create-only en el schema `wcs` para runs completados y
@@ -381,7 +382,9 @@ WCS-67 agrega evidencia tipada de aprobación operativa y la distingue de la
 autenticación técnica; no persiste aprobaciones ni habilita purgas.
 WCS-68 agrega la frontera provider-neutral de autorización técnica, con
 denegación por defecto; no expone endpoint ni selecciona todavía OIDC, IAM u
-otro proveedor.
+otro proveedor. WCS-69 conecta esa autorización con el servicio de evaluación
+mediante un guard idempotente explícito, sin agregar endpoint, scheduler,
+persistencia nueva ni ejecución externa.
 
 `WCS-14`–`WCS-16` y `WCS-17` ya tienen la fundación o el contrato inicial
 versionado; deben completarse/verificarse según la evidencia de cada issue antes

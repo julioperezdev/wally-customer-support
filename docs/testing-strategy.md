@@ -37,6 +37,15 @@ necesitan iniciar el contenedor.
 | Data lifecycle | Retención, borrado y `DO_NOT_CONTACT` | Reporte de job + query agregada |
 | Operational | Health, readiness, ack rápido, retry, alertas y rollback | CI + runbook |
 
+## Evaluaciones internas sanitizadas
+
+La frontera de ejecución del trigger interno valida la autorización antes de
+adquirir la idempotency key y antes de delegar en el servicio de evaluación.
+La suite debe cubrir autorización denegada, adquisición única, repetición de
+una key ya reclamada, fallo del guard y fallo sanitizado de la evaluación. Los
+tests no incluyen prompts, respuestas, tokens, secretos, PII ni la key en
+resultados o logs.
+
 ## Matriz funcional mínima
 
 | ID | Prioridad | Prueba | Resultado esperado | Evidencia |
