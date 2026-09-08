@@ -590,6 +590,28 @@ URL temporal.
 
 ## Trigger de evaluación del control plane
 
+### Executor y límites de evaluación
+
+El trigger puede seguir usando el executor determinístico o seleccionar el
+executor Bedrock para un dataset sintético. El default es seguro:
+
+```properties
+wcs.agent-evaluation.executor=deterministic
+wcs.agent-evaluation.max-scenarios=10
+wcs.agent-evaluation.max-input-tokens-per-scenario=4000
+wcs.agent-evaluation.max-output-tokens=512
+wcs.agent-evaluation.max-estimated-cost-usd=0.0500
+wcs.agent-evaluation.timeout=PT30S
+```
+
+Para una prueba aprobada, usar `wcs.agent-evaluation.executor=bedrock` junto
+con `wcs.ai.provider=bedrock` y el mismo `wcs.ai.model` en el request. El
+preflight rechaza una suite que exceda escenarios o costo estimado antes de
+invocar al proveedor. Si Bedrock no informa una métrica, se conserva como no
+disponible; no se interpreta como cero. Para rollback volver a
+`wcs.agent-evaluation.executor=deterministic`. Esta configuración no habilita
+por sí sola el endpoint HTTP ni requiere Terraform.
+
 El endpoint `POST /internal/agent-evaluations/runs` permanece deshabilitado por
 defecto mediante `wcs.agent-evaluation.trigger.enabled=false`. Su activación
 requiere además seguridad JWT habilitada, issuer, audience, el scope exacto

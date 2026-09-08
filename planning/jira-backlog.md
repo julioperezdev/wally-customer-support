@@ -377,6 +377,9 @@ semántica o AgentCore.
 | WCS-79 | In Progress | Trigger HTTP autenticado para ejecuciones de evaluación |
 | WCS-80 | In Progress | Scopes separados de lectura y ejecución del control plane |
 | WCS-81 | In Progress | Idempotencia, errores y observabilidad del trigger de evaluación |
+| WCS-82 | In Progress | Executor opcional de evaluaciones con Amazon Bedrock |
+| WCS-83 | In Progress | Metadata real de tokens, latencia y costo en evaluaciones |
+| WCS-84 | In Progress | Límites de presupuesto y preflight para evaluaciones Bedrock |
 
 WCS-60 no agrega todavía API, persistencia ni ejecución de Bedrock. WCS-61
 agrega persistencia create-only en el schema `wcs` para runs completados y
@@ -430,6 +433,13 @@ el executor determinístico explícito de la política de respuesta; no habilita
 Bedrock real, SQL generado, prompts remotos, SQS ni backoffice. El PR debe
 incluir los contratos HTTP, pruebas de seguridad y Testcontainers,
 observabilidad sanitizada y rollback por configuración.
+
+WCS-82, WCS-83 y WCS-84 se entregan como un slice ampliado: agregan un puerto
+provider-neutral medido, un executor Bedrock sólo para escenarios sintéticos,
+metadata real cuando el proveedor la devuelve y un preflight de límites. El
+executor `deterministic` permanece como default. La configuración real no se
+activa en este PR ni requiere apply de Terraform; el rollback se realiza desde
+AppConfig cambiando el executor a `deterministic`.
 
 `WCS-14`–`WCS-16` y `WCS-17` ya tienen la fundación o el contrato inicial
 versionado; deben completarse/verificarse según la evidencia de cada issue antes

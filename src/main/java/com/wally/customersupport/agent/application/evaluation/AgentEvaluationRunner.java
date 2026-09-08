@@ -28,10 +28,17 @@ public class AgentEvaluationRunner {
     public AgentEvaluationSuiteResult run(
             List<AgentEvaluationScenario> scenarios,
             AgentEvaluationExecutor executor) {
+        return run(scenarios, null, executor);
+    }
+
+    public AgentEvaluationSuiteResult run(
+            List<AgentEvaluationScenario> scenarios,
+            AgentEvaluationRunRequest request,
+            AgentEvaluationExecutor executor) {
         List<AgentEvaluationScenario> orderedScenarios = validateAndOrder(scenarios, executor);
         String datasetVersion = orderedScenarios.getFirst().datasetVersion();
         List<AgentEvaluationResult> results = orderedScenarios.stream()
-                .map(scenario -> evaluate(scenario, executor.execute(scenario)))
+                .map(scenario -> evaluate(scenario, executor.execute(scenario, request)))
                 .toList();
 
         int passedScenarios = (int) results.stream().filter(AgentEvaluationResult::passed).count();

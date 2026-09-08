@@ -10,6 +10,9 @@ import java.util.UUID;
 
 import com.wally.customersupport.agent.application.port.out.AgentEvaluationRunRepository;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationSuiteResult;
+import com.wally.customersupport.agent.infrastructure.config.AgentEvaluationProperties;
+import com.wally.customersupport.shared.infrastructure.config.AiProperties;
+import com.wally.customersupport.shared.infrastructure.observability.AiPricingCalculator;
 import com.wally.customersupport.shared.infrastructure.observability.StructuredEventLog;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +28,8 @@ public class AgentEvaluationApplicationService {
     private final AgentEvaluationRunner runner;
     private final AgentEvaluationRunRepository runRepository;
     private final Clock clock;
+    private final AgentEvaluationProperties properties;
+    private final AiProperties aiProperties;
 
     public AgentEvaluationRun execute(
             AgentEvaluationRunRequest request,
@@ -35,8 +40,12 @@ public class AgentEvaluationApplicationService {
         UUID runId = UUID.randomUUID();
         Instant startedAt = clock.instant();
         try {
+            executor.validate(request);
+            var scenarios = datasetCatalog.scenarios(request.datasetVersion());
+            validateLimits(request, scenarios.size());
             AgentEvaluationSuiteResult suiteResult = runner.run(
-                    datasetCatalog.scenarios(request.datasetVersion()),
+                    scenarios,
+                    request,
                     executor);
             Instant completedAt = clock.instant();
             AgentEvaluationRun run = new AgentEvaluationRun(
@@ -98,5 +107,23 @@ public class AgentEvaluationApplicationService {
 
     private static long elapsedMillis(Instant startedAt, Instant completedAt) {
         return Math.max(0, Duration.between(startedAt, completedAt).toMillis());
+    }
+
+    private void validateLimits(AgentEvaluationRunRequest request, int scenarioCount) {
+        if (scenarioCount > properties.effectiveMaxScenarios()) {
+            throw new IllegalArgumentException("evaluation scenario limit exceeded");
+        }
+        if ("bedrock".equalsIgnoreCase(request.provider())) {
+            int inputTokens = properties.effectiveMaxInputTokensPerScenario() * scenarioCount;
+            int outputTokens = properties.effectiveMaxOutputTokens() * scenarioCount;
+            var estimatedCost = AiPricingCalculator.estimatedCostUsd(
+                    inputTokens,
+                    outputTokens,
+                    aiProperties.effectiveInputPriceUsdPerMillionTokens(),
+                    aiProperties.effectiveOutputPriceUsdPerMillionTokens());
+            if (estimatedCost.compareTo(properties.effectiveMaxEstimatedCostUsd()) > 0) {
+                throw new IllegalArgumentException("evaluation estimated budget exceeded");
+            }
+        }
     }
 }
