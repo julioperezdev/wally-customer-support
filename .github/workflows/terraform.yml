@@ -13,6 +13,14 @@ on:
       - ".github/workflows/terraform.yml"
   workflow_dispatch:
     inputs:
+      target_environment:
+        description: "Terraform environment to plan or apply"
+        required: true
+        default: prod
+        type: choice
+        options:
+          - prod
+          - test
       action:
         description: "Run a plan or apply the reviewed plan"
         required: true
@@ -31,7 +39,7 @@ permissions:
   contents: read
 
 env:
-  TF_WORKING_DIR: infra/environments/prod
+  TF_WORKING_DIR: infra/environments/${{ inputs.target_environment || 'prod' }}
   TF_IN_AUTOMATION: "true"
 
 jobs:
@@ -39,6 +47,11 @@ jobs:
     name: Terraform Validate
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      matrix:
+        working_directory:
+          - infra/environments/prod
+          - infra/environments/test
 
     steps:
       - name: Checkout
@@ -50,15 +63,15 @@ jobs:
           terraform_version: "~1.15"
 
       - name: Terraform Init without backend
-        working-directory: ${{ env.TF_WORKING_DIR }}
+        working-directory: ${{ matrix.working_directory }}
         run: terraform init -backend=false -input=false
 
       - name: Terraform Format Check
-        working-directory: ${{ env.TF_WORKING_DIR }}
+        working-directory: ${{ matrix.working_directory }}
         run: terraform fmt -check -recursive
 
       - name: Terraform Validate
-        working-directory: ${{ env.TF_WORKING_DIR }}
+        working-directory: ${{ matrix.working_directory }}
         run: terraform validate
 
   plan-or-apply:
@@ -67,7 +80,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    environment: production
+    environment: ${{ inputs.target_environment == 'test' && 'test' || 'production' }}
     env:
       AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
       AWS_TERRAFORM_ROLE_ARN: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}

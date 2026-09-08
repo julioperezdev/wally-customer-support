@@ -7,6 +7,14 @@ on:
   pull_request:
   workflow_dispatch:
     inputs:
+      target_environment:
+        description: "Backend deployment target"
+        required: true
+        default: prod
+        type: choice
+        options:
+          - prod
+          - test
       deploy:
         description: "Deploy an immutable image to the configured App Runner service"
         required: true
@@ -43,7 +51,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && inputs.deploy == true
     runs-on: ubuntu-latest
     timeout-minutes: 40
-    environment: production
+    environment: ${{ inputs.target_environment == 'test' && 'test' || 'production' }}
     env:
       AWS_BACKEND_DEPLOY_ROLE_ARN: ${{ secrets.AWS_BACKEND_DEPLOY_ROLE_ARN }}
       AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}

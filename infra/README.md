@@ -59,6 +59,36 @@ nunca tokens o passwords. La versión hosted y el deployment también ignoran
 cambios posteriores hechos en la consola, por lo que una operación manual no
 será revertida por Terraform.
 
+### Ambiente no productivo `test`
+
+`infra/environments/test` usa un state separado y descubre la aplicación y el
+profile existentes de AppConfig para crear solamente el environment `test`, su
+deployment inicial, secretos bootstrap con prefijo `wcs/test/` y el ECR/roles
+del backend de prueba. No crea otra aplicación AppConfig ni administra RDS,
+Knowledge Base o tráfico productivo. El App Runner de test queda desactivado
+por defecto (`backend_create_service=false`) hasta revisar el destino de base
+de datos y reemplazar los valores fake de Secrets Manager.
+
+Si se informa `existing_github_oidc_provider_arn`, el stack crea además el rol
+`wally-customer-support-test-github-terraform-deploy`, cuya trust policy sólo
+acepta el GitHub Environment `test` y cuyo state key queda separado de
+`prod`. Ese rol se configura en GitHub después de un bootstrap aprobado; no se
+reutiliza `AWS_TERRAFORM_ROLE_ARN` de `production`.
+
+El workflow de Terraform valida ambos roots. Para un plan o apply manual se
+selecciona `target_environment=test`; el Environment `test` de GitHub debe
+tener sus propios `AWS_TERRAFORM_ROLE_ARN` y `TERRAFORM_VARS` antes de ejecutar
+un plan real. No se deben reutilizar secretos ni el ARN del servicio de
+producción. El workflow de backend acepta el mismo target, pero no debe
+ejecutarse para test hasta que exista un App Runner de test y su configuración
+operativa.
+
+El perfil Spring `test` (`application-test.properties`) apunta al mismo nombre
+de aplicación AppConfig y al environment `test`. La configuración inicial
+mantiene shadow deshabilitado, provider `noop` y tráfico `0%`. El environment
+de AppConfig debe existir y tener una versión desplegada antes de iniciar el
+runtime con `SPRING_PROFILES_ACTIVE=test`.
+
 El módulo `bedrock-knowledge-base` crea únicamente recursos propios de WCS. La
 fuente está en `knowledge-base/wcs/`, el vector store usa S3 Vectors y la KB
 queda configurada para `amazon.titan-embed-text-v2:0`, `FLOAT32` y 1024

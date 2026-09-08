@@ -1,0 +1,15 @@
+# Copy to a local ignored file only when reviewing a real test plan.
+# The first apply must be reviewed carefully: this stack reads the existing
+# stable AppConfig application and creates only test-named resources.
+project_name                = "wally-customer-support"
+environment                 = "test"
+aws_region                  = "us-east-1"
+appconfig_application_name  = "wally-customer-support"
+appconfig_profile_name      = "runtime"
+backend_create_service      = false
+backend_image_tag           = "bootstrap"
+# Set these only for the reviewed bootstrap apply that creates the isolated
+# GitHub Environment test role. They are identifiers, not secrets.
+existing_github_oidc_provider_arn = null
+github_repository_owner_id        = null
+github_repository_id              = null

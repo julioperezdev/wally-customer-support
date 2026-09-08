@@ -534,6 +534,19 @@ versionado; deben completarse/verificarse según la evidencia de cada issue ante
 de cerrar las dependencias. El orden no implica cerrar automáticamente issues:
 cada transición requiere pruebas, evidencia y PR asociado.
 
+| Key | Estado | Resumen |
+| --- | --- | --- |
+| WCS-112 | In Progress | Provisionar ambiente AWS test aislado para WCS |
+| WCS-113 | In Progress | Preparar CI, bootstrap y smoke del ambiente test |
+
+WCS-112 y WCS-113 forman el siguiente bloque operativo. El primero descubre la
+aplicación y el profile existentes de AppConfig y crea sólo el environment
+`test`, sus secretos bootstrap y el ECR/roles no productivos en un state
+separado. El segundo prepara la selección explícita del target en CI y el
+perfil Spring `test`. El App Runner test permanece desactivado y shadow en
+`0%` hasta contar con secretos, base de datos, plan y aprobación separados de
+producción.
+
 ## Template común de issue
 
 Cada issue real debe agregar contexto, objetivo, alcance, fuera de alcance, FR/UC, criterios Given/When/Then, pruebas, evidencia, dependencias, riesgos, documentación, rollout y rollback.

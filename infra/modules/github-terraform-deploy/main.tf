@@ -39,12 +39,12 @@ locals {
 
   legacy_allowed_subjects = [
     "repo:${var.github_repository}:ref:refs/heads/main",
-    "repo:${var.github_repository}:environment:production",
+    "repo:${var.github_repository}:environment:${var.github_environment}",
   ]
 
   immutable_allowed_subjects = var.github_repository_owner_id == null || var.github_repository_id == null ? [] : [
     "repo:${split("/", var.github_repository)[0]}@${var.github_repository_owner_id}/${split("/", var.github_repository)[1]}@${var.github_repository_id}:ref:refs/heads/main",
-    "repo:${split("/", var.github_repository)[0]}@${var.github_repository_owner_id}/${split("/", var.github_repository)[1]}@${var.github_repository_id}:environment:production",
+    "repo:${split("/", var.github_repository)[0]}@${var.github_repository_owner_id}/${split("/", var.github_repository)[1]}@${var.github_repository_id}:environment:${var.github_environment}",
   ]
 
   allowed_subjects = concat(local.legacy_allowed_subjects, local.immutable_allowed_subjects)
