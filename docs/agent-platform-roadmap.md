@@ -234,6 +234,29 @@ con consultas generales acotadas, filtros de precio y seguimiento de una
 variante única; la consulta sigue siendo una tool determinística sobre
 PostgreSQL y no delega hechos de catálogo al modelo.
 
+`WCS-60` agrega el caso de uso de aplicación para ejecutar un dataset por
+versión, generar un `runId`, devolver métricas agregadas y emitir un evento de
+finalización sanitizado. La frontera todavía es interna: no expone un endpoint
+sin autenticación, no persiste ejecuciones y no invoca Bedrock.
+
+La ejecución de evaluaciones queda separada en tres piezas:
+
+1. `AgentEvaluationDatasetCatalog` resuelve datasets sintéticos registrados por
+   versión. Cada provider devuelve escenarios inmutables y no contiene datos
+   reales de clientes.
+2. `AgentEvaluationApplicationService` recibe la identidad del agente/modelo y
+   un executor inyectable, delega el orden y cálculo al runner y devuelve
+   `AgentEvaluationRun` con métricas y tiempos, sin texto de respuestas.
+3. `AGENT_EVALUATION_COMPLETED` y `AGENT_EVALUATION_FAILED` entregan las
+   dimensiones operativas mínimas para CloudWatch/Grafana. Los eventos no
+   incluyen prompts, respuestas, mensajes de excepción ni PII.
+
+Esta frontera será consumida posteriormente por un job o endpoint interno
+autenticado cuando exista una política de autorización y persistencia de
+resultados. La persistencia se mantiene como una decisión posterior para no
+convertir una ejecución experimental en un registro productivo antes de
+definir retención, acceso y costo.
+
 El registry debe separar borradores de artefactos publicados:
 
 ```text
@@ -362,8 +385,11 @@ texto.
 
 ### Fase E — Evaluación y observabilidad
 
-Crear datasets, runner de evaluación, eventos estructurados, dashboards y
-presupuesto por agente. La promoción requiere evidencia comparable.
+Crear datasets, runner de evaluación, ejecución trazable, eventos estructurados,
+dashboards y presupuesto por agente. `WCS-60` completa la primera frontera
+interna; las siguientes tareas deben agregar persistencia/exportación, un
+disparador autenticado y luego la comparación de modelos reales. La promoción
+requiere evidencia comparable.
 
 ### Fase F — Backoffice
 
