@@ -92,6 +92,14 @@ producción. El workflow de backend acepta el mismo target, pero no debe
 ejecutarse para test hasta que exista un App Runner de test y su configuración
 operativa.
 
+El rol Terraform conserva permisos de AppConfig acotados por recurso para
+lectura, actualización y despliegue. La operación de tagging durante la
+creación de recursos de AppConfig requiere excepcionalmente
+`appconfig:TagResource` sobre `*`; esa es la única acción de AppConfig con
+alcance genérico. Ante un apply parcial, revisar el state y el plan de
+recuperación antes de reintentar; no eliminar recursos para "limpiar" el
+fallo.
+
 El perfil Spring `test` (`application-test.properties`) apunta al mismo nombre
 de aplicación AppConfig y al environment `test`. La configuración inicial
 mantiene shadow deshabilitado, provider `noop` y tráfico `0%`. El environment

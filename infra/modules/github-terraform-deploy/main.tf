@@ -232,7 +232,6 @@ data "aws_iam_policy_document" "terraform" {
       "appconfig:GetHostedConfigurationVersion",
       "appconfig:ListTagsForResource",
       "appconfig:StartDeployment",
-      "appconfig:TagResource",
       "appconfig:UntagResource",
       "appconfig:UpdateApplication",
       "appconfig:UpdateConfigurationProfile",
@@ -247,6 +246,17 @@ data "aws_iam_policy_document" "terraform" {
       local.appconfig_deployment_arn_pattern,
       local.appconfig_deployment_strategy_arn_pattern,
     ]
+  }
+
+  # AppConfig evaluates the tag-on-create request against the generic
+  # appconfig resource ARN, even when the resulting resource is scoped to
+  # the WCS application. Keep the broad permission limited to tagging only;
+  # all read, update and deployment actions remain resource-scoped above.
+  statement {
+    sid       = "TagWcsAppConfigResourcesDuringCreate"
+    effect    = "Allow"
+    actions   = ["appconfig:TagResource"]
+    resources = ["*"]
   }
 
   statement {
