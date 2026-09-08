@@ -147,6 +147,25 @@ class AgentEvaluationControlPlaneSecurityConfigurationTest {
     }
 
     @Test
+    void keepsRegistryWriteScopeSeparateFromRegistryReadScope() throws Exception {
+        mockMvc.perform(post("/internal/agent-registry/activations")
+                        .with(jwt()
+                                .jwt(token -> token.subject(ACTOR).audience(List.of("wcs-control-plane")))
+                                .authorities(new SimpleGrantedAuthority("SCOPE_agent-registry.read")))
+                        .contentType("application/json")
+                        .content("{}"))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/internal/agent-registry/activations")
+                        .with(jwt()
+                                .jwt(token -> token.subject(ACTOR).audience(List.of("wcs-control-plane")))
+                                .authorities(new SimpleGrantedAuthority("SCOPE_agent-registry.write")))
+                        .contentType("application/json")
+                        .content("{}"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void letsExecutionScopeReachThePostHandlerWithoutGrantingReadAccess() throws Exception {
         mockMvc.perform(post("/internal/agent-evaluations/runs")
                         .with(jwt()

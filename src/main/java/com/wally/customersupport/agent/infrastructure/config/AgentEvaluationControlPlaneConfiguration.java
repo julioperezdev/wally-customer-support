@@ -2,6 +2,7 @@ package com.wally.customersupport.agent.infrastructure.config;
 
 import com.wally.customersupport.agent.application.port.out.AgentEvaluationControlPlaneAuthorizer;
 import com.wally.customersupport.agent.application.service.AgentEvaluationControlPlaneAccessService;
+import com.wally.customersupport.agent.domain.model.AgentActivationPolicy;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
@@ -22,5 +23,10 @@ public class AgentEvaluationControlPlaneConfiguration {
             @Value("${wcs.agent-evaluation.control-plane.allowed-environment:prod}") String allowedEnvironment,
             AgentEvaluationControlPlaneAuthorizer authorizer) {
         return new AgentEvaluationControlPlaneAccessService(allowedEnvironment, authorizer);
+    }
+
+    @Bean
+    AgentActivationPolicy agentActivationPolicy() {
+        return new AgentActivationPolicy();
     }
 }

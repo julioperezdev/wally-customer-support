@@ -15,7 +15,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice(assignableTypes = {
         AgentEvaluationControlPlaneController.class,
         AgentEvaluationTriggerController.class,
-        AgentRegistryController.class
+        AgentRegistryController.class,
+        AgentActivationController.class
 })
 @Slf4j
 public class AgentEvaluationControlPlaneExceptionHandler {

@@ -3,7 +3,7 @@
 - Owner: Product/Tech Lead
 - Status: `Accepted`
 - Last reviewed: 2026-09-08
-- Related Jira: `WCS-45`, `WCS-60`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-71`, `WCS-72`, `WCS-73`, `WCS-74`, `WCS-75`, `WCS-76`, `WCS-77`, `WCS-78`, `WCS-79`, `WCS-80`, `WCS-81`, `WCS-82`, `WCS-83`, `WCS-84`, `WCS-85`, `WCS-86`, `WCS-87`, `WCS-88`, `WCS-89`, `WCS-90`, `WCS-91`, `WCS-92`, `WCS-93`
+- Related Jira: `WCS-45`, `WCS-60`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-71`, `WCS-72`, `WCS-73`, `WCS-74`, `WCS-75`, `WCS-76`, `WCS-77`, `WCS-78`, `WCS-79`, `WCS-80`, `WCS-81`, `WCS-82`, `WCS-83`, `WCS-84`, `WCS-85`, `WCS-86`, `WCS-87`, `WCS-88`, `WCS-89`, `WCS-90`, `WCS-91`, `WCS-92`, `WCS-93`, `WCS-94`, `WCS-95`, `WCS-96`
 - Baseline: [`wcs-baseline-2026-09-07`](baselines/wcs-baseline-2026-09-07.md)
 - Canonical Confluence: [WCS — Agent Platform Roadmap & Architecture Proposal](https://julioperezdev.atlassian.net/wiki/spaces/SD/pages/7569410/WCS+Agent+Platform+Roadmap+Architecture+Proposal)
 - Related repository paths: `docs/roadmap.md`, `docs/ai.md`, `docs/observability.md`, `docs/decisions/`
@@ -481,6 +481,17 @@ versionado de `catalog-specialist` mediante una migración nueva, se prueba el
 contrato contra PostgreSQL/Testcontainers y se deja un smoke sin secretos para
 validar la consulta. El seed no crea activaciones y
 `wcs.agent-runtime.activation-enabled` permanece en `false`.
+
+`WCS-94`–`WCS-96` agregan el siguiente corte agrupado de activación controlada:
+un servicio provider-neutral valida una versión `APPROVED`, evidencia de
+aprobación técnica y operativa, entorno, rollout y actor; luego persiste una
+nueva referencia inmutable. La frontera HTTP separa el scope
+`agent-registry.write`, exige `Idempotency-Key` y expone activación, kill switch
+y rollback con respuestas sanitizadas. La flag
+`wcs.agent-registry.activation-write-enabled` queda en `false`, no se habilita
+el runtime, y el backoffice sigue siendo read-only. La idempotencia se
+respalda en PostgreSQL sin guardar la key cruda; todas las acciones generan
+eventos operativos sin prompts, tokens, secretos ni PII.
 
 ### Fase G — Migración controlada
 

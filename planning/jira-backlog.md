@@ -389,6 +389,9 @@ semántica o AgentCore.
 | WCS-91 | In Progress | Verificar contrato read-only del registry contra PostgreSQL |
 | WCS-92 | In Progress | Cargar baseline versionado de catalog-specialist en el registry |
 | WCS-93 | In Progress | Agregar smoke operativo y documentación del baseline del registry |
+| WCS-94 | In Progress | Implementar servicio de activación controlada del registry |
+| WCS-96 | In Progress | Exponer control plane write-only protegido para activaciones |
+| WCS-95 | In Progress | Cubrir activación, kill switch y rollback con pruebas y runbook |
 
 WCS-60 no agrega todavía API, persistencia ni ejecución de Bedrock. WCS-61
 agrega persistencia create-only en el schema `wcs` para runs completados y
@@ -469,6 +472,13 @@ posterior a V11 carga sólo metadata del baseline `catalog-specialist`, la
 prueba de integración valida la respuesta read-only y un script/salida SQL
 permite verificarlo sin secretos. El seed no crea activaciones ni habilita el
 runtime.
+
+WCS-94, WCS-96 y WCS-95 forman el slice de activación controlada: una versión
+APPROVED se transforma en una referencia inmutable sólo con autorización y
+evidencia de aprobación; la API separa `agent-registry.write`, exige
+idempotencia y deja activación, kill switch y rollback detrás de una flag falsa.
+La migración V13 guarda hashes de keys, no las keys crudas, y las pruebas
+verifican que el runtime conversacional y los webhooks públicos no cambian.
 
 `WCS-14`–`WCS-16` y `WCS-17` ya tienen la fundación o el contrato inicial
 versionado; deben completarse/verificarse según la evidencia de cada issue antes

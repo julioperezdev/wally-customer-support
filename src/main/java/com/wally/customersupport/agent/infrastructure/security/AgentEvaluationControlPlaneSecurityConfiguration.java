@@ -36,6 +36,7 @@ public class AgentEvaluationControlPlaneSecurityConfiguration {
             "wcs.agent-evaluation.control-plane.security.audience";
     private static final String REQUIRED_AUTHORITY = "SCOPE_agent-evaluation.read";
     private static final String REGISTRY_READ_AUTHORITY = "SCOPE_agent-registry.read";
+    private static final String REGISTRY_WRITE_AUTHORITY = "SCOPE_agent-registry.write";
     private static final String EXECUTE_AUTHORITY = "SCOPE_agent-evaluation.execute";
 
     @Bean
@@ -91,6 +92,8 @@ public class AgentEvaluationControlPlaneSecurityConfiguration {
                         .hasAuthority(REQUIRED_AUTHORITY)
                         .requestMatchers(HttpMethod.GET, "/internal/agent-registry/**")
                         .hasAuthority(REGISTRY_READ_AUTHORITY)
+                        .requestMatchers(HttpMethod.POST, "/internal/agent-registry/activations/**")
+                        .hasAuthority(REGISTRY_WRITE_AUTHORITY)
                         .anyRequest().denyAll())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
         return http.build();

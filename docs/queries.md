@@ -86,3 +86,13 @@ WHERE agent_id = :agent_id
 ORDER BY activated_at DESC
 LIMIT :limit;
 ```
+
+Para verificar que la idempotencia del control plane guarda sólo hashes:
+
+    SELECT count(*) AS claims,
+           min(length(key_hash)) AS min_hash_length,
+           max(length(key_hash)) AS max_hash_length
+    FROM wcs.agent_activation_command_claims;
+
+No se debe consultar ni exportar la key cruda: la tabla sólo contiene su
+hash SHA-256 y timestamp de claim.
