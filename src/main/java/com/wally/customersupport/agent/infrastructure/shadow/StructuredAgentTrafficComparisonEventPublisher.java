@@ -34,6 +34,7 @@ public class StructuredAgentTrafficComparisonEventPublisher
         fields.put("totalTokens", event.totalTokens());
         fields.put("estimatedCostUsd", event.estimatedCostUsd());
         fields.put("fallbackReason", event.fallbackReason());
+        fields.put("comparisonOutcome", event.comparisonOutcome());
         fields.put("candidateResponsePublished", event.candidateResponsePublished());
         StructuredEventLog.info(log, "AGENT_TRAFFIC_COMPARISON_RECORDED", fields);
     }

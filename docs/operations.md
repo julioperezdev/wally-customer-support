@@ -3,7 +3,7 @@
 Owner: Tech Lead  
 Status: `Accepted`
 Last reviewed: 2026-09-08
-Related Jira: `WCS-13`, `WCS-21`, `WCS-22`, `WCS-30`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-38`, `WCS-39`, `WCS-40`, `WCS-41`, `WCS-42`, `WCS-76`, `WCS-77`, `WCS-78`, `WCS-85`, `WCS-86`, `WCS-87`, `WCS-88`, `WCS-89`, `WCS-90`, `WCS-91`, `WCS-92`, `WCS-93`, `WCS-94`, `WCS-95`, `WCS-96`
+Related Jira: `WCS-13`, `WCS-21`, `WCS-22`, `WCS-30`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-38`, `WCS-39`, `WCS-40`, `WCS-41`, `WCS-42`, `WCS-76`, `WCS-77`, `WCS-78`, `WCS-85`, `WCS-86`, `WCS-87`, `WCS-88`, `WCS-89`, `WCS-90`, `WCS-91`, `WCS-92`, `WCS-93`, `WCS-94`, `WCS-95`, `WCS-96`, `WCS-103`, `WCS-104`, `WCS-105`
 Related repository paths: `src/main/resources`, `backoffice/`, `.github/workflows`, `infra/`
 
 ## Ambientes
@@ -360,6 +360,7 @@ wcs.agent-runtime.activation-enabled=false
 wcs.agent-runtime.environment=prod
 wcs.agent-runtime.shadow-enabled=false
 wcs.agent-runtime.shadow-timeout=PT5S
+wcs.agent-runtime.shadow-provider=noop
 ```
 
 La flag falsa evita toda consulta al registry y conserva el flujo
@@ -712,6 +713,37 @@ mantener la flag en `false`; el fallback activo no depende de la evidencia
 shadow.
 
 Rollback: publicar `wcs.agent-runtime.shadow-enabled=false` y conservar
-`wcs.agent-runtime.activation-enabled=false`. No requiere migración ni
-Terraform; si la configuración se carga sólo durante el bootstrap, reiniciar
-App Runner después de verificar el cambio en AppConfig.
+`wcs.agent-runtime.activation-enabled=false` y
+`wcs.agent-runtime.shadow-provider=noop`. No requiere migración ni Terraform;
+si la configuración se carga sólo durante el bootstrap, reiniciar App Runner
+después de verificar el cambio en AppConfig.
+
+### Comparación y candidata Bedrock WCS-103–105
+
+La comparación de calidad no almacena respuestas candidatas. El servicio
+calcula hashes sólo en memoria y emite `comparisonOutcome=MATCH`, `MISMATCH` o
+`UNKNOWN`; un resultado `UNKNOWN` es el valor esperado cuando faltan tokens,
+respuesta o digest. El runtime activo continúa siendo la única fuente de
+respuesta y el candidato no tiene acceso al outbox.
+
+El provider por defecto es `noop`. Para un ambiente de prueba autorizado se
+puede usar este cambio acotado en AppConfig, siempre con una definición activa
+compatible y el modelo Bedrock configurado:
+
+```properties
+wcs.agent-runtime.shadow-enabled=true
+wcs.agent-runtime.shadow-provider=bedrock
+wcs.agent-runtime.activation-enabled=true
+```
+
+El adapter Bedrock sólo soporta por ahora `CATALOG_SEARCH`, valida que el
+provider/model de la definición coincida con `wcs.ai`, aplica los límites de la
+definición y recibe filtros normalizados más una referencia source-backed
+acotada. Si falta el cliente, hay timeout, error, mismatch de modelo o límite,
+la ejecución candidata falla y la respuesta activa no cambia. El primer smoke
+debe usar un executor fake en tests; no se habilita Bedrock real en CI ni en
+producción para validar este slice.
+
+Rollback inmediato: `shadow-enabled=false`, `shadow-provider=noop` y
+`activation-enabled=false`. No requiere migración, Terraform ni cambio de
+secrets.

@@ -20,5 +20,6 @@ public record AgentTrafficComparisonEvent(
         Integer totalTokens,
         BigDecimal estimatedCostUsd,
         String fallbackReason,
+        String comparisonOutcome,
         boolean candidateResponsePublished) {
 }

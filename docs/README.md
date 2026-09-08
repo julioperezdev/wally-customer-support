@@ -41,6 +41,7 @@
   - [`024-agent-evaluation-control-plane-read-api.md`](decisions/024-agent-evaluation-control-plane-read-api.md): acceso provider-neutral y API read-only del control plane.
   - [`025-agent-evaluation-control-plane-jwt-security.md`](decisions/025-agent-evaluation-control-plane-jwt-security.md): JWT configurable sólo para el control plane, con scope exacto y rutas públicas preservadas.
   - [`026-agent-evaluation-trigger-http.md`](decisions/026-agent-evaluation-trigger-http.md): trigger HTTP autenticado, scopes separados e idempotencia.
+  - [`028-shadow-quality-comparison-and-bedrock-candidate.md`](decisions/028-shadow-quality-comparison-and-bedrock-candidate.md): comparación efímera y candidata Bedrock cerrada por defecto.
 
 ## Calidad y operación
 

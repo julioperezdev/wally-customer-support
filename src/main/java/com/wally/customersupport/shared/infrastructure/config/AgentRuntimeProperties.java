@@ -9,7 +9,8 @@ public record AgentRuntimeProperties(
         boolean activationEnabled,
         String environment,
         boolean shadowEnabled,
-        Duration shadowTimeout) {
+        Duration shadowTimeout,
+        String shadowProvider) {
 
     public String effectiveEnvironment() {
         return environment == null || environment.isBlank()
@@ -21,5 +22,11 @@ public record AgentRuntimeProperties(
         return shadowTimeout == null || shadowTimeout.isZero() || shadowTimeout.isNegative()
                 ? Duration.ofSeconds(5)
                 : shadowTimeout;
+    }
+
+    public String effectiveShadowProvider() {
+        return shadowProvider == null || shadowProvider.isBlank()
+                ? "noop"
+                : shadowProvider.trim().toLowerCase(java.util.Locale.ROOT);
     }
 }

@@ -92,7 +92,7 @@ class ConversationOrchestratorTest {
                 new ConversationExecutionPlanFactory(),
                 agentActivationResolver,
                 agentRuntimeDefinitionResolver,
-                new AgentRuntimeProperties(false, "prod", false, Duration.ofSeconds(5)),
+                new AgentRuntimeProperties(false, "prod", false, Duration.ofSeconds(5), "noop"),
                 catalogSpecialistExecutor,
                 responseHumanizer,
                 agentShadowRuntimeService);
@@ -136,7 +136,7 @@ class ConversationOrchestratorTest {
                 new ConversationExecutionPlanFactory(),
                 agentActivationResolver,
                 agentRuntimeDefinitionResolver,
-                new AgentRuntimeProperties(true, "prod", false, Duration.ofSeconds(5)),
+                new AgentRuntimeProperties(true, "prod", false, Duration.ofSeconds(5), "noop"),
                 catalogSpecialistExecutor,
                 responseHumanizer,
                 agentShadowRuntimeService);
@@ -174,7 +174,7 @@ class ConversationOrchestratorTest {
                 new ConversationExecutionPlanFactory(),
                 agentActivationResolver,
                 agentRuntimeDefinitionResolver,
-                new AgentRuntimeProperties(true, "prod", false, Duration.ofSeconds(5)),
+                new AgentRuntimeProperties(true, "prod", false, Duration.ofSeconds(5), "noop"),
                 catalogSpecialistExecutor,
                 responseHumanizer,
                 agentShadowRuntimeService);
@@ -247,7 +247,7 @@ class ConversationOrchestratorTest {
                 new ConversationExecutionPlanFactory(),
                 agentActivationResolver,
                 agentRuntimeDefinitionResolver,
-                new AgentRuntimeProperties(true, "prod", false, Duration.ofSeconds(5)),
+                new AgentRuntimeProperties(true, "prod", false, Duration.ofSeconds(5), "noop"),
                 catalogSpecialistExecutor,
                 responseHumanizer,
                 agentShadowRuntimeService);

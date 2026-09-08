@@ -174,16 +174,23 @@ public class ConversationOrchestrator {
             ConversationExecutionPlan fallback = executionPlanFactory.safeFallback("EXECUTION_FAILED");
             result = ConversationExecutionResult.fallback(fallback, SAFE_FALLBACK, "EXECUTION_FAILED");
         }
-        runShadowSafely(definition, context, plan.useCase());
+        runShadowSafely(definition, context, plan.useCase(), decision, result.response());
         return completeQuery(context, result, startedAt);
     }
 
     private void runShadowSafely(
             AgentRuntimeDefinitionResolution definition,
             ConversationContext context,
-            String useCase) {
+            String useCase,
+            ConversationIntentDecision decision,
+            String activeResponse) {
         try {
-            agentShadowRuntimeService.executeIfEnabled(definition, context, useCase);
+            agentShadowRuntimeService.executeIfEnabled(
+                    definition,
+                    context,
+                    useCase,
+                    decision == null ? null : decision.catalogQuery(),
+                    activeResponse);
         } catch (RuntimeException exception) {
             // Candidate evidence must never break the active customer response.
             StructuredEventLog.warn(log, "AGENT_SHADOW_EXECUTION_FAILED", Map.of(

@@ -2,7 +2,7 @@
 
 Owner: Tech Lead
 Status: `In Progress`
-Related Jira: `WCS-21`, `WCS-22`, `WCS-36`, `WCS-50`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-55`, `WCS-56`, `WCS-57`, `WCS-58`, `WCS-59`, `WCS-60`, `WCS-61`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-85`, `WCS-86`, `WCS-87`, `WCS-88`, `WCS-89`, `WCS-90`, `WCS-91`, `WCS-92`, `WCS-93`, `WCS-94`, `WCS-95`, `WCS-96`, `WCS-100`, `WCS-101`, `WCS-102`
+Related Jira: `WCS-21`, `WCS-22`, `WCS-36`, `WCS-50`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-55`, `WCS-56`, `WCS-57`, `WCS-58`, `WCS-59`, `WCS-60`, `WCS-61`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-85`, `WCS-86`, `WCS-87`, `WCS-88`, `WCS-89`, `WCS-90`, `WCS-91`, `WCS-92`, `WCS-93`, `WCS-94`, `WCS-95`, `WCS-96`, `WCS-100`, `WCS-101`, `WCS-102`, `WCS-103`, `WCS-104`, `WCS-105`
 Related repository paths: `observability/grafana/`, `backoffice/`, `src/main/java/com/wally/customersupport/conversation/infrastructure/http/`, `src/main/java/com/wally/customersupport/conversation/application/service/`, `src/main/java/com/wally/customersupport/shared/infrastructure/observability/`
 
 ## Objetivo de esta iteración
@@ -59,7 +59,7 @@ operacional necesario para diagnóstico y costo, pero sin contenido de negocio.
 | `AGENT_SPECIALIST_EXECUTION_FAILED` | `agentId`, `agentVersion`, `useCase`, `executionMode`, `outcome`, `reason`, `resultStatus`, `resultCount`, `durationMs`, `errorType` | Fallo controlado de la ejecución especializada |
 | `AGENT_SHADOW_EXECUTION_COMPLETED` | `agentId`, `agentVersion`, `modelProvider`, `model`, `channel`, `useCase`, `outcome`, `fallbackReason`, `latencyMs`, `durationMs`, `candidateResponsePublished` | Resultado operativo de una candidata shadow; nunca contiene su respuesta |
 | `AGENT_SHADOW_EVIDENCE_FAILED` | `agentId`, `agentVersion`, `errorType` | Fallo al publicar evidencia sin afectar la respuesta activa |
-| `AGENT_TRAFFIC_COMPARISON_RECORDED` | `comparisonRequestId`, `pseudonymizedConversationId`, `channel`, `useCase`, `agentId`, `agentVersion`, `modelProvider`, `model`, `mode`, `outcome`, `latencyMs`, `inputTokens`, `outputTokens`, `totalTokens`, `estimatedCostUsd`, `fallbackReason`, `candidateResponsePublished` | Evidencia comparable y sanitizada para evaluar shadow/canary |
+| `AGENT_TRAFFIC_COMPARISON_RECORDED` | `comparisonRequestId`, `pseudonymizedConversationId`, `channel`, `useCase`, `agentId`, `agentVersion`, `modelProvider`, `model`, `mode`, `outcome`, `comparisonOutcome`, `latencyMs`, `inputTokens`, `outputTokens`, `totalTokens`, `estimatedCostUsd`, `fallbackReason`, `candidateResponsePublished` | Evidencia comparable y sanitizada para evaluar shadow/canary |
 | `CONVERSATION_QUERY_COMPLETED` | `queryType`, `outcome`, `responseGenerated`, `durationMs`, `correlationId` | Resultado y latencia total de la consulta |
 | `GENERAL_SUPPORT_FAILED` | `errorType`, `correlationId` | Fallback de conocimiento/LLM |
 | `CONVERSATION_CONTEXT_PREPARED` | `recentMessageCount`, `recentCharacters`, `summaryPresent`, `summaryCharacters`, `summaryEnabled` | Tamaño del contexto y activación del resumen, sin contenido |
@@ -285,4 +285,11 @@ por contrato, ejecuta como máximo durante el timeout efectivo y transforma un
 exceso de tokens o presupuesto en `LIMIT_EXCEEDED`. La flag
 `wcs.agent-runtime.shadow-enabled=false` y el executor no-op son el estado
 seguro de producción; cambiar la flag no conecta Bedrock sin un adapter
-aprobado y un runbook de rollout.
+aprobado y un runbook de rollout. WCS-103 agrega `comparisonOutcome` con los
+valores `MATCH`, `MISMATCH` o `UNKNOWN`. El hash SHA-256 de la respuesta activa
+y candidata se calcula sólo en memoria; no se persiste ni se emite en logs.
+WCS-104 agrega el adapter Bedrock sólo cuando
+`wcs.agent-runtime.shadow-provider=bedrock`; recibe filtros de catálogo
+normalizados y una referencia acotada, nunca el mensaje crudo ni identidad del
+cliente. WCS-105 deja la integración cerrada por defecto y documenta el smoke
+con executor fake antes de habilitarla en un ambiente de prueba.
