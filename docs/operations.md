@@ -587,3 +587,32 @@ repetir si cambia la URL temporal; no incluir el token en el comando.
 La implementación usa webhook; el long polling no forma parte del runtime de
 WCS. Para una prueba local, se expone la aplicación con ngrok y se registra esa
 URL temporal.
+
+## Trigger de evaluación del control plane
+
+El endpoint `POST /internal/agent-evaluations/runs` permanece deshabilitado por
+defecto mediante `wcs.agent-evaluation.trigger.enabled=false`. Su activación
+requiere además seguridad JWT habilitada, issuer, audience, el scope exacto
+`agent-evaluation.execute` y un authorizer aprobado. El scope
+`agent-evaluation.read` sólo permite las consultas GET del histórico.
+
+Ejemplo de request sintético, sin secretos:
+
+```bash
+curl -i -X POST "https://<host>/internal/agent-evaluations/runs" \
+  -H "Authorization: Bearer <token>" \
+  -H "Idempotency-Key: evaluation-2026-09-08-001" \
+  -H "Content-Type: application/json" \
+  -d '{"datasetVersion":"catalog-response-v1","agentId":"catalog-specialist","agentVersion":"v1","provider":"mock","modelId":"deterministic-v1"}'
+```
+
+La key se reclama después de autorizar y se guarda únicamente como digest
+SHA-256. Un duplicado devuelve `409 ALREADY_PROCESSED`; no se reejecuta la
+suite. Los eventos pueden filtrarse por `AGENT_EVALUATION_TRIGGER_*`, outcome,
+agentId, model y duración. No registrar tokens JWT, keys crudas, prompts ni
+respuestas.
+
+Para rollback, volver `wcs.agent-evaluation.trigger.enabled` a `false` en
+AppConfig y mantener el runtime conversacional actual. Este slice no requiere
+apply de Terraform ni reinicio salvo que la configuración se lea sólo durante
+el bootstrap.

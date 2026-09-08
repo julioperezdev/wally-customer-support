@@ -6,12 +6,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 /** Prevents internal validation and provider errors from leaking through the API. */
-@RestControllerAdvice(assignableTypes = AgentEvaluationControlPlaneController.class)
+@RestControllerAdvice(assignableTypes = {
+        AgentEvaluationControlPlaneController.class,
+        AgentEvaluationTriggerController.class
+})
 @Slf4j
 public class AgentEvaluationControlPlaneExceptionHandler {
 
@@ -21,7 +25,11 @@ public class AgentEvaluationControlPlaneExceptionHandler {
                 .body(new AgentEvaluationControlPlaneError("INVALID_REQUEST"));
     }
 
-    @ExceptionHandler({MethodArgumentTypeMismatchException.class, MissingServletRequestParameterException.class})
+    @ExceptionHandler({
+            MethodArgumentTypeMismatchException.class,
+            MissingServletRequestParameterException.class,
+            HttpMessageNotReadableException.class
+    })
     ResponseEntity<AgentEvaluationControlPlaneError> malformedRequest() {
         return ResponseEntity.badRequest()
                 .body(new AgentEvaluationControlPlaneError("INVALID_REQUEST"));

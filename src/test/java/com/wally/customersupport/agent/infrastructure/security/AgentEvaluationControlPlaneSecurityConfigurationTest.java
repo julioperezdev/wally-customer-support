@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.Instant;
@@ -107,6 +108,30 @@ class AgentEvaluationControlPlaneSecurityConfigurationTest {
         mockMvc.perform(get("/internal/agent-evaluations/runs")
                         .with(jwt().jwt(token -> token.subject(ACTOR))))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void rejectsReadScopeWhenTryingToExecute() throws Exception {
+        mockMvc.perform(post("/internal/agent-evaluations/runs")
+                        .with(jwt()
+                                .jwt(token -> token.subject(ACTOR).audience(List.of("wcs-control-plane")))
+                                .authorities(new SimpleGrantedAuthority(
+                                        "SCOPE_agent-evaluation.read")))
+                        .contentType("application/json")
+                        .content("{}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void letsExecutionScopeReachThePostHandlerWithoutGrantingReadAccess() throws Exception {
+        mockMvc.perform(post("/internal/agent-evaluations/runs")
+                        .with(jwt()
+                                .jwt(token -> token.subject(ACTOR).audience(List.of("wcs-control-plane")))
+                                .authorities(new SimpleGrantedAuthority(
+                                        "SCOPE_agent-evaluation.execute")))
+                        .contentType("application/json")
+                        .content("{}"))
+                .andExpect(status().isMethodNotAllowed());
     }
 
     @Test
