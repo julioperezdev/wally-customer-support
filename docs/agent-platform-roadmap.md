@@ -3,7 +3,7 @@
 - Owner: Product/Tech Lead
 - Status: `Accepted`
 - Last reviewed: 2026-09-08
-- Related Jira: `WCS-45`, `WCS-60`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-71`, `WCS-72`, `WCS-73`, `WCS-74`, `WCS-75`, `WCS-76`, `WCS-77`, `WCS-78`, `WCS-79`, `WCS-80`, `WCS-81`, `WCS-82`, `WCS-83`, `WCS-84`, `WCS-85`, `WCS-86`, `WCS-87`, `WCS-88`, `WCS-89`, `WCS-90`, `WCS-91`, `WCS-92`, `WCS-93`, `WCS-94`, `WCS-95`, `WCS-96`, `WCS-97`, `WCS-98`, `WCS-99`
+- Related Jira: `WCS-45`, `WCS-60`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-71`, `WCS-72`, `WCS-73`, `WCS-74`, `WCS-75`, `WCS-76`, `WCS-77`, `WCS-78`, `WCS-79`, `WCS-80`, `WCS-81`, `WCS-82`, `WCS-83`, `WCS-84`, `WCS-85`, `WCS-86`, `WCS-87`, `WCS-88`, `WCS-89`, `WCS-90`, `WCS-91`, `WCS-92`, `WCS-93`, `WCS-94`, `WCS-95`, `WCS-96`, `WCS-97`, `WCS-98`, `WCS-99`, `WCS-100`, `WCS-101`, `WCS-102`
 - Baseline: [`wcs-baseline-2026-09-07`](baselines/wcs-baseline-2026-09-07.md)
 - Canonical Confluence: [WCS — Agent Platform Roadmap & Architecture Proposal](https://julioperezdev.atlassian.net/wiki/spaces/SD/pages/7569410/WCS+Agent+Platform+Roadmap+Architecture+Proposal)
 - Related repository paths: `docs/roadmap.md`, `docs/ai.md`, `docs/observability.md`, `docs/decisions/`
@@ -499,6 +499,14 @@ backoffice muestra sus checks e historial con scope read-only, y el contrato de
 shadow/canary define fallback, buckets determinísticos y métricas sanitizadas.
 Hasta cerrar la evidencia de este corte, no se ejecutan llamadas adicionales a
 Bedrock ni se publica una respuesta candidata.
+
+`WCS-100`–`WCS-102` implementan la primera frontera runtime de shadow: el
+orquestador conserva la respuesta activa y ejecuta un candidato aislado con
+timeout, límite de tokens y presupuesto por definición. El executor por
+defecto es no-op y `wcs.agent-runtime.shadow-enabled` permanece en `false`.
+Cada ejecución habilitada emite sólo evidencia sanitizada —agente, versión,
+modelo, canal, caso de uso, latencia, tokens, costo, outcome y fallback—; nunca
+se registra prompt, respuesta o PII.
 
 ### Fase G — Migración controlada
 

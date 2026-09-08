@@ -14,6 +14,7 @@ import com.wally.customersupport.agent.application.service.CatalogSpecialistExec
 import com.wally.customersupport.agent.application.service.CatalogSpecialistExecutor;
 import com.wally.customersupport.agent.application.service.AgentRuntimeDefinitionResolution;
 import com.wally.customersupport.agent.application.service.AgentRuntimeDefinitionResolver;
+import com.wally.customersupport.agent.application.service.AgentShadowRuntimeService;
 import com.wally.customersupport.catalog.application.service.CatalogConversationService;
 import com.wally.customersupport.conversation.application.port.out.ConversationIntentClassifier;
 import com.wally.customersupport.knowledge.application.port.out.KnowledgeRetriever;
@@ -66,6 +67,7 @@ public class ConversationOrchestrator {
     private final AgentRuntimeProperties agentRuntimeProperties;
     private final CatalogSpecialistExecutor catalogSpecialistExecutor;
     private final ResponseHumanizer responseHumanizer;
+    private final AgentShadowRuntimeService agentShadowRuntimeService;
 
     public String replyFor(ConversationContext context) {
         long startedAt = System.nanoTime();
@@ -172,7 +174,22 @@ public class ConversationOrchestrator {
             ConversationExecutionPlan fallback = executionPlanFactory.safeFallback("EXECUTION_FAILED");
             result = ConversationExecutionResult.fallback(fallback, SAFE_FALLBACK, "EXECUTION_FAILED");
         }
+        runShadowSafely(definition, context, plan.useCase());
         return completeQuery(context, result, startedAt);
+    }
+
+    private void runShadowSafely(
+            AgentRuntimeDefinitionResolution definition,
+            ConversationContext context,
+            String useCase) {
+        try {
+            agentShadowRuntimeService.executeIfEnabled(definition, context, useCase);
+        } catch (RuntimeException exception) {
+            // Candidate evidence must never break the active customer response.
+            StructuredEventLog.warn(log, "AGENT_SHADOW_EXECUTION_FAILED", Map.of(
+                    "useCase", useCase,
+                    "errorType", exception.getClass().getSimpleName()));
+        }
     }
 
     private String executeCatalogSearch(

@@ -395,6 +395,9 @@ semántica o AgentCore.
 | WCS-97 | In Progress | Implementar preflight determinístico para activaciones de agentes |
 | WCS-98 | In Progress | Integrar preflight e historial de activaciones en el backoffice |
 | WCS-99 | In Progress | Preparar shadow/canary con métricas comparables y rollback |
+| WCS-100 | In Progress | Agregar frontera runtime para ejecutar candidatos en modo shadow |
+| WCS-101 | In Progress | Registrar evidencia y aplicar límites de costo del flujo shadow |
+| WCS-102 | In Progress | Cubrir shadow end-to-end con pruebas y runbook de habilitación gradual |
 
 WCS-60 no agrega todavía API, persistencia ni ejecución de Bedrock. WCS-61
 agrega persistencia create-only en el schema `wcs` para runs completados y
@@ -488,6 +491,13 @@ una solicitud completa sin mutar el registry, el backoffice lo muestra junto
 con el historial sanitizado usando sólo lectura, y se prepara el contrato de
 shadow/canary con métricas comparables y rollback. No se habilita el runtime,
 no se activa tráfico candidato y no se ejecutan llamadas adicionales a Bedrock.
+
+WCS-100–WCS-102 continúan ese slice con la primera integración runtime segura:
+el orquestador conserva la respuesta activa, el candidato se ejecuta detrás de
+un puerto sin capacidad de publicación, los resultados se limitan por timeout,
+tokens y costo, y la evidencia se registra sin contenido conversacional. La
+configuración permanece cerrada por defecto y el executor real de proveedor
+queda fuera de esta entrega.
 
 `WCS-14`–`WCS-16` y `WCS-17` ya tienen la fundación o el contrato inicial
 versionado; deben completarse/verificarse según la evidencia de cada issue antes
