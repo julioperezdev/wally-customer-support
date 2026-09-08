@@ -13,7 +13,19 @@ public record AgentShadowExecutionResult(
         Integer outputTokens,
         Integer totalTokens,
         BigDecimal estimatedCostUsd,
-        String fallbackReason) {
+        String fallbackReason,
+        String candidateOutputDigest) {
+
+    public AgentShadowExecutionResult(
+            String outcome,
+            long latencyMs,
+            Integer inputTokens,
+            Integer outputTokens,
+            Integer totalTokens,
+            BigDecimal estimatedCostUsd,
+            String fallbackReason) {
+        this(outcome, latencyMs, inputTokens, outputTokens, totalTokens, estimatedCostUsd, fallbackReason, null);
+    }
 
     public AgentShadowExecutionResult {
         if (outcome == null || outcome.isBlank()) {
@@ -31,15 +43,15 @@ public record AgentShadowExecutionResult(
     }
 
     public static AgentShadowExecutionResult disabled(String reason) {
-        return new AgentShadowExecutionResult("DISABLED", 0, null, null, null, null, reason);
+        return new AgentShadowExecutionResult("DISABLED", 0, null, null, null, null, reason, null);
     }
 
     public static AgentShadowExecutionResult skipped(String reason) {
-        return new AgentShadowExecutionResult("SKIPPED", 0, null, null, null, null, reason);
+        return new AgentShadowExecutionResult("SKIPPED", 0, null, null, null, null, reason, null);
     }
 
     public static AgentShadowExecutionResult failed(long latencyMs, String reason) {
-        return new AgentShadowExecutionResult("FAILED", latencyMs, null, null, null, null, reason);
+        return new AgentShadowExecutionResult("FAILED", latencyMs, null, null, null, null, reason, null);
     }
 
     public AgentShadowExecutionResult withLimitOutcome(String reason) {
@@ -50,7 +62,8 @@ public record AgentShadowExecutionResult(
                 outputTokens,
                 totalTokens,
                 estimatedCostUsd,
-                reason);
+                reason,
+                candidateOutputDigest);
     }
 
     private static void validateNonNegative(Integer value, String field) {

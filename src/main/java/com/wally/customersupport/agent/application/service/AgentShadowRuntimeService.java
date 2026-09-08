@@ -20,6 +20,8 @@ import com.wally.customersupport.agent.application.shadow.AgentTrafficMode;
 import com.wally.customersupport.agent.application.shadow.AgentTrafficRoutingDecision;
 import com.wally.customersupport.agent.application.shadow.AgentTrafficRoutingPolicy;
 import com.wally.customersupport.agent.application.shadow.AgentTrafficRoutingRequest;
+import com.wally.customersupport.agent.application.shadow.ShadowResponseDigest;
+import com.wally.customersupport.catalog.domain.model.CatalogQuery;
 import com.wally.customersupport.conversation.domain.model.ConversationContext;
 import com.wally.customersupport.shared.infrastructure.config.AgentRuntimeProperties;
 import com.wally.customersupport.shared.infrastructure.observability.RequestObservabilityFilter;
@@ -47,6 +49,15 @@ public class AgentShadowRuntimeService {
             AgentRuntimeDefinitionResolution definitionResolution,
             ConversationContext context,
             String useCase) {
+        return executeIfEnabled(definitionResolution, context, useCase, null, null);
+    }
+
+    public AgentShadowExecutionResult executeIfEnabled(
+            AgentRuntimeDefinitionResolution definitionResolution,
+            ConversationContext context,
+            String useCase,
+            CatalogQuery catalogQuery,
+            String activeResponse) {
         if (!runtimeProperties.shadowEnabled()) {
             return AgentShadowExecutionResult.disabled("CONFIG_DISABLED");
         }
@@ -67,10 +78,23 @@ public class AgentShadowRuntimeService {
 
         long startedAt = System.nanoTime();
         AgentShadowExecutionResult result = executeWithTimeout(
-                new AgentShadowExecutionRequest(definition, context, useCase),
+                new AgentShadowExecutionRequest(
+                        definition,
+                        context.channel(),
+                        useCase,
+                        catalogQuery,
+                        activeResponse),
                 definition);
         result = enforceLimits(result, definition);
-        publishEvidence(definition, context, useCase, pseudonymizedConversationId, routing, result);
+        String comparisonOutcome = comparisonOutcome(activeResponse, result);
+        publishEvidence(
+                definition,
+                context,
+                useCase,
+                pseudonymizedConversationId,
+                routing,
+                result,
+                comparisonOutcome);
         StructuredEventLog.info(log, "AGENT_SHADOW_EXECUTION_COMPLETED", fields(
                 definition, context, useCase, result, startedAt));
         return result;
@@ -121,7 +145,8 @@ public class AgentShadowRuntimeService {
             String useCase,
             String pseudonymizedConversationId,
             AgentTrafficRoutingDecision routing,
-            AgentShadowExecutionResult result) {
+            AgentShadowExecutionResult result,
+            String comparisonOutcome) {
         try {
             eventPublisher.publish(new AgentTrafficComparisonEvent(
                     MDC.get(RequestObservabilityFilter.REQUEST_ID_MDC_KEY),
@@ -140,6 +165,7 @@ public class AgentShadowRuntimeService {
                     result.totalTokens(),
                     result.estimatedCostUsd(),
                     result.fallbackReason(),
+                    comparisonOutcome,
                     routing.candidateResponsePublished()));
         } catch (RuntimeException exception) {
             StructuredEventLog.warn(log, "AGENT_SHADOW_EVIDENCE_FAILED", Map.of(
@@ -147,6 +173,20 @@ public class AgentShadowRuntimeService {
                     "agentVersion", definition.agentVersion(),
                     "errorType", exception.getClass().getSimpleName()));
         }
+    }
+
+    private static String comparisonOutcome(
+            String activeResponse,
+            AgentShadowExecutionResult result) {
+        if (!"COMPLETED".equals(result.outcome())
+                || activeResponse == null
+                || activeResponse.isBlank()
+                || result.candidateOutputDigest() == null) {
+            return "UNKNOWN";
+        }
+        return ShadowResponseDigest.sha256(activeResponse).equals(result.candidateOutputDigest())
+                ? "MATCH"
+                : "MISMATCH";
     }
 
     private static Map<String, Object> fields(

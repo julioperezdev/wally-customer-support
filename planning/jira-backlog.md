@@ -398,6 +398,9 @@ semántica o AgentCore.
 | WCS-100 | In Progress | Agregar frontera runtime para ejecutar candidatos en modo shadow |
 | WCS-101 | In Progress | Registrar evidencia y aplicar límites de costo del flujo shadow |
 | WCS-102 | In Progress | Cubrir shadow end-to-end con pruebas y runbook de habilitación gradual |
+| WCS-103 | In Progress | Agregar comparación de calidad shadow sin persistir respuestas |
+| WCS-104 | In Progress | Implementar executor Bedrock shadow para catálogo con contexto sanitizado |
+| WCS-105 | In Progress | Cubrir candidata Bedrock shadow con integración y runbook de habilitación en test |
 
 WCS-60 no agrega todavía API, persistencia ni ejecución de Bedrock. WCS-61
 agrega persistencia create-only en el schema `wcs` para runs completados y
@@ -498,6 +501,14 @@ un puerto sin capacidad de publicación, los resultados se limitan por timeout,
 tokens y costo, y la evidencia se registra sin contenido conversacional. La
 configuración permanece cerrada por defecto y el executor real de proveedor
 queda fuera de esta entrega.
+
+WCS-103–WCS-105 amplían el slice en una sola entrega operativa: la respuesta
+activa sigue siendo la autoridad, la comparación usa hashes efímeros y sólo
+publica `MATCH`, `MISMATCH` o `UNKNOWN`, y el candidato Bedrock recibe un
+contexto de catálogo normalizado sin mensaje crudo, identidad, SQL, MCP,
+outbox ni capacidad de publicación. `shadow-provider=noop` es el default; el
+smoke de Bedrock se valida con un executor fake y el rollback consiste en
+deshabilitar shadow, volver a noop y apagar la activación.
 
 `WCS-14`–`WCS-16` y `WCS-17` ya tienen la fundación o el contrato inicial
 versionado; deben completarse/verificarse según la evidencia de cada issue antes

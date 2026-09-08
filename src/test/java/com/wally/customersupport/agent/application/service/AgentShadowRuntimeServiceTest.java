@@ -17,7 +17,9 @@ import com.wally.customersupport.agent.application.port.out.AgentTrafficComparis
 import com.wally.customersupport.agent.application.shadow.AgentShadowExecutionRequest;
 import com.wally.customersupport.agent.application.shadow.AgentShadowExecutionResult;
 import com.wally.customersupport.agent.application.shadow.AgentTrafficComparisonEvent;
+import com.wally.customersupport.agent.application.shadow.ShadowResponseDigest;
 import com.wally.customersupport.agent.domain.model.AgentInferenceParameters;
+import com.wally.customersupport.catalog.domain.model.CatalogQuery;
 import com.wally.customersupport.conversation.domain.model.Channel;
 import com.wally.customersupport.conversation.domain.model.ConversationContext;
 import com.wally.customersupport.shared.infrastructure.config.AgentRuntimeProperties;
@@ -50,7 +52,7 @@ class AgentShadowRuntimeServiceTest {
     @Test
     void remainsClosedByDefault() {
         AgentShadowRuntimeService service = service(new AgentRuntimeProperties(
-                false, "prod", false, Duration.ofSeconds(5)));
+                false, "prod", false, Duration.ofSeconds(5), "noop"));
 
         AgentShadowExecutionResult result = service.executeIfEnabled(
                 AgentRuntimeDefinitionResolution.active(definition), context, "CATALOG_SEARCH");
@@ -63,7 +65,7 @@ class AgentShadowRuntimeServiceTest {
     @Test
     void executesCandidateAndPublishesOnlySanitizedEvidence() {
         AgentShadowRuntimeService service = service(new AgentRuntimeProperties(
-                true, "prod", true, Duration.ofSeconds(1)));
+                true, "prod", true, Duration.ofSeconds(1), "noop"));
         when(executor.execute(any(AgentShadowExecutionRequest.class)))
                 .thenReturn(new AgentShadowExecutionResult(
                         "COMPLETED", 12, 40, 20, 60, new BigDecimal("0.001"), null));
@@ -85,7 +87,7 @@ class AgentShadowRuntimeServiceTest {
     @Test
     void convertsBudgetOverflowIntoARejectedCandidate() {
         AgentShadowRuntimeService service = service(new AgentRuntimeProperties(
-                true, "prod", true, Duration.ofSeconds(1)));
+                true, "prod", true, Duration.ofSeconds(1), "noop"));
         when(executor.execute(any(AgentShadowExecutionRequest.class)))
                 .thenReturn(new AgentShadowExecutionResult(
                         "COMPLETED", 12, 40, 20, 60, new BigDecimal("0.06"), null));
@@ -100,7 +102,7 @@ class AgentShadowRuntimeServiceTest {
     @Test
     void convertsExecutorFailureIntoEvidenceWithoutThrowing() {
         AgentShadowRuntimeService service = service(new AgentRuntimeProperties(
-                true, "prod", true, Duration.ofSeconds(1)));
+                true, "prod", true, Duration.ofSeconds(1), "noop"));
         when(executor.execute(any(AgentShadowExecutionRequest.class)))
                 .thenThrow(new IllegalStateException("provider unavailable"));
 
@@ -110,6 +112,67 @@ class AgentShadowRuntimeServiceTest {
         assertThat(result.outcome()).isEqualTo("FAILED");
         assertThat(result.fallbackReason()).isEqualTo("SHADOW_EXECUTOR_FAILED");
         verify(eventPublisher).publish(any(AgentTrafficComparisonEvent.class));
+    }
+
+    @Test
+    void comparesCandidateDigestWithoutPersistingCandidateText() {
+        AgentShadowRuntimeService service = service(new AgentRuntimeProperties(
+                true, "prod", true, Duration.ofSeconds(1), "noop"));
+        String activeResponse = "Encontré una remera fuente de datos.";
+        when(executor.execute(any(AgentShadowExecutionRequest.class)))
+                .thenReturn(new AgentShadowExecutionResult(
+                        "COMPLETED",
+                        12,
+                        40,
+                        20,
+                        60,
+                        new BigDecimal("0.001"),
+                        null,
+                        ShadowResponseDigest.sha256(activeResponse)));
+
+        AgentShadowExecutionResult result = service.executeIfEnabled(
+                AgentRuntimeDefinitionResolution.active(definition()),
+                context,
+                "CATALOG_SEARCH",
+                new CatalogQuery("NullPointer", null, "M", "Negro"),
+                activeResponse);
+
+        assertThat(result.candidateOutputDigest()).isNotBlank();
+        ArgumentCaptor<AgentTrafficComparisonEvent> eventCaptor =
+                ArgumentCaptor.forClass(AgentTrafficComparisonEvent.class);
+        verify(eventPublisher).publish(eventCaptor.capture());
+        assertThat(eventCaptor.getValue().comparisonOutcome()).isEqualTo("MATCH");
+        assertThat(eventCaptor.getValue().toString()).doesNotContain(activeResponse);
+
+        ArgumentCaptor<AgentShadowExecutionRequest> requestCaptor =
+                ArgumentCaptor.forClass(AgentShadowExecutionRequest.class);
+        verify(executor).execute(requestCaptor.capture());
+        assertThat(requestCaptor.getValue().channel()).isEqualTo(Channel.TELEGRAM);
+        assertThat(requestCaptor.getValue().catalogQuery().name()).isEqualTo("NullPointer");
+        assertThat(requestCaptor.getValue().sanitizedReferenceResponse()).isEqualTo(activeResponse);
+    }
+
+    @Test
+    void classifiesDifferentCandidateDigestAsMismatch() {
+        AgentShadowRuntimeService service = service(new AgentRuntimeProperties(
+                true, "prod", true, Duration.ofSeconds(1), "noop"));
+        String activeResponse = "Respuesta activa";
+        when(executor.execute(any(AgentShadowExecutionRequest.class)))
+                .thenReturn(new AgentShadowExecutionResult(
+                        "COMPLETED", 12, 40, 20, 60, new BigDecimal("0.001"), null,
+                        ShadowResponseDigest.sha256("Respuesta candidata")));
+
+        service.executeIfEnabled(
+                AgentRuntimeDefinitionResolution.active(definition()),
+                context,
+                "CATALOG_SEARCH",
+                null,
+                activeResponse);
+
+        ArgumentCaptor<AgentTrafficComparisonEvent> eventCaptor =
+                ArgumentCaptor.forClass(AgentTrafficComparisonEvent.class);
+        verify(eventPublisher).publish(eventCaptor.capture());
+        assertThat(eventCaptor.getValue().comparisonOutcome()).isEqualTo("MISMATCH");
     }
 
     private AgentShadowRuntimeService service(AgentRuntimeProperties properties) {
