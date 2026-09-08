@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -20,6 +21,7 @@ import com.wally.customersupport.agent.application.evaluation.AgentEvaluationRun
 import com.wally.customersupport.agent.application.evaluation.CatalogResponseEvaluationDataset;
 import com.wally.customersupport.agent.application.port.out.AgentEvaluationRunRepository;
 import com.wally.customersupport.agent.application.service.AgentEvaluationHistoryQueryService;
+import com.wally.customersupport.agent.application.service.AgentEvaluationComparisonApplicationService;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationExecution;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationExecutionMetadata;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationResult;
@@ -110,6 +112,9 @@ class WallyCustomerSupportApplicationIntegrationTest {
 
     @Autowired
     private AgentEvaluationHistoryQueryService agentEvaluationHistoryQueryService;
+
+    @Autowired
+    private AgentEvaluationComparisonApplicationService agentEvaluationComparisonApplicationService;
 
     @Test
     void startsWithFlywayAndTestAdapters() {
@@ -387,13 +392,57 @@ class WallyCustomerSupportApplicationIntegrationTest {
         assertTrue(!firstPage.toString().contains("Remera NullPointer"));
     }
 
+    @Test
+    void comparesPersistedEvaluationRunsWithoutReturningResponseContent() {
+        String datasetVersion = "comparison-dataset-" + UUID.randomUUID();
+        Instant completedAt = Instant.parse("2026-09-08T01:00:00Z");
+        UUID baselineId = UUID.randomUUID();
+        UUID candidateId = UUID.randomUUID();
+        agentEvaluationRunRepository.save(evaluationRun(
+                baselineId,
+                datasetVersion,
+                "comparison-agent",
+                completedAt,
+                new AgentEvaluationExecutionMetadata(
+                        "comparison-agent", "v1", "mock", "model-v1", 10, 20L,
+                        null, null, 100, new BigDecimal("0.10"), "test-pricing-v1")));
+        agentEvaluationRunRepository.save(evaluationRun(
+                candidateId,
+                datasetVersion,
+                "comparison-agent",
+                completedAt,
+                new AgentEvaluationExecutionMetadata(
+                        "comparison-agent", "v2", "mock", "model-v2", 10, 25L,
+                        null, null, 150, new BigDecimal("0.15"), "test-pricing-v1")));
+
+        var comparison = agentEvaluationComparisonApplicationService
+                .compare(baselineId, candidateId)
+                .orElseThrow();
+
+        assertEquals(datasetVersion, comparison.datasetVersion());
+        assertEquals(50, comparison.metricDelta().totalTokensDelta().orElseThrow());
+        assertEquals(5, comparison.metricDelta().providerLatencyMsDelta().orElseThrow());
+        assertEquals(new BigDecimal("0.05"), comparison.metricDelta().estimatedCostUsdDelta().orElseThrow());
+        assertEquals(1, comparison.scenarios().size());
+        assertTrue(!comparison.toString().contains("Remera NullPointer"));
+    }
+
     private AgentEvaluationRun evaluationRun(
             UUID runId,
             String datasetVersion,
             String agentId,
             Instant completedAt) {
+        return evaluationRun(runId, datasetVersion, agentId, completedAt, null);
+    }
+
+    private AgentEvaluationRun evaluationRun(
+            UUID runId,
+            String datasetVersion,
+            String agentId,
+            Instant completedAt,
+            AgentEvaluationExecutionMetadata metadata) {
         AgentEvaluationResult scenario = new AgentEvaluationResult(
-                "scenario-1", datasetVersion, true, 1.0, List.of(), null);
+                "scenario-1", datasetVersion, true, 1.0, List.of(), metadata);
         return new AgentEvaluationRun(
                 runId,
                 datasetVersion,
