@@ -263,3 +263,16 @@ latencias y contadores sin parsear logs, alertas de 4xx/5xx y fallos de
 entrega, correlation ID entre webhook y outbox, y eventualmente trazas. La
 fuente de verdad seguirá siendo esta documentación junto con las consultas y
 dashboards versionados.
+
+## Comparación shadow/canary
+
+El contrato `AgentTrafficComparisonEvent` permite comparar una candidata con la
+versión activa sin incluir contenido conversacional. Sus dimensiones son
+agente, versión, modelo, canal, caso de uso, modo, outcome y fallback; sus
+métricas son latencia, tokens y costo estimado. `SHADOW` siempre marca la
+respuesta candidata como no publicable. `CANARY` usa un bucket determinístico
+sobre una clave ya pseudonimizada y cae al runtime activo fuera del porcentaje.
+
+Estos tipos preparan la instrumentación; no habilitan por sí solos tráfico
+adicional ni llamadas de Bedrock. La promoción requiere dataset, umbrales,
+aprobación y rollback documentados en WCS-99.

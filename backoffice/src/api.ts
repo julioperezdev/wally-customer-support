@@ -96,6 +96,23 @@ export type AgentRegistryAgent = {
   activations: AgentRegistryActivation[];
 };
 
+export type AgentActivationPreflightCheck = {
+  code: string;
+  status: "PASS" | "WARN" | "FAIL";
+  message: string;
+};
+
+export type AgentActivationPreflight = {
+  status: "READY" | "BLOCKED" | "DENIED";
+  canActivate: boolean;
+  agentId: string;
+  agentVersion: number;
+  environment: string;
+  channel: string;
+  useCase: string;
+  checks: AgentActivationPreflightCheck[];
+};
+
 export type Comparison = {
   baselineRunId: string;
   candidateRunId: string;
@@ -181,15 +198,47 @@ export function createControlPlaneClient(baseUrl: string, token: string, registr
       if (filters.useCase?.trim()) params.set("useCase", filters.useCase.trim());
       params.set("limit", String(filters.limit ?? 50));
       return requestFrom<AgentRegistryAgent[]>(normalizedRegistryBaseUrl, `/agents?${params.toString()}`);
+    },
+    preflightActivation(request: {
+      agentId: string;
+      agentVersion: number;
+      environment: string;
+      channel: string;
+      useCase: string;
+      reason: string;
+      rolloutPercentage: number;
+      enabled: boolean;
+      approvalReference: string;
+      operationalApprovalReference: string;
+    }) {
+      return requestFrom<AgentActivationPreflight>(
+        normalizedRegistryBaseUrl,
+        "/activations/preflight",
+        {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            ...(token.trim() ? { Authorization: `Bearer ${token.trim()}` } : {})
+          },
+          body: JSON.stringify(request)
+        });
     }
   };
 
-  async function requestFrom<T>(root: string, path: string): Promise<T> {
-    const headers: Record<string, string> = { Accept: "application/json" };
+  async function requestFrom<T>(
+    root: string,
+    path: string,
+    init?: RequestInit
+  ): Promise<T> {
+    const headers: Record<string, string> = {
+      Accept: "application/json",
+      ...(init?.headers as Record<string, string> | undefined)
+    };
     if (token.trim()) {
       headers.Authorization = `Bearer ${token.trim()}`;
     }
-    const response = await fetch(`${root}${path}`, { headers });
+    const response = await fetch(`${root}${path}`, { ...init, headers });
     if (!response.ok) {
       let code = "CONTROL_PLANE_ERROR";
       try {

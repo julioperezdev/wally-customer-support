@@ -4,6 +4,7 @@ import java.security.Principal;
 
 import com.wally.customersupport.agent.application.activation.AgentActivationMutationResult;
 import com.wally.customersupport.agent.application.service.AgentActivationCommandService;
+import com.wally.customersupport.agent.application.service.AgentActivationPreflightService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,13 +22,29 @@ public class AgentActivationController {
     private static final String IDEMPOTENCY_HEADER = "Idempotency-Key";
 
     private final AgentActivationCommandService commandService;
+    private final AgentActivationPreflightService preflightService;
     private final boolean writeEnabled;
 
     public AgentActivationController(
             AgentActivationCommandService commandService,
+            AgentActivationPreflightService preflightService,
             @Value("${wcs.agent-registry.activation-write-enabled:false}") boolean writeEnabled) {
         this.commandService = commandService;
+        this.preflightService = preflightService;
         this.writeEnabled = writeEnabled;
+    }
+
+    @PostMapping("/preflight")
+    public ResponseEntity<AgentActivationPreflightHttpResponse> preflight(
+            Principal principal,
+            @RequestBody AgentActivationHttpRequest request) {
+        AgentActivationPreflightHttpResponse response = AgentActivationPreflightHttpResponse.from(
+                preflightService.check(request.toPreflightCommand(), actor(principal)));
+        return switch (response.status()) {
+            case "READY" -> ResponseEntity.ok(response);
+            case "DENIED" -> ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+            default -> ResponseEntity.unprocessableEntity().body(response);
+        };
     }
 
     @PostMapping

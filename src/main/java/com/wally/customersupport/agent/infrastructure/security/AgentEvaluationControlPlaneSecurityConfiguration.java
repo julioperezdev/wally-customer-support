@@ -92,6 +92,8 @@ public class AgentEvaluationControlPlaneSecurityConfiguration {
                         .hasAuthority(REQUIRED_AUTHORITY)
                         .requestMatchers(HttpMethod.GET, "/internal/agent-registry/**")
                         .hasAuthority(REGISTRY_READ_AUTHORITY)
+                        .requestMatchers(HttpMethod.POST, "/internal/agent-registry/activations/preflight")
+                        .hasAuthority(REGISTRY_READ_AUTHORITY)
                         .requestMatchers(HttpMethod.POST, "/internal/agent-registry/activations/**")
                         .hasAuthority(REGISTRY_WRITE_AUTHORITY)
                         .anyRequest().denyAll())

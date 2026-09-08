@@ -41,6 +41,16 @@ public class AgentEvaluationControlPlaneAccessService {
                 REGISTRY_READ_CAPABILITY));
     }
 
+    /** Builds a read-only registry request for the explicitly requested environment. */
+    public AgentEvaluationControlPlaneAccessDecision authorizeRegistry(
+            String actorId,
+            String requestedEnvironment) {
+        return authorize(new AgentEvaluationControlPlaneAccessRequest(
+                actorId,
+                requestedEnvironment,
+                REGISTRY_READ_CAPABILITY));
+    }
+
     /** Builds the internal registry mutation request without accepting an environment from HTTP callers. */
     public AgentEvaluationControlPlaneAccessDecision authorizeRegistryWrite(String actorId) {
         return authorize(new AgentEvaluationControlPlaneAccessRequest(

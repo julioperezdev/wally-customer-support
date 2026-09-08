@@ -666,3 +666,28 @@ Para rollback, volver `wcs.agent-evaluation.trigger.enabled` a `false` en
 AppConfig y mantener el runtime conversacional actual. Este slice no requiere
 apply de Terraform ni reinicio salvo que la configuración se lea sólo durante
 el bootstrap.
+
+## Preflight y shadow/canary del registry
+
+Antes de cualquier activación se puede consultar
+`POST /internal/agent-registry/activations/preflight` con el scope
+`agent-registry.read`. Es una validación sin mutaciones: no reclama
+`Idempotency-Key`, no persiste claims, no cambia AppConfig y no publica ningún
+mensaje. El resultado `READY` sólo significa que la solicitud supera los
+checks; todavía requiere la API write-only, aprobaciones válidas y la flag de
+escritura habilitada por un procedimiento operativo separado.
+
+La migración controlada usa tres modos conceptuales:
+
+- `SHADOW`: puede evaluar una candidata, pero nunca publica su respuesta; el
+  runtime activo sigue siendo la respuesta al usuario.
+- `CANARY`: selecciona de forma determinística un porcentaje de conversaciones
+  pseudonimizadas y hace fallback a la versión activa fuera del bucket.
+- `ACTIVE`: conserva el runtime actual como fuente de verdad durante esta fase.
+
+Los eventos de comparación sólo pueden contener metadatos sanitizados:
+`requestId`, conversación pseudonimizada, canal, caso de uso, agente/versión,
+modo, outcome, latencia, tokens, costo, razón de fallback y si se publicó la
+respuesta candidata. Nunca se almacenan prompts, mensajes completos, secretos
+ni números de teléfono. Hasta que exista evidencia de WCS-97/98/99, no se
+ejecuta Bedrock adicional ni se habilita tráfico shadow/canary en producción.
