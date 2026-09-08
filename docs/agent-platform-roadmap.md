@@ -3,7 +3,7 @@
 - Owner: Product/Tech Lead
 - Status: `Accepted`
 - Last reviewed: 2026-09-08
-- Related Jira: `WCS-45`, `WCS-60`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`
+- Related Jira: `WCS-45`, `WCS-60`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`
 - Baseline: [`wcs-baseline-2026-09-07`](baselines/wcs-baseline-2026-09-07.md)
 - Canonical Confluence: [WCS — Agent Platform Roadmap & Architecture Proposal](https://julioperezdev.atlassian.net/wiki/spaces/SD/pages/7569410/WCS+Agent+Platform+Roadmap+Architecture+Proposal)
 - Related repository paths: `docs/roadmap.md`, `docs/ai.md`, `docs/observability.md`, `docs/decisions/`
@@ -250,6 +250,13 @@ tomar la fecha de vencimiento como autorización de borrado.
 de los runs y devuelve sólo decisiones y contadores sanitizados.
 `WCS-67` agrega el gate de aprobación operativa como evidencia tipada, sin
 reemplazar autenticación/autorización técnica ni ejecutar retención.
+`WCS-68` agrega la frontera provider-neutral de autorización técnica para un
+futuro trigger, con capacidad y ambiente exactos y denegación por defecto.
+`WCS-69` conecta esa autorización con una frontera de ejecución interna
+idempotente: la key se reclama sólo después de autorizar y la evaluación se
+delega en `AgentEvaluationApplicationService`. El resultado es sanitizado y
+el guard debe tener un adapter atómico antes de exponer el flujo a un trigger
+remoto.
 
 La ejecución de evaluaciones queda separada en tres piezas:
 
@@ -402,8 +409,8 @@ sanitizada, consulta histórica, comparación, exportación, política de
 retención, eventos estructurados, dashboards y presupuesto por agente.
 `WCS-60`–`WCS-65` completan la primera frontera interna; las siguientes tareas
 deben agregar la activación aprobada de retención, un disparador autenticado y
-luego la comparación de modelos reales. `WCS-66` y `WCS-67` todavía no exponen
-una API ni invocan un proceso de purga. La promoción requiere evidencia
+luego la comparación de modelos reales. `WCS-66`, `WCS-67` y `WCS-68` todavía no
+exponen una API ni invocan un proceso de purga. La promoción requiere evidencia
 comparable.
 
 ### Fase F — Backoffice

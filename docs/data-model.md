@@ -3,7 +3,7 @@
 Owner: Tech Lead  
 Status: `Proposed`  
 Last reviewed: 2026-09-06
-Related Jira: `WCS-13`, `WCS-14`, `WCS-15`, `WCS-16`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-37`, `WCS-47`, `WCS-48`, `WCS-51`, `WCS-60`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`
+Related Jira: `WCS-13`, `WCS-14`, `WCS-15`, `WCS-16`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-37`, `WCS-47`, `WCS-48`, `WCS-51`, `WCS-60`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`
 Related repository paths: `src/main/java/com/wally/customersupport/{conversation,catalog,support,agent}/infrastructure/repository/postgres`, `src/main/resources/db/migration`
 
 ## Aislamiento en el RDS compartido
@@ -232,6 +232,8 @@ WCS-66 revisa páginas de resúmenes en memoria y tampoco agrega columnas,
 persistencia, escrituras o acciones de eliminación.
 WCS-67 modela la evidencia del gate en memoria; no persiste aprobaciones ni
 introduce campos de auditoría en PostgreSQL.
+WCS-68 mantiene la autorización técnica como un contrato en memoria; no
+persiste tokens, claims ni idempotency keys.
 
 ### Otras entidades futuras
 
