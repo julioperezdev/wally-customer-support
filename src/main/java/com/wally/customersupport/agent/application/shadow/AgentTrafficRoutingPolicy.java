@@ -15,12 +15,21 @@ public class AgentTrafficRoutingPolicy {
 
     public AgentTrafficRoutingDecision decide(AgentTrafficRoutingRequest request) {
         return switch (request.mode()) {
-            case SHADOW -> new AgentTrafficRoutingDecision(
-                    AgentTrafficMode.SHADOW, true, false, true, "SHADOW_NEVER_PUBLISHES_CANDIDATE");
+            case SHADOW -> shadowDecision(request);
             case ACTIVE -> new AgentTrafficRoutingDecision(
                     AgentTrafficMode.ACTIVE, false, false, true, "ACTIVE_RUNTIME_REMAINS_SOURCE_OF_TRUTH");
             case CANARY -> canaryDecision(request);
         };
+    }
+
+    private static AgentTrafficRoutingDecision shadowDecision(AgentTrafficRoutingRequest request) {
+        boolean selected = bucket(request.pseudonymizedConversationKey()) < request.rolloutPercentage();
+        return new AgentTrafficRoutingDecision(
+                AgentTrafficMode.SHADOW,
+                selected,
+                false,
+                true,
+                selected ? "SHADOW_BUCKET_SELECTED" : "SHADOW_BUCKET_NOT_SELECTED");
     }
 
     private static AgentTrafficRoutingDecision canaryDecision(AgentTrafficRoutingRequest request) {

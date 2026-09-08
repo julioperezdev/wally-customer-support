@@ -523,6 +523,12 @@ conversacional; y un smoke reproducible verifica la frontera con datos
 sintéticos. `APPROVE_FOR_REVIEW` sólo habilita una revisión humana: no activa
 agentes, no publica candidatos y no cambia AppConfig ni Terraform.
 
+`WCS-109`–`WCS-111` agregan la barrera de rollout: el executor sólo puede
+invocarse en un ambiente allowlisted y cuando el bucket determinístico cae
+dentro del porcentaje configurado. El default es `test` con `0%`; se cubren
+skips, fallback activo y smoke sin publicar candidatos. Esta entrega no
+habilita `prod` ni cambia infraestructura.
+
 ### Fase G — Migración controlada
 
 Ejecutar shadow/canary por canal y caso de uso. Comparar contra el runtime

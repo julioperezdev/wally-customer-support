@@ -52,7 +52,7 @@ class AgentShadowRuntimeServiceTest {
     @Test
     void remainsClosedByDefault() {
         AgentShadowRuntimeService service = service(new AgentRuntimeProperties(
-                false, "prod", false, Duration.ofSeconds(5), "noop"));
+                false, "prod", false, Duration.ofSeconds(5), "noop", "test", 0));
 
         AgentShadowExecutionResult result = service.executeIfEnabled(
                 AgentRuntimeDefinitionResolution.active(definition), context, "CATALOG_SEARCH");
@@ -63,9 +63,37 @@ class AgentShadowRuntimeServiceTest {
     }
 
     @Test
+    void refusesShadowInAnEnvironmentOutsideTheAllowlist() {
+        AgentShadowRuntimeService service = service(new AgentRuntimeProperties(
+                true, "prod", true, Duration.ofSeconds(1), "noop", "test", 100));
+
+        AgentShadowExecutionResult result = service.executeIfEnabled(
+                AgentRuntimeDefinitionResolution.active(definition), context, "CATALOG_SEARCH");
+
+        assertThat(result.outcome()).isEqualTo("SKIPPED");
+        assertThat(result.fallbackReason()).isEqualTo("SHADOW_ENVIRONMENT_NOT_ALLOWED");
+        verify(executor, never()).execute(any());
+        verify(eventPublisher, never()).publish(any());
+    }
+
+    @Test
+    void refusesShadowWhenTrafficPercentageIsZero() {
+        AgentShadowRuntimeService service = service(new AgentRuntimeProperties(
+                true, "test", true, Duration.ofSeconds(1), "noop", "test", 0));
+
+        AgentShadowExecutionResult result = service.executeIfEnabled(
+                AgentRuntimeDefinitionResolution.active(definition), context, "CATALOG_SEARCH");
+
+        assertThat(result.outcome()).isEqualTo("SKIPPED");
+        assertThat(result.fallbackReason()).isEqualTo("SHADOW_TRAFFIC_DISABLED");
+        verify(executor, never()).execute(any());
+        verify(eventPublisher, never()).publish(any());
+    }
+
+    @Test
     void executesCandidateAndPublishesOnlySanitizedEvidence() {
         AgentShadowRuntimeService service = service(new AgentRuntimeProperties(
-                true, "prod", true, Duration.ofSeconds(1), "noop"));
+                true, "test", true, Duration.ofSeconds(1), "noop", "test", 100));
         when(executor.execute(any(AgentShadowExecutionRequest.class)))
                 .thenReturn(new AgentShadowExecutionResult(
                         "COMPLETED", 12, 40, 20, 60, new BigDecimal("0.001"), null));
@@ -87,7 +115,7 @@ class AgentShadowRuntimeServiceTest {
     @Test
     void convertsBudgetOverflowIntoARejectedCandidate() {
         AgentShadowRuntimeService service = service(new AgentRuntimeProperties(
-                true, "prod", true, Duration.ofSeconds(1), "noop"));
+                true, "test", true, Duration.ofSeconds(1), "noop", "test", 100));
         when(executor.execute(any(AgentShadowExecutionRequest.class)))
                 .thenReturn(new AgentShadowExecutionResult(
                         "COMPLETED", 12, 40, 20, 60, new BigDecimal("0.06"), null));
@@ -102,7 +130,7 @@ class AgentShadowRuntimeServiceTest {
     @Test
     void convertsExecutorFailureIntoEvidenceWithoutThrowing() {
         AgentShadowRuntimeService service = service(new AgentRuntimeProperties(
-                true, "prod", true, Duration.ofSeconds(1), "noop"));
+                true, "test", true, Duration.ofSeconds(1), "noop", "test", 100));
         when(executor.execute(any(AgentShadowExecutionRequest.class)))
                 .thenThrow(new IllegalStateException("provider unavailable"));
 
@@ -117,7 +145,7 @@ class AgentShadowRuntimeServiceTest {
     @Test
     void comparesCandidateDigestWithoutPersistingCandidateText() {
         AgentShadowRuntimeService service = service(new AgentRuntimeProperties(
-                true, "prod", true, Duration.ofSeconds(1), "noop"));
+                true, "test", true, Duration.ofSeconds(1), "noop", "test", 100));
         String activeResponse = "Encontré una remera fuente de datos.";
         when(executor.execute(any(AgentShadowExecutionRequest.class)))
                 .thenReturn(new AgentShadowExecutionResult(
@@ -155,7 +183,7 @@ class AgentShadowRuntimeServiceTest {
     @Test
     void classifiesDifferentCandidateDigestAsMismatch() {
         AgentShadowRuntimeService service = service(new AgentRuntimeProperties(
-                true, "prod", true, Duration.ofSeconds(1), "noop"));
+                true, "test", true, Duration.ofSeconds(1), "noop", "test", 100));
         String activeResponse = "Respuesta activa";
         when(executor.execute(any(AgentShadowExecutionRequest.class)))
                 .thenReturn(new AgentShadowExecutionResult(

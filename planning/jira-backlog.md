@@ -404,6 +404,9 @@ semántica o AgentCore.
 | WCS-106 | In Progress | Definir scorecard y gates de promoción para shadow/canary |
 | WCS-107 | In Progress | Crear smoke reproducible para validar shadow sin publicar respuestas |
 | WCS-108 | In Progress | Agregar observabilidad de comparación shadow y scorecard en Grafana |
+| WCS-109 | In Progress | Documentar contrato de rollout shadow sólo para test |
+| WCS-110 | In Progress | Blindar shadow por ambiente autorizado y porcentaje de tráfico |
+| WCS-111 | In Progress | Cubrir rollout shadow con pruebas de integración y fallback activo |
 
 WCS-60 no agrega todavía API, persistencia ni ejecución de Bedrock. WCS-61
 agrega persistencia create-only en el schema `wcs` para runs completados y
@@ -519,6 +522,12 @@ regresión o queda lista para revisión humana; el smoke usa datos sintéticos y
 no publica candidatos; y Grafana/CloudWatch muestra comparación, latencia,
 tokens y costo sin contenido conversacional. No se habilita promoción
 automática, Bedrock real en CI, Terraform ni tráfico productivo.
+
+`WCS-109`–`WCS-111` forman la siguiente entrega agrupada: el runtime exige una
+allowlist de ambiente y un porcentaje determinístico antes de invocar shadow,
+la documentación ordena el rollout desde `0%` en `test`, y las pruebas
+verifican que la respuesta activa siga siendo la única publicada. No se habilita
+`prod`, tráfico real ni nueva infraestructura.
 
 `WCS-14`–`WCS-16` y `WCS-17` ya tienen la fundación o el contrato inicial
 versionado; deben completarse/verificarse según la evidencia de cada issue antes

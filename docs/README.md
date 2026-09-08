@@ -43,6 +43,7 @@
   - [`026-agent-evaluation-trigger-http.md`](decisions/026-agent-evaluation-trigger-http.md): trigger HTTP autenticado, scopes separados e idempotencia.
   - [`028-shadow-quality-comparison-and-bedrock-candidate.md`](decisions/028-shadow-quality-comparison-and-bedrock-candidate.md): comparación efímera y candidata Bedrock cerrada por defecto.
   - [`029-shadow-quality-scorecard-and-observability.md`](decisions/029-shadow-quality-scorecard-and-observability.md): scorecard determinístico y observabilidad de shadow sin autoridad de activación.
+  - [`030-controlled-shadow-rollout.md`](decisions/030-controlled-shadow-rollout.md): allowlist de ambiente y porcentaje determinístico para rollout shadow.
 
 ## Calidad y operación
 
