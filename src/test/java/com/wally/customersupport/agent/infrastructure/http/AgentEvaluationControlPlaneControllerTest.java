@@ -63,7 +63,7 @@ class AgentEvaluationControlPlaneControllerTest {
         when(accessService.authorize(ACTOR)).thenReturn(denied());
 
         mockMvc.perform(get("/internal/agent-evaluations/runs")
-                        .header(AgentEvaluationControlPlaneController.ACTOR_HEADER, ACTOR))
+                        .principal(() -> ACTOR))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
 
@@ -77,7 +77,7 @@ class AgentEvaluationControlPlaneControllerTest {
                 new AgentEvaluationHistoryPage(List.of(), 0, 20, 0, 0));
 
         mockMvc.perform(get("/internal/agent-evaluations/runs")
-                        .header(AgentEvaluationControlPlaneController.ACTOR_HEADER, ACTOR)
+                        .principal(() -> ACTOR)
                         .param("datasetVersion", "catalog-response-v1")
                         .param("completedFrom", "2026-09-08T00:00:00Z")
                         .param("completedTo", "2026-09-08T23:59:59Z")
@@ -97,7 +97,7 @@ class AgentEvaluationControlPlaneControllerTest {
         when(historyQueryService.findById(RUN_ID)).thenReturn(Optional.empty());
 
         mockMvc.perform(get("/internal/agent-evaluations/runs/{runId}", RUN_ID)
-                        .header(AgentEvaluationControlPlaneController.ACTOR_HEADER, ACTOR))
+                        .principal(() -> ACTOR))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("RUN_NOT_FOUND"));
     }
@@ -109,7 +109,7 @@ class AgentEvaluationControlPlaneControllerTest {
                 .thenThrow(new IncompatibleEvaluationDatasetException());
 
         mockMvc.perform(get("/internal/agent-evaluations/comparisons")
-                        .header(AgentEvaluationControlPlaneController.ACTOR_HEADER, ACTOR)
+                        .principal(() -> ACTOR)
                         .param("baselineRunId", RUN_ID.toString())
                         .param("candidateRunId", "00000000-0000-0000-0000-000000000012"))
                 .andExpect(status().isConflict())
@@ -119,7 +119,7 @@ class AgentEvaluationControlPlaneControllerTest {
     @Test
     void rejectsMalformedIdentifiersAndDoesNotCallTheApplicationService() throws Exception {
         mockMvc.perform(get("/internal/agent-evaluations/comparisons")
-                        .header(AgentEvaluationControlPlaneController.ACTOR_HEADER, ACTOR)
+                        .principal(() -> ACTOR)
                         .param("baselineRunId", "not-a-uuid")
                         .param("candidateRunId", RUN_ID.toString()))
                 .andExpect(status().isBadRequest())
@@ -133,7 +133,7 @@ class AgentEvaluationControlPlaneControllerTest {
         when(accessService.authorize(ACTOR)).thenReturn(authorized());
 
         mockMvc.perform(get("/internal/agent-evaluations/runs")
-                        .header(AgentEvaluationControlPlaneController.ACTOR_HEADER, ACTOR)
+                        .principal(() -> ACTOR)
                         .param("size", "101"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));

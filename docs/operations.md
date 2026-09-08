@@ -2,8 +2,8 @@
 
 Owner: Tech Lead  
 Status: `Accepted`
-Last reviewed: 2026-09-06  
-Related Jira: `WCS-13`, `WCS-21`, `WCS-22`, `WCS-30`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-38`, `WCS-39`, `WCS-40`, `WCS-41`, `WCS-42`
+Last reviewed: 2026-09-08
+Related Jira: `WCS-13`, `WCS-21`, `WCS-22`, `WCS-30`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-38`, `WCS-39`, `WCS-40`, `WCS-41`, `WCS-42`, `WCS-76`, `WCS-77`, `WCS-78`
 Related repository paths: `src/main/resources`, `.github/workflows`, `infra/`
 
 ## Ambientes
@@ -193,6 +193,9 @@ wcs.ai.output-price-usd-per-million-tokens
 wcs.rag.provider
 wcs.rag.max-results
 wcs.rag.knowledge-base-id (cuando el adapter Bedrock KB esté habilitado)
+wcs.agent-evaluation.control-plane.security.enabled
+wcs.agent-evaluation.control-plane.security.issuer-uri
+wcs.agent-evaluation.control-plane.security.audience
 ```
 
 ### AWS Secrets Manager — secretos
@@ -364,6 +367,37 @@ prompt utilizado. Si falta la versión, hay mismatch, el estado no es publicable
 o falla el registry, se conserva el flujo anterior. Para rollback se vuelve a
 publicar la flag en `false`; no se eliminan activaciones ni se modifica la
 migración V9.
+
+### Seguridad del control plane de evaluaciones
+
+El endpoint read-only `/internal/agent-evaluations/**` se protege de forma
+condicional con Spring Security Resource Server. La configuración estable es:
+
+```properties
+wcs.agent-evaluation.control-plane.security.enabled=false
+wcs.agent-evaluation.control-plane.security.issuer-uri=
+wcs.agent-evaluation.control-plane.security.audience=
+```
+
+Al habilitarla, el runtime descubre las claves públicas del `issuer-uri`,
+valida firma, issuer, expiración, audience y exige el scope exacto
+`agent-evaluation.read`. El `sub` del JWT se usa como actor para la frontera
+provider-neutral; no se acepta un actor libre en un header. La seguridad se
+mantiene deshabilitada por defecto porque todavía no se provisionó un IdP ni
+se aprobó un cliente del backoffice.
+
+La cadena protegida sólo hace match con `/internal/agent-evaluations/**`.
+Webhooks de Telegram/WhatsApp, actuator y demás rutas públicas conservan su
+comportamiento existente. Una solicitud sin token devuelve `401`; un token
+válido sin el scope devuelve `403`; un token válido con subject y scope
+correctos llega al servicio de aplicación, que conserva su propia autorización
+deny-by-default y sus logs sanitizados.
+
+Para el rollout, primero provisionar el IdP y verificar issuer, audience y
+scopes en un ambiente no productivo. Luego publicar las tres propiedades en
+AppConfig, reiniciar App Runner y ejecutar los casos `200/401/403` sin exponer
+tokens. Para rollback, volver `enabled` a `false` y reiniciar; esto no modifica
+datos ni migraciones. Este slice no crea Cognito, IAM, WAF ni permisos nuevos.
 
 ### Precedencia y modos de ejecución
 

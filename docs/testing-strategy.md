@@ -62,6 +62,14 @@ comprobar que la key se guarda sólo como digest SHA-256, que el reintento es
 rechazado y que dos claims concurrentes de la misma key producen exactamente
 un éxito.
 
+WCS-76–WCS-78 agregan la prueba de la cadena JWT sólo para el control plane:
+un JWT sintético con subject, audience y scope correctos obtiene `200`; la
+ausencia de bearer token obtiene `401`; el scope ausente obtiene `403`; y los
+tokens expirados o con audience incorrecta fallan la validación. Una ruta de
+webhook sintética se verifica en paralelo para demostrar que permanece fuera
+de esta frontera. Las pruebas inyectan un `JwtDecoder` sintético y nunca
+contactan un IdP real.
+
 ## Matriz funcional mínima
 
 | ID | Prioridad | Prueba | Resultado esperado | Evidencia |
@@ -138,6 +146,11 @@ un éxito.
 | `TC-064` | P1 | API read-only autorizada | Respeta filtros, paginación y orden del histórico | MockMvc + application |
 | `TC-065` | P1 | Errores del control plane | Mapea request inválido a `400`, run ausente a `404` y dataset incompatible a `409` | MockMvc |
 | `TC-066` | P1 | Acceso observable y sanitizado | Registra operación, capacidad, resultado y duración sin actor crudo ni contenido | MockMvc + logs |
+| `TC-067` | P1 | JWT válido del control plane | Subject, audience y scope exactos permiten la lectura y llegan como actor | MockMvc + Security Test |
+| `TC-068` | P1 | JWT ausente | Una ruta interna protegida devuelve `401` sin invocar aplicación | MockMvc + Security Test |
+| `TC-069` | P1 | Scope ausente | Un JWT autenticado sin `agent-evaluation.read` devuelve `403` | MockMvc + Security Test |
+| `TC-070` | P1 | JWT inválido | Expiración o audience incorrecta no supera la validación | Unit validator |
+| `TC-071` | P1 | Rutas públicas preservadas | Webhook y health no quedan bloqueados por la cadena interna | MockMvc + Security Test |
 | `TC-041` | P1 | Uso real de Bedrock | Emite `AI_USAGE_RECORDED` con modelo, tokens, latencia, pricing version y costo estimado | Test del adapter + log sanitizado |
 | `TC-042` | P1 | Consultas de observabilidad | CloudWatch agrega consultas, IA, RAG y entregas sin errores de campos | Logs Insights/Grafana |
 
