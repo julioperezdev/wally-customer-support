@@ -226,11 +226,19 @@ wcs.ai.region
 wcs.ai.pricing-version
 wcs.ai.input-price-usd-per-million-tokens
 wcs.ai.output-price-usd-per-million-tokens
+wcs.ai.request-timeout
 wcs.ai.prompt.intent-version
 wcs.ai.prompt.intent-max-output-tokens
 wcs.ai.prompt.intent-temperature
 wcs.ai.prompt.max-input-characters
 wcs.ai.prompt.max-history-messages
+wcs.ai.response.prompt-version
+wcs.ai.response.max-output-tokens
+wcs.ai.response.temperature
+wcs.ai.response.max-input-characters
+wcs.ai.response.max-history-messages
+wcs.ai.response.max-knowledge-characters
+wcs.ai.response.max-summary-characters
 wcs.conversation.guardrails.min-intent-confidence
 wcs.rag.provider
 wcs.rag.max-results
@@ -292,6 +300,14 @@ referencias a secretos, por ejemplo:
   "wcs.ai.pricing-version": "aws-bedrock-us-east-1-standard-2026-09",
   "wcs.ai.input-price-usd-per-million-tokens": 0.0721,
   "wcs.ai.output-price-usd-per-million-tokens": 0.3090,
+  "wcs.ai.request-timeout": "PT30S",
+  "wcs.ai.response.prompt-version": "conversation-response-v1",
+  "wcs.ai.response.max-output-tokens": 1024,
+  "wcs.ai.response.temperature": 0.2,
+  "wcs.ai.response.max-input-characters": 2000,
+  "wcs.ai.response.max-history-messages": 6,
+  "wcs.ai.response.max-knowledge-characters": 8000,
+  "wcs.ai.response.max-summary-characters": 4000,
   "wcs.rag.provider": "bedrock-kb",
   "wcs.rag.max-results": 5,
   "wcs.rag.knowledge-base-id": "REPLACE_ME_WCS_KNOWLEDGE_BASE_ID"

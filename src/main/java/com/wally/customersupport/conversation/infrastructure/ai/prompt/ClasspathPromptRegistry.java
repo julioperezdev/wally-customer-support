@@ -13,9 +13,15 @@ import org.springframework.stereotype.Component;
 @Component
 public class ClasspathPromptRegistry {
 
-    private static final String PROMPT_ID = "conversation-intent";
-
     public PromptDefinition intentPrompt(String version) {
+        return load("conversation-intent", version);
+    }
+
+    public PromptDefinition responsePrompt(String version) {
+        return load("conversation-response", version);
+    }
+
+    private PromptDefinition load(String promptId, String version) {
         String normalizedVersion = normalizeVersion(version);
         ClassPathResource resource = new ClassPathResource(
                 "prompts/" + normalizedVersion + ".system.md");
@@ -25,7 +31,7 @@ public class ClasspathPromptRegistry {
         try (InputStream input = resource.getInputStream()) {
             String content = new String(input.readAllBytes(), StandardCharsets.UTF_8).trim();
             return new PromptDefinition(
-                    PROMPT_ID,
+                    promptId,
                     normalizedVersion,
                     content,
                     sha256(content));

@@ -2,7 +2,7 @@
 
 Owner: AI/Tech Lead  
 Status: `Accepted`
-Last reviewed: 2026-09-03
+Last reviewed: 2026-09-08
 Related Jira: `WCS-11`, `WCS-20`, `WCS-21`, `WCS-30`, `WCS-33`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-82`, `WCS-83`, `WCS-84`
 Related repository paths: `src/main/java/com/wally/customersupport/conversation/infrastructure/ai`, `src/main/resources/prompts`, `src/test/resources/fixtures`
 
@@ -94,6 +94,26 @@ el código: `intent-max-output-tokens` entre 1 y 1024,
 de hasta 2000 caracteres por bloque. Después de parsear la respuesta, el plan
 de ejecución aplica `wcs.conversation.guardrails.min-intent-confidence`; una
 intención por debajo del umbral sólo puede producir el fallback seguro.
+
+## Prompt de respuesta y límites del proveedor
+
+La generación de respuestas de soporte usa el prompt lógico
+`conversation-response`, versionado en `src/main/resources/prompts/` y
+seleccionado mediante `wcs.ai.response.prompt-version`. El adapter Bedrock
+registra esa versión y su hash junto con `AI_USAGE_RECORDED`; nunca registra el
+prompt, el contexto, la respuesta ni credenciales.
+
+AppConfig controla únicamente límites no sensibles y bounded: tokens máximos,
+temperatura, cantidad de mensajes, caracteres de entrada, conocimiento
+recuperado y resumen. El timeout del SDK se configura con
+`wcs.ai.request-timeout` y acepta entre 1 y 60 segundos; ante un valor inválido
+se aplica el default seguro de 30 segundos. Un error o timeout de Bedrock se
+registra como uso fallido y el orquestador conserva el fallback seguro, sin
+interrumpir el canal ni revelar detalles internos.
+
+El proveedor mock continúa siendo el default de los tests y no simula costos de
+Bedrock. La selección productiva se realiza mediante `wcs.ai.provider=bedrock`
+y el acceso se autoriza con el role IAM del runtime.
 
 ## Registro de prompts
 
