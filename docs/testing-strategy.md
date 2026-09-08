@@ -103,6 +103,8 @@ necesitan iniciar el contenedor.
 | `TC-054` | P1 | Límite de exportación | Rechaza una comparación con más de 1.000 escenarios antes de exportar | Unit |
 | `TC-055` | P1 | Política de retención activa | Calcula el vencimiento y mantiene un run activo antes del límite | Unit |
 | `TC-056` | P1 | Límite de retención | Marca el run expirado en el instante límite, sin borrarlo ni modificarlo | Unit |
+| `TC-057` | P1 | Revisión paginada de retención | Conserva el orden de una página, calcula estados y agrega contadores | Unit |
+| `TC-058` | P1 | Revisión vacía | Devuelve una revisión sin decisiones ni errores para una página vacía | Unit |
 | `TC-041` | P1 | Uso real de Bedrock | Emite `AI_USAGE_RECORDED` con modelo, tokens, latencia, pricing version y costo estimado | Test del adapter + log sanitizado |
 | `TC-042` | P1 | Consultas de observabilidad | CloudWatch agrega consultas, IA, RAG y entregas sin errores de campos | Logs Insights/Grafana |
 
@@ -139,6 +141,10 @@ necesitan iniciar el contenedor.
   devolver `ACTIVE` antes del vencimiento.
 - `TC-056`: el instante exacto de vencimiento debe devolver `EXPIRED`; la
   decisión no implica una operación de borrado.
+- `TC-057`: la revisión debe conservar el orden de entrada y los contadores
+  deben coincidir con las decisiones `ACTIVE` y `EXPIRED`.
+- `TC-058`: una página histórica vacía debe producir cero decisiones y cero
+  contadores sin invocar escrituras.
 
 ### Prueba manual de catálogo por Telegram
 
