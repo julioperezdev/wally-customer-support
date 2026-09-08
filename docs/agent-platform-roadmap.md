@@ -3,7 +3,7 @@
 - Owner: Product/Tech Lead
 - Status: `Accepted`
 - Last reviewed: 2026-09-08
-- Related Jira: `WCS-45`, `WCS-60`, `WCS-61`, `WCS-62`, `WCS-63`
+- Related Jira: `WCS-45`, `WCS-60`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`
 - Baseline: [`wcs-baseline-2026-09-07`](baselines/wcs-baseline-2026-09-07.md)
 - Canonical Confluence: [WCS — Agent Platform Roadmap & Architecture Proposal](https://julioperezdev.atlassian.net/wiki/spaces/SD/pages/7569410/WCS+Agent+Platform+Roadmap+Architecture+Proposal)
 - Related repository paths: `docs/roadmap.md`, `docs/ai.md`, `docs/observability.md`, `docs/decisions/`
@@ -242,7 +242,8 @@ prompts, respuestas ni PII. `WCS-62` agrega una consulta interna read-only,
 filtrable y paginada sobre ese histórico, sin exponer todavía un endpoint sin
 autenticación ni invocar Bedrock. `WCS-63` agrega la comparación entre un run
 baseline y uno candidate del mismo dataset, con deltas de calidad y operación
-sin promoción automática.
+sin promoción automática. `WCS-64` agrega un envelope versionado para
+transportar esa evidencia sin contenido conversacional.
 
 La ejecución de evaluaciones queda separada en tres piezas:
 
@@ -391,9 +392,9 @@ texto.
 ### Fase E — Evaluación y observabilidad
 
 Crear datasets, runner de evaluación, ejecución trazable, persistencia
-sanitizada, consulta histórica, comparación, eventos estructurados, dashboards
-y presupuesto por agente. `WCS-60`–`WCS-63` completan la primera frontera
-interna; las siguientes tareas deben agregar retención, exportación, un
+sanitizada, consulta histórica, comparación, exportación, eventos
+estructurados, dashboards y presupuesto por agente. `WCS-60`–`WCS-64` completan
+la primera frontera interna; las siguientes tareas deben agregar retención, un
 disparador autenticado y luego la comparación de modelos reales. La promoción
 requiere evidencia comparable.
 
