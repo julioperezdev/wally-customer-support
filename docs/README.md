@@ -36,6 +36,7 @@
   - [`019-agent-evaluation-history-query.md`](decisions/019-agent-evaluation-history-query.md): consulta interna filtrable y paginada del histórico.
   - [`020-agent-evaluation-comparison.md`](decisions/020-agent-evaluation-comparison.md): comparación sanitizada de runs y deltas operativos.
   - [`021-agent-evaluation-evidence-export.md`](decisions/021-agent-evaluation-evidence-export.md): envelope versionado para exportar evidencia sanitizada.
+  - [`022-agent-evaluation-retention-policy.md`](decisions/022-agent-evaluation-retention-policy.md): decisión determinística de retención sin purga automática.
 
 ## Calidad y operación
 
