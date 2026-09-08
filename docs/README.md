@@ -33,6 +33,7 @@
   - [`016-agent-evaluation-metadata.md`](decisions/016-agent-evaluation-metadata.md): metadata operativa separada para latencia, tokens y costo.
   - [`017-agent-evaluation-application-boundary.md`](decisions/017-agent-evaluation-application-boundary.md): frontera interna para ejecutar datasets y generar runs sanitizados.
   - [`018-agent-evaluation-persistence.md`](decisions/018-agent-evaluation-persistence.md): persistencia create-only de runs y escenarios sanitizados.
+  - [`019-agent-evaluation-history-query.md`](decisions/019-agent-evaluation-history-query.md): consulta interna filtrable y paginada del histórico.
 
 ## Calidad y operación
 

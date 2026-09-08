@@ -2,8 +2,8 @@
 
 - Owner: Product/Tech Lead
 - Status: `Accepted`
-- Last reviewed: 2026-09-07
-- Related Jira: `WCS-45`
+- Last reviewed: 2026-09-08
+- Related Jira: `WCS-45`, `WCS-60`, `WCS-61`, `WCS-62`
 - Baseline: [`wcs-baseline-2026-09-07`](baselines/wcs-baseline-2026-09-07.md)
 - Canonical Confluence: [WCS — Agent Platform Roadmap & Architecture Proposal](https://julioperezdev.atlassian.net/wiki/spaces/SD/pages/7569410/WCS+Agent+Platform+Roadmap+Architecture+Proposal)
 - Related repository paths: `docs/roadmap.md`, `docs/ai.md`, `docs/observability.md`, `docs/decisions/`
@@ -236,8 +236,11 @@ PostgreSQL y no delega hechos de catálogo al modelo.
 
 `WCS-60` agrega el caso de uso de aplicación para ejecutar un dataset por
 versión, generar un `runId`, devolver métricas agregadas y emitir un evento de
-finalización sanitizado. La frontera todavía es interna: no expone un endpoint
-sin autenticación, no persiste ejecuciones y no invoca Bedrock.
+finalización sanitizado. `WCS-61` persiste los runs completados y sus escenarios
+en PostgreSQL, con metadata operativa opcional e inmutabilidad, sin guardar
+prompts, respuestas ni PII. `WCS-62` agrega una consulta interna read-only,
+filtrable y paginada sobre ese histórico, sin exponer todavía un endpoint sin
+autenticación ni invocar Bedrock.
 
 La ejecución de evaluaciones queda separada en tres piezas:
 
@@ -252,10 +255,10 @@ La ejecución de evaluaciones queda separada en tres piezas:
    incluyen prompts, respuestas, mensajes de excepción ni PII.
 
 Esta frontera será consumida posteriormente por un job o endpoint interno
-autenticado cuando exista una política de autorización y persistencia de
-resultados. La persistencia se mantiene como una decisión posterior para no
-convertir una ejecución experimental en un registro productivo antes de
-definir retención, acceso y costo.
+autenticado cuando exista una política de autorización, retención y
+exportación. La consulta histórica mantiene límites de tamaño, filtros
+tipados y orden estable; no permite cargas ilimitadas ni devuelve contenido de
+evaluación.
 
 El registry debe separar borradores de artefactos publicados:
 
@@ -385,11 +388,12 @@ texto.
 
 ### Fase E — Evaluación y observabilidad
 
-Crear datasets, runner de evaluación, ejecución trazable, eventos estructurados,
-dashboards y presupuesto por agente. `WCS-60` completa la primera frontera
-interna; las siguientes tareas deben agregar persistencia/exportación, un
-disparador autenticado y luego la comparación de modelos reales. La promoción
-requiere evidencia comparable.
+Crear datasets, runner de evaluación, ejecución trazable, persistencia
+sanitizada, consulta histórica, eventos estructurados, dashboards y presupuesto
+por agente. `WCS-60`–`WCS-62` completan la primera frontera interna; las
+siguientes tareas deben agregar retención, exportación, un disparador
+autenticado y luego la comparación de modelos reales. La promoción requiere
+evidencia comparable.
 
 ### Fase F — Backoffice
 

@@ -95,6 +95,8 @@ necesitan iniciar el contenedor.
 | `TC-046` | P1 | Captura explícita en inbound | Confirma una frase explícita, no captura colores incidentales y no invoca al LLM para guardar | Unit + flujo común |
 | `TC-047` | P1 | Persistencia de evaluación completada | Guarda y recupera métricas y resultados por escenario sin contenido conversacional | Testcontainers PostgreSQL |
 | `TC-048` | P1 | Inmutabilidad de evaluación | Rechaza sobrescribir un `runId` y una segunda fila del mismo escenario | Testcontainers PostgreSQL |
+| `TC-049` | P1 | Historial filtrado y paginado | Devuelve sólo runs que cumplen los filtros, con límite de página y orden estable | Unit + Testcontainers PostgreSQL |
+| `TC-050` | P1 | Detalle de evaluación inexistente | Devuelve `Optional.empty` sin filtrar errores de infraestructura ni contenido | Unit + Testcontainers PostgreSQL |
 | `TC-041` | P1 | Uso real de Bedrock | Emite `AI_USAGE_RECORDED` con modelo, tokens, latencia, pricing version y costo estimado | Test del adapter + log sanitizado |
 | `TC-042` | P1 | Consultas de observabilidad | CloudWatch agrega consultas, IA, RAG y entregas sin errores de campos | Logs Insights/Grafana |
 
@@ -114,6 +116,10 @@ necesitan iniciar el contenedor.
 - `TC-046`: con preferencias habilitadas, enviar `Prefiero el negro` debe
   confirmar la captura; enviar `Busco una remera negra talle M` debe ejecutar
   catálogo y no guardar una preferencia.
+- `TC-049`: consultar el histórico con dataset/agente y dos páginas debe
+  respetar todos los filtros, no duplicar runs y desempatar por `runId`.
+- `TC-050`: consultar un `runId` inexistente debe producir un resultado vacío
+  tipado, sin excepción de persistencia ni exposición de contenido.
 
 ### Prueba manual de catálogo por Telegram
 
