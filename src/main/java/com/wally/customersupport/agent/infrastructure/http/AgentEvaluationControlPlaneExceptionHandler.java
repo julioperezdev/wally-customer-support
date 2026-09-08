@@ -14,7 +14,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 /** Prevents internal validation and provider errors from leaking through the API. */
 @RestControllerAdvice(assignableTypes = {
         AgentEvaluationControlPlaneController.class,
-        AgentEvaluationTriggerController.class
+        AgentEvaluationTriggerController.class,
+        AgentRegistryController.class,
+        AgentActivationController.class
 })
 @Slf4j
 public class AgentEvaluationControlPlaneExceptionHandler {

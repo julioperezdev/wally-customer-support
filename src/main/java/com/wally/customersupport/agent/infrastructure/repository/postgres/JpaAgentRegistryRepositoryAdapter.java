@@ -44,6 +44,14 @@ public class JpaAgentRegistryRepositoryAdapter implements AgentRegistryRepositor
 
     @Override
     @Transactional(readOnly = true)
+    public List<AgentVersion> findAllVersions() {
+        return versionRepository.findAllByOrderByAgentIdAscAgentVersionDesc().stream()
+                .map(AgentVersionJpaEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<AgentVersion> findLatestVersion(String agentId, AgentLifecycleState state) {
         return versionRepository.findFirstByAgentIdAndStateOrderByAgentVersionDesc(agentId, state.name())
                 .map(AgentVersionJpaEntity::toDomain);
@@ -53,6 +61,14 @@ public class JpaAgentRegistryRepositoryAdapter implements AgentRegistryRepositor
     @Transactional
     public AgentActivation saveActivation(AgentActivation activation) {
         return activationRepository.saveAndFlush(new AgentActivationJpaEntity(activation)).toDomain();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AgentActivation> findAllActivations() {
+        return activationRepository.findAllByOrderByAgentIdAscActivatedAtDesc().stream()
+                .map(AgentActivationJpaEntity::toDomain)
+                .toList();
     }
 
     @Override

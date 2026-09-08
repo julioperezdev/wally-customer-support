@@ -14,6 +14,8 @@ public interface SpringDataAgentVersionRepository extends JpaRepository<AgentVer
 
     List<AgentVersionJpaEntity> findByAgentIdOrderByAgentVersionDesc(String agentId);
 
+    List<AgentVersionJpaEntity> findAllByOrderByAgentIdAscAgentVersionDesc();
+
     Optional<AgentVersionJpaEntity> findFirstByAgentIdAndStateOrderByAgentVersionDesc(
             String agentId,
             String state);

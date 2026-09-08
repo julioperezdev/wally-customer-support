@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  AgentRegistryAgent,
   Comparison,
   ControlPlaneError,
   RunDetail,
@@ -9,6 +10,7 @@ import {
 } from "./api";
 
 const DEFAULT_BASE_URL = import.meta.env.VITE_WCS_CONTROL_PLANE_BASE_URL ?? "/internal/agent-evaluations";
+const DEFAULT_REGISTRY_BASE_URL = import.meta.env.VITE_WCS_AGENT_REGISTRY_BASE_URL ?? "/internal/agent-registry";
 
 export function App() {
   const [baseUrl, setBaseUrl] = useState(DEFAULT_BASE_URL);
@@ -20,10 +22,17 @@ export function App() {
   const [comparison, setComparison] = useState<Comparison | null>(null);
   const [baselineId, setBaselineId] = useState("");
   const [candidateId, setCandidateId] = useState("");
+  const [registryAgents, setRegistryAgents] = useState<AgentRegistryAgent[] | null>(null);
+  const [registryAgentId, setRegistryAgentId] = useState("");
+  const [registryEnvironment, setRegistryEnvironment] = useState("");
+  const [registryChannel, setRegistryChannel] = useState("");
+  const [registryUseCase, setRegistryUseCase] = useState("");
   const [busy, setBusy] = useState(false);
+  const [registryBusy, setRegistryBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [registryError, setRegistryError] = useState<string | null>(null);
 
-  const client = useMemo(() => createControlPlaneClient(baseUrl, token), [baseUrl, token]);
+  const client = useMemo(() => createControlPlaneClient(baseUrl, token, DEFAULT_REGISTRY_BASE_URL), [baseUrl, token]);
 
   async function loadRuns(nextPage = 0) {
     setBusy(true);
@@ -68,8 +77,27 @@ export function App() {
     }
   }
 
+  async function loadRegistry() {
+    setRegistryBusy(true);
+    setRegistryError(null);
+    try {
+      setRegistryAgents(await client.listAgents({
+        agentId: registryAgentId,
+        environment: registryEnvironment,
+        channel: registryChannel,
+        useCase: registryUseCase,
+        limit: 50
+      }));
+    } catch (cause) {
+      setRegistryError(toUserMessage(cause));
+    } finally {
+      setRegistryBusy(false);
+    }
+  }
+
   useEffect(() => {
     void loadRuns();
+    void loadRegistry();
     // The first load is intentionally tied to the initial client only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -97,10 +125,26 @@ export function App() {
           <label>API base URL<input value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} /></label>
           <label>Token de sesión (memoria)<input type="password" value={token} onChange={(event) => setToken(event.target.value)} autoComplete="off" /></label>
         </div>
-        <button className="primary" onClick={() => void loadRuns()} disabled={busy}>Actualizar runs</button>
+        <div className="button-row"><button className="primary" onClick={() => void loadRuns()} disabled={busy}>Actualizar runs</button><button onClick={() => void loadRegistry()} disabled={registryBusy}>Actualizar registry</button></div>
       </section>
 
       {error && <div className="alert" role="alert">{error}</div>}
+      {registryError && <div className="alert" role="alert">Registry: {registryError}</div>}
+
+      <section className="card">
+        <div className="section-heading">
+          <div><h2>Agentes y activaciones</h2><p>{registryAgents ? `${registryAgents.length} agentes sanitizados` : "Sin datos cargados"}</p></div>
+          <span className="security-note">READ ONLY</span>
+        </div>
+        <div className="filters registry-filters">
+          <input aria-label="Filtrar registry por agente" placeholder="agentId" value={registryAgentId} onChange={(event) => setRegistryAgentId(event.target.value)} />
+          <input aria-label="Filtrar registry por ambiente" placeholder="environment" value={registryEnvironment} onChange={(event) => setRegistryEnvironment(event.target.value)} />
+          <input aria-label="Filtrar registry por canal" placeholder="channel" value={registryChannel} onChange={(event) => setRegistryChannel(event.target.value)} />
+          <input aria-label="Filtrar registry por caso de uso" placeholder="useCase" value={registryUseCase} onChange={(event) => setRegistryUseCase(event.target.value)} />
+          <button onClick={() => void loadRegistry()} disabled={registryBusy}>Filtrar</button>
+        </div>
+        <AgentRegistryView agents={registryAgents} />
+      </section>
 
       <section className="card">
         <div className="section-heading">
@@ -138,6 +182,17 @@ function RunTable({ page, onOpen }: { page: RunPage | null; onOpen: (id: string)
   if (!page) return <p className="muted">El control plane no está disponible todavía.</p>;
   if (page.items.length === 0) return <p className="muted">No hay runs para los filtros seleccionados.</p>;
   return <div className="table-wrap"><table><thead><tr><th>Agente</th><th>Modelo</th><th>Resultado</th><th>Latencia</th><th>Tokens</th><th>Costo USD</th><th /></tr></thead><tbody>{page.items.map((run) => <tr key={run.runId}><td><strong>{run.agentId}</strong><small>{run.agentVersion} · {run.datasetVersion}</small></td><td>{run.provider}<small>{run.modelId}</small></td><td><span className={run.failedScenarios ? "negative" : "positive"}>{formatPercent(run.passRate)}</span><small>{run.passedScenarios}/{run.totalScenarios} escenarios</small></td><td>{formatMs(run.durationMs)}<small>provider: {formatMs(run.providerLatencyMs)}</small></td><td>{run.totalTokens ?? "—"}</td><td>{run.estimatedCostUsd == null ? "—" : run.estimatedCostUsd.toFixed(6)}</td><td><button className="link-button" onClick={() => void onOpen(run.runId)}>Ver</button></td></tr>)}</tbody></table></div>;
+}
+
+function AgentRegistryView({ agents }: { agents: AgentRegistryAgent[] | null }) {
+  if (!agents) return <p className="muted">El registry no está disponible todavía.</p>;
+  if (agents.length === 0) return <p className="muted">No hay agentes para los filtros seleccionados.</p>;
+  return <div className="registry-list">{agents.map((agent) => <article className="registry-agent" key={agent.agentId}>
+    <div className="section-heading"><div><h3>{agent.agentId}</h3><p className="muted">{agent.versions.length} versiones · {agent.activations.length} activaciones</p></div></div>
+    <div className="table-wrap"><table><thead><tr><th>Versión</th><th>Lifecycle</th><th>Modelo</th><th>Prompt</th><th>Límites</th></tr></thead><tbody>{agent.versions.map((version) => <tr key={`${version.agentId}-${version.version}`}><td><strong>v{version.version}</strong><small>{version.name}</small></td><td>{version.state}<small>{version.evaluationSuiteVersion}</small></td><td>{version.modelProvider}<small>{version.modelId}</small></td><td>{version.systemPromptVersion}<small>SHA-256: {version.systemPromptHash.slice(0, 12)}…</small></td><td>{version.maxSteps} steps<small>{version.maxInputTokens}/{version.maxOutputTokens} tokens</small></td></tr>)}</tbody></table></div>
+    <h4>Activaciones</h4>
+    {agent.activations.length === 0 ? <p className="muted">Sin activaciones registradas.</p> : <div className="activation-list">{agent.activations.map((activation, index) => <div className="activation" key={`${activation.activatedAt}-${index}`}><span><strong>{activation.environment}</strong> · {activation.channel} · {activation.useCase}</span><span>{activation.enabled && !activation.killSwitch ? `${activation.rolloutPercentage}% activa` : "kill switch / inactiva"}<small>{activation.reason}</small></span></div>)}</div>}
+  </article>)}</div>;
 }
 
 function RunDetailView({ run }: { run: RunDetail }) {

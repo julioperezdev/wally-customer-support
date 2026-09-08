@@ -12,6 +12,8 @@ import com.wally.customersupport.agent.application.port.out.AgentEvaluationContr
 public class AgentEvaluationControlPlaneAccessService {
 
     public static final String EVALUATION_READ_CAPABILITY = "agent-evaluation.read";
+    public static final String REGISTRY_READ_CAPABILITY = "agent-registry.read";
+    public static final String REGISTRY_WRITE_CAPABILITY = "agent-registry.write";
 
     private final String allowedEnvironment;
     private final AgentEvaluationControlPlaneAuthorizer authorizer;
@@ -31,6 +33,31 @@ public class AgentEvaluationControlPlaneAccessService {
                 EVALUATION_READ_CAPABILITY));
     }
 
+    /** Builds an internal registry request without accepting an environment from HTTP callers. */
+    public AgentEvaluationControlPlaneAccessDecision authorizeRegistry(String actorId) {
+        return authorize(new AgentEvaluationControlPlaneAccessRequest(
+                actorId,
+                allowedEnvironment,
+                REGISTRY_READ_CAPABILITY));
+    }
+
+    /** Builds the internal registry mutation request without accepting an environment from HTTP callers. */
+    public AgentEvaluationControlPlaneAccessDecision authorizeRegistryWrite(String actorId) {
+        return authorize(new AgentEvaluationControlPlaneAccessRequest(
+                actorId,
+                allowedEnvironment,
+                REGISTRY_WRITE_CAPABILITY));
+    }
+
+    public AgentEvaluationControlPlaneAccessDecision authorizeRegistryWrite(
+            String actorId,
+            String requestedEnvironment) {
+        return authorize(new AgentEvaluationControlPlaneAccessRequest(
+                actorId,
+                requestedEnvironment,
+                REGISTRY_WRITE_CAPABILITY));
+    }
+
     public AgentEvaluationControlPlaneAccessDecision authorize(
             AgentEvaluationControlPlaneAccessRequest request) {
         AgentEvaluationControlPlaneAccessRequest accessRequest = Objects.requireNonNull(request, "request");
@@ -43,7 +70,9 @@ public class AgentEvaluationControlPlaneAccessService {
         if (isBlank(accessRequest.capability())) {
             return denied(accessRequest, AgentEvaluationControlPlaneAccessReason.MISSING_CAPABILITY);
         }
-        if (!EVALUATION_READ_CAPABILITY.equals(accessRequest.capability())) {
+        if (!EVALUATION_READ_CAPABILITY.equals(accessRequest.capability())
+                && !REGISTRY_READ_CAPABILITY.equals(accessRequest.capability())
+                && !REGISTRY_WRITE_CAPABILITY.equals(accessRequest.capability())) {
             return denied(accessRequest, AgentEvaluationControlPlaneAccessReason.CAPABILITY_NOT_ALLOWED);
         }
         if (!allowedEnvironment.equals(accessRequest.environment())) {

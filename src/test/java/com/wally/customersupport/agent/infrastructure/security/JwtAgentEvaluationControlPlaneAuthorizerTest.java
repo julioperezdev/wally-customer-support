@@ -54,19 +54,36 @@ class JwtAgentEvaluationControlPlaneAuthorizerTest {
         assertThat(new JwtAgentEvaluationControlPlaneAuthorizer().authorize(REQUEST)).isFalse();
     }
 
+    @Test
+    void honorsTheCapabilityProvidedByTheRegistryRequest() {
+        AgentEvaluationControlPlaneAccessRequest request = new AgentEvaluationControlPlaneAccessRequest(
+                ACTOR,
+                "prod",
+                AgentEvaluationControlPlaneAccessService.REGISTRY_READ_CAPABILITY);
+        setAuthentication(jwtAuthentication(ACTOR, AgentEvaluationControlPlaneAccessService.REGISTRY_READ_CAPABILITY));
+
+        assertThat(new JwtAgentEvaluationControlPlaneAuthorizer().authorize(request)).isTrue();
+    }
+
     private static void setAuthentication(JwtAuthenticationToken authentication) {
         SecurityContextHolder.getContext().setAuthentication(authentication);
     }
 
     private static JwtAuthenticationToken jwtAuthentication(String subject, boolean readScope) {
+        return jwtAuthentication(subject, readScope
+                ? AgentEvaluationControlPlaneAccessService.EVALUATION_READ_CAPABILITY
+                : null);
+    }
+
+    private static JwtAuthenticationToken jwtAuthentication(String subject, String capability) {
         Jwt jwt = new Jwt(
                 "synthetic-token",
                 Instant.parse("2026-09-08T00:00:00Z"),
                 Instant.parse("2026-09-08T01:00:00Z"),
                 Map.of("alg", "none"),
                 Map.of("sub", subject, "iss", "https://issuer.example.test"));
-        List<SimpleGrantedAuthority> authorities = readScope
-                ? List.of(new SimpleGrantedAuthority("SCOPE_agent-evaluation.read"))
+        List<SimpleGrantedAuthority> authorities = capability != null
+                ? List.of(new SimpleGrantedAuthority("SCOPE_" + capability))
                 : List.of();
         return new JwtAuthenticationToken(jwt, authorities);
     }

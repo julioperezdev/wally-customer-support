@@ -48,3 +48,51 @@ fields @timestamp, operation, duration_ms
 ```
 
 Antes de usar una query en producción documentar log group, ventana, permisos, campos disponibles, PII y limitaciones.
+
+## SQL — baseline del registry de agentes
+
+La consulta sólo devuelve metadata operativa y no incluye prompts, actores ni
+secretos:
+
+```sql
+SELECT agent_id,
+       agent_version,
+       state,
+       model_provider,
+       model_id,
+       system_prompt_version,
+       evaluation_suite_version,
+       created_at,
+       approved_at
+FROM wcs.agent_versions
+WHERE agent_id = :agent_id
+ORDER BY agent_version DESC;
+```
+
+Para validar el puntero de una activación sin exponer identidad del operador:
+
+```sql
+SELECT agent_id,
+       agent_version,
+       environment,
+       channel,
+       use_case,
+       rollout_percentage,
+       enabled,
+       kill_switch,
+       activated_at
+FROM wcs.agent_activations
+WHERE agent_id = :agent_id
+ORDER BY activated_at DESC
+LIMIT :limit;
+```
+
+Para verificar que la idempotencia del control plane guarda sólo hashes:
+
+    SELECT count(*) AS claims,
+           min(length(key_hash)) AS min_hash_length,
+           max(length(key_hash)) AS max_hash_length
+    FROM wcs.agent_activation_command_claims;
+
+No se debe consultar ni exportar la key cruda: la tabla sólo contiene su
+hash SHA-256 y timestamp de claim.

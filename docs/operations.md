@@ -3,7 +3,7 @@
 Owner: Tech Lead  
 Status: `Accepted`
 Last reviewed: 2026-09-08
-Related Jira: `WCS-13`, `WCS-21`, `WCS-22`, `WCS-30`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-38`, `WCS-39`, `WCS-40`, `WCS-41`, `WCS-42`, `WCS-76`, `WCS-77`, `WCS-78`, `WCS-85`, `WCS-86`, `WCS-87`
+Related Jira: `WCS-13`, `WCS-21`, `WCS-22`, `WCS-30`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-38`, `WCS-39`, `WCS-40`, `WCS-41`, `WCS-42`, `WCS-76`, `WCS-77`, `WCS-78`, `WCS-85`, `WCS-86`, `WCS-87`, `WCS-88`, `WCS-89`, `WCS-90`, `WCS-91`, `WCS-92`, `WCS-93`, `WCS-94`, `WCS-95`, `WCS-96`
 Related repository paths: `src/main/resources`, `backoffice/`, `.github/workflows`, `infra/`
 
 ## Ambientes
@@ -372,6 +372,29 @@ prompt utilizado. Si falta la versión, hay mismatch, el estado no es publicable
 o falla el registry, se conserva el flujo anterior. Para rollback se vuelve a
 publicar la flag en `false`; no se eliminan activaciones ni se modifica la
 migración V9.
+
+### Mutaciones controladas del registry
+
+La escritura del registry tiene una flag independiente y permanece cerrada:
+
+```properties
+wcs.agent-registry.activation-write-enabled=false
+```
+
+Cuando se habilite en un ambiente autorizado, sólo el scope
+`agent-registry.write` puede alcanzar los endpoints internos de activación.
+Cada request exige `Idempotency-Key`; la key se hashea con SHA-256 y se
+persiste únicamente su hash en `wcs.agent_activation_command_claims`. El actor
+se obtiene del subject autenticado y nunca del body. Activar, kill switch y
+rollback crean nuevas filas de `wcs.agent_activations`; no se actualizan ni se
+eliminan referencias históricas.
+
+El rollout recomendado es: probar primero con una versión `APPROVED` sintética,
+verificar los eventos `AGENT_REGISTRY_MUTATION_*`, confirmar que
+`wcs.agent-runtime.activation-enabled` sigue en `false`, y recién después
+evaluar una activación controlada. El rollback operativo es deshabilitar la
+flag de escritura y mantener el runtime en `false`; no se ejecuta `destroy` ni
+se modifican migraciones aplicadas.
 
 ### Seguridad del control plane de evaluaciones
 

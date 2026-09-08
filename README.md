@@ -22,9 +22,10 @@ El repositorio contiene la documentación y la base técnica del producto. La im
 - [`docs/testing-strategy.md`](docs/testing-strategy.md): estrategia y evidencia de testing.
 - [`docs/operations.md`](docs/operations.md): CI/CD, observabilidad, seguridad y operación.
 - [`docs/observability.md`](docs/observability.md): Grafana local, CloudWatch y eventos operativos.
-- [`docs/backoffice.md`](docs/backoffice.md): backoffice interno read-only de evaluaciones.
+- [`docs/backoffice.md`](docs/backoffice.md): backoffice interno read-only de evaluaciones y registry de agentes.
 - [`infra/README.md`](infra/README.md): base Terraform de AWS, state separado y servicios preparados.
 - [`docs/queries.md`](docs/queries.md): consultas SQL y CloudWatch sanitizadas.
+- [`scripts/smoke-agent-registry.sh`](scripts/smoke-agent-registry.sh): smoke read-only del registry sin secretos.
 - [`docs/agents/playbook.md`](docs/agents/playbook.md): reglas para agentes de IA.
 - [`planning/jira-backlog.md`](planning/jira-backlog.md): backlog inicial listo para crear en Jira.
 

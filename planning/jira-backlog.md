@@ -383,6 +383,15 @@ semántica o AgentCore.
 | WCS-85 | In Progress | Contrato agregado read-only para el backoffice de evaluaciones |
 | WCS-86 | In Progress | Backoffice React/TypeScript read-only para evaluaciones |
 | WCS-87 | In Progress | CI de frontend y contrato operativo del backoffice |
+| WCS-88 | In Progress | Exponer API read-only del registry de agentes |
+| WCS-89 | In Progress | Agregar vista de agentes y activaciones al backoffice |
+| WCS-90 | In Progress | Asegurar contrato y observabilidad del registry read-only |
+| WCS-91 | In Progress | Verificar contrato read-only del registry contra PostgreSQL |
+| WCS-92 | In Progress | Cargar baseline versionado de catalog-specialist en el registry |
+| WCS-93 | In Progress | Agregar smoke operativo y documentación del baseline del registry |
+| WCS-94 | In Progress | Implementar servicio de activación controlada del registry |
+| WCS-96 | In Progress | Exponer control plane write-only protegido para activaciones |
+| WCS-95 | In Progress | Cubrir activación, kill switch y rollback con pruebas y runbook |
 
 WCS-60 no agrega todavía API, persistencia ni ejecución de Bedrock. WCS-61
 agrega persistencia create-only en el schema `wcs` para runs completados y
@@ -449,6 +458,27 @@ contrato agrega métricas operativas sólo cuando están disponibles, la UI
 consulta runs/detalle/comparaciones sin escribir en el control plane y el CI de
 frontend queda separado del backend. No se embeben tokens, no se habilita JWT,
 no se ejecutan evaluaciones desde el navegador y no hay cambios Terraform.
+
+WCS-88, WCS-89 y WCS-90 se entregan como el siguiente slice agrupado: el
+backend consulta el registry mediante su port, expone versiones y activaciones
+sanitizadas bajo `agent-registry.read`, y el backoffice las presenta en modo
+read-only con filtros acotados. Se cubren límites, errores estables, eventos
+de acceso y separación entre el scope de evaluación y el del registry. No se
+agregan escrituras, publicación, canary, rollback, kill switch, IdP, cambios
+de schema ni infraestructura AWS.
+
+WCS-91, WCS-92 y WCS-93 son el slice de bootstrap observable: una migración
+posterior a V11 carga sólo metadata del baseline `catalog-specialist`, la
+prueba de integración valida la respuesta read-only y un script/salida SQL
+permite verificarlo sin secretos. El seed no crea activaciones ni habilita el
+runtime.
+
+WCS-94, WCS-96 y WCS-95 forman el slice de activación controlada: una versión
+APPROVED se transforma en una referencia inmutable sólo con autorización y
+evidencia de aprobación; la API separa `agent-registry.write`, exige
+idempotencia y deja activación, kill switch y rollback detrás de una flag falsa.
+La migración V13 guarda hashes de keys, no las keys crudas, y las pruebas
+verifican que el runtime conversacional y los webhooks públicos no cambian.
 
 `WCS-14`–`WCS-16` y `WCS-17` ya tienen la fundación o el contrato inicial
 versionado; deben completarse/verificarse según la evidencia de cada issue antes
