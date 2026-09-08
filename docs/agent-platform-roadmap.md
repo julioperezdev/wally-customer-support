@@ -3,7 +3,7 @@
 - Owner: Product/Tech Lead
 - Status: `Accepted`
 - Last reviewed: 2026-09-08
-- Related Jira: `WCS-45`, `WCS-60`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-71`
+- Related Jira: `WCS-45`, `WCS-60`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-71`, `WCS-72`, `WCS-73`, `WCS-74`, `WCS-75`
 - Baseline: [`wcs-baseline-2026-09-07`](baselines/wcs-baseline-2026-09-07.md)
 - Canonical Confluence: [WCS — Agent Platform Roadmap & Architecture Proposal](https://julioperezdev.atlassian.net/wiki/spaces/SD/pages/7569410/WCS+Agent+Platform+Roadmap+Architecture+Proposal)
 - Related repository paths: `docs/roadmap.md`, `docs/ai.md`, `docs/observability.md`, `docs/decisions/`
@@ -261,8 +261,16 @@ remoto.
 `WCS-70` implementa ese guard en PostgreSQL con un digest SHA-256 único e
 inserción atómica. `WCS-71` registra la composición Spring de la frontera
 interna y un authorizer denegado por defecto, reemplazable por un proveedor
-explícito en una fase posterior. La ejecución sigue sin estar expuesta a
-HTTP, scheduler o integración remota.
+explícito en una fase posterior. `WCS-72` completa la prueba de que el camino
+denegado no reclama la key ni ejecuta la evaluación.
+
+`WCS-73` agrega una segunda frontera provider-neutral para leer el control
+plane, con la capacidad exacta `agent-evaluation.read`, ambiente configurado y
+denegación por defecto. `WCS-74` expone el histórico, detalle, comparación y
+export de evidencia como API read-only, pero sólo después de pasar esa frontera;
+no permite ejecutar evaluaciones ni modificar el registry. `WCS-75` completa
+los contratos HTTP, errores sanitizados, eventos de acceso y pruebas MockMvc.
+Hasta conectar un provider explícito, todos los endpoints permanecen cerrados.
 
 La ejecución de evaluaciones queda separada en tres piezas:
 
@@ -413,11 +421,12 @@ texto.
 Crear datasets, runner de evaluación, ejecución trazable, persistencia
 sanitizada, consulta histórica, comparación, exportación, política de
 retención, eventos estructurados, dashboards y presupuesto por agente.
-`WCS-60`–`WCS-65` completan la primera frontera interna; las siguientes tareas
-deben agregar la activación aprobada de retención, un disparador autenticado y
-luego la comparación de modelos reales. `WCS-66`, `WCS-67` y `WCS-68` todavía no
-exponen una API ni invocan un proceso de purga. La promoción requiere evidencia
-comparable.
+`WCS-60`–`WCS-65` completan la primera frontera interna; `WCS-66`, `WCS-67` y
+`WCS-68` agregan revisión, gate y autorización sin purga. `WCS-73`–`WCS-75`
+agregan el primer acceso HTTP read-only, todavía cerrado por defecto. Las
+siguientes tareas deben conectar un provider técnico explícito, agregar la
+activación aprobada de retención, un disparador autenticado y luego la
+comparación de modelos reales. La promoción requiere evidencia comparable.
 
 ### Fase F — Backoffice
 
