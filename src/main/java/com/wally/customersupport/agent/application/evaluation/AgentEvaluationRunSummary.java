@@ -1,5 +1,6 @@
 package com.wally.customersupport.agent.application.evaluation;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Objects;
@@ -21,7 +22,10 @@ public record AgentEvaluationRunSummary(
         int failedScenarios,
         double passRate,
         double averageScore,
-        Map<String, Integer> failureReasons) {
+        Map<String, Integer> failureReasons,
+        Long totalTokens,
+        Long providerLatencyMs,
+        BigDecimal estimatedCostUsd) {
 
     public AgentEvaluationRunSummary {
         runId = Objects.requireNonNull(runId, "runId");
@@ -43,7 +47,37 @@ public record AgentEvaluationRunSummary(
                 || Double.isNaN(averageScore) || averageScore < 0 || averageScore > 1) {
             throw new IllegalArgumentException("metrics must be between 0 and 1");
         }
+        if (totalTokens != null && totalTokens < 0
+                || providerLatencyMs != null && providerLatencyMs < 0) {
+            throw new IllegalArgumentException("operational metrics must not be negative");
+        }
+        if (estimatedCostUsd != null && estimatedCostUsd.signum() < 0) {
+            throw new IllegalArgumentException("estimatedCostUsd must not be negative");
+        }
         failureReasons = failureReasons == null ? Map.of() : Map.copyOf(failureReasons);
+        estimatedCostUsd = estimatedCostUsd == null ? null : estimatedCostUsd.stripTrailingZeros();
+    }
+
+    /** Backwards-compatible constructor for callers that do not have measured provider metadata. */
+    public AgentEvaluationRunSummary(
+            UUID runId,
+            String datasetVersion,
+            String agentId,
+            String agentVersion,
+            String provider,
+            String modelId,
+            Instant startedAt,
+            Instant completedAt,
+            long durationMs,
+            int totalScenarios,
+            int passedScenarios,
+            int failedScenarios,
+            double passRate,
+            double averageScore,
+            Map<String, Integer> failureReasons) {
+        this(runId, datasetVersion, agentId, agentVersion, provider, modelId, startedAt, completedAt,
+                durationMs, totalScenarios, passedScenarios, failedScenarios, passRate, averageScore,
+                failureReasons, null, null, null);
     }
 
     private static String required(String value, String field) {

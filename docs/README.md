@@ -47,6 +47,7 @@
 - [`testing-strategy.md`](testing-strategy.md)
 - [`operations.md`](operations.md)
 - [`observability.md`](observability.md): Grafana local, CloudWatch y eventos operativos.
+- [`backoffice.md`](backoffice.md): panel React/TypeScript read-only para evaluación.
 - [`queries.md`](queries.md)
 - [`../infra/README.md`](../infra/README.md): base AWS, state y reglas de activación.
 

@@ -380,6 +380,9 @@ semántica o AgentCore.
 | WCS-82 | In Progress | Executor opcional de evaluaciones con Amazon Bedrock |
 | WCS-83 | In Progress | Metadata real de tokens, latencia y costo en evaluaciones |
 | WCS-84 | In Progress | Límites de presupuesto y preflight para evaluaciones Bedrock |
+| WCS-85 | In Progress | Contrato agregado read-only para el backoffice de evaluaciones |
+| WCS-86 | In Progress | Backoffice React/TypeScript read-only para evaluaciones |
+| WCS-87 | In Progress | CI de frontend y contrato operativo del backoffice |
 
 WCS-60 no agrega todavía API, persistencia ni ejecución de Bedrock. WCS-61
 agrega persistencia create-only en el schema `wcs` para runs completados y
@@ -440,6 +443,12 @@ metadata real cuando el proveedor la devuelve y un preflight de límites. El
 executor `deterministic` permanece como default. La configuración real no se
 activa en este PR ni requiere apply de Terraform; el rollback se realiza desde
 AppConfig cambiando el executor a `deterministic`.
+
+WCS-85, WCS-86 y WCS-87 se entregan como un slice de backoffice read-only: el
+contrato agrega métricas operativas sólo cuando están disponibles, la UI
+consulta runs/detalle/comparaciones sin escribir en el control plane y el CI de
+frontend queda separado del backend. No se embeben tokens, no se habilita JWT,
+no se ejecutan evaluaciones desde el navegador y no hay cambios Terraform.
 
 `WCS-14`–`WCS-16` y `WCS-17` ya tienen la fundación o el contrato inicial
 versionado; deben completarse/verificarse según la evidencia de cada issue antes

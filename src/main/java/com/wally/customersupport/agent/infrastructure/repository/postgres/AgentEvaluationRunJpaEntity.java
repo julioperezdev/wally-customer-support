@@ -10,6 +10,7 @@ import java.util.UUID;
 
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationRun;
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationRunSummary;
+import com.wally.customersupport.agent.application.evaluation.AgentEvaluationOperationalMetrics;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationResult;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationSuiteResult;
 import jakarta.persistence.CascadeType;
@@ -128,6 +129,10 @@ public class AgentEvaluationRunJpaEntity {
     }
 
     public AgentEvaluationRunSummary toSummary() {
+        List<AgentEvaluationResult> results = scenarioResults.stream()
+                .map(AgentEvaluationScenarioResultJpaEntity::toDomain)
+                .toList();
+        AgentEvaluationOperationalMetrics operationalMetrics = AgentEvaluationOperationalMetrics.from(results);
         return new AgentEvaluationRunSummary(
                 id,
                 datasetVersion,
@@ -143,6 +148,9 @@ public class AgentEvaluationRunJpaEntity {
                 failedScenarios,
                 passRate.doubleValue(),
                 averageScore.doubleValue(),
-                failureReasons);
+                failureReasons,
+                operationalMetrics.totalTokens(),
+                operationalMetrics.providerLatencyMs(),
+                operationalMetrics.estimatedCostUsd());
     }
 }
