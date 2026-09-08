@@ -46,6 +46,11 @@ una key ya reclamada, fallo del guard y fallo sanitizado de la evaluación. Los
 tests no incluyen prompts, respuestas, tokens, secretos, PII ni la key en
 resultados o logs.
 
+WCS-70 agrega una prueba de integración con PostgreSQL/Testcontainers para
+comprobar que la key se guarda sólo como digest SHA-256, que el reintento es
+rechazado y que dos claims concurrentes de la misma key producen exactamente
+un éxito.
+
 ## Matriz funcional mínima
 
 | ID | Prioridad | Prueba | Resultado esperado | Evidencia |

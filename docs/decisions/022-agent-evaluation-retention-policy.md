@@ -57,3 +57,8 @@ resultado previamente reclamado no vuelve a ejecutar el run. El guard de
 idempotencia queda detrás de un port y debe ofrecer atomicidad en el adapter
 que lo implemente; esta tarea no selecciona almacenamiento ni expone un
 trigger remoto.
+
+WCS-70 implementa el adapter PostgreSQL con una tabla de claims de hash
+SHA-256, restricción única e inserción atómica. Sólo se conserva el digest y el
+timestamp de claim; la key cruda no se almacena. La tabla no tiene purga
+automática ni cambia la política de retención de runs.

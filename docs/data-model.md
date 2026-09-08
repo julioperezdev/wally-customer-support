@@ -3,7 +3,7 @@
 Owner: Tech Lead  
 Status: `Proposed`  
 Last reviewed: 2026-09-06
-Related Jira: `WCS-13`, `WCS-14`, `WCS-15`, `WCS-16`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-37`, `WCS-47`, `WCS-48`, `WCS-51`, `WCS-60`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`
+Related Jira: `WCS-13`, `WCS-14`, `WCS-15`, `WCS-16`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-37`, `WCS-47`, `WCS-48`, `WCS-51`, `WCS-60`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`, `WCS-70`
 Related repository paths: `src/main/java/com/wally/customersupport/{conversation,catalog,support,agent}/infrastructure/repository/postgres`, `src/main/resources/db/migration`
 
 ## Aislamiento en el RDS compartido
@@ -16,6 +16,17 @@ su secret existente: no declara `aws_db_instance`, subnet groups ni cambios de
 red en este repositorio.
 
 ## Entidades mínimas
+
+### `agent_evaluation_trigger_claims` — implementada en `V11__create_agent_evaluation_trigger_claims.sql`
+
+- `id` UUID interno de la claim.
+- `key_hash` SHA-256 hexadecimal de la idempotency key, único y no reversible
+  en el contrato de almacenamiento.
+- `claimed_at` timestamp de creación administrado por PostgreSQL.
+- La inserción usa `ON CONFLICT DO NOTHING`, por lo que los reintentos no
+  crean una segunda claim ni vuelven idempotente una key diferente por error.
+- La tabla no guarda la key original, actor, prompts, respuestas, tokens,
+  secretos ni PII. No se purga automáticamente en esta fase.
 
 ### `conversations` — implementada en `V1__create_core_support_tables.sql`
 
