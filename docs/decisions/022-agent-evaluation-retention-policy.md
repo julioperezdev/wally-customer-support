@@ -40,7 +40,8 @@ ningún bean de configuración, job o workflow activa purgas con esta tarea.
 ## Consecuencias
 
 WCS-66 permite revisar una página histórica y obtener decisiones y contadores
-sin mutar runs. Un futuro job autenticado podrá consultar esa revisión antes de
-proponer una acción de retención. La activación deberá definir por separado autorización,
+sin mutar runs. WCS-67 agrega un gate de evidencia que distingue una aprobación
+operativa de la autenticación técnica; un futuro job autenticado podrá consultar
+esa revisión antes de proponer una acción de retención. La activación deberá definir por separado autorización,
 auditoría, retención por ambiente, período de gracia, paginación, métricas,
 reintentos y rollback.

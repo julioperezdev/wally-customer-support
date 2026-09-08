@@ -105,6 +105,8 @@ necesitan iniciar el contenedor.
 | `TC-056` | P1 | Límite de retención | Marca el run expirado en el instante límite, sin borrarlo ni modificarlo | Unit |
 | `TC-057` | P1 | Revisión paginada de retención | Conserva el orden de una página, calcula estados y agrega contadores | Unit |
 | `TC-058` | P1 | Revisión vacía | Devuelve una revisión sin decisiones ni errores para una página vacía | Unit |
+| `TC-059` | P1 | Gate no solicitado | Devuelve `NOT_REQUESTED` sin exigir metadata de aprobación | Unit |
+| `TC-060` | P1 | Gate aprobado o rechazado | Acepta evidencia completa no futura y rechaza metadata faltante o futura | Unit |
 | `TC-041` | P1 | Uso real de Bedrock | Emite `AI_USAGE_RECORDED` con modelo, tokens, latencia, pricing version y costo estimado | Test del adapter + log sanitizado |
 | `TC-042` | P1 | Consultas de observabilidad | CloudWatch agrega consultas, IA, RAG y entregas sin errores de campos | Logs Insights/Grafana |
 
@@ -145,6 +147,11 @@ necesitan iniciar el contenedor.
   deben coincidir con las decisiones `ACTIVE` y `EXPIRED`.
 - `TC-058`: una página histórica vacía debe producir cero decisiones y cero
   contadores sin invocar escrituras.
+- `TC-059`: una solicitud no realizada debe devolver `NOT_REQUESTED` sin exigir
+  ambiente, actor o referencia.
+- `TC-060`: una aprobación completa en el límite temporal debe devolver
+  `APPROVED_FOR_REVIEW`; metadata faltante o futura debe devolver `REJECTED` con
+  una razón tipada.
 
 ### Prueba manual de catálogo por Telegram
 
