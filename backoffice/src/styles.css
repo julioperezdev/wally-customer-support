@@ -47,4 +47,10 @@ td small { color: #8796b1; font-size: 12px; margin-top: 4px; }
 .metric span { display: block; color: #8290ab; font-size: 12px; margin-bottom: 5px; }.metric strong { font-size: 18px; }
 .detail h3, .comparison h3 { margin-top: 20px; }
 .scenario { display: flex; justify-content: space-between; gap: 14px; padding: 10px 0; border-bottom: 1px solid #273550; font-size: 13px; }
+.preflight-result { margin-top: 18px; border: 1px solid #35435f; border-radius: 12px; padding: 16px; }
+.status-label { font-weight: 700; letter-spacing: .04em; }
+.preflight-checks { display: grid; gap: 8px; }
+.preflight-check { display: grid; grid-template-columns: 58px 1fr; gap: 12px; padding: 10px 0; border-top: 1px solid #273550; font-size: 13px; }
+.preflight-check small { display: block; color: #8796b1; margin-top: 4px; }
+.warning { color: #f1cf7c; }
 @media (max-width: 820px) { .hero, .section-heading { flex-direction: column; } .split-grid, .form-grid { grid-template-columns: 1fr; } .filters { min-width: 0; width: 100%; flex-wrap: wrap; } .activation { flex-direction: column; } .activation span:last-child { text-align: left; } }

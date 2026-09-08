@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   AgentRegistryAgent,
+  AgentActivationPreflight,
   Comparison,
   ControlPlaneError,
   RunDetail,
@@ -31,6 +32,18 @@ export function App() {
   const [registryBusy, setRegistryBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [registryError, setRegistryError] = useState<string | null>(null);
+  const [preflight, setPreflight] = useState<AgentActivationPreflight | null>(null);
+  const [preflightBusy, setPreflightBusy] = useState(false);
+  const [preflightError, setPreflightError] = useState<string | null>(null);
+  const [preflightAgentId, setPreflightAgentId] = useState("catalog-specialist");
+  const [preflightVersion, setPreflightVersion] = useState("1");
+  const [preflightEnvironment, setPreflightEnvironment] = useState("prod");
+  const [preflightChannel, setPreflightChannel] = useState("telegram");
+  const [preflightUseCase, setPreflightUseCase] = useState("catalog-search");
+  const [preflightReason, setPreflightReason] = useState("controlled preflight");
+  const [preflightApproval, setPreflightApproval] = useState("");
+  const [preflightOperationalApproval, setPreflightOperationalApproval] = useState("");
+  const [preflightRollout, setPreflightRollout] = useState("100");
 
   const client = useMemo(() => createControlPlaneClient(baseUrl, token, DEFAULT_REGISTRY_BASE_URL), [baseUrl, token]);
 
@@ -95,6 +108,35 @@ export function App() {
     }
   }
 
+  async function runPreflight() {
+    const version = Number.parseInt(preflightVersion, 10);
+    const rollout = Number.parseInt(preflightRollout, 10);
+    if (!Number.isInteger(version) || !Number.isInteger(rollout)) {
+      setPreflightError("La versión y el rollout deben ser números.");
+      return;
+    }
+    setPreflightBusy(true);
+    setPreflightError(null);
+    try {
+      setPreflight(await client.preflightActivation({
+        agentId: preflightAgentId,
+        agentVersion: version,
+        environment: preflightEnvironment,
+        channel: preflightChannel,
+        useCase: preflightUseCase,
+        reason: preflightReason,
+        rolloutPercentage: rollout,
+        enabled: true,
+        approvalReference: preflightApproval,
+        operationalApprovalReference: preflightOperationalApproval
+      }));
+    } catch (cause) {
+      setPreflightError(toUserMessage(cause));
+    } finally {
+      setPreflightBusy(false);
+    }
+  }
+
   useEffect(() => {
     void loadRuns();
     void loadRegistry();
@@ -148,6 +190,27 @@ export function App() {
 
       <section className="card">
         <div className="section-heading">
+          <div><h2>Preflight de activación</h2><p>Valida una solicitud sin persistir ni activar nada.</p></div>
+          <span className="security-note">SIN MUTACIÓN</span>
+        </div>
+        <div className="form-grid">
+          <label>Agente<input value={preflightAgentId} onChange={(event) => setPreflightAgentId(event.target.value)} /></label>
+          <label>Versión<input inputMode="numeric" value={preflightVersion} onChange={(event) => setPreflightVersion(event.target.value)} /></label>
+          <label>Ambiente<input value={preflightEnvironment} onChange={(event) => setPreflightEnvironment(event.target.value)} /></label>
+          <label>Canal<input value={preflightChannel} onChange={(event) => setPreflightChannel(event.target.value)} /></label>
+          <label>Caso de uso<input value={preflightUseCase} onChange={(event) => setPreflightUseCase(event.target.value)} /></label>
+          <label>Rollout %<input inputMode="numeric" value={preflightRollout} onChange={(event) => setPreflightRollout(event.target.value)} /></label>
+          <label>Motivo<input value={preflightReason} onChange={(event) => setPreflightReason(event.target.value)} /></label>
+          <label>Aprobación técnica<input value={preflightApproval} onChange={(event) => setPreflightApproval(event.target.value)} /></label>
+          <label>Aprobación operativa<input value={preflightOperationalApproval} onChange={(event) => setPreflightOperationalApproval(event.target.value)} /></label>
+        </div>
+        <button className="primary" onClick={() => void runPreflight()} disabled={preflightBusy}>Ejecutar preflight</button>
+        {preflightError && <div className="alert" role="alert">Preflight: {preflightError}</div>}
+        {preflight && <PreflightView result={preflight} />}
+      </section>
+
+      <section className="card">
+        <div className="section-heading">
           <div><h2>Runs</h2><p>{page ? `${page.totalElements} resultados sanitizados` : "Sin datos cargados"}</p></div>
           <div className="filters">
             <input aria-label="Filtrar por agente" placeholder="agentId" value={agentId} onChange={(event) => setAgentId(event.target.value)} />
@@ -193,6 +256,13 @@ function AgentRegistryView({ agents }: { agents: AgentRegistryAgent[] | null }) 
     <h4>Activaciones</h4>
     {agent.activations.length === 0 ? <p className="muted">Sin activaciones registradas.</p> : <div className="activation-list">{agent.activations.map((activation, index) => <div className="activation" key={`${activation.activatedAt}-${index}`}><span><strong>{activation.environment}</strong> · {activation.channel} · {activation.useCase}</span><span>{activation.enabled && !activation.killSwitch ? `${activation.rolloutPercentage}% activa` : "kill switch / inactiva"}<small>{activation.reason}</small></span></div>)}</div>}
   </article>)}</div>;
+}
+
+function PreflightView({ result }: { result: AgentActivationPreflight }) {
+  return <div className="preflight-result">
+    <div className="section-heading"><div><h3>{result.agentId} · v{result.agentVersion}</h3><p className="muted">{result.environment} · {result.channel} · {result.useCase}</p></div><span className={result.canActivate ? "positive status-label" : "negative status-label"}>{result.status}</span></div>
+    <div className="preflight-checks">{result.checks.map((check) => <div className="preflight-check" key={check.code}><span className={check.status === "PASS" ? "positive" : check.status === "WARN" ? "warning" : "negative"}>{check.status}</span><span><strong>{check.code}</strong><small>{check.message}</small></span></div>)}</div>
+  </div>;
 }
 
 function RunDetailView({ run }: { run: RunDetail }) {

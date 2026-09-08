@@ -44,4 +44,39 @@ describe("control plane client", () => {
       { headers: { Accept: "application/json", Authorization: "Bearer session-token" } }
     );
   });
+
+  it("runs a non-mutating activation preflight through the read scope", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      status: "READY",
+      canActivate: true,
+      checks: []
+    }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await createControlPlaneClient("/internal/agent-evaluations", "session-token").preflightActivation({
+      agentId: "catalog-specialist",
+      agentVersion: 1,
+      environment: "prod",
+      channel: "telegram",
+      useCase: "catalog-search",
+      reason: "preflight",
+      rolloutPercentage: 100,
+      enabled: true,
+      approvalReference: "approval-1",
+      operationalApprovalReference: "ops-approval-1"
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/internal/agent-registry/activations/preflight",
+      {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          Authorization: "Bearer session-token"
+        },
+        body: expect.any(String)
+      }
+    );
+  });
 });

@@ -2,9 +2,9 @@
 
 El directorio [`backoffice/`](../backoffice/) contiene el primer panel React +
 TypeScript de WCS. Esta entrega es exclusivamente read-only: consulta runs,
-detalle, comparación de evidencia y el registry de agentes/activaciones
-sanitizado. No publica agentes, no cambia feature flags y no ejecuta
-evaluaciones.
+detalle, comparación de evidencia, el registry de agentes/activaciones
+sanitizado y el preflight no mutante de una activación. No publica agentes, no
+cambia feature flags, no activa versiones y no ejecuta evaluaciones.
 
 ## Seguridad
 
@@ -16,6 +16,8 @@ evaluaciones.
 - No se muestran prompts completos, conversaciones, PII, SQL ni secretos.
 - El registry muestra sólo metadata: estado, modelo, límites, allowlists,
   versión/hash de prompt y activaciones; nunca contenido de prompts ni actores.
+- El preflight usa el scope `agent-registry.read`; no necesita ni acepta el
+  scope de escritura y no reclama `Idempotency-Key`.
 - Un `401` o `403` es un resultado operativo esperado cuando JWT no está
   habilitado o el scope no es suficiente.
 
@@ -60,6 +62,8 @@ El cliente usa únicamente:
 - `GET /internal/agent-evaluations/comparisons`.
 - `GET /internal/agent-registry/agents` con filtros opcionales `agentId`,
   `environment`, `channel`, `useCase` y un `limit` máximo de 100.
+- `POST /internal/agent-registry/activations/preflight`, que valida una
+  solicitud completa sin persistir claims ni activaciones.
 
 La lista puede mostrar `totalTokens`, `providerLatencyMs` y
 `estimatedCostUsd` cuando todas las ejecuciones del run tienen esos datos. Si
@@ -70,7 +74,20 @@ El endpoint del registry requiere el scope independiente
 `agent-registry.read`; el scope `agent-evaluation.read` no lo habilita. La
 seguridad sigue deshabilitada por defecto hasta conectar un IdP aprobado. La
 respuesta es una lista acotada de agentes con versiones y activaciones, y no
-ofrece operaciones de escritura.
+ofrece operaciones de escritura. El preflight responde `READY`, `BLOCKED` o
+`DENIED` y detalla checks sanitizados; `READY` no equivale a una activación y
+requiere todavía el control plane write-only y sus aprobaciones.
+
+## Operación del preflight
+
+El preflight debe usarse antes de cualquier activación. Comprueba que la
+versión exista, esté `APPROVED`, tenga referencias de aprobación y cumpla la
+misma política de rollout que el comando de activación. No escribe PostgreSQL,
+no modifica AppConfig y no ejecuta Bedrock.
+
+La ruta de escritura permanece cerrada por
+`wcs.agent-registry.activation-write-enabled=false`; el runtime también sigue
+cerrado por `wcs.agent-runtime.activation-enabled=false`.
 
 ## Rollback
 

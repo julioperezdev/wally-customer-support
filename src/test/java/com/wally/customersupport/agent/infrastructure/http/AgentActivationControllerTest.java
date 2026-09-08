@@ -13,7 +13,10 @@ import java.util.UUID;
 import com.wally.customersupport.agent.application.activation.AgentActivationMutationReason;
 import com.wally.customersupport.agent.application.activation.AgentActivationMutationResult;
 import com.wally.customersupport.agent.application.activation.AgentActivationMutationStatus;
+import com.wally.customersupport.agent.application.activation.AgentActivationPreflightResult;
+import com.wally.customersupport.agent.application.activation.AgentActivationPreflightStatus;
 import com.wally.customersupport.agent.application.service.AgentActivationCommandService;
+import com.wally.customersupport.agent.application.service.AgentActivationPreflightService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -46,12 +49,15 @@ class AgentActivationControllerTest {
     @Mock
     private AgentActivationCommandService commandService;
 
+    @Mock
+    private AgentActivationPreflightService preflightService;
+
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(
-                        new AgentActivationController(commandService, false))
+                        new AgentActivationController(commandService, preflightService, false))
                 .setControllerAdvice(new AgentEvaluationControlPlaneExceptionHandler())
                 .build();
     }
@@ -116,5 +122,29 @@ class AgentActivationControllerTest {
                         .content(REQUEST))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.status").value("ALREADY_PROCESSED"));
+    }
+
+    @Test
+    void exposesPreflightAsReadOnlyAndDoesNotRequireAnIdempotencyKey() throws Exception {
+        when(preflightService.check(any(), any())).thenReturn(
+                new AgentActivationPreflightResult(
+                        AgentActivationPreflightStatus.READY,
+                        true,
+                        "catalog-specialist",
+                        1,
+                        "prod",
+                        "telegram",
+                        "catalog-search",
+                        java.util.List.of()));
+
+        mockMvc.perform(post("/internal/agent-registry/activations/preflight")
+                        .principal(() -> ACTOR)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(REQUEST))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("READY"))
+                .andExpect(jsonPath("$.canActivate").value(true));
+
+        verify(preflightService).check(any(), any());
     }
 }
