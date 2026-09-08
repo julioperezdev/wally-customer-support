@@ -39,7 +39,8 @@ ningún bean de configuración, job o workflow activa purgas con esta tarea.
 
 ## Consecuencias
 
-Un futuro job autenticado podrá consultar la decisión antes de proponer una
-acción de retención. La activación deberá definir por separado autorización,
+WCS-66 permite revisar una página histórica y obtener decisiones y contadores
+sin mutar runs. Un futuro job autenticado podrá consultar esa revisión antes de
+proponer una acción de retención. La activación deberá definir por separado autorización,
 auditoría, retención por ambiente, período de gracia, paginación, métricas,
 reintentos y rollback.
