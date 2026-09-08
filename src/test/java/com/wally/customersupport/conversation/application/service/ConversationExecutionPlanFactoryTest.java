@@ -10,6 +10,7 @@ import com.wally.customersupport.conversation.domain.model.ConversationExecution
 import com.wally.customersupport.conversation.domain.model.ConversationExecutionStep;
 import com.wally.customersupport.conversation.domain.model.ConversationIntent;
 import com.wally.customersupport.conversation.domain.model.ConversationIntentDecision;
+import com.wally.customersupport.shared.infrastructure.config.ConversationGuardrailProperties;
 import org.junit.jupiter.api.Test;
 
 class ConversationExecutionPlanFactoryTest {
@@ -31,6 +32,18 @@ class ConversationExecutionPlanFactoryTest {
     void mapsLowConfidenceToTheSafetyFallback() {
         ConversationExecutionPlan plan = factory.create(
                 new ConversationIntentDecision(ConversationIntent.CATALOG_SEARCH, 0.40, null, null));
+
+        assertEquals(ConversationExecutionAction.LOW_CONFIDENCE, plan.action());
+        assertEquals("LOW_CONFIDENCE", plan.fallbackReason());
+    }
+
+    @Test
+    void usesConfiguredConfidenceGuardrail() {
+        ConversationExecutionPlanFactory configuredFactory = new ConversationExecutionPlanFactory(
+                new ConversationGuardrailProperties(0.90));
+
+        ConversationExecutionPlan plan = configuredFactory.create(
+                new ConversationIntentDecision(ConversationIntent.CATALOG_SEARCH, 0.80, null, null));
 
         assertEquals(ConversationExecutionAction.LOW_CONFIDENCE, plan.action());
         assertEquals("LOW_CONFIDENCE", plan.fallbackReason());

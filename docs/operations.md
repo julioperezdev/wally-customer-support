@@ -226,6 +226,12 @@ wcs.ai.region
 wcs.ai.pricing-version
 wcs.ai.input-price-usd-per-million-tokens
 wcs.ai.output-price-usd-per-million-tokens
+wcs.ai.prompt.intent-version
+wcs.ai.prompt.intent-max-output-tokens
+wcs.ai.prompt.intent-temperature
+wcs.ai.prompt.max-input-characters
+wcs.ai.prompt.max-history-messages
+wcs.conversation.guardrails.min-intent-confidence
 wcs.rag.provider
 wcs.rag.max-results
 wcs.rag.knowledge-base-id (cuando el adapter Bedrock KB esté habilitado)
