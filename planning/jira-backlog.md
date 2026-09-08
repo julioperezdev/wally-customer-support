@@ -360,6 +360,7 @@ semántica o AgentCore.
 | WCS-62 | In Progress | Consulta interna filtrable y paginada del histórico de evaluaciones |
 | WCS-63 | In Progress | Comparación sanitizada de runs y versiones de evaluación |
 | WCS-64 | In Progress | Exportación versionada de evidencia sanitizada |
+| WCS-65 | In Progress | Política determinística de retención sin purga automática |
 
 WCS-60 no agrega todavía API, persistencia ni ejecución de Bedrock. WCS-61
 agrega persistencia create-only en el schema `wcs` para runs completados y
@@ -369,6 +370,8 @@ y formato de exportación antes de permitir acceso desde un backoffice o job
 compartido. WCS-63 agrega evidencia comparativa, pero no decide promociones.
 WCS-64 agrega un envelope versionado para transportar esa evidencia sin
 contenido conversacional, con un límite explícito de escenarios.
+WCS-65 agrega el cálculo de vigencia y vencimiento de un run; no borra ni
+archiva datos y deja pendiente la aprobación de la activación operativa.
 
 `WCS-14`–`WCS-16` y `WCS-17` ya tienen la fundación o el contrato inicial
 versionado; deben completarse/verificarse según la evidencia de cada issue antes
