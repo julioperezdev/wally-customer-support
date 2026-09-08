@@ -3,7 +3,7 @@
 - Owner: Product/Tech Lead
 - Status: `Accepted`
 - Last reviewed: 2026-09-08
-- Related Jira: `WCS-45`, `WCS-60`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`, `WCS-70`
+- Related Jira: `WCS-45`, `WCS-60`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-71`
 - Baseline: [`wcs-baseline-2026-09-07`](baselines/wcs-baseline-2026-09-07.md)
 - Canonical Confluence: [WCS — Agent Platform Roadmap & Architecture Proposal](https://julioperezdev.atlassian.net/wiki/spaces/SD/pages/7569410/WCS+Agent+Platform+Roadmap+Architecture+Proposal)
 - Related repository paths: `docs/roadmap.md`, `docs/ai.md`, `docs/observability.md`, `docs/decisions/`
@@ -257,6 +257,12 @@ idempotente: la key se reclama sólo después de autorizar y la evaluación se
 delega en `AgentEvaluationApplicationService`. El resultado es sanitizado y
 el guard debe tener un adapter atómico antes de exponer el flujo a un trigger
 remoto.
+
+`WCS-70` implementa ese guard en PostgreSQL con un digest SHA-256 único e
+inserción atómica. `WCS-71` registra la composición Spring de la frontera
+interna y un authorizer denegado por defecto, reemplazable por un proveedor
+explícito en una fase posterior. La ejecución sigue sin estar expuesta a
+HTTP, scheduler o integración remota.
 
 La ejecución de evaluaciones queda separada en tres piezas:
 
