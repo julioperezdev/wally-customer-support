@@ -11,11 +11,20 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import javax.sql.DataSource;
+import com.wally.customersupport.agent.application.evaluation.AgentEvaluationApplicationService;
+import com.wally.customersupport.agent.application.evaluation.AgentEvaluationRun;
+import com.wally.customersupport.agent.application.evaluation.AgentEvaluationRunRequest;
+import com.wally.customersupport.agent.application.evaluation.CatalogResponseEvaluationDataset;
+import com.wally.customersupport.agent.application.port.out.AgentEvaluationRunRepository;
+import com.wally.customersupport.agent.domain.model.AgentEvaluationExecution;
+import com.wally.customersupport.agent.domain.model.AgentEvaluationExecutionMetadata;
+import com.wally.customersupport.agent.domain.model.AgentEvaluationScenario;
 import com.wally.customersupport.catalog.application.service.CatalogConversationService;
 import com.wally.customersupport.catalog.application.service.CatalogQueryService;
 import com.wally.customersupport.catalog.domain.model.CatalogQuery;
 import com.wally.customersupport.conversation.application.port.out.ConversationMemory;
 import com.wally.customersupport.conversation.application.service.ConversationOrchestrator;
+import com.wally.customersupport.conversation.application.service.DeterministicResponseHumanizer;
 import com.wally.customersupport.conversation.application.service.ExplicitPreferenceCaptureService;
 import com.wally.customersupport.conversation.application.service.CustomerPreferenceService;
 import com.wally.customersupport.conversation.application.port.out.ConversationRepository;
@@ -86,6 +95,12 @@ class WallyCustomerSupportApplicationIntegrationTest {
 
     @Autowired
     private SupportConfigurationQueryService supportConfigurationQueryService;
+
+    @Autowired
+    private AgentEvaluationApplicationService agentEvaluationApplicationService;
+
+    @Autowired
+    private AgentEvaluationRunRepository agentEvaluationRunRepository;
 
     @Test
     void startsWithFlywayAndTestAdapters() {
@@ -284,5 +299,48 @@ class WallyCustomerSupportApplicationIntegrationTest {
         assertEquals("negro", saved.color());
         assertEquals(ExplicitPreferenceCaptureService.Status.NOT_DETECTED, incidental.status());
         assertEquals("negro", customerPreferenceService.findForContext(actorId, null).getFirst().value());
+    }
+
+    @Test
+    void persistsAndLoadsSanitizedEvaluationRunWithScenarioMetadata() {
+        AgentEvaluationRun run = agentEvaluationApplicationService.execute(
+                new AgentEvaluationRunRequest(
+                        CatalogResponseEvaluationDataset.VERSION,
+                        "catalog-specialist",
+                        "v1",
+                        "mock",
+                        "deterministic-v1"),
+                this::executeEvaluationScenario);
+
+        AgentEvaluationRun loaded = agentEvaluationRunRepository.findById(run.runId()).orElseThrow();
+
+        assertEquals(run.runId(), loaded.runId());
+        assertEquals(5, loaded.suiteResult().totalScenarios());
+        assertEquals(5, loaded.suiteResult().passedScenarios());
+        assertEquals(1.0, loaded.suiteResult().passRate());
+        assertEquals("deterministic-v1",
+                loaded.suiteResult().scenarioResults().getFirst().executionMetadata().modelId());
+        assertTrue(loaded.toString().contains("catalog-response-v1"));
+        assertTrue(!loaded.toString().contains("Remera NullPointer"));
+
+        assertThrows(IllegalStateException.class, () -> agentEvaluationRunRepository.save(run));
+    }
+
+    private AgentEvaluationExecution executeEvaluationScenario(AgentEvaluationScenario scenario) {
+        DeterministicResponseHumanizer humanizer = new DeterministicResponseHumanizer();
+        return new AgentEvaluationExecution(
+                humanizer.humanize(scenario.request()),
+                new AgentEvaluationExecutionMetadata(
+                        "catalog-specialist",
+                        "v1",
+                        "mock",
+                        "deterministic-v1",
+                        17,
+                        9L,
+                        null,
+                        null,
+                        null,
+                        null,
+                        "test-pricing-v1"));
     }
 }

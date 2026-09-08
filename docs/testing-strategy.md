@@ -93,6 +93,8 @@ necesitan iniciar el contenedor.
 | `TC-044` | P1 | Preferencia vencida o inválida | No expone valores vencidos ni guarda colores no permitidos | Unit + Testcontainers |
 | `TC-045` | P1 | Ownership y borrado de preferencias | Un actor no lee preferencias ajenas y el borrado elimina el alcance solicitado | Unit + Testcontainers |
 | `TC-046` | P1 | Captura explícita en inbound | Confirma una frase explícita, no captura colores incidentales y no invoca al LLM para guardar | Unit + flujo común |
+| `TC-047` | P1 | Persistencia de evaluación completada | Guarda y recupera métricas y resultados por escenario sin contenido conversacional | Testcontainers PostgreSQL |
+| `TC-048` | P1 | Inmutabilidad de evaluación | Rechaza sobrescribir un `runId` y una segunda fila del mismo escenario | Testcontainers PostgreSQL |
 | `TC-041` | P1 | Uso real de Bedrock | Emite `AI_USAGE_RECORDED` con modelo, tokens, latencia, pricing version y costo estimado | Test del adapter + log sanitizado |
 | `TC-042` | P1 | Consultas de observabilidad | CloudWatch agrega consultas, IA, RAG y entregas sin errores de campos | Logs Insights/Grafana |
 

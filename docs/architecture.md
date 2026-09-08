@@ -135,10 +135,14 @@ con la fuente de verdad.
 La evaluación de agentes vive en el bounded context `agent`, detrás de una
 frontera de aplicación independiente del runtime conversacional. El catálogo
 resuelve datasets sintéticos por versión y el servicio de evaluación devuelve
-un run sanitizado con métricas agregadas. Esta entrada no se expone por HTTP ni
-persiste resultados hasta que se definan autorización y retención; así puede
-ser reutilizada por tests, jobs y el futuro backoffice sin acoplarlos a
-Spring MVC o Bedrock.
+un run sanitizado con métricas agregadas. WCS-61 persiste los runs completados
+en `wcs.agent_evaluation_runs` y sus escenarios en
+`wcs.agent_evaluation_scenario_results`, incluyendo sólo métricas y metadata
+operativa; nunca prompts, respuestas ni PII. La operación de guardado es
+create-only para preservar el histórico. Esta entrada todavía no se expone por
+HTTP ni habilita ejecución desde un backoffice hasta definir autorización y
+retención; así puede ser reutilizada por tests y jobs sin acoplarla a Spring
+MVC o Bedrock.
 
 ## Topología AWS base
 

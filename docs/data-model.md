@@ -3,7 +3,7 @@
 Owner: Tech Lead  
 Status: `Proposed`  
 Last reviewed: 2026-09-06
-Related Jira: `WCS-13`, `WCS-14`, `WCS-15`, `WCS-16`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-37`, `WCS-47`, `WCS-48`, `WCS-51`
+Related Jira: `WCS-13`, `WCS-14`, `WCS-15`, `WCS-16`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-37`, `WCS-47`, `WCS-48`, `WCS-51`, `WCS-60`, `WCS-61`
 Related repository paths: `src/main/java/com/wally/customersupport/{conversation,catalog,support,agent}/infrastructure/repository/postgres`, `src/main/resources/db/migration`
 
 ## Aislamiento en el RDS compartido
@@ -195,6 +195,30 @@ ni contiene prompts; sólo conserva metadatos de prompt. Los fallbacks
 `VERSION_NOT_FOUND`, `VERSION_MISMATCH`, `VERSION_NOT_PUBLISHABLE`,
 `INVALID_DEFINITION` y `REGISTRY_UNAVAILABLE` no interrumpen el flujo actual.
 La definición todavía no se usa para ejecutar el caso de uso desde el runtime.
+
+### Resultados de evaluación — contrato en `WCS-60`, persistencia en `V10`/`WCS-61`
+
+La evaluación se almacena como dos grupos relacionados y sólo después de una
+ejecución completada:
+
+* `wcs.agent_evaluation_runs`: `id`/`runId`, dataset y versión, agente y
+  versión, proveedor/modelo, timestamps, duración, conteos, pass rate, score
+  promedio y razones de fallo agregadas;
+* `wcs.agent_evaluation_scenario_results`: run, `scenario_id`, versión,
+  pass/fail, score, razones sanitizadas y metadata opcional de ejecución
+  (latencia, tokens, costo y pricing version).
+
+La relación tiene foreign key con borrado en cascada y unicidad de
+`run_id + scenario_id`. Los scores, tiempos, tokens y costos tienen constraints
+de rango; los índices permiten consultar histórico por agente/versión, dataset
+y fecha. No existen columnas para prompts, respuestas, mensajes, teléfonos ni
+PII. La migración `V10__create_agent_evaluation_results.sql` agrega estas
+tablas sin modificar `V1`–`V9`.
+
+El adapter `AgentEvaluationRunRepository` expone sólo `save` y lookup por
+`runId`, y rechaza sobrescribir runs existentes. La retención y el control de
+acceso del histórico se definirán antes de habilitar un job o backoffice
+compartido.
 
 ### Otras entidades futuras
 

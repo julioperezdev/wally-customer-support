@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
+import com.wally.customersupport.agent.application.port.out.AgentEvaluationRunRepository;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationSuiteResult;
 import com.wally.customersupport.shared.infrastructure.observability.StructuredEventLog;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ public class AgentEvaluationApplicationService {
 
     private final AgentEvaluationDatasetCatalog datasetCatalog;
     private final AgentEvaluationRunner runner;
+    private final AgentEvaluationRunRepository runRepository;
     private final Clock clock;
 
     public AgentEvaluationRun execute(
@@ -48,8 +50,11 @@ public class AgentEvaluationApplicationService {
                     completedAt,
                     elapsedMillis(startedAt, completedAt),
                     suiteResult);
-            logCompleted(run);
-            return run;
+            AgentEvaluationRun savedRun = Objects.requireNonNull(
+                    runRepository.save(run),
+                    "runRepository.save must not return null");
+            logCompleted(savedRun);
+            return savedRun;
         } catch (RuntimeException exception) {
             logFailed(runId, request, startedAt, exception);
             throw exception;

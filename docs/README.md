@@ -31,6 +31,8 @@
   - [`014-agent-evaluation-contract.md`](decisions/014-agent-evaluation-contract.md): escenarios sintéticos versionados y evaluación determinística.
   - [`015-agent-evaluation-runner.md`](decisions/015-agent-evaluation-runner.md): ejecución determinística y métricas agregadas de una suite.
   - [`016-agent-evaluation-metadata.md`](decisions/016-agent-evaluation-metadata.md): metadata operativa separada para latencia, tokens y costo.
+  - [`017-agent-evaluation-application-boundary.md`](decisions/017-agent-evaluation-application-boundary.md): frontera interna para ejecutar datasets y generar runs sanitizados.
+  - [`018-agent-evaluation-persistence.md`](decisions/018-agent-evaluation-persistence.md): persistencia create-only de runs y escenarios sanitizados.
 
 ## Calidad y operación
 
