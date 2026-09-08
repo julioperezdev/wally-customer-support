@@ -49,6 +49,14 @@ resultados o logs.
 La prueba de autorización denegada verifica además que la idempotency key, el
 servicio de evaluación y el executor no reciben ninguna invocación.
 
+El control plane read-only mantiene la misma regla de fail-closed: las pruebas
+MockMvc deben verificar que una solicitud sin autorización devuelve `403` antes
+de invocar histórico, comparación o exportación. Los contratos autorizados
+cubren filtros de fecha, paginación acotada, detalle inexistente (`404`),
+datasets incompatibles (`409`) y errores de request sanitizados (`400`). Las
+respuestas sólo contienen métricas y metadata permitida; nunca prompts,
+respuestas completas, tokens secretos o PII.
+
 WCS-70 agrega una prueba de integración con PostgreSQL/Testcontainers para
 comprobar que la key se guarda sólo como digest SHA-256, que el reintento es
 rechazado y que dos claims concurrentes de la misma key producen exactamente
@@ -126,6 +134,10 @@ un éxito.
 | `TC-060` | P1 | Gate aprobado o rechazado | Acepta evidencia completa no futura y rechaza metadata faltante o futura | Unit |
 | `TC-061` | P1 | Autorización exacta del trigger | Autoriza sólo la capacidad y ambiente permitidos | Unit |
 | `TC-062` | P1 | Denegación por defecto | Deniega metadata incompleta, provider no confirmante o error del provider | Unit |
+| `TC-063` | P1 | API read-only denegada | Devuelve `403` y no llama histórico, comparación ni exportación | MockMvc + Mockito |
+| `TC-064` | P1 | API read-only autorizada | Respeta filtros, paginación y orden del histórico | MockMvc + application |
+| `TC-065` | P1 | Errores del control plane | Mapea request inválido a `400`, run ausente a `404` y dataset incompatible a `409` | MockMvc |
+| `TC-066` | P1 | Acceso observable y sanitizado | Registra operación, capacidad, resultado y duración sin actor crudo ni contenido | MockMvc + logs |
 | `TC-041` | P1 | Uso real de Bedrock | Emite `AI_USAGE_RECORDED` con modelo, tokens, latencia, pricing version y costo estimado | Test del adapter + log sanitizado |
 | `TC-042` | P1 | Consultas de observabilidad | CloudWatch agrega consultas, IA, RAG y entregas sin errores de campos | Logs Insights/Grafana |
 
@@ -175,6 +187,16 @@ un éxito.
   `agent-evaluation.execute` y el ambiente configurado.
 - `TC-062`: metadata incompleta, capacidad/ambiente no permitido o un error del
   provider debe devolver `DENIED` sin propagar credenciales ni excepciones.
+- `TC-063`: la API interna debe devolver `403` con `ACCESS_DENIED` y ningún
+  servicio de evaluación puede recibir una invocación.
+- `TC-064`: una lectura autorizada debe construir el filtro tipado y la página
+  acotada antes de delegar al servicio de histórico.
+- `TC-065`: UUID/fecha/paginación inválidos deben devolver `INVALID_REQUEST`;
+  una comparación incompatible debe devolver `INCOMPATIBLE_DATASET` y un run
+  inexistente `RUN_NOT_FOUND`.
+- `TC-066`: cada intento de acceso debe producir un evento estructurado con la
+  operación y el resultado, sin registrar el valor del actor ni contenido de
+  evaluación.
 
 ### Prueba manual de catálogo por Telegram
 

@@ -38,6 +38,7 @@
   - [`021-agent-evaluation-evidence-export.md`](decisions/021-agent-evaluation-evidence-export.md): envelope versionado para exportar evidencia sanitizada.
   - [`022-agent-evaluation-retention-policy.md`](decisions/022-agent-evaluation-retention-policy.md): decisión determinística de retención sin purga automática.
   - [`023-agent-evaluation-trigger-spring-composition.md`](decisions/023-agent-evaluation-trigger-spring-composition.md): composición Spring con denegación por defecto.
+  - [`024-agent-evaluation-control-plane-read-api.md`](decisions/024-agent-evaluation-control-plane-read-api.md): acceso provider-neutral y API read-only del control plane.
 
 ## Calidad y operación
 

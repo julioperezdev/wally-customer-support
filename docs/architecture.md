@@ -3,7 +3,7 @@
 Owner: Tech Lead  
 Status: `Accepted`
 Last reviewed: 2026-09-03
-Related Jira: `WCS-13`, `WCS-17`, `WCS-18`, `WCS-20`, `WCS-21`, `WCS-22`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-32`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-71`
+Related Jira: `WCS-13`, `WCS-17`, `WCS-18`, `WCS-20`, `WCS-21`, `WCS-22`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-32`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-71`, `WCS-72`, `WCS-73`, `WCS-74`, `WCS-75`
 Related repository paths: `src/main/java/com/wally/customersupport/{conversation,catalog,support,knowledge,shared}`, `src/main/resources`, `db/migration`
 Decision/source: specification de WhatsApp y re-baseline solicitada el 2026-08-30
 
@@ -143,7 +143,13 @@ create-only para preservar el histórico. Esta entrada todavía no se expone por
 HTTP ni habilita ejecución desde un backoffice hasta definir autorización y
 retención. WCS-62 agrega una consulta interna con filtros tipados, páginas
 acotadas y orden estable para futuros jobs o backoffice; así puede ser
-reutilizada sin acoplarla a Spring MVC o Bedrock.
+reutilizada sin acoplarla a Spring MVC o Bedrock. WCS-73 agrega la frontera de
+autorización provider-neutral para el control plane, usando la capacidad exacta
+`agent-evaluation.read` y denegando por defecto. WCS-74 expone mediante
+`/internal/agent-evaluations` únicamente lecturas del histórico, detalle,
+comparaciones y evidencia; WCS-75 cubre sus contratos HTTP, errores sanitizados
+y observabilidad. La API no ejecuta evaluaciones, no acepta SQL y no permite
+escrituras. Sin un authorizer explícito, ningún actor puede acceder.
 
 ## Topología AWS base
 
