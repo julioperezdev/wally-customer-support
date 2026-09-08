@@ -3,7 +3,7 @@
 Owner: Tech Lead  
 Status: `Proposed`  
 Last reviewed: 2026-09-06
-Related Jira: `WCS-13`, `WCS-14`, `WCS-15`, `WCS-16`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-37`, `WCS-47`, `WCS-48`, `WCS-51`, `WCS-60`, `WCS-61`, `WCS-62`
+Related Jira: `WCS-13`, `WCS-14`, `WCS-15`, `WCS-16`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-37`, `WCS-47`, `WCS-48`, `WCS-51`, `WCS-60`, `WCS-61`, `WCS-62`, `WCS-63`
 Related repository paths: `src/main/java/com/wally/customersupport/{conversation,catalog,support,agent}/infrastructure/repository/postgres`, `src/main/resources/db/migration`
 
 ## Aislamiento en el RDS compartido
@@ -221,6 +221,10 @@ acceso del histórico se definirán antes de habilitar un job o backoffice
 compartido. WCS-62 agrega la consulta interna tipada con filtros por identidad
 versionada y fecha, páginas acotadas y orden estable por `completed_at`/`id`;
 los listados devuelven resúmenes y el detalle continúa siendo sanitizado.
+WCS-63 compara dos runs del mismo dataset sobre este contrato sin agregar
+datos nuevos al esquema: el baseline y el candidate conservan su identidad y
+los deltas operativos quedan no disponibles cuando falta metadata en alguno de
+los lados.
 
 ### Otras entidades futuras
 
