@@ -75,6 +75,15 @@ acepta el GitHub Environment `test` y cuyo state key queda separado de
 `prod`. Ese rol se configura en GitHub después de un bootstrap aprobado; no se
 reutiliza `AWS_TERRAFORM_ROLE_ARN` de `production`.
 
+El bootstrap versionado para ese primer rol está en
+`infra/bootstrap/test`. Es un root local separado que sólo administra el rol
+OIDC, su policy inline, la policy de acceso de Knowledge Base y el attachment.
+Debe ejecutarse con un principal AWS autorizado para crear IAM, revisando el
+plan antes de aplicar. Después de obtener el ARN, se configura
+`AWS_TERRAFORM_ROLE_ARN` en el Environment `test`; el primer plan del stack se
+ejecuta recién desde GitHub Actions. El root de bootstrap no administra el
+state ni los recursos del ambiente `test`.
+
 El workflow de Terraform valida ambos roots. Para un plan o apply manual se
 selecciona `target_environment=test`; el Environment `test` de GitHub debe
 tener sus propios `AWS_TERRAFORM_ROLE_ARN` y `TERRAFORM_VARS` antes de ejecutar
