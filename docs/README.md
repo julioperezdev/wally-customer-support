@@ -34,6 +34,7 @@
   - [`017-agent-evaluation-application-boundary.md`](decisions/017-agent-evaluation-application-boundary.md): frontera interna para ejecutar datasets y generar runs sanitizados.
   - [`018-agent-evaluation-persistence.md`](decisions/018-agent-evaluation-persistence.md): persistencia create-only de runs y escenarios sanitizados.
   - [`019-agent-evaluation-history-query.md`](decisions/019-agent-evaluation-history-query.md): consulta interna filtrable y paginada del histórico.
+  - [`020-agent-evaluation-comparison.md`](decisions/020-agent-evaluation-comparison.md): comparación sanitizada de runs y deltas operativos.
 
 ## Calidad y operación
 

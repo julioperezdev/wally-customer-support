@@ -97,6 +97,8 @@ necesitan iniciar el contenedor.
 | `TC-048` | P1 | Inmutabilidad de evaluación | Rechaza sobrescribir un `runId` y una segunda fila del mismo escenario | Testcontainers PostgreSQL |
 | `TC-049` | P1 | Historial filtrado y paginado | Devuelve sólo runs que cumplen los filtros, con límite de página y orden estable | Unit + Testcontainers PostgreSQL |
 | `TC-050` | P1 | Detalle de evaluación inexistente | Devuelve `Optional.empty` sin filtrar errores de infraestructura ni contenido | Unit + Testcontainers PostgreSQL |
+| `TC-051` | P1 | Comparación de runs compatibles | Calcula deltas de calidad y métricas operativas disponibles sin contenido | Unit + Testcontainers PostgreSQL |
+| `TC-052` | P1 | Comparación con datos faltantes o incompatibles | Marca metadata faltante como no disponible y rechaza datasets diferentes | Unit + Testcontainers PostgreSQL |
 | `TC-041` | P1 | Uso real de Bedrock | Emite `AI_USAGE_RECORDED` con modelo, tokens, latencia, pricing version y costo estimado | Test del adapter + log sanitizado |
 | `TC-042` | P1 | Consultas de observabilidad | CloudWatch agrega consultas, IA, RAG y entregas sin errores de campos | Logs Insights/Grafana |
 
@@ -120,6 +122,10 @@ necesitan iniciar el contenedor.
   respetar todos los filtros, no duplicar runs y desempatar por `runId`.
 - `TC-050`: consultar un `runId` inexistente debe producir un resultado vacío
   tipado, sin excepción de persistencia ni exposición de contenido.
+- `TC-051`: comparar runs del mismo dataset debe devolver identidad, deltas y
+  estados por escenario sin prompts ni respuestas.
+- `TC-052`: metadata ausente no se interpreta como cero y un dataset diferente
+  debe rechazarse con un error de aplicación sanitizado.
 
 ### Prueba manual de catálogo por Telegram
 
