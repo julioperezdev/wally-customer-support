@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationRun;
+import com.wally.customersupport.agent.application.evaluation.AgentEvaluationRunSummary;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationResult;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationSuiteResult;
 import jakarta.persistence.CascadeType;
@@ -124,5 +125,24 @@ public class AgentEvaluationRunJpaEntity {
                 completedAt,
                 durationMs,
                 suiteResult);
+    }
+
+    public AgentEvaluationRunSummary toSummary() {
+        return new AgentEvaluationRunSummary(
+                id,
+                datasetVersion,
+                agentId,
+                agentVersion,
+                provider,
+                modelId,
+                startedAt,
+                completedAt,
+                durationMs,
+                totalScenarios,
+                passedScenarios,
+                failedScenarios,
+                passRate.doubleValue(),
+                averageScore.doubleValue(),
+                failureReasons);
     }
 }

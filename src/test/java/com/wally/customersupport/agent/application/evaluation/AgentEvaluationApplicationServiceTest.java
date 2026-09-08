@@ -103,5 +103,12 @@ class AgentEvaluationApplicationServiceTest {
         public Optional<AgentEvaluationRun> findById(UUID runId) {
             return Optional.empty();
         }
+
+        @Override
+        public AgentEvaluationHistoryPage search(
+                AgentEvaluationHistoryFilter filter,
+                AgentEvaluationHistoryPageRequest pageRequest) {
+            return new AgentEvaluationHistoryPage(List.of(), pageRequest.pageNumber(), pageRequest.pageSize(), 0, 0);
+        }
     }
 }

@@ -357,12 +357,14 @@ semántica o AgentCore.
 | WCS-59 | In Review | Consultas conversacionales del catálogo |
 | WCS-60 | In Progress | Entrada interna y run trazable de evaluaciones |
 | WCS-61 | In Progress | Persistencia histórica de resultados sanitizados de evaluación |
+| WCS-62 | In Progress | Consulta interna filtrable y paginada del histórico de evaluaciones |
 
 WCS-60 no agrega todavía API, persistencia ni ejecución de Bedrock. WCS-61
 agrega persistencia create-only en el schema `wcs` para runs completados y
-escenarios sanitizados. La siguiente evolución debe definir autorización,
-retención y formato de exportación antes de permitir ejecuciones desde un
-backoffice o job compartido.
+escenarios sanitizados. WCS-62 agrega sólo una frontera interna de lectura con
+filtros y límites; la siguiente evolución debe definir autorización, retención
+y formato de exportación antes de permitir acceso desde un backoffice o job
+compartido.
 
 `WCS-14`–`WCS-16` y `WCS-17` ya tienen la fundación o el contrato inicial
 versionado; deben completarse/verificarse según la evidencia de cada issue antes

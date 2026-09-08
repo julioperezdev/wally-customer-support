@@ -9,16 +9,22 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import javax.sql.DataSource;
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationApplicationService;
+import com.wally.customersupport.agent.application.evaluation.AgentEvaluationHistoryFilter;
+import com.wally.customersupport.agent.application.evaluation.AgentEvaluationHistoryPageRequest;
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationRun;
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationRunRequest;
 import com.wally.customersupport.agent.application.evaluation.CatalogResponseEvaluationDataset;
 import com.wally.customersupport.agent.application.port.out.AgentEvaluationRunRepository;
+import com.wally.customersupport.agent.application.service.AgentEvaluationHistoryQueryService;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationExecution;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationExecutionMetadata;
+import com.wally.customersupport.agent.domain.model.AgentEvaluationResult;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationScenario;
+import com.wally.customersupport.agent.domain.model.AgentEvaluationSuiteResult;
 import com.wally.customersupport.catalog.application.service.CatalogConversationService;
 import com.wally.customersupport.catalog.application.service.CatalogQueryService;
 import com.wally.customersupport.catalog.domain.model.CatalogQuery;
@@ -101,6 +107,9 @@ class WallyCustomerSupportApplicationIntegrationTest {
 
     @Autowired
     private AgentEvaluationRunRepository agentEvaluationRunRepository;
+
+    @Autowired
+    private AgentEvaluationHistoryQueryService agentEvaluationHistoryQueryService;
 
     @Test
     void startsWithFlywayAndTestAdapters() {
@@ -324,6 +333,86 @@ class WallyCustomerSupportApplicationIntegrationTest {
         assertTrue(!loaded.toString().contains("Remera NullPointer"));
 
         assertThrows(IllegalStateException.class, () -> agentEvaluationRunRepository.save(run));
+    }
+
+    @Test
+    void queriesEvaluationHistoryWithFiltersStablePaginationAndSanitizedDetail() {
+        String datasetVersion = "history-dataset-" + UUID.randomUUID();
+        String agentId = "history-agent-" + UUID.randomUUID();
+        Instant completedAt = Instant.parse("2026-09-08T00:00:00Z");
+        AgentEvaluationRun first = evaluationRun(
+                UUID.fromString("00000000-0000-0000-0000-000000000001"),
+                datasetVersion,
+                agentId,
+                completedAt);
+        AgentEvaluationRun second = evaluationRun(
+                UUID.fromString("00000000-0000-0000-0000-000000000002"),
+                datasetVersion,
+                agentId,
+                completedAt);
+        AgentEvaluationRun excluded = evaluationRun(
+                UUID.fromString("00000000-0000-0000-0000-000000000003"),
+                "other-dataset-" + UUID.randomUUID(),
+                agentId,
+                completedAt);
+        agentEvaluationRunRepository.save(first);
+        agentEvaluationRunRepository.save(second);
+        agentEvaluationRunRepository.save(excluded);
+
+        AgentEvaluationHistoryFilter filter = new AgentEvaluationHistoryFilter(
+                datasetVersion,
+                agentId,
+                "v1",
+                "mock",
+                "history-model",
+                completedAt.minusSeconds(1),
+                completedAt.plusSeconds(1));
+        var firstPage = agentEvaluationHistoryQueryService.search(
+                filter,
+                new AgentEvaluationHistoryPageRequest(0, 1));
+        var secondPage = agentEvaluationHistoryQueryService.search(
+                filter,
+                new AgentEvaluationHistoryPageRequest(1, 1));
+
+        assertEquals(2, firstPage.totalElements());
+        assertEquals(2, firstPage.totalPages());
+        assertEquals(first.runId(), firstPage.items().getFirst().runId());
+        assertTrue(firstPage.hasNext());
+        assertEquals(second.runId(), secondPage.items().getFirst().runId());
+        assertTrue(secondPage.isLast());
+
+        assertTrue(agentEvaluationHistoryQueryService.findById(first.runId()).isPresent());
+        assertTrue(agentEvaluationHistoryQueryService.findById(UUID.randomUUID()).isEmpty());
+        assertTrue(firstPage.toString().contains(datasetVersion));
+        assertTrue(!firstPage.toString().contains("Remera NullPointer"));
+    }
+
+    private AgentEvaluationRun evaluationRun(
+            UUID runId,
+            String datasetVersion,
+            String agentId,
+            Instant completedAt) {
+        AgentEvaluationResult scenario = new AgentEvaluationResult(
+                "scenario-1", datasetVersion, true, 1.0, List.of(), null);
+        return new AgentEvaluationRun(
+                runId,
+                datasetVersion,
+                agentId,
+                "v1",
+                "mock",
+                "history-model",
+                completedAt.minusMillis(5),
+                completedAt,
+                5,
+                new AgentEvaluationSuiteResult(
+                        datasetVersion,
+                        List.of(scenario),
+                        1,
+                        1,
+                        0,
+                        1.0,
+                        1.0,
+                        Map.of()));
     }
 
     private AgentEvaluationExecution executeEvaluationScenario(AgentEvaluationScenario scenario) {

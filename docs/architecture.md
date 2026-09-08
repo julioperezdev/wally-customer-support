@@ -3,7 +3,7 @@
 Owner: Tech Lead  
 Status: `Accepted`
 Last reviewed: 2026-09-03
-Related Jira: `WCS-13`, `WCS-17`, `WCS-18`, `WCS-20`, `WCS-21`, `WCS-22`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-32`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`
+Related Jira: `WCS-13`, `WCS-17`, `WCS-18`, `WCS-20`, `WCS-21`, `WCS-22`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-32`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-61`, `WCS-62`
 Related repository paths: `src/main/java/com/wally/customersupport/{conversation,catalog,support,knowledge,shared}`, `src/main/resources`, `db/migration`
 Decision/source: specification de WhatsApp y re-baseline solicitada el 2026-08-30
 
@@ -141,8 +141,9 @@ en `wcs.agent_evaluation_runs` y sus escenarios en
 operativa; nunca prompts, respuestas ni PII. La operación de guardado es
 create-only para preservar el histórico. Esta entrada todavía no se expone por
 HTTP ni habilita ejecución desde un backoffice hasta definir autorización y
-retención; así puede ser reutilizada por tests y jobs sin acoplarla a Spring
-MVC o Bedrock.
+retención. WCS-62 agrega una consulta interna con filtros tipados, páginas
+acotadas y orden estable para futuros jobs o backoffice; así puede ser
+reutilizada sin acoplarla a Spring MVC o Bedrock.
 
 ## Topología AWS base
 
