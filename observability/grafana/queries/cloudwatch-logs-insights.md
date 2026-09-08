@@ -179,6 +179,65 @@ La operación de retrieval no devuelve uso de tokens de generación; el costo
 de generación se observa en `AI_USAGE_RECORDED` cuando el LLM redacta la
 respuesta.
 
+## Comparación shadow por resultado y calidad
+
+```text
+fields @timestamp, @message
+| filter @message like /\"eventType\":\"AGENT_TRAFFIC_COMPARISON_RECORDED\"/
+| parse @message /\"agentId\":\"(?<parsedAgentId>[^\"]+)\"/
+| parse @message /\"agentVersion\":(?<parsedAgentVersion>[0-9]+)/
+| parse @message /\"model\":\"(?<parsedModel>[^\"]+)\"/
+| parse @message /\"channel\":\"(?<parsedChannel>[^\"]+)\"/
+| parse @message /\"useCase\":\"(?<parsedUseCase>[^\"]+)\"/
+| parse @message /\"outcome\":\"(?<parsedOutcome>[^\"]+)\"/
+| parse @message /\"comparisonOutcome\":\"(?<parsedComparisonOutcome>[^\"]+)\"/
+| stats count() as executions,
+        sum(if(parsedComparisonOutcome = "MATCH", 1, 0)) as matches,
+        sum(if(parsedComparisonOutcome = "MISMATCH", 1, 0)) as mismatches,
+        sum(if(parsedComparisonOutcome = "UNKNOWN", 1, 0)) as unknowns,
+        sum(if(parsedOutcome = "COMPLETED", 1, 0)) as completed,
+        sum(if(parsedOutcome != "COMPLETED", 1, 0)) as failures
+  by parsedAgentId, parsedAgentVersion, parsedModel, parsedChannel, parsedUseCase, bin(1h)
+| fields @timestamp, parsedAgentId, parsedAgentVersion, parsedModel, parsedChannel,
+          parsedUseCase, executions, matches, mismatches, unknowns, completed, failures,
+          (matches * 100.0 / executions) as matchRatePercent,
+          (mismatches * 100.0 / executions) as mismatchRatePercent,
+          (unknowns * 100.0 / executions) as unknownRatePercent
+| sort @timestamp asc
+```
+
+Esta consulta sólo usa metadata sanitizada. `UNKNOWN` no debe interpretarse
+como éxito; el scorecard lo trata como evidencia insuficiente cuando supera el
+umbral aprobado.
+
+## Comparación shadow por latencia, tokens y costo
+
+```text
+fields @timestamp, @message
+| filter @message like /\"eventType\":\"AGENT_TRAFFIC_COMPARISON_RECORDED\"/
+| parse @message /\"agentId\":\"(?<parsedAgentId>[^\"]+)\"/
+| parse @message /\"agentVersion\":(?<parsedAgentVersion>[0-9]+)/
+| parse @message /\"model\":\"(?<parsedModel>[^\"]+)\"/
+| parse @message /\"latencyMs\":(?<parsedLatencyMs>[0-9]+)/
+| parse @message /\"inputTokens\":(?<parsedInputTokens>[0-9]+)/
+| parse @message /\"outputTokens\":(?<parsedOutputTokens>[0-9]+)/
+| parse @message /\"totalTokens\":(?<parsedTotalTokens>[0-9]+)/
+| parse @message /\"estimatedCostUsd\":(?<parsedEstimatedCostUsd>[0-9.]+)/
+| stats count() as executions,
+        avg(parsedLatencyMs) as averageLatencyMs,
+        pct(parsedLatencyMs, 50) as p50LatencyMs,
+        pct(parsedLatencyMs, 95) as p95LatencyMs,
+        sum(parsedInputTokens) as inputTokens,
+        sum(parsedOutputTokens) as outputTokens,
+        sum(parsedTotalTokens) as totalTokens,
+        sum(parsedEstimatedCostUsd) as estimatedCostUsd
+  by parsedAgentId, parsedAgentVersion, parsedModel, bin(1h)
+| sort @timestamp asc
+```
+
+Los campos operativos pueden ser nulos cuando el proveedor no entrega
+metadata. Esa ausencia impide aprobar el scorecard; no se reemplaza con cero.
+
 ## Errores de aplicación
 
 ```text
