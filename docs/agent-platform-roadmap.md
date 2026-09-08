@@ -3,7 +3,7 @@
 - Owner: Product/Tech Lead
 - Status: `Accepted`
 - Last reviewed: 2026-09-08
-- Related Jira: `WCS-45`, `WCS-60`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-71`, `WCS-72`, `WCS-73`, `WCS-74`, `WCS-75`
+- Related Jira: `WCS-45`, `WCS-60`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-71`, `WCS-72`, `WCS-73`, `WCS-74`, `WCS-75`, `WCS-76`, `WCS-77`, `WCS-78`
 - Baseline: [`wcs-baseline-2026-09-07`](baselines/wcs-baseline-2026-09-07.md)
 - Canonical Confluence: [WCS — Agent Platform Roadmap & Architecture Proposal](https://julioperezdev.atlassian.net/wiki/spaces/SD/pages/7569410/WCS+Agent+Platform+Roadmap+Architecture+Proposal)
 - Related repository paths: `docs/roadmap.md`, `docs/ai.md`, `docs/observability.md`, `docs/decisions/`
@@ -271,6 +271,14 @@ export de evidencia como API read-only, pero sólo después de pasar esa fronter
 no permite ejecutar evaluaciones ni modificar el registry. `WCS-75` completa
 los contratos HTTP, errores sanitizados, eventos de acceso y pruebas MockMvc.
 Hasta conectar un provider explícito, todos los endpoints permanecen cerrados.
+`WCS-76` conecta esta frontera con un JWT validado mediante un `issuer-uri` y un
+`audience` configurables; el `sub` del token es la identidad del actor y la
+capacidad requerida sigue siendo `agent-evaluation.read`. `WCS-77` limita el
+filtro de Spring Security a `/internal/agent-evaluations/**`, dejando fuera
+webhooks y health. `WCS-78` cubre los contratos `200/401/403`, tokens
+expirados/audience incorrecta y el fallback deny-by-default. La seguridad está
+deshabilitada por defecto hasta provisionar y aprobar un IdP; este slice no
+crea Cognito, IAM, endpoints de ejecución ni backoffice.
 
 La ejecución de evaluaciones queda separada en tres piezas:
 
@@ -423,10 +431,12 @@ sanitizada, consulta histórica, comparación, exportación, política de
 retención, eventos estructurados, dashboards y presupuesto por agente.
 `WCS-60`–`WCS-65` completan la primera frontera interna; `WCS-66`, `WCS-67` y
 `WCS-68` agregan revisión, gate y autorización sin purga. `WCS-73`–`WCS-75`
-agregan el primer acceso HTTP read-only, todavía cerrado por defecto. Las
-siguientes tareas deben conectar un provider técnico explícito, agregar la
-activación aprobada de retención, un disparador autenticado y luego la
-comparación de modelos reales. La promoción requiere evidencia comparable.
+agregan el primer acceso HTTP read-only, todavía cerrado por defecto. `WCS-76`
+–`WCS-78` agregan el provider JWT configurable y la protección sólo de esa
+frontera, manteniendo el cierre por defecto hasta completar el rollout del IdP.
+Las siguientes tareas deben agregar la activación aprobada de retención, un
+disparador autenticado y luego la comparación de modelos reales. La promoción
+requiere evidencia comparable.
 
 ### Fase F — Backoffice
 

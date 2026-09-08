@@ -1,0 +1,114 @@
+package com.wally.customersupport.agent.infrastructure.security;
+
+import java.util.List;
+
+import com.wally.customersupport.agent.application.port.out.AgentEvaluationControlPlaneAuthorizer;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtClaimNames;
+import org.springframework.security.oauth2.jwt.JwtClaimValidator;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtDecoders;
+import org.springframework.security.oauth2.jwt.JwtValidators;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.web.SecurityFilterChain;
+
+/** Conditional JWT security limited to the internal evaluation control plane. */
+@Configuration(proxyBeanMethods = false)
+public class AgentEvaluationControlPlaneSecurityConfiguration {
+
+    private static final String SECURITY_ENABLED_PROPERTY =
+            "wcs.agent-evaluation.control-plane.security.enabled";
+    private static final String ISSUER_URI_PROPERTY =
+            "wcs.agent-evaluation.control-plane.security.issuer-uri";
+    private static final String AUDIENCE_PROPERTY =
+            "wcs.agent-evaluation.control-plane.security.audience";
+    private static final String REQUIRED_AUTHORITY = "SCOPE_agent-evaluation.read";
+
+    @Bean
+    @ConditionalOnProperty(
+            name = "wcs.agent-evaluation.control-plane.security.enabled",
+            havingValue = "true")
+    AgentEvaluationControlPlaneAuthorizer jwtAgentEvaluationControlPlaneAuthorizer() {
+        return new JwtAgentEvaluationControlPlaneAuthorizer();
+    }
+
+    @Bean
+    @ConditionalOnProperty(name = SECURITY_ENABLED_PROPERTY, havingValue = "true")
+    @ConditionalOnMissingBean(JwtDecoder.class)
+    JwtDecoder agentEvaluationJwtDecoder(
+            @Value("${" + ISSUER_URI_PROPERTY + ":}") String issuerUri,
+            @Value("${" + AUDIENCE_PROPERTY + ":}") String audience) {
+        String normalizedIssuer = requireText(issuerUri, ISSUER_URI_PROPERTY);
+        String normalizedAudience = requireText(audience, AUDIENCE_PROPERTY);
+        NimbusJwtDecoder decoder = JwtDecoders.fromIssuerLocation(normalizedIssuer);
+        decoder.setJwtValidator(tokenValidator(normalizedIssuer, normalizedAudience));
+        return decoder;
+    }
+
+    static OAuth2TokenValidator<Jwt> tokenValidator(String issuerUri, String audience) {
+        OAuth2TokenValidator<Jwt> standardValidator = JwtValidators.createDefaultWithIssuer(issuerUri);
+        OAuth2TokenValidator<Jwt> audienceValidator = new JwtClaimValidator<List<String>>(
+                JwtClaimNames.AUD,
+                claim -> claim != null && claim.contains(audience));
+        return new DelegatingOAuth2TokenValidator<>(standardValidator, audienceValidator);
+    }
+
+    @Bean
+    @Order(1)
+    @ConditionalOnProperty(
+            name = "wcs.agent-evaluation.control-plane.security.enabled",
+            havingValue = "true")
+    SecurityFilterChain agentEvaluationControlPlaneSecurityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .securityMatcher("/internal/agent-evaluations/**")
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(authorize -> authorize
+                        .anyRequest().hasAuthority(REQUIRED_AUTHORITY))
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
+        return http.build();
+    }
+
+    /** Keep existing public webhook and actuator behavior outside the admin boundary. */
+    @Bean
+    @Order(2)
+    @ConditionalOnProperty(
+            name = "wcs.agent-evaluation.control-plane.security.enabled",
+            havingValue = "true")
+    SecurityFilterChain publicEndpointsSecurityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(authorize -> authorize.anyRequest().permitAll());
+        return http.build();
+    }
+
+    /** Avoid Spring Security's generated catch-all login when the feature is disabled. */
+    @Bean
+    @Order(2)
+    @ConditionalOnProperty(
+            name = "wcs.agent-evaluation.control-plane.security.enabled",
+            havingValue = "false",
+            matchIfMissing = true)
+    SecurityFilterChain securityDisabledFilterChain(HttpSecurity http) throws Exception {
+        http
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(authorize -> authorize.anyRequest().permitAll());
+        return http.build();
+    }
+
+    private static String requireText(String value, String property) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalStateException(property + " must be configured when control-plane security is enabled");
+        }
+        return value.strip();
+    }
+}

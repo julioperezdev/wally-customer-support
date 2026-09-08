@@ -1,6 +1,7 @@
 package com.wally.customersupport.agent.infrastructure.http;
 
 import java.time.Instant;
+import java.security.Principal;
 import java.util.Map;
 import java.util.UUID;
 
@@ -17,7 +18,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -27,8 +27,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/internal/agent-evaluations")
 @Slf4j
 public class AgentEvaluationControlPlaneController {
-
-    public static final String ACTOR_HEADER = "X-WCS-Actor-Id";
 
     private final AgentEvaluationControlPlaneAccessService accessService;
     private final AgentEvaluationHistoryQueryService historyQueryService;
@@ -48,7 +46,7 @@ public class AgentEvaluationControlPlaneController {
 
     @GetMapping("/runs")
     public ResponseEntity<?> searchRuns(
-            @RequestHeader(name = ACTOR_HEADER, required = false) String actorId,
+            Principal principal,
             @RequestParam(required = false) String datasetVersion,
             @RequestParam(required = false) String agentId,
             @RequestParam(required = false) String agentVersion,
@@ -58,7 +56,7 @@ public class AgentEvaluationControlPlaneController {
             @RequestParam(required = false) String completedTo,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        if (!isAuthorized(actorId, "list_runs")) {
+        if (!isAuthorized(actorId(principal), "list_runs")) {
             return forbidden();
         }
         AgentEvaluationHistoryFilter filter = new AgentEvaluationHistoryFilter(
@@ -75,9 +73,9 @@ public class AgentEvaluationControlPlaneController {
 
     @GetMapping("/runs/{runId}")
     public ResponseEntity<?> getRun(
-            @RequestHeader(name = ACTOR_HEADER, required = false) String actorId,
+            Principal principal,
             @org.springframework.web.bind.annotation.PathVariable UUID runId) {
-        if (!isAuthorized(actorId, "get_run")) {
+        if (!isAuthorized(actorId(principal), "get_run")) {
             return forbidden();
         }
         return historyQueryService.findById(runId)
@@ -87,10 +85,10 @@ public class AgentEvaluationControlPlaneController {
 
     @GetMapping("/comparisons")
     public ResponseEntity<?> compareRuns(
-            @RequestHeader(name = ACTOR_HEADER, required = false) String actorId,
+            Principal principal,
             @RequestParam UUID baselineRunId,
             @RequestParam UUID candidateRunId) {
-        if (!isAuthorized(actorId, "compare_runs")) {
+        if (!isAuthorized(actorId(principal), "compare_runs")) {
             return forbidden();
         }
         return comparisonService.compare(baselineRunId, candidateRunId)
@@ -100,10 +98,10 @@ public class AgentEvaluationControlPlaneController {
 
     @GetMapping("/evidence")
     public ResponseEntity<?> exportEvidence(
-            @RequestHeader(name = ACTOR_HEADER, required = false) String actorId,
+            Principal principal,
             @RequestParam UUID baselineRunId,
             @RequestParam UUID candidateRunId) {
-        if (!isAuthorized(actorId, "export_evidence")) {
+        if (!isAuthorized(actorId(principal), "export_evidence")) {
             return forbidden();
         }
         return evidenceExportService.export(baselineRunId, candidateRunId)
@@ -126,6 +124,10 @@ public class AgentEvaluationControlPlaneController {
         }
         StructuredEventLog.warn(log, "AGENT_EVALUATION_CONTROL_PLANE_ACCESS_DENIED", fields);
         return false;
+    }
+
+    private static String actorId(Principal principal) {
+        return principal == null ? null : principal.getName();
     }
 
     private static ResponseEntity<AgentEvaluationControlPlaneError> forbidden() {

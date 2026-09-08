@@ -2,8 +2,8 @@
 
 Owner: Tech Lead  
 Status: `Accepted`
-Last reviewed: 2026-09-03
-Related Jira: `WCS-13`, `WCS-17`, `WCS-18`, `WCS-20`, `WCS-21`, `WCS-22`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-32`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-71`, `WCS-72`, `WCS-73`, `WCS-74`, `WCS-75`
+Last reviewed: 2026-09-08
+Related Jira: `WCS-13`, `WCS-17`, `WCS-18`, `WCS-20`, `WCS-21`, `WCS-22`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-32`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-71`, `WCS-72`, `WCS-73`, `WCS-74`, `WCS-75`, `WCS-76`, `WCS-77`, `WCS-78`
 Related repository paths: `src/main/java/com/wally/customersupport/{conversation,catalog,support,knowledge,shared}`, `src/main/resources`, `db/migration`
 Decision/source: specification de WhatsApp y re-baseline solicitada el 2026-08-30
 
@@ -149,7 +149,13 @@ autorización provider-neutral para el control plane, usando la capacidad exacta
 `/internal/agent-evaluations` únicamente lecturas del histórico, detalle,
 comparaciones y evidencia; WCS-75 cubre sus contratos HTTP, errores sanitizados
 y observabilidad. La API no ejecuta evaluaciones, no acepta SQL y no permite
-escrituras. Sin un authorizer explícito, ningún actor puede acceder.
+escrituras. `WCS-76` adapta un JWT validado al port provider-neutral: `sub` es
+el actor y el token debe contener el `audience` configurado. `WCS-77` aplica
+Spring Security sólo a esta ruta y requiere `SCOPE_agent-evaluation.read`;
+webhooks y health permanecen fuera de esa cadena. `WCS-78` conserva el
+fallback deny-by-default cuando la seguridad está deshabilitada o no existe un
+authorizer explícito. La adopción de un IdP concreto y la creación de recursos
+AWS quedan fuera de este slice.
 
 ## Topología AWS base
 

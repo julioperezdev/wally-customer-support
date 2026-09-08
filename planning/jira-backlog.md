@@ -371,6 +371,9 @@ semántica o AgentCore.
 | WCS-73 | In Progress | Frontera provider-neutral de acceso read-only al control plane |
 | WCS-74 | In Progress | API read-only para histórico, comparación y evidencia de evaluaciones |
 | WCS-75 | In Progress | Contratos HTTP y observabilidad del control plane de evaluaciones |
+| WCS-76 | In Progress | Conectar el control plane con identidad JWT configurable |
+| WCS-77 | In Progress | Asegurar rutas del control plane y preservar webhooks públicos |
+| WCS-78 | In Progress | Cubrir contratos JWT y fallback deny-by-default |
 
 WCS-60 no agrega todavía API, persistencia ni ejecución de Bedrock. WCS-61
 agrega persistencia create-only en el schema `wcs` para runs completados y
@@ -407,6 +410,14 @@ sanitizadas del histórico, detalle, comparación y export; la tercera cubre
 MockMvc, errores estables y eventos de acceso. No incluyen OIDC/IAM concreto,
 Spring Security, ejecución remota, escrituras ni backoffice. Hasta conectar un
 authorizer explícito, la API permanece cerrada.
+
+WCS-76, WCS-77 y WCS-78 se entregan como el siguiente slice agrupado:
+Spring Security Resource Server valida issuer, expiración, audience y el scope
+exacto `agent-evaluation.read`; el subject del JWT se traduce al actor del
+port provider-neutral; el filtro sólo protege `/internal/agent-evaluations/**`;
+y las pruebas cubren `200/401/403`, tokens inválidos y webhooks públicos. No se
+provisiona un IdP, IAM, backoffice ni endpoint de ejecución. La flag permanece
+deshabilitada por defecto hasta una aprobación operativa posterior.
 
 `WCS-14`–`WCS-16` y `WCS-17` ya tienen la fundación o el contrato inicial
 versionado; deben completarse/verificarse según la evidencia de cada issue antes
