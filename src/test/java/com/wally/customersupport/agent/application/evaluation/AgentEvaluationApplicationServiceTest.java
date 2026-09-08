@@ -7,7 +7,10 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
+import com.wally.customersupport.agent.application.port.out.AgentEvaluationRunRepository;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationExecution;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationExecutionMetadata;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationScenario;
@@ -22,6 +25,7 @@ class AgentEvaluationApplicationServiceTest {
     private final AgentEvaluationApplicationService service = new AgentEvaluationApplicationService(
             new AgentEvaluationDatasetCatalog(List.of(new CatalogResponseEvaluationDatasetProvider())),
             new AgentEvaluationRunner(new ResponsePolicyEvaluator()),
+            new PassthroughAgentEvaluationRunRepository(),
             Clock.fixed(NOW, ZoneOffset.UTC));
 
     @Test
@@ -85,5 +89,19 @@ class AgentEvaluationApplicationServiceTest {
                         null,
                         null,
                         null));
+    }
+
+    private static final class PassthroughAgentEvaluationRunRepository
+            implements AgentEvaluationRunRepository {
+
+        @Override
+        public AgentEvaluationRun save(AgentEvaluationRun run) {
+            return run;
+        }
+
+        @Override
+        public Optional<AgentEvaluationRun> findById(UUID runId) {
+            return Optional.empty();
+        }
     }
 }

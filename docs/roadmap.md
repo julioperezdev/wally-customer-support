@@ -111,7 +111,7 @@ Las etapas propuestas son:
 2. runtime acotado compatible con los casos de uso actuales;
 3. registry y versionado de agentes, prompts y modelos;
 4. agentes core y tools determinísticas;
-5. evaluación, observabilidad y costos;
+5. evaluación, persistencia histórica, observabilidad y costos;
 6. backoffice React/TypeScript;
 7. migración canary con feature flags y rollback;
 8. evaluación opcional de MCP read-only y AgentCore.
