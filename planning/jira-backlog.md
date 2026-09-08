@@ -367,6 +367,7 @@ semántica o AgentCore.
 | WCS-69 | In Progress | Ejecución interna idempotente después de autorización |
 | WCS-70 | In Progress | Guard PostgreSQL atómico para idempotencia de triggers |
 | WCS-71 | In Progress | Composición Spring del trigger interno con denegación por defecto |
+| WCS-72 | In Progress | Completar prueba de denegación antes de reclamar el trigger |
 
 WCS-60 no agrega todavía API, persistencia ni ejecución de Bedrock. WCS-61
 agrega persistencia create-only en el schema `wcs` para runs completados y
@@ -392,6 +393,9 @@ cruda ni habilita todavía un trigger remoto.
 WCS-71 compone los servicios de autorización y ejecución en Spring, conecta el
 guard existente y deja un authorizer fail-closed reemplazable por un adapter
 explícito. No agrega endpoint, scheduler, proveedor técnico ni permisos AWS.
+WCS-72 completa la evidencia del camino denegado verificando que no se
+reclama la key y que tampoco se invocan el servicio de evaluación ni el
+executor. No cambia la lógica productiva ni habilita el trigger.
 
 `WCS-14`–`WCS-16` y `WCS-17` ya tienen la fundación o el contrato inicial
 versionado; deben completarse/verificarse según la evidencia de cada issue antes

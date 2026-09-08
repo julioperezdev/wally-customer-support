@@ -1,6 +1,7 @@
 package com.wally.customersupport.agent.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -33,9 +34,10 @@ class AgentEvaluationTriggerExecutionServiceTest {
     void deniesBeforeGuardAndEvaluationWhenAuthorizationFails() {
         AgentEvaluationApplicationService evaluationService = mock(AgentEvaluationApplicationService.class);
         AgentEvaluationTriggerExecutionGuard guard = mock(AgentEvaluationTriggerExecutionGuard.class);
+        AgentEvaluationExecutor executor = mock(AgentEvaluationExecutor.class);
         var service = service(false, evaluationService, guard);
 
-        var result = service.execute(executionRequest(), EXECUTOR);
+        var result = service.execute(executionRequest(), executor);
 
         assertThat(result.status()).isEqualTo(AgentEvaluationTriggerExecutionStatus.DENIED);
         assertThat(result.reason()).isEqualTo(AgentEvaluationTriggerExecutionReason.AUTHORIZATION_DENIED);
@@ -43,6 +45,7 @@ class AgentEvaluationTriggerExecutionServiceTest {
                 .isEqualTo(AgentEvaluationTriggerAuthorizationReason.AUTHORIZER_DENIED);
         verify(guard, never()).tryAcquire(IDEMPOTENCY_KEY);
         verify(evaluationService, never()).execute(EVALUATION_REQUEST, EXECUTOR);
+        verify(executor, never()).execute(any());
     }
 
     @Test
