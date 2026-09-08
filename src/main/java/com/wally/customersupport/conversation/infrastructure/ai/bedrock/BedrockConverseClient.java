@@ -206,6 +206,7 @@ final class BedrockConverseClient implements MeasuredLlmClient {
         fields.put("estimatedCostUsd", completion == null ? null : completion.estimatedCostUsd());
         fields.put("pricingVersion", completion == null ? properties.effectivePricingVersion() : completion.pricingVersion());
         fields.put("durationMs", completion == null ? null : completion.durationMs());
+        fields.put("timeoutMs", properties.effectiveRequestTimeout().toMillis());
         if (completion != null && completion.providerLatencyMs() != null) {
             fields.put("providerLatencyMs", completion.providerLatencyMs());
         }

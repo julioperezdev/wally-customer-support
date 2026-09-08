@@ -1,6 +1,7 @@
 package com.wally.customersupport.conversation.infrastructure.ai.bedrock;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -65,5 +66,27 @@ class BedrockConverseClientTest {
         assertTrue(output.getOut().contains("\"estimatedCostUsd\":0.00002266"));
         assertTrue(output.getOut().contains("\"providerLatencyMs\":42"));
         assertTrue(output.getOut().contains("\"pricingVersion\":\"pricing-test-v1\""));
+        assertTrue(output.getOut().contains("\"timeoutMs\":30000"));
+    }
+
+    @Test
+    void recordsProviderFailureWithoutLoggingPromptOrResponse(CapturedOutput output) {
+        BedrockRuntimeClient client = mock(BedrockRuntimeClient.class);
+        when(client.converse(any(ConverseRequest.class)))
+                .thenThrow(new IllegalStateException("synthetic timeout"));
+
+        AiProperties properties = new AiProperties(
+                "bedrock", "model-v1", "us-east-1", "pricing-test-v1",
+                BigDecimal.ZERO, BigDecimal.ZERO);
+
+        assertThrows(IllegalStateException.class, () -> new BedrockConverseClient(client, properties).complete(
+                "response-generation", "conversation.reply.generate", "secret system", "private user",
+                128, 0.2f, "conversation-response-v1", "hash-v1"));
+
+        assertTrue(output.getOut().contains("\"success\":false"));
+        assertTrue(output.getOut().contains("\"errorType\":\"IllegalStateException\""));
+        assertTrue(output.getOut().contains("\"promptVersion\":\"conversation-response-v1\""));
+        assertTrue(!output.getOut().contains("secret system"));
+        assertTrue(!output.getOut().contains("private user"));
     }
 }

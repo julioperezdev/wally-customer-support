@@ -162,9 +162,10 @@ contactan un IdP real.
 - `TC-036`: health/readiness y correlación permiten diagnosticar sin exponer PII.
 - `TC-037`: rollback de una versión de aplicación sin alterar migraciones ya aplicadas.
 - `TC-038`: alerta o métrica ante aumento de errores, retries, duplicados o tareas de seguimiento vencidas.
-- `TC-041`: cada llamada de Bedrock exitosa o fallida registra el uso disponible sin
-  incluir prompt, respuesta ni credenciales; una ejecución mock no simula costo
-  de proveedor.
+- `TC-041`: cada llamada de Bedrock exitosa o fallida registra el uso disponible,
+  modelo, versión/hash de prompt, timeout efectivo y costo estimado sin incluir
+  prompt, respuesta ni credenciales; una ejecución mock no simula costo de
+  proveedor.
 - `TC-042`: las queries versionadas de CloudWatch funcionan tanto con campos JSON
   descubiertos como con mensajes que tengan prefijo textual de Spring.
 - `TC-046`: con preferencias habilitadas, enviar `Prefiero el negro` debe

@@ -1,7 +1,5 @@
 package com.wally.customersupport.conversation.infrastructure.ai.bedrock;
 
-import java.time.Duration;
-
 import com.wally.customersupport.shared.infrastructure.config.AiProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -19,7 +17,7 @@ public class BedrockAiConfiguration {
         return BedrockRuntimeClient.builder()
                 .region(Region.of(properties.effectiveRegion()))
                 .credentialsProvider(DefaultCredentialsProvider.create())
-                .overrideConfiguration(configuration -> configuration.apiCallTimeout(Duration.ofSeconds(30)))
+                .overrideConfiguration(configuration -> configuration.apiCallTimeout(properties.effectiveRequestTimeout()))
                 .build();
     }
 
