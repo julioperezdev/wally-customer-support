@@ -12,7 +12,7 @@ public interface OutboxRepository {
 
     List<OutboxMessage> findDue(Instant now, int limit);
 
-    void markProcessing(UUID id);
+    boolean claim(UUID id, Instant now);
 
     void markSent(UUID id, Instant sentAt);
 

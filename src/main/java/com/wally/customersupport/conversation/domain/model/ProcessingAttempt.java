@@ -10,5 +10,20 @@ public record ProcessingAttempt(
         int attemptCount,
         String lastError,
         Instant createdAt,
-        Instant updatedAt) {
+        Instant updatedAt,
+        Instant availableAt,
+        Instant startedAt) {
+
+    public static ProcessingAttempt pending(UUID messageId, Instant now) {
+        return new ProcessingAttempt(
+                UUID.randomUUID(),
+                messageId,
+                ProcessingAttemptStatus.PENDING,
+                0,
+                null,
+                now,
+                now,
+                now,
+                null);
+    }
 }

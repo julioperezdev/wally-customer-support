@@ -38,6 +38,12 @@ public class ProcessingAttemptJpaEntity {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Column(name = "available_at", nullable = false)
+    private Instant availableAt;
+
+    @Column(name = "started_at")
+    private Instant startedAt;
+
     protected ProcessingAttemptJpaEntity() {
     }
 
@@ -49,5 +55,35 @@ public class ProcessingAttemptJpaEntity {
         this.lastError = attempt.lastError();
         this.createdAt = attempt.createdAt();
         this.updatedAt = attempt.updatedAt();
+        this.availableAt = attempt.availableAt();
+        this.startedAt = attempt.startedAt();
+    }
+
+    public ProcessingAttempt toDomain() {
+        return new ProcessingAttempt(
+                id,
+                messageId,
+                status,
+                attemptCount,
+                lastError,
+                createdAt,
+                updatedAt,
+                availableAt,
+                startedAt);
+    }
+
+    public void markCompleted(Instant now) {
+        status = ProcessingAttemptStatus.COMPLETED;
+        updatedAt = now;
+        startedAt = null;
+        lastError = null;
+    }
+
+    public void markFailed(String error, Instant nextAvailableAt, boolean exhausted, Instant now) {
+        status = exhausted ? ProcessingAttemptStatus.FAILED : ProcessingAttemptStatus.PENDING;
+        lastError = error;
+        availableAt = nextAvailableAt;
+        updatedAt = now;
+        startedAt = null;
     }
 }

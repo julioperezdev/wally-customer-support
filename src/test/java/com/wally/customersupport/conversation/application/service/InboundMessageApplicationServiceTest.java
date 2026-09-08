@@ -2,26 +2,17 @@ package com.wally.customersupport.conversation.application.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
-import org.mockito.ArgumentCaptor;
-
 import com.wally.customersupport.conversation.application.port.out.ConversationRepository;
-import com.wally.customersupport.conversation.application.port.out.ConversationMemory;
 import com.wally.customersupport.conversation.application.port.out.MessageRepository;
-import com.wally.customersupport.conversation.application.port.out.OutboxRepository;
 import com.wally.customersupport.conversation.application.port.out.ProcessingAttemptRepository;
 import com.wally.customersupport.conversation.domain.model.Channel;
 import com.wally.customersupport.conversation.domain.model.Conversation;
@@ -31,7 +22,7 @@ import com.wally.customersupport.conversation.domain.model.InboundMessageResult;
 import com.wally.customersupport.conversation.domain.model.Message;
 import com.wally.customersupport.conversation.domain.model.MessageDirection;
 import com.wally.customersupport.conversation.domain.model.MessageType;
-import com.wally.customersupport.conversation.domain.model.OutboxMessage;
+import com.wally.customersupport.conversation.domain.model.MessageWriteResult;
 import com.wally.customersupport.conversation.domain.model.ProcessingAttempt;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,154 +38,78 @@ class InboundMessageApplicationServiceTest {
     @Mock
     private ConversationRepository conversationRepository;
     @Mock
-    private ConversationMemory conversationMemory;
-    @Mock
     private MessageRepository messageRepository;
     @Mock
     private ProcessingAttemptRepository processingAttemptRepository;
-    @Mock
-    private OutboxRepository outboxRepository;
-    @Mock
-    private ConversationOrchestrator conversationOrchestrator;
-    @Mock
-    private ConversationSummaryService conversationSummaryService;
-    @Mock
-    private CustomerPreferenceService customerPreferenceService;
-    @Mock
-    private ExplicitPreferenceCaptureService explicitPreferenceCaptureService;
 
     private InboundMessageApplicationService service;
     private Conversation conversation;
     private InboundMessageCommand command;
+    private Message persistedMessage;
 
     @BeforeEach
     void setUp() {
         service = new InboundMessageApplicationService(
                 conversationRepository,
-                conversationMemory,
                 messageRepository,
                 processingAttemptRepository,
-                outboxRepository,
-                conversationOrchestrator,
-                conversationSummaryService,
-                customerPreferenceService,
-                explicitPreferenceCaptureService,
                 Clock.fixed(NOW, ZoneOffset.UTC));
-        lenient().when(conversationOrchestrator.replyFor(any())).thenReturn("Respuesta segura");
-        lenient().when(conversationSummaryService.summaryForContext(any())).thenReturn(null);
-        lenient().when(conversationSummaryService.appendAndMaybeSummarize(any(), anyString(), any()))
-                .thenAnswer(invocation -> invocation.getArgument(0));
-        lenient().when(customerPreferenceService.findForContext(anyString(), any()))
-                .thenReturn(List.of());
-        lenient().when(explicitPreferenceCaptureService.capture(anyString(), anyString(), any()))
-                .thenReturn(ExplicitPreferenceCaptureService.CaptureResult.notDetected());
-        lenient().when(conversationMemory.load(any(), any())).thenReturn(Optional.empty());
         conversation = new Conversation(
                 UUID.randomUUID(), Channel.WHATSAPP, "conversation-1", "customer-1",
                 ConversationStatus.OPEN, NOW, NOW);
         command = new InboundMessageCommand(
                 Channel.WHATSAPP, "message-1", "conversation-1", "customer-1", "Necesito ayuda", NOW);
+        persistedMessage = new Message(
+                UUID.randomUUID(), conversation.id(), Channel.WHATSAPP, "message-1", MessageDirection.INBOUND,
+                MessageType.TEXT, command.body(), NOW, NOW);
     }
 
     @Test
-    void persistsInboundMessageAndQueuesReplyBehindOutbox() {
-        Message message = new Message(
-                UUID.randomUUID(), conversation.id(), Channel.WHATSAPP, "message-1", MessageDirection.INBOUND,
-                MessageType.TEXT, command.body(), NOW, NOW);
+    void persistsInboundMessageAndQueuesDurableProcessingAttempt() {
         when(messageRepository.existsByExternalMessageId(Channel.WHATSAPP, "message-1")).thenReturn(false);
-        when(conversationRepository.findByChannelAndExternalConversationId(Channel.WHATSAPP, "conversation-1"))
-                .thenReturn(Optional.of(conversation));
-        when(messageRepository.save(any(Message.class))).thenReturn(message);
-        when(messageRepository.findRecentBodies(conversation.id(), 20)).thenReturn(List.of(command.body()));
+        when(conversationRepository.findOrCreate(
+                Channel.WHATSAPP, "conversation-1", "customer-1", NOW)).thenReturn(conversation);
+        when(messageRepository.saveIfAbsent(any(Message.class)))
+                .thenReturn(new MessageWriteResult(persistedMessage, true));
 
         InboundMessageResult result = service.accept(command);
 
         assertEquals(InboundMessageResult.Result.ACCEPTED, result.result());
-        verify(messageRepository).save(any(Message.class));
+        verify(messageRepository).saveIfAbsent(any(Message.class));
         verify(processingAttemptRepository).save(any(ProcessingAttempt.class));
-        verify(outboxRepository).save(any(OutboxMessage.class));
     }
 
     @Test
-    void returnsDuplicateWithoutCallingAiOrSendingAnotherReply() {
+    void returnsDuplicateWithoutCreatingAProcessingAttempt() {
         when(messageRepository.existsByExternalMessageId(Channel.WHATSAPP, "message-1")).thenReturn(true);
 
         InboundMessageResult result = service.accept(command);
 
         assertEquals(InboundMessageResult.Result.DUPLICATE, result.result());
-        verify(conversationRepository, never()).save(any());
-        verify(messageRepository, times(1)).existsByExternalMessageId(Channel.WHATSAPP, "message-1");
-        verify(conversationOrchestrator, never()).replyFor(any());
-        verify(outboxRepository, never()).save(any());
+        verify(conversationRepository, never()).findOrCreate(any(), any(), any(), any());
+        verify(processingAttemptRepository, never()).save(any());
     }
 
     @Test
-    void processesTelegramThroughTheSameApplicationService() {
-        Conversation telegramConversation = new Conversation(
-                UUID.randomUUID(), Channel.TELEGRAM, "telegram-chat-1", "telegram-user-1",
-                ConversationStatus.OPEN, NOW, NOW);
-        InboundMessageCommand telegramCommand = new InboundMessageCommand(
-                Channel.TELEGRAM, "telegram-update-1", "telegram-chat-1", "telegram-user-1", "Busco una remera", NOW);
-        Message telegramMessage = new Message(
-                UUID.randomUUID(), telegramConversation.id(), Channel.TELEGRAM, "telegram-update-1",
-                MessageDirection.INBOUND, MessageType.TEXT, telegramCommand.body(), NOW, NOW);
-
-        when(messageRepository.existsByExternalMessageId(Channel.TELEGRAM, "telegram-update-1"))
-                .thenReturn(false);
-        when(conversationRepository.findByChannelAndExternalConversationId(
-                Channel.TELEGRAM, "telegram-chat-1"))
-                .thenReturn(Optional.of(telegramConversation));
-        when(messageRepository.save(any(Message.class))).thenReturn(telegramMessage);
-        when(messageRepository.findRecentBodies(telegramConversation.id(), 20)).thenReturn(List.of(telegramCommand.body()));
-        when(conversationOrchestrator.replyFor(any())).thenReturn("Tenemos stock disponible");
-
-        service.accept(telegramCommand);
-
-        ArgumentCaptor<OutboxMessage> outboxCaptor = ArgumentCaptor.forClass(OutboxMessage.class);
-        verify(outboxRepository).save(outboxCaptor.capture());
-        assertEquals(Channel.TELEGRAM, outboxCaptor.getValue().message().channel());
-        assertEquals("telegram-user-1", outboxCaptor.getValue().message().recipientId());
-    }
-
-    @Test
-    void queuesOrchestratedReply() {
-        when(conversationOrchestrator.replyFor(any())).thenReturn("Encontré estos productos");
+    void treatsDatabaseConflictAsDuplicateWithoutCreatingAnotherJob() {
         when(messageRepository.existsByExternalMessageId(Channel.WHATSAPP, "message-1")).thenReturn(false);
-        when(conversationRepository.findByChannelAndExternalConversationId(Channel.WHATSAPP, "conversation-1"))
-                .thenReturn(Optional.of(conversation));
-        Message message = new Message(
-                UUID.randomUUID(), conversation.id(), Channel.WHATSAPP, "message-1", MessageDirection.INBOUND,
-                MessageType.TEXT, "¿Tienen remera negra talle M?", NOW, NOW);
-        when(messageRepository.save(any(Message.class))).thenReturn(message);
+        when(conversationRepository.findOrCreate(
+                Channel.WHATSAPP, "conversation-1", "customer-1", NOW)).thenReturn(conversation);
+        when(messageRepository.saveIfAbsent(any(Message.class)))
+                .thenReturn(new MessageWriteResult(persistedMessage, false));
 
-        service.accept(new InboundMessageCommand(
-                Channel.WHATSAPP, "message-1", "conversation-1", "customer-1",
-                "¿Tienen remera negra talle M?", NOW));
+        InboundMessageResult result = service.accept(command);
 
-        verify(conversationOrchestrator).replyFor(any());
-        verify(outboxRepository).save(any(OutboxMessage.class));
+        assertEquals(InboundMessageResult.Result.DUPLICATE, result.result());
+        verify(processingAttemptRepository, never()).save(any());
     }
 
     @Test
-    void acknowledgesExplicitPreferenceWithoutCallingTheOrchestrator() {
-        when(messageRepository.existsByExternalMessageId(Channel.WHATSAPP, "message-1")).thenReturn(false);
-        when(conversationRepository.findByChannelAndExternalConversationId(Channel.WHATSAPP, "conversation-1"))
-                .thenReturn(Optional.of(conversation));
-        Message message = new Message(
-                UUID.randomUUID(), conversation.id(), Channel.WHATSAPP, "message-1", MessageDirection.INBOUND,
-                MessageType.TEXT, "Prefiero el negro", NOW, NOW);
-        when(messageRepository.save(any(Message.class))).thenReturn(message);
-        when(explicitPreferenceCaptureService.capture(anyString(), anyString(), any()))
-                .thenReturn(ExplicitPreferenceCaptureService.CaptureResult.saved("negro"));
+    void ignoresIncompleteMessagesWithoutTouchingPersistence() {
+        InboundMessageResult result = service.accept(new InboundMessageCommand(
+                Channel.TELEGRAM, "", "chat-1", "user-1", "Hola", NOW));
 
-        service.accept(new InboundMessageCommand(
-                Channel.WHATSAPP, "message-1", "conversation-1", "customer-1",
-                "Prefiero el negro", NOW));
-
-        verify(conversationOrchestrator, never()).replyFor(any());
-        ArgumentCaptor<OutboxMessage> outboxCaptor = ArgumentCaptor.forClass(OutboxMessage.class);
-        verify(outboxRepository).save(outboxCaptor.capture());
-        assertEquals("Perfecto, voy a tener en cuenta que preferís el negro.",
-                outboxCaptor.getValue().message().body());
+        assertEquals(InboundMessageResult.Result.IGNORED, result.result());
+        verify(messageRepository, never()).existsByExternalMessageId(any(), any());
     }
 }

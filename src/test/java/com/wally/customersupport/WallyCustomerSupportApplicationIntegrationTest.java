@@ -32,6 +32,9 @@ import com.wally.customersupport.catalog.application.service.CatalogConversation
 import com.wally.customersupport.catalog.application.service.CatalogQueryService;
 import com.wally.customersupport.catalog.domain.model.CatalogQuery;
 import com.wally.customersupport.conversation.application.port.out.ConversationMemory;
+import com.wally.customersupport.conversation.application.port.in.InboundMessagePort;
+import com.wally.customersupport.conversation.application.port.out.MessageRepository;
+import com.wally.customersupport.conversation.application.port.out.ProcessingAttemptRepository;
 import com.wally.customersupport.conversation.application.service.ConversationOrchestrator;
 import com.wally.customersupport.conversation.application.service.DeterministicResponseHumanizer;
 import com.wally.customersupport.conversation.application.service.ExplicitPreferenceCaptureService;
@@ -44,6 +47,9 @@ import com.wally.customersupport.conversation.domain.model.ConversationMemoryOwn
 import com.wally.customersupport.conversation.domain.model.ConversationState;
 import com.wally.customersupport.conversation.domain.model.ConversationSummary;
 import com.wally.customersupport.conversation.domain.model.ConversationStatus;
+import com.wally.customersupport.conversation.domain.model.InboundMessageCommand;
+import com.wally.customersupport.conversation.domain.model.InboundMessageResult;
+import com.wally.customersupport.conversation.domain.model.ProcessingAttempt;
 import com.wally.customersupport.conversation.infrastructure.repository.postgres.ConversationMemoryJpaEntity;
 import com.wally.customersupport.conversation.infrastructure.repository.postgres.SpringDataConversationMemoryRepository;
 import com.wally.customersupport.support.application.service.SupportConfigurationQueryService;
@@ -91,6 +97,15 @@ class WallyCustomerSupportApplicationIntegrationTest {
     private ConversationRepository conversationRepository;
 
     @Autowired
+    private InboundMessagePort inboundMessagePort;
+
+    @Autowired
+    private ProcessingAttemptRepository processingAttemptRepository;
+
+    @Autowired
+    private MessageRepository messageRepository;
+
+    @Autowired
     private ConversationMemory conversationMemory;
 
     @Autowired
@@ -123,6 +138,34 @@ class WallyCustomerSupportApplicationIntegrationTest {
     @Test
     void startsWithFlywayAndTestAdapters() {
         assertNotNull(dataSource);
+    }
+
+    @Test
+    void persistsInboundAsDurablePendingWorkAndPreservesConversationOrder() {
+        String conversationKey = "queue-chat-" + UUID.randomUUID();
+        Instant now = Instant.now();
+        InboundMessageCommand first = new InboundMessageCommand(
+                Channel.TELEGRAM, "queue-message-1-" + UUID.randomUUID(), conversationKey,
+                "queue-customer", "primer mensaje", now);
+        InboundMessageCommand second = new InboundMessageCommand(
+                Channel.TELEGRAM, "queue-message-2-" + UUID.randomUUID(), conversationKey,
+                "queue-customer", "segundo mensaje", now.plusMillis(1));
+
+        assertEquals(InboundMessageResult.Result.ACCEPTED, inboundMessagePort.accept(first).result());
+        assertEquals(InboundMessageResult.Result.ACCEPTED, inboundMessagePort.accept(second).result());
+
+        List<ProcessingAttempt> due = processingAttemptRepository.findDue(
+                now.plusSeconds(1), 20, Duration.ofMinutes(5));
+        assertEquals(1, due.size());
+        assertTrue(messageRepository.findById(due.getFirst().messageId()).isPresent());
+        assertTrue(processingAttemptRepository.claim(due.getFirst().id(), now.plusSeconds(1)));
+
+        assertTrue(processingAttemptRepository.findDue(
+                now.plusSeconds(1), 20, Duration.ofMinutes(5)).isEmpty());
+        processingAttemptRepository.markCompleted(due.getFirst().id(), now.plusSeconds(2));
+
+        assertEquals(1, processingAttemptRepository.findDue(
+                now.plusSeconds(3), 20, Duration.ofMinutes(5)).size());
     }
 
     @Test

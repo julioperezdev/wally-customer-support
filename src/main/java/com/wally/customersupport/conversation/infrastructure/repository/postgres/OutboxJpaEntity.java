@@ -126,11 +126,6 @@ public class OutboxJpaEntity {
                 lastError);
     }
 
-    public void markProcessing() {
-        status = OutboxStatus.PROCESSING;
-        attempts++;
-    }
-
     public void markSent(Instant sentAt) {
         status = OutboxStatus.SENT;
         this.sentAt = sentAt;

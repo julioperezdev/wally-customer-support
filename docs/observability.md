@@ -44,7 +44,10 @@ operacional necesario para diagnóstico y costo, pero sin contenido de negocio.
 | `HTTP_REQUEST_COMPLETED` | `requestId`, `httpMethod`, `route`, `httpStatus`, `outcome`, `durationMs`, `errorType` | Cierre de cada request HTTP, incluidos errores y rechazos |
 | `WEBHOOK_ACCEPTED` | `channel`, `commandCount` | Webhook recibido con autenticación válida |
 | `WEBHOOK_REJECTED` | `channel`, `reason` | Firma o secret inválido, payload malformado |
-| `INBOUND_MESSAGE_PROCESSED` | `channel`, `result`, `durationMs` | Mensaje aceptado, duplicado o ignorado |
+| `INBOUND_MESSAGE_ENQUEUED` | `channel`, `result`, `durationMs` | Acknowledgment del webhook después de persistir el mensaje y el trabajo durable |
+| `INBOUND_MESSAGE_PROCESSED` | `result`, `attempt`, `durationMs`, `correlationId` | Worker completó el procesamiento fuera del request |
+| `INBOUND_MESSAGE_RETRY_SCHEDULED` | `result`, `attempt`, `durationMs`, `errorType`, `correlationId` | Fallo transitorio con retry diferido |
+| `INBOUND_MESSAGE_FAILED` | `result`, `attempt`, `durationMs`, `errorType`, `correlationId` | Intentos agotados; se encola fallback seguro |
 | `INTENT_CLASSIFIED` | `intent`, `confidence`, `durationMs` | Clasificación del orquestador |
 | `INTENT_CLASSIFICATION_FAILED` | `errorType`, `durationMs` | Fallo del clasificador |
 | `AGENT_ACTIVATION_RESOLUTION_SKIPPED` | `useCase`, `reason` | Registry no consultado porque la flag está deshabilitada |
@@ -247,15 +250,17 @@ Después de iniciar Grafana:
    `wally-customer-support-prod-backend`.
 2. Enviar una pregunta al bot de Telegram.
 3. Esperar hasta que el panel **WCS · últimos eventos operativos** se refresque.
-4. Buscar `WEBHOOK_ACCEPTED`, `INBOUND_MESSAGE_PROCESSED`,
+4. Buscar `WEBHOOK_ACCEPTED`, `INBOUND_MESSAGE_ENQUEUED`,
+   `INBOUND_MESSAGE_PROCESSED`,
    `INTENT_CLASSIFIED` y `OUTBOUND_MESSAGE_DISPATCHED`.
 5. Si AppConfig usa `wcs.ai.provider=bedrock`, verificar los paneles **IA ·
    tokens, costo y latencia** y **Consultas · tipo, resultado y latencia**.
 6. Usar el panel **App Runner · errores** sólo para diagnóstico y no compartir
    su contenido sin revisar PII.
 
-La presencia de `INBOUND_MESSAGE_PROCESSED` confirma que el webhook llegó y se
-procesó; `CONVERSATION_QUERY_COMPLETED` registra el resultado del orquestador;
+La presencia de `INBOUND_MESSAGE_ENQUEUED` confirma que el webhook persistió el
+trabajo; `INBOUND_MESSAGE_PROCESSED` confirma que el worker terminó el
+procesamiento; `CONVERSATION_QUERY_COMPLETED` registra el resultado del orquestador;
 `OUTBOUND_MESSAGE_DISPATCHED result=SENT` confirma que el adapter saliente
 envió la respuesta. Las métricas de App Runner no prueban por sí solas que
 Telegram haya entregado el mensaje.

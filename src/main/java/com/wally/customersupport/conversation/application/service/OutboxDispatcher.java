@@ -64,7 +64,9 @@ public class OutboxDispatcher {
     private void dispatch(OutboxMessage outboxMessage, Instant now) {
         long startedAt = System.nanoTime();
         try {
-            outboxRepository.markProcessing(outboxMessage.id());
+            if (!outboxRepository.claim(outboxMessage.id(), now)) {
+                return;
+            }
             OutboundMessagePort outboundMessagePort = outboundMessagePorts.get(outboxMessage.message().channel());
             if (outboundMessagePort == null) {
                 throw new IllegalStateException(
