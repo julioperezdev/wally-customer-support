@@ -70,6 +70,30 @@ class AgentRegistryPersistenceIntegrationTest {
     }
 
     @Test
+    void exposesAllVersionsAndActivationsForTheReadOnlyRegistryQuery() {
+        String agentId = "catalog-specialist-list-" + UUID.randomUUID();
+        AgentVersion version = approvedVersion(agentId, 1);
+        registry.saveVersion(version);
+        AgentActivation activation = new AgentActivation(
+                agentId,
+                1,
+                "prod",
+                "telegram",
+                "catalog-search",
+                "read-only-contract-test",
+                100,
+                true,
+                false,
+                null,
+                APPROVED_AT,
+                "test-operator");
+        registry.saveActivation(activation);
+
+        assertThat(registry.findAllVersions()).contains(version);
+        assertThat(registry.findAllActivations()).contains(activation);
+    }
+
+    @Test
     void persistsActivationAndAKillSwitchShadowsThePreviousActiveReference() {
         String agentId = "catalog-specialist-" + UUID.randomUUID();
         AgentVersion version = approvedVersion(agentId, 1);

@@ -32,6 +32,10 @@ La URL del control plane se puede cambiar con la variable no sensible
 `/internal/agent-evaluations`, lo que permite servir el panel detrás del mismo
 origen cuando exista un proxy autenticado.
 
+El endpoint del registry se configura de forma independiente con
+`VITE_WCS_AGENT_REGISTRY_BASE_URL`; por defecto es
+`/internal/agent-registry`.
+
 ```bash
 VITE_WCS_CONTROL_PLANE_BASE_URL=http://localhost:8080/internal/agent-evaluations npm run dev
 ```

@@ -25,6 +25,7 @@ El repositorio contiene la documentación y la base técnica del producto. La im
 - [`docs/backoffice.md`](docs/backoffice.md): backoffice interno read-only de evaluaciones y registry de agentes.
 - [`infra/README.md`](infra/README.md): base Terraform de AWS, state separado y servicios preparados.
 - [`docs/queries.md`](docs/queries.md): consultas SQL y CloudWatch sanitizadas.
+- [`scripts/smoke-agent-registry.sh`](scripts/smoke-agent-registry.sh): smoke read-only del registry sin secretos.
 - [`docs/agents/playbook.md`](docs/agents/playbook.md): reglas para agentes de IA.
 - [`planning/jira-backlog.md`](planning/jira-backlog.md): backlog inicial listo para crear en Jira.
 

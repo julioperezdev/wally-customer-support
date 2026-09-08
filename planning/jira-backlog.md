@@ -386,6 +386,9 @@ semántica o AgentCore.
 | WCS-88 | In Progress | Exponer API read-only del registry de agentes |
 | WCS-89 | In Progress | Agregar vista de agentes y activaciones al backoffice |
 | WCS-90 | In Progress | Asegurar contrato y observabilidad del registry read-only |
+| WCS-91 | In Progress | Verificar contrato read-only del registry contra PostgreSQL |
+| WCS-92 | In Progress | Cargar baseline versionado de catalog-specialist en el registry |
+| WCS-93 | In Progress | Agregar smoke operativo y documentación del baseline del registry |
 
 WCS-60 no agrega todavía API, persistencia ni ejecución de Bedrock. WCS-61
 agrega persistencia create-only en el schema `wcs` para runs completados y
@@ -460,6 +463,12 @@ read-only con filtros acotados. Se cubren límites, errores estables, eventos
 de acceso y separación entre el scope de evaluación y el del registry. No se
 agregan escrituras, publicación, canary, rollback, kill switch, IdP, cambios
 de schema ni infraestructura AWS.
+
+WCS-91, WCS-92 y WCS-93 son el slice de bootstrap observable: una migración
+posterior a V11 carga sólo metadata del baseline `catalog-specialist`, la
+prueba de integración valida la respuesta read-only y un script/salida SQL
+permite verificarlo sin secretos. El seed no crea activaciones ni habilita el
+runtime.
 
 `WCS-14`–`WCS-16` y `WCS-17` ya tienen la fundación o el contrato inicial
 versionado; deben completarse/verificarse según la evidencia de cada issue antes

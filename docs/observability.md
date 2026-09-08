@@ -2,7 +2,7 @@
 
 Owner: Tech Lead
 Status: `In Progress`
-Related Jira: `WCS-21`, `WCS-22`, `WCS-36`, `WCS-50`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-55`, `WCS-56`, `WCS-57`, `WCS-58`, `WCS-59`, `WCS-60`, `WCS-61`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-85`, `WCS-86`, `WCS-87`, `WCS-88`, `WCS-89`, `WCS-90`
+Related Jira: `WCS-21`, `WCS-22`, `WCS-36`, `WCS-50`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-55`, `WCS-56`, `WCS-57`, `WCS-58`, `WCS-59`, `WCS-60`, `WCS-61`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-85`, `WCS-86`, `WCS-87`, `WCS-88`, `WCS-89`, `WCS-90`, `WCS-91`, `WCS-92`, `WCS-93`
 Related repository paths: `observability/grafana/`, `backoffice/`, `src/main/java/com/wally/customersupport/conversation/infrastructure/http/`, `src/main/java/com/wally/customersupport/conversation/application/service/`, `src/main/java/com/wally/customersupport/shared/infrastructure/observability/`
 
 ## Objetivo de esta iteración
