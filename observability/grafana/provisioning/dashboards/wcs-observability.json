@@ -310,11 +310,81 @@
       ]
     },
     {
+      "id": 10,
+      "type": "logs",
+      "title": "Agentes · comparación shadow",
+      "description": "Resultado sanitizado de la candidata frente a la respuesta activa. No publica respuestas ni contenido conversacional.",
+      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 44},
+      "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": false,
+        "prettifyLogMessage": true,
+        "enableLogDetails": false,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      },
+      "targets": [
+        {
+          "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
+          "expression": "fields @timestamp, @message\n| filter @message like /\\\"eventType\\\":\\\"AGENT_TRAFFIC_COMPARISON_RECORDED\\\"/\n| parse @message /\\\"agentId\\\":\\\"(?<parsedAgentId>[^\\\"]+)\\\"/\n| parse @message /\\\"agentVersion\\\":(?<parsedAgentVersion>[0-9]+)/\n| parse @message /\\\"model\\\":\\\"(?<parsedModel>[^\\\"]+)\\\"/\n| parse @message /\\\"channel\\\":\\\"(?<parsedChannel>[^\\\"]+)\\\"/\n| parse @message /\\\"useCase\\\":\\\"(?<parsedUseCase>[^\\\"]+)\\\"/\n| parse @message /\\\"outcome\\\":\\\"(?<parsedOutcome>[^\\\"]+)\\\"/\n| parse @message /\\\"comparisonOutcome\\\":\\\"(?<parsedComparisonOutcome>[^\\\"]+)\\\"/\n| stats count() as executions, sum(if(parsedComparisonOutcome = \"MATCH\", 1, 0)) as matches, sum(if(parsedComparisonOutcome = \"MISMATCH\", 1, 0)) as mismatches, sum(if(parsedComparisonOutcome = \"UNKNOWN\", 1, 0)) as unknowns, sum(if(parsedOutcome = \"COMPLETED\", 1, 0)) as completed, sum(if(parsedOutcome != \"COMPLETED\", 1, 0)) as failures by parsedAgentId, parsedAgentVersion, parsedModel, parsedChannel, parsedUseCase, bin(1h)\n| fields @timestamp, parsedAgentId, parsedAgentVersion, parsedModel, parsedChannel, parsedUseCase, executions, matches, mismatches, unknowns, completed, failures, (matches * 100.0 / executions) as matchRatePercent, (mismatches * 100.0 / executions) as mismatchRatePercent, (unknowns * 100.0 / executions) as unknownRatePercent\n| sort @timestamp asc",
+          "id": "",
+          "label": "",
+          "logsMode": "Insights",
+          "logsQueryScope": "namePrefix",
+          "logGroupClass": "STANDARD",
+          "logGroupPrefixes": ["/aws/apprunner/wally-customer-support-prod-backend"],
+          "queryLanguage": "CWLI",
+          "queryMode": "Logs",
+          "refId": "A",
+          "region": "us-east-1",
+          "statsGroups": ["parsedAgentId", "parsedAgentVersion", "parsedModel", "parsedChannel", "parsedUseCase"]
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "logs",
+      "title": "Agentes · costo, tokens y latencia shadow",
+      "description": "Métricas operativas de la candidata. El costo es estimado y no sustituye la facturación de AWS.",
+      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 56},
+      "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": false,
+        "prettifyLogMessage": true,
+        "enableLogDetails": false,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      },
+      "targets": [
+        {
+          "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
+          "expression": "fields @timestamp, @message\n| filter @message like /\\\"eventType\\\":\\\"AGENT_TRAFFIC_COMPARISON_RECORDED\\\"/\n| parse @message /\\\"agentId\\\":\\\"(?<parsedAgentId>[^\\\"]+)\\\"/\n| parse @message /\\\"agentVersion\\\":(?<parsedAgentVersion>[0-9]+)/\n| parse @message /\\\"model\\\":\\\"(?<parsedModel>[^\\\"]+)\\\"/\n| parse @message /\\\"latencyMs\\\":(?<parsedLatencyMs>[0-9]+)/\n| parse @message /\\\"inputTokens\\\":(?<parsedInputTokens>[0-9]+)/\n| parse @message /\\\"outputTokens\\\":(?<parsedOutputTokens>[0-9]+)/\n| parse @message /\\\"totalTokens\\\":(?<parsedTotalTokens>[0-9]+)/\n| parse @message /\\\"estimatedCostUsd\\\":(?<parsedEstimatedCostUsd>[0-9.]+)/\n| stats count() as executions, avg(parsedLatencyMs) as averageLatencyMs, pct(parsedLatencyMs, 50) as p50LatencyMs, pct(parsedLatencyMs, 95) as p95LatencyMs, sum(parsedInputTokens) as inputTokens, sum(parsedOutputTokens) as outputTokens, sum(parsedTotalTokens) as totalTokens, sum(parsedEstimatedCostUsd) as estimatedCostUsd by parsedAgentId, parsedAgentVersion, parsedModel, bin(1h)\n| sort @timestamp asc",
+          "id": "",
+          "label": "",
+          "logsMode": "Insights",
+          "logsQueryScope": "namePrefix",
+          "logGroupClass": "STANDARD",
+          "logGroupPrefixes": ["/aws/apprunner/wally-customer-support-prod-backend"],
+          "queryLanguage": "CWLI",
+          "queryMode": "Logs",
+          "refId": "A",
+          "region": "us-east-1",
+          "statsGroups": ["parsedAgentId", "parsedAgentVersion", "parsedModel"]
+        }
+      ]
+    },
+    {
       "id": 8,
       "type": "logs",
       "title": "WCS · últimos eventos operativos",
       "description": "Eventos agregados de webhook, mensajes, intenciones y entregas. No muestra texto del usuario.",
-      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 44},
+      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 68},
       "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
       "options": {
         "showTime": true,
@@ -349,7 +419,7 @@
       "type": "logs",
       "title": "App Runner · errores",
       "description": "Diagnóstico de errores del runtime. Revisar siempre que no haya PII antes de compartir evidencia.",
-      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 56},
+      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 80},
       "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
       "options": {
         "showTime": true,

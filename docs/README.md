@@ -42,6 +42,7 @@
   - [`025-agent-evaluation-control-plane-jwt-security.md`](decisions/025-agent-evaluation-control-plane-jwt-security.md): JWT configurable sólo para el control plane, con scope exacto y rutas públicas preservadas.
   - [`026-agent-evaluation-trigger-http.md`](decisions/026-agent-evaluation-trigger-http.md): trigger HTTP autenticado, scopes separados e idempotencia.
   - [`028-shadow-quality-comparison-and-bedrock-candidate.md`](decisions/028-shadow-quality-comparison-and-bedrock-candidate.md): comparación efímera y candidata Bedrock cerrada por defecto.
+  - [`029-shadow-quality-scorecard-and-observability.md`](decisions/029-shadow-quality-scorecard-and-observability.md): scorecard determinístico y observabilidad de shadow sin autoridad de activación.
 
 ## Calidad y operación
 

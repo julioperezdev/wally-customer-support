@@ -516,6 +516,13 @@ con executor fake, timeout, error, límites, outbox activo-only y rollback. El
 provider Bedrock permanece cerrado por `shadow-provider=noop` y no se habilita
 en producción como parte de este cambio.
 
+`WCS-106`–`WCS-108` completan el siguiente bloque de migración controlada: el
+scorecard evalúa evidencia agregada con límites explícitos de muestra, fallos,
+calidad, latencia y costo; Grafana expone la comparación shadow sin contenido
+conversacional; y un smoke reproducible verifica la frontera con datos
+sintéticos. `APPROVE_FOR_REVIEW` sólo habilita una revisión humana: no activa
+agentes, no publica candidatos y no cambia AppConfig ni Terraform.
+
 ### Fase G — Migración controlada
 
 Ejecutar shadow/canary por canal y caso de uso. Comparar contra el runtime

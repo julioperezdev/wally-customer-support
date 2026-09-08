@@ -293,3 +293,21 @@ WCS-104 agrega el adapter Bedrock sólo cuando
 normalizados y una referencia acotada, nunca el mensaje crudo ni identidad del
 cliente. WCS-105 deja la integración cerrada por defecto y documenta el smoke
 con executor fake antes de habilitarla en un ambiente de prueba.
+
+### Scorecard y dashboard WCS-106–108
+
+El scorecard `AgentShadowQualityGate` consume únicamente agregados sanitizados.
+Sus límites iniciales son 20 ejecuciones, 10% de fallos, 15% de mismatch, 10%
+de unknown, 5 segundos de latencia p95 y USD 0,010 de costo medio por
+ejecución. Los valores están detrás de
+`wcs.agent-runtime.shadow-quality.*` y no habilitan el runtime.
+
+El resultado `APPROVE_FOR_REVIEW` no es una promoción. Significa que la
+evidencia puede ser revisada por una persona; la activación mantiene sus
+permisos, aprobaciones y rollback separados. `BLOCK` e
+`INSUFFICIENT_EVIDENCE` deben impedir cualquier avance operativo.
+
+El dashboard local agrega los paneles **Agentes · comparación shadow** y
+**Agentes · costo, tokens y latencia shadow**. Si no hay datos, primero
+comprobar que `shadow-enabled` esté habilitado sólo en el ambiente autorizado y
+que el provider no sea `noop`; un dashboard vacío no es evidencia de éxito.

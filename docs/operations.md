@@ -747,3 +747,24 @@ producción para validar este slice.
 Rollback inmediato: `shadow-enabled=false`, `shadow-provider=noop` y
 `activation-enabled=false`. No requiere migración, Terraform ni cambio de
 secrets.
+
+### Scorecard y smoke WCS-106–108
+
+El scorecard de shadow es una frontera de revisión, no una ruta de publicación.
+Sus límites se pueden ajustar mediante las propiedades
+`wcs.agent-runtime.shadow-quality.*`, pero ningún resultado cambia por sí solo
+el registry o AppConfig. La decisión segura ante métricas faltantes es
+`INSUFFICIENT_EVIDENCE`; ante contadores inconsistentes o límites excedidos es
+`BLOCK`.
+
+El smoke sintético no necesita secretos ni AWS:
+
+```bash
+./scripts/smoke-agent-shadow.sh
+```
+
+Ejecuta la frontera con executor fake y cubre respuesta completada, mismatch,
+timeout, error y límite. La evidencia esperada confirma que la respuesta activa
+continúa siendo la única que llega al outbox/canal. Para detener cualquier
+prueba real, volver a `wcs.agent-runtime.shadow-enabled=false` y
+`wcs.agent-runtime.shadow-provider=noop`.
