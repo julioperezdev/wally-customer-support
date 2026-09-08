@@ -89,6 +89,13 @@ efectiva y `pricingVersion` identifica la tabla utilizada. Es una estimación
 operativa y no una conciliación de facturación. Si el provider está en `mock`,
 no existe una llamada de IA real y no se emite este evento.
 
+Las evaluaciones Bedrock emiten el mismo evento por escenario y además
+persisten en el resultado sanitizado `providerLatencyMs`, `inputTokens`,
+`outputTokens`, `totalTokens`, `estimatedCostUsd` y `pricingVersion`. La
+ausencia de usage se representa como `null`, nunca como cero. El evento
+`AGENT_EVALUATION_COMPLETED` sigue siendo agregado y no contiene texto,
+prompts ni respuestas.
+
 Las evaluaciones offline emiten un evento agregado al finalizar cada run. El
 `runId` es un identificador interno, mientras que `datasetVersion` y la
 identidad del agente/modelo permiten agrupar resultados comparables. El runner

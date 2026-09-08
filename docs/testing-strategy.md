@@ -221,6 +221,14 @@ contactan un IdP real.
   otra evaluación; la key cruda no puede persistirse ni aparecer en logs.
 - `TC-071`: la seguridad o el trigger deshabilitados deben mantener el
   deny-by-default del control plane y no alterar webhooks ni health públicos.
+- `TC-072`: con el executor Bedrock deshabilitado, el dataset usa el executor
+  determinístico sin crear un cliente de proveedor.
+- `TC-073`: con un completion Bedrock sintético, usage, latencia, costo y
+  pricing version se mapean al resultado sin almacenar el texto.
+- `TC-074`: provider/model incompatibles, exceso de escenarios o presupuesto
+  estimado rechazan el run antes de invocar Bedrock.
+- `TC-075`: un escenario de fallback no invoca Bedrock y conserva el fallback
+  determinístico seguro.
 
 ### Prueba manual de catálogo por Telegram
 

@@ -4,6 +4,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import com.wally.customersupport.conversation.application.port.out.MeasuredLlmClient;
 import com.wally.customersupport.shared.infrastructure.config.AiProperties;
 import com.wally.customersupport.shared.infrastructure.observability.AiPricingCalculator;
 import com.wally.customersupport.shared.infrastructure.observability.StructuredEventLog;
@@ -16,9 +17,10 @@ import software.amazon.awssdk.services.bedrockruntime.model.ConversationRole;
 import software.amazon.awssdk.services.bedrockruntime.model.InferenceConfiguration;
 import software.amazon.awssdk.services.bedrockruntime.model.Message;
 import software.amazon.awssdk.services.bedrockruntime.model.SystemContentBlock;
+import software.amazon.awssdk.services.bedrockruntime.model.StopReason;
 
 @Slf4j
-final class BedrockConverseClient {
+final class BedrockConverseClient implements MeasuredLlmClient {
 
     private final BedrockRuntimeClient client;
     private final AiProperties properties;
@@ -31,6 +33,17 @@ final class BedrockConverseClient {
     }
 
     String complete(
+            String stage,
+            String operation,
+            String systemPrompt,
+            String userPrompt,
+            int maxTokens,
+            float temperature) {
+        return completeMeasured(stage, operation, systemPrompt, userPrompt, maxTokens, temperature).text();
+    }
+
+    @Override
+    public LlmCompletion completeMeasured(
             String stage,
             String operation,
             String systemPrompt,
@@ -67,28 +80,57 @@ final class BedrockConverseClient {
             if (text.isBlank()) {
                 throw new IllegalStateException("Bedrock returned an empty message");
             }
-            recordUsage(stage, operation, response, true, null, startedAt);
-            return text;
+            LlmCompletion completion = completion(text, response, startedAt);
+            recordUsage(stage, operation, completion, response.stopReason(), true, null);
+            return completion;
         } catch (RuntimeException exception) {
-            recordUsage(stage, operation, response, false, exception.getClass().getSimpleName(), startedAt);
+            LlmCompletion completion = response == null ? null : completion(null, response, startedAt);
+            recordUsage(
+                    stage,
+                    operation,
+                    completion,
+                    response == null ? null : response.stopReason(),
+                    false,
+                    exception.getClass().getSimpleName());
             throw exception;
         }
+    }
+
+    private LlmCompletion completion(String text, ConverseResponse response, long startedAt) {
+        var usage = response == null ? null : response.usage();
+        Integer inputTokens = usage == null ? null : usage.inputTokens();
+        Integer outputTokens = usage == null ? null : usage.outputTokens();
+        Integer totalTokens = usage == null ? null : usage.totalTokens();
+        Long providerLatency = response == null || response.metrics() == null
+                ? null
+                : response.metrics().latencyMs();
+        var estimatedCost = inputTokens == null || outputTokens == null
+                ? null
+                : AiPricingCalculator.estimatedCostUsd(
+                        inputTokens,
+                        outputTokens,
+                        properties.effectiveInputPriceUsdPerMillionTokens(),
+                        properties.effectiveOutputPriceUsdPerMillionTokens());
+        return new LlmCompletion(
+                text,
+                "bedrock",
+                modelId,
+                elapsedMillis(startedAt),
+                providerLatency,
+                inputTokens,
+                outputTokens,
+                totalTokens,
+                estimatedCost,
+                properties.effectivePricingVersion());
     }
 
     private void recordUsage(
             String stage,
             String operation,
-            ConverseResponse response,
+            LlmCompletion completion,
+            StopReason stopReason,
             boolean success,
-            String errorType,
-            long startedAt) {
-        var usage = response == null ? null : response.usage();
-        Integer inputTokensValue = usage == null ? null : usage.inputTokens();
-        Integer outputTokensValue = usage == null ? null : usage.outputTokens();
-        Integer totalTokensValue = usage == null ? null : usage.totalTokens();
-        int inputTokens = inputTokensValue == null ? 0 : inputTokensValue;
-        int outputTokens = outputTokensValue == null ? 0 : outputTokensValue;
-        int totalTokens = totalTokensValue == null ? inputTokens + outputTokens : totalTokensValue;
+            String errorType) {
 
         Map<String, Object> fields = new LinkedHashMap<>();
         fields.put("stage", stage);
@@ -96,22 +138,19 @@ final class BedrockConverseClient {
         fields.put("provider", "bedrock");
         fields.put("model", modelId);
         fields.put("success", success);
-        fields.put("tokenUsageAvailable", usage != null);
-        fields.put("inputTokens", inputTokens);
-        fields.put("outputTokens", outputTokens);
-        fields.put("totalTokens", totalTokens);
-        fields.put("estimatedCostUsd", AiPricingCalculator.estimatedCostUsd(
-                inputTokens,
-                outputTokens,
-                properties.effectiveInputPriceUsdPerMillionTokens(),
-                properties.effectiveOutputPriceUsdPerMillionTokens()));
-        fields.put("pricingVersion", properties.effectivePricingVersion());
-        fields.put("durationMs", elapsedMillis(startedAt));
-        if (response != null && response.metrics() != null && response.metrics().latencyMs() != null) {
-            fields.put("providerLatencyMs", response.metrics().latencyMs());
+        fields.put("tokenUsageAvailable", completion != null && completion.inputTokens() != null
+                && completion.outputTokens() != null);
+        fields.put("inputTokens", completion == null ? null : completion.inputTokens());
+        fields.put("outputTokens", completion == null ? null : completion.outputTokens());
+        fields.put("totalTokens", completion == null ? null : completion.totalTokens());
+        fields.put("estimatedCostUsd", completion == null ? null : completion.estimatedCostUsd());
+        fields.put("pricingVersion", completion == null ? properties.effectivePricingVersion() : completion.pricingVersion());
+        fields.put("durationMs", completion == null ? null : completion.durationMs());
+        if (completion != null && completion.providerLatencyMs() != null) {
+            fields.put("providerLatencyMs", completion.providerLatencyMs());
         }
-        if (response != null && response.stopReason() != null) {
-            fields.put("stopReason", response.stopReason().toString());
+        if (stopReason != null) {
+            fields.put("stopReason", stopReason.toString());
         }
         if (errorType != null) {
             fields.put("errorType", errorType);

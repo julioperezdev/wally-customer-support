@@ -3,7 +3,7 @@
 Owner: AI/Tech Lead  
 Status: `Accepted`
 Last reviewed: 2026-09-03
-Related Jira: `WCS-11`, `WCS-20`, `WCS-21`, `WCS-30`, `WCS-33`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`
+Related Jira: `WCS-11`, `WCS-20`, `WCS-21`, `WCS-30`, `WCS-33`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-82`, `WCS-83`, `WCS-84`
 Related repository paths: `src/main/java/com/wally/customersupport/conversation/infrastructure/ai`, `src/main/resources/prompts`, `src/test/resources/fixtures`
 
 ## Registro de modelos
@@ -28,6 +28,13 @@ millón de tokens de entrada/salida definidos en AppConfig o en los defaults de
 bootstrap. Nunca se registran prompts, respuestas ni secretos. El evento y sus
 consultas están documentados en [`docs/observability.md`](observability.md) y
 [`observability/grafana/queries/cloudwatch-logs-insights.md`](../observability/grafana/queries/cloudwatch-logs-insights.md).
+
+Las evaluaciones de agentes tienen un executor Bedrock opcional, separado del
+runtime conversacional. Sólo recibe hechos sintéticos y validados del dataset,
+no genera SQL ni consulta tools. `deterministic` es el default y rollback;
+`bedrock` requiere activación explícita, coincidencia de provider/model y pasa
+por límites de escenarios, tokens y costo estimado. Esta evaluación no cambia
+el modelo activo del chatbot.
 
 ## RAG
 

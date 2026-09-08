@@ -3,7 +3,7 @@
 - Owner: Product/Tech Lead
 - Status: `Accepted`
 - Last reviewed: 2026-09-08
-- Related Jira: `WCS-45`, `WCS-60`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-71`, `WCS-72`, `WCS-73`, `WCS-74`, `WCS-75`, `WCS-76`, `WCS-77`, `WCS-78`, `WCS-79`, `WCS-80`, `WCS-81`
+- Related Jira: `WCS-45`, `WCS-60`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-71`, `WCS-72`, `WCS-73`, `WCS-74`, `WCS-75`, `WCS-76`, `WCS-77`, `WCS-78`, `WCS-79`, `WCS-80`, `WCS-81`, `WCS-82`, `WCS-83`, `WCS-84`
 - Baseline: [`wcs-baseline-2026-09-07`](baselines/wcs-baseline-2026-09-07.md)
 - Canonical Confluence: [WCS — Agent Platform Roadmap & Architecture Proposal](https://julioperezdev.atlassian.net/wiki/spaces/SD/pages/7569410/WCS+Agent+Platform+Roadmap+Architecture+Proposal)
 - Related repository paths: `docs/roadmap.md`, `docs/ai.md`, `docs/observability.md`, `docs/decisions/`
@@ -290,6 +290,16 @@ prompts, tools o conversaciones desde el cliente. El resultado y los errores
 son sanitizados, y la evidencia incluye MockMvc, Testcontainers, logs y
 rollback por configuración.
 
+`WCS-82`, `WCS-83` y `WCS-84` forman el slice de evaluación con proveedor real.
+Agregan un puerto medido y un executor Bedrock opcional para el dataset
+sintético, conservan el executor determinístico como default, persisten la
+metadata de tokens/latencia/costo cuando está disponible y ejecutan un
+preflight con límites de escenarios, tokens y presupuesto. La evaluación no
+recibe conversaciones reales, no genera SQL, no consulta PostgreSQL y no
+promueve automáticamente un modelo. El rollback es cambiar el executor a
+`deterministic`; la decisión está documentada en
+[`ADR-027`](decisions/027-bedrock-evaluation-executor-and-guardrails.md).
+
 La ejecución de evaluaciones queda separada en tres piezas:
 
 1. `AgentEvaluationDatasetCatalog` resuelve datasets sintéticos registrados por
@@ -445,8 +455,8 @@ agregan el primer acceso HTTP read-only, todavía cerrado por defecto. `WCS-76`
 –`WCS-78` agregan el provider JWT configurable y la protección sólo de esa
 frontera, manteniendo el cierre por defecto hasta completar el rollout del IdP.
 Las siguientes tareas deben agregar la activación aprobada de retención, un
-disparador autenticado y luego la comparación de modelos reales. La promoción
-requiere evidencia comparable.
+backoffice read-only y luego la comparación de modelos reales con evidencia
+comparable. La promoción requiere gates funcionales, operativos y de privacidad.
 
 ### Fase F — Backoffice
 

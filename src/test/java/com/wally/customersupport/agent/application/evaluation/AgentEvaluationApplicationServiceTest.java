@@ -4,8 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -14,7 +16,9 @@ import com.wally.customersupport.agent.application.port.out.AgentEvaluationRunRe
 import com.wally.customersupport.agent.domain.model.AgentEvaluationExecution;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationExecutionMetadata;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationScenario;
+import com.wally.customersupport.agent.infrastructure.config.AgentEvaluationProperties;
 import com.wally.customersupport.conversation.application.service.DeterministicResponseHumanizer;
+import com.wally.customersupport.shared.infrastructure.config.AiProperties;
 import org.junit.jupiter.api.Test;
 
 class AgentEvaluationApplicationServiceTest {
@@ -26,7 +30,12 @@ class AgentEvaluationApplicationServiceTest {
             new AgentEvaluationDatasetCatalog(List.of(new CatalogResponseEvaluationDatasetProvider())),
             new AgentEvaluationRunner(new ResponsePolicyEvaluator()),
             new PassthroughAgentEvaluationRunRepository(),
-            Clock.fixed(NOW, ZoneOffset.UTC));
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            new AgentEvaluationProperties(
+                    "deterministic", 10, 4_000, 512, new BigDecimal("0.0500"), Duration.ofSeconds(30)),
+            new AiProperties(
+                    "mock", "llm.mock.v1", "us-east-1", "test-pricing-v1",
+                    new BigDecimal("0.0721"), new BigDecimal("0.3090")));
 
     @Test
     void executesKnownDatasetAndReturnsSanitizedRunMetrics() {
