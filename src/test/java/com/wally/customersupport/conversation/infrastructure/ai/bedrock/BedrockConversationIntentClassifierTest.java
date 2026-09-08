@@ -23,7 +23,8 @@ class BedrockConversationIntentClassifierTest {
     @Test
     void parsesStructuredCatalogDecisionWithoutAllowingModelDataToBecomeSql() {
         BedrockConverseClient converseClient = mock(BedrockConverseClient.class);
-        when(converseClient.complete(anyString(), anyString(), anyString(), anyString(), anyInt(), anyFloat()))
+        when(converseClient.complete(
+                anyString(), anyString(), anyString(), anyString(), anyInt(), anyFloat(), anyString(), anyString()))
                 .thenReturn("""
                         {"intent":"CATALOG_SEARCH","confidence":0.94,
                          "catalogQuery":{"name":"camiseta","sku":null,"size":"M","color":"negro",
@@ -40,13 +41,16 @@ class BedrockConversationIntentClassifierTest {
         assertEquals("M", decision.catalogQuery().size());
         assertEquals("negro", decision.catalogQuery().color());
         assertEquals(new BigDecimal("20000"), decision.catalogQuery().maxPrice());
-        verify(converseClient).complete(anyString(), anyString(), anyString(), anyString(), eq(1_024), eq(0.0f));
+        verify(converseClient).complete(
+                anyString(), anyString(), anyString(), anyString(), eq(1_024), eq(0.0f),
+                eq("conversation-intent-v1"), anyString());
     }
 
     @Test
     void sendsBoundedConversationHistoryToResolveRefinements() {
         BedrockConverseClient converseClient = mock(BedrockConverseClient.class);
-        when(converseClient.complete(anyString(), anyString(), anyString(), anyString(), anyInt(), anyFloat()))
+        when(converseClient.complete(
+                anyString(), anyString(), anyString(), anyString(), anyInt(), anyFloat(), anyString(), anyString()))
                 .thenReturn("{\"intent\":\"CATALOG_SEARCH\",\"confidence\":0.94,"
                         + "\"catalogQuery\":{\"name\":\"nullpointer\",\"sku\":null,\"size\":null,"
                         + "\"color\":\"negro\",\"productType\":\"buzo\"},\"policyKey\":null}");
@@ -57,7 +61,9 @@ class BedrockConversationIntentClassifierTest {
 
         assertEquals("buzo", decision.catalogQuery().productType());
         org.mockito.ArgumentCaptor<String> prompt = org.mockito.ArgumentCaptor.forClass(String.class);
-        verify(converseClient).complete(anyString(), anyString(), anyString(), prompt.capture(), eq(1_024), eq(0.0f));
+        verify(converseClient).complete(
+                anyString(), anyString(), anyString(), prompt.capture(), eq(1_024), eq(0.0f),
+                eq("conversation-intent-v1"), anyString());
         assertTrue(prompt.getValue().contains("quiero un buzo"));
         assertTrue(prompt.getValue().contains("que sea negro"));
     }
@@ -65,7 +71,8 @@ class BedrockConversationIntentClassifierTest {
     @Test
     void convertsMalformedModelOutputToUnknownDecision() {
         BedrockConverseClient converseClient = mock(BedrockConverseClient.class);
-        when(converseClient.complete(anyString(), anyString(), anyString(), anyString(), anyInt(), anyFloat()))
+        when(converseClient.complete(
+                anyString(), anyString(), anyString(), anyString(), anyInt(), anyFloat(), anyString(), anyString()))
                 .thenReturn("not-json");
 
         var decision = new BedrockConversationIntentClassifier(converseClient, new ObjectMapper())
@@ -78,7 +85,8 @@ class BedrockConversationIntentClassifierTest {
     @Test
     void usesBoundedConfidenceWhenGeneralSupportOmitsConfidence() {
         BedrockConverseClient converseClient = mock(BedrockConverseClient.class);
-        when(converseClient.complete(anyString(), anyString(), anyString(), anyString(), anyInt(), anyFloat()))
+        when(converseClient.complete(
+                anyString(), anyString(), anyString(), anyString(), anyInt(), anyFloat(), anyString(), anyString()))
                 .thenReturn("{\"intent\":\"GENERAL_SUPPORT\",\"catalogQuery\":null,\"policyKey\":null}");
 
         var decision = new BedrockConversationIntentClassifier(converseClient, new ObjectMapper())

@@ -6,6 +6,8 @@ import com.wally.customersupport.conversation.domain.model.ConversationExecution
 import com.wally.customersupport.conversation.domain.model.ConversationExecutionPlan;
 import com.wally.customersupport.conversation.domain.model.ConversationExecutionStep;
 import com.wally.customersupport.conversation.domain.model.ConversationIntentDecision;
+import com.wally.customersupport.shared.infrastructure.config.ConversationGuardrailProperties;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -13,12 +15,22 @@ public class ConversationExecutionPlanFactory {
 
     public static final double MIN_CONFIDENCE = 0.65;
     private static final int MAX_STEPS = 3;
+    private final double minConfidence;
+
+    public ConversationExecutionPlanFactory() {
+        this.minConfidence = MIN_CONFIDENCE;
+    }
+
+    @Autowired
+    public ConversationExecutionPlanFactory(ConversationGuardrailProperties properties) {
+        this.minConfidence = properties.effectiveMinIntentConfidence();
+    }
 
     public ConversationExecutionPlan create(ConversationIntentDecision decision) {
         if (decision == null) {
             return safeFallback("NULL_DECISION");
         }
-        if (decision.confidence() < MIN_CONFIDENCE) {
+        if (decision.confidence() < minConfidence) {
             return lowConfidence("LOW_CONFIDENCE");
         }
 

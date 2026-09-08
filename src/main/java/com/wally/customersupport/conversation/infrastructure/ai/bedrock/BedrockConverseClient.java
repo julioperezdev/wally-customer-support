@@ -39,7 +39,35 @@ final class BedrockConverseClient implements MeasuredLlmClient {
             String userPrompt,
             int maxTokens,
             float temperature) {
-        return completeMeasured(stage, operation, systemPrompt, userPrompt, maxTokens, temperature).text();
+        return complete(
+                stage,
+                operation,
+                systemPrompt,
+                userPrompt,
+                maxTokens,
+                temperature,
+                null,
+                null);
+    }
+
+    String complete(
+            String stage,
+            String operation,
+            String systemPrompt,
+            String userPrompt,
+            int maxTokens,
+            float temperature,
+            String promptVersion,
+            String promptHash) {
+        return completeMeasured(
+                stage,
+                operation,
+                systemPrompt,
+                userPrompt,
+                maxTokens,
+                temperature,
+                promptVersion,
+                promptHash).text();
     }
 
     @Override
@@ -50,6 +78,26 @@ final class BedrockConverseClient implements MeasuredLlmClient {
             String userPrompt,
             int maxTokens,
             float temperature) {
+        return completeMeasured(
+                stage,
+                operation,
+                systemPrompt,
+                userPrompt,
+                maxTokens,
+                temperature,
+                null,
+                null);
+    }
+
+    private LlmCompletion completeMeasured(
+            String stage,
+            String operation,
+            String systemPrompt,
+            String userPrompt,
+            int maxTokens,
+            float temperature,
+            String promptVersion,
+            String promptHash) {
         Message message = Message.builder()
                 .role(ConversationRole.USER)
                 .content(ContentBlock.fromText(userPrompt))
@@ -81,7 +129,15 @@ final class BedrockConverseClient implements MeasuredLlmClient {
                 throw new IllegalStateException("Bedrock returned an empty message");
             }
             LlmCompletion completion = completion(text, response, startedAt);
-            recordUsage(stage, operation, completion, response.stopReason(), true, null);
+            recordUsage(
+                    stage,
+                    operation,
+                    completion,
+                    response.stopReason(),
+                    true,
+                    null,
+                    promptVersion,
+                    promptHash);
             return completion;
         } catch (RuntimeException exception) {
             LlmCompletion completion = response == null ? null : completion(null, response, startedAt);
@@ -91,7 +147,9 @@ final class BedrockConverseClient implements MeasuredLlmClient {
                     completion,
                     response == null ? null : response.stopReason(),
                     false,
-                    exception.getClass().getSimpleName());
+                    exception.getClass().getSimpleName(),
+                    promptVersion,
+                    promptHash);
             throw exception;
         }
     }
@@ -130,7 +188,9 @@ final class BedrockConverseClient implements MeasuredLlmClient {
             LlmCompletion completion,
             StopReason stopReason,
             boolean success,
-            String errorType) {
+            String errorType,
+            String promptVersion,
+            String promptHash) {
 
         Map<String, Object> fields = new LinkedHashMap<>();
         fields.put("stage", stage);
@@ -154,6 +214,12 @@ final class BedrockConverseClient implements MeasuredLlmClient {
         }
         if (errorType != null) {
             fields.put("errorType", errorType);
+        }
+        if (promptVersion != null && !promptVersion.isBlank()) {
+            fields.put("promptVersion", promptVersion);
+        }
+        if (promptHash != null && !promptHash.isBlank()) {
+            fields.put("promptHash", promptHash);
         }
 
         if (success) {

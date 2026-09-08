@@ -310,3 +310,9 @@ No alcanza con que compile. Para aceptar el MVP:
 - `mvn clean test`: tests unitarios de HMAC, parser, controller, servicio de aplicación y adapter Meta.
 - `WallyCustomerSupportApplicationIntegrationTest`: arranque Spring Boot con JPA, migraciones Flyway V1–V9, consulta filtrada y general del catálogo demo, filtros de precio, seguimiento conversacional, horarios y políticas contra PostgreSQL 16 de Testcontainers.
 - La integración PostgreSQL real se ejecuta de forma reproducible con Testcontainers antes de cerrar WCS-12; no se usa H2 para validar el esquema, las queries ni las migraciones.
+- Para WCS-20, cada nueva versión de prompt debe incluir una prueba de carga
+  desde classpath, hash estable, rechazo de versión inexistente y fixtures de
+  clasificación para saludo, catálogo, pregunta documental, ambigüedad y
+  escalamiento. También se verifica que los límites configurados sean acotados
+  por el backend y que `AI_USAGE_RECORDED` registre sólo versión/hash, modelo y
+  métricas operativas, nunca prompt, respuesta o PII.

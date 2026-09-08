@@ -73,6 +73,28 @@ y la decisión en `ADR-003`.
 
 Cada modelo real debe registrar proveedor, model ID, versión, límites, timeout, precio vigente, fecha de revisión y casos permitidos.
 
+## Registro ejecutable del prompt de intención
+
+El clasificador usa el `prompt_id` lógico `conversation-intent` y una versión
+aprobada empaquetada en `src/main/resources/prompts/`. La versión activa se
+selecciona con `wcs.ai.prompt.intent-version`, pero el valor sólo puede resolver
+un archivo incluido en el artefacto; no se acepta prompt arbitrario desde
+requests, AppConfig como texto libre ni el usuario final.
+
+La primera versión es `conversation-intent-v1.system.md`. Al iniciar una
+clasificación, WCS calcula un SHA-256 del contenido y registra únicamente
+`promptVersion` y `promptHash` junto con el evento `AI_USAGE_RECORDED`. El
+contenido, el mensaje y la respuesta no se registran. Para publicar una nueva
+versión se agrega un archivo nuevo, se actualizan fixtures y se cambia la
+selección de AppConfig después de revisar el PR y sus resultados.
+
+Los límites de inferencia son configuración no secreta y quedan acotados por
+el código: `intent-max-output-tokens` entre 1 y 1024,
+`intent-temperature` entre 0 y 2, historial de hasta 12 mensajes y entradas
+de hasta 2000 caracteres por bloque. Después de parsear la respuesta, el plan
+de ejecución aplica `wcs.conversation.guardrails.min-intent-confidence`; una
+intención por debajo del umbral sólo puede producir el fallback seguro.
+
 ## Registro de prompts
 
 Cada prompt debe tener:

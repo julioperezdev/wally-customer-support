@@ -47,6 +47,12 @@ locals {
   test_configuration = {
     "wcs.ai.provider"                                        = "mock"
     "wcs.ai.model"                                           = "llm.mock.v1"
+    "wcs.ai.prompt.intent-version"                           = "conversation-intent-v1"
+    "wcs.ai.prompt.intent-max-output-tokens"                 = 1024
+    "wcs.ai.prompt.intent-temperature"                       = 0.0
+    "wcs.ai.prompt.max-input-characters"                     = 2000
+    "wcs.ai.prompt.max-history-messages"                     = 12
+    "wcs.conversation.guardrails.min-intent-confidence"      = 0.65
     "wcs.rag.provider"                                       = "mock"
     "wcs.rag.max-results"                                    = 5
     "wcs.outbox.max-attempts"                                = 3

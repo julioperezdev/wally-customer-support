@@ -59,6 +59,12 @@ locals {
     "wcs.ai.pricing-version"                                 = "aws-bedrock-us-east-1-standard-2026-09"
     "wcs.ai.input-price-usd-per-million-tokens"              = 0.0721
     "wcs.ai.output-price-usd-per-million-tokens"             = 0.3090
+    "wcs.ai.prompt.intent-version"                           = "conversation-intent-v1"
+    "wcs.ai.prompt.intent-max-output-tokens"                 = 1024
+    "wcs.ai.prompt.intent-temperature"                       = 0.0
+    "wcs.ai.prompt.max-input-characters"                     = 2000
+    "wcs.ai.prompt.max-history-messages"                     = 12
+    "wcs.conversation.guardrails.min-intent-confidence"      = 0.65
     "wcs.rag.provider"                                       = "bedrock-kb"
     "wcs.rag.max-results"                                    = 5
     "wcs.rag.knowledge-base-id"                              = module.wcs_knowledge_base.knowledge_base_id
