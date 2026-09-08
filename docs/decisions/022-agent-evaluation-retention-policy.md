@@ -45,3 +45,8 @@ operativa de la autenticación técnica; un futuro job autenticado podrá consul
 esa revisión antes de proponer una acción de retención. La activación deberá definir por separado autorización,
 auditoría, retención por ambiente, período de gracia, paginación, métricas,
 reintentos y rollback.
+
+WCS-68 deja la autorización técnica detrás de un contrato independiente del
+proveedor. La capacidad exacta y el ambiente deben validarse antes de invocar un
+adaptador futuro; cualquier ausencia, discrepancia o error termina en
+denegación. La aprobación operativa de WCS-67 nunca sustituye este control.

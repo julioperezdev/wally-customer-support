@@ -107,6 +107,8 @@ necesitan iniciar el contenedor.
 | `TC-058` | P1 | Revisión vacía | Devuelve una revisión sin decisiones ni errores para una página vacía | Unit |
 | `TC-059` | P1 | Gate no solicitado | Devuelve `NOT_REQUESTED` sin exigir metadata de aprobación | Unit |
 | `TC-060` | P1 | Gate aprobado o rechazado | Acepta evidencia completa no futura y rechaza metadata faltante o futura | Unit |
+| `TC-061` | P1 | Autorización exacta del trigger | Autoriza sólo la capacidad y ambiente permitidos | Unit |
+| `TC-062` | P1 | Denegación por defecto | Deniega metadata incompleta, provider no confirmante o error del provider | Unit |
 | `TC-041` | P1 | Uso real de Bedrock | Emite `AI_USAGE_RECORDED` con modelo, tokens, latencia, pricing version y costo estimado | Test del adapter + log sanitizado |
 | `TC-042` | P1 | Consultas de observabilidad | CloudWatch agrega consultas, IA, RAG y entregas sin errores de campos | Logs Insights/Grafana |
 
@@ -152,6 +154,10 @@ necesitan iniciar el contenedor.
 - `TC-060`: una aprobación completa en el límite temporal debe devolver
   `APPROVED_FOR_REVIEW`; metadata faltante o futura debe devolver `REJECTED` con
   una razón tipada.
+- `TC-061`: el trigger sólo debe autorizar la capacidad exacta
+  `agent-evaluation.execute` y el ambiente configurado.
+- `TC-062`: metadata incompleta, capacidad/ambiente no permitido o un error del
+  provider debe devolver `DENIED` sin propagar credenciales ni excepciones.
 
 ### Prueba manual de catálogo por Telegram
 
