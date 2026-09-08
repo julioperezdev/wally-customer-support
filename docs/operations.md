@@ -3,7 +3,7 @@
 Owner: Tech Lead  
 Status: `Accepted`
 Last reviewed: 2026-09-08
-Related Jira: `WCS-13`, `WCS-21`, `WCS-22`, `WCS-30`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-38`, `WCS-39`, `WCS-40`, `WCS-41`, `WCS-42`, `WCS-76`, `WCS-77`, `WCS-78`, `WCS-85`, `WCS-86`, `WCS-87`, `WCS-88`, `WCS-89`, `WCS-90`, `WCS-91`, `WCS-92`, `WCS-93`, `WCS-94`, `WCS-95`, `WCS-96`, `WCS-103`, `WCS-104`, `WCS-105`, `WCS-109`, `WCS-110`, `WCS-111`, `WCS-112`, `WCS-113`
+Related Jira: `WCS-13`, `WCS-21`, `WCS-22`, `WCS-30`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-38`, `WCS-39`, `WCS-40`, `WCS-41`, `WCS-42`, `WCS-76`, `WCS-77`, `WCS-78`, `WCS-85`, `WCS-86`, `WCS-87`, `WCS-88`, `WCS-89`, `WCS-90`, `WCS-91`, `WCS-92`, `WCS-93`, `WCS-94`, `WCS-95`, `WCS-96`, `WCS-103`, `WCS-104`, `WCS-105`, `WCS-109`, `WCS-110`, `WCS-111`, `WCS-112`, `WCS-113`, `WCS-114`
 Related repository paths: `src/main/resources`, `backoffice/`, `.github/workflows`, `infra/`
 
 ## Ambientes
@@ -21,6 +21,20 @@ aplicado.
 
 El Environment `production` de GitHub Actions es un gate de despliegue y no
 debe confundirse con el environment `prod` de Spring/AppConfig.
+
+### Bootstrap del Environment `test`
+
+El rol Terraform de `test` no puede crearse usando el propio rol que todavía
+no existe. El primer paso se realiza con un principal AWS autorizado y el root
+local `infra/bootstrap/test`, que está limitado al rol OIDC de Terraform y a
+sus policies delimitadas por `test`. El plan se revisa antes de aplicar y el
+ARN resultante se carga como `AWS_TERRAFORM_ROLE_ARN` en el Environment `test`.
+
+El rol Terraform productivo no se reutiliza para `test`: su state key,
+prefijos de Secrets Manager, nombres IAM y permisos están acotados a `prod`.
+Una vez configurado el Environment `test`, el workflow remoto puede ejecutar
+`target_environment=test` con `action=plan`; no se habilita `apply` hasta
+verificar que el plan no contenga destrucciones ni reemplazos.
 
 ## CI/CD objetivo
 
@@ -63,6 +77,7 @@ La base versionada en el repositorio está organizada así:
 
 ```text
 infra/bootstrap/                  límites y verificaciones del state
+infra/bootstrap/test/             bootstrap local del rol OIDC Terraform test
 infra/environments/prod/          composición del entorno WCS
 infra/modules/appconfig/          application, environment y profile
 infra/modules/runtime-secrets/    contenedor de Secrets Manager sin valores

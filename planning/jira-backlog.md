@@ -538,6 +538,7 @@ cada transición requiere pruebas, evidencia y PR asociado.
 | --- | --- | --- |
 | WCS-112 | In Progress | Provisionar ambiente AWS test aislado para WCS |
 | WCS-113 | In Progress | Preparar CI, bootstrap y smoke del ambiente test |
+| WCS-114 | In Progress | Bootstrap seguro del Environment test y primer plan Terraform |
 
 WCS-112 y WCS-113 forman el siguiente bloque operativo. El primero descubre la
 aplicación y el profile existentes de AppConfig y crea sólo el environment
@@ -546,6 +547,12 @@ separado. El segundo prepara la selección explícita del target en CI y el
 perfil Spring `test`. El App Runner test permanece desactivado y shadow en
 `0%` hasta contar con secretos, base de datos, plan y aprobación separados de
 producción.
+
+WCS-114 resuelve el bootstrap circular del primer rol: un root local crea sólo
+el rol OIDC de Terraform para `test` con un principal AWS autorizado. Después
+de configurar el ARN y las variables del Environment `test` de GitHub, se
+ejecuta el primer `plan` remoto y se revisan acciones, state y prefijos antes
+de cualquier `apply`.
 
 ## Template común de issue
 

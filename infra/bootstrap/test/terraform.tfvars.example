@@ -1,0 +1,15 @@
+project_name = "wally-customer-support"
+environment  = "test"
+aws_region   = "us-east-1"
+
+github_repository          = "julioperezdev/wally-customer-support"
+github_repository_owner_id = "REPLACE_ME_GITHUB_OWNER_ID"
+github_repository_id       = "REPLACE_ME_GITHUB_REPOSITORY_ID"
+github_oidc_provider_arn   = "arn:aws:iam::438225605070:oidc-provider/token.actions.githubusercontent.com"
+
+state_bucket_name = "tesis-dev-terraform-state-us-east-1"
+state_key         = "wally-customer-support/environments/test/terraform.tfstate"
+secret_name_prefix = "wcs/test/"
+
+# Set only when the account requires an approved permissions boundary.
+permissions_boundary_arn = null
