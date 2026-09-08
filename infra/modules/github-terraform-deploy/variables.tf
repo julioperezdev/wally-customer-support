@@ -13,6 +13,12 @@ variable "github_repository" {
   description = "GitHub repository in owner/name form."
 }
 
+variable "github_environment" {
+  type        = string
+  description = "GitHub Actions Environment allowed to assume this role."
+  default     = "production"
+}
+
 variable "github_repository_owner_id" {
   type        = string
   description = "Immutable numeric GitHub owner ID used by the repository OIDC subject claim."

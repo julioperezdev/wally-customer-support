@@ -529,6 +529,14 @@ dentro del porcentaje configurado. El default es `test` con `0%`; se cubren
 skips, fallback activo y smoke sin publicar candidatos. Esta entrega no
 habilita `prod` ni cambia infraestructura.
 
+`WCS-112`–`WCS-113` preparan un ambiente AWS `test` aislado para validar esta
+plataforma: estado Terraform separado, ambiente AppConfig `test`, secretos
+ficticios con prefijo `wcs/test/`, rol OIDC específico y configuración de CI
+separada. La primera entrega no crea ni modifica RDS, Knowledge Bases,
+AppConfig `prod` ni un servicio App Runner; tampoco habilita tráfico shadow.
+Antes del primer `apply` se debe configurar el Environment `test` de GitHub y
+revisar un plan real sin destrucciones ni reemplazos.
+
 ### Fase G — Migración controlada
 
 Ejecutar shadow/canary por canal y caso de uso. Comparar contra el runtime
