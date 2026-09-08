@@ -1,6 +1,7 @@
 package com.wally.customersupport.conversation.infrastructure.repository.postgres;
 
 import java.time.Instant;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,7 +29,9 @@ public class JpaOutboxRepositoryAdapter implements OutboxRepository {
     }
 
     @Override
+    @Transactional
     public List<OutboxMessage> findDue(Instant now, int limit) {
+        repository.requeueStaleProcessing(now.minus(Duration.ofMinutes(5)));
         return repository.findByStatusInAndAvailableAtLessThanEqualOrderByCreatedAtAsc(
                         List.of(OutboxStatus.PENDING),
                         now,
@@ -40,11 +43,8 @@ public class JpaOutboxRepositoryAdapter implements OutboxRepository {
 
     @Override
     @Transactional
-    public void markProcessing(UUID id) {
-        repository.findById(id).ifPresent(entity -> {
-            entity.markProcessing();
-            repository.save(entity);
-        });
+    public boolean claim(UUID id, Instant now) {
+        return repository.claim(id, now) == 1;
     }
 
     @Override

@@ -81,7 +81,7 @@ public class WhatsAppWebhookController {
                 fields.put("channel", command.channel().name().toLowerCase(java.util.Locale.ROOT));
                 fields.put("result", result.result().name());
                 fields.put("durationMs", elapsedMillis(startedAt));
-                StructuredEventLog.info(log, "INBOUND_MESSAGE_PROCESSED", fields);
+                StructuredEventLog.info(log, "INBOUND_MESSAGE_ENQUEUED", fields);
             }
             return ResponseEntity.ok().build();
         } catch (WhatsAppPayloadException exception) {

@@ -27,7 +27,8 @@ Inbound Adapter
         ▼
 Conversation Application
   ├── ownership y deduplicación
-  ├── persistencia transaccional
+  ├── persistencia transaccional + cola inbound durable
+  ├── worker con lease, retry y orden por conversación
   ├── outbox / dispatch durable
   └── políticas de atención
         ▼
@@ -51,6 +52,22 @@ Message Processor
         ▼
 PostgreSQL + Flyway + observabilidad
 ```
+
+### Acknowledgment y procesamiento durable
+
+Los controllers de WhatsApp y Telegram sólo autentican, parsean y delegan el
+comando. `InboundMessageApplicationService` persiste conversación, mensaje y
+`processing_attempts=PENDING` en una única transacción y devuelve el resultado
+de encolado; no ejecuta clasificación, LLM, retrieval ni el adapter outbound.
+`InboundProcessingWorker` reclama trabajos con una actualización condicional,
+mantiene el orden por conversación y recupera leases vencidos. La respuesta
+conversacional y el registro `COMPLETED` se confirman junto con el outbox. Los
+fallos transitorios esperan el siguiente `available_at`; al agotar intentos se
+registra un estado terminal y se encola un fallback seguro.
+
+El contrato de aplicación no conoce SQS. Una futura implementación puede
+reemplazar el adapter de persistencia/claim por SQS o SQS FIFO sin modificar
+los adapters de canal ni los casos de uso.
 
 ## Frontera entre conocimiento y datos transaccionales
 

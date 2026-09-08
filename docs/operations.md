@@ -202,6 +202,11 @@ wcs.telegram.allowed-chat-id
 wcs.telegram.connect-timeout
 wcs.telegram.read-timeout
 wcs.outbox.max-attempts
+wcs.inbound.poll-interval-ms
+wcs.inbound.batch-size
+wcs.inbound.max-attempts
+wcs.inbound.lease-duration
+wcs.inbound.retry-delay
 wcs.conversation.memory.enabled
 wcs.conversation.memory.ttl
 wcs.conversation.memory.max-messages
@@ -620,6 +625,18 @@ secretos ni payloads de proveedores.
 - Rotación de secrets.
 - Rollback de aplicación.
 - Borrado de conversaciones según política.
+
+### Backlog inbound durable
+
+El webhook debe devolver `200` después de persistir y encolar, sin esperar al
+LLM ni al envío outbound. Para diagnosticar un mensaje que no responde, buscar
+los eventos `INBOUND_MESSAGE_ENQUEUED`, `INBOUND_MESSAGE_PROCESSED`,
+`INBOUND_MESSAGE_RETRY_SCHEDULED` e `INBOUND_MESSAGE_FAILED`, y consultar en
+PostgreSQL las filas de `wcs.processing_attempts` por `status`,
+`available_at`, `attempt_count` y `last_error`. Un estado `PROCESSING` antiguo
+se recupera cuando supera `wcs.inbound.lease-duration`; no se debe borrar la
+fila manualmente. Primero se debe verificar el backlog y el adapter outbound,
+y sólo después considerar un restart controlado del backend.
 
 ## Reglas de disponibilidad
 

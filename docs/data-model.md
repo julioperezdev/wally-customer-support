@@ -48,15 +48,23 @@ red en este repositorio.
 - `message_type` (`TEXT` en la primera entrega).
 - timestamps.
 
-### `processing_attempts` — implementada en `V1__create_core_support_tables.sql`
+### `processing_attempts` — implementada en `V1__create_core_support_tables.sql` y `V14__make_inbound_processing_durable.sql`
 
 - `id` UUID.
 - `message_id` FK.
-- `attempt_count` y `status`.
-- error sanitizado.
+- `attempt_count` y `status` (`PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`).
+- `available_at` para reintentos diferidos y `started_at` para recuperar leases
+  abandonados después de un reinicio.
+- error sanitizado, sin mensaje completo del proveedor ni payload.
 - timestamps.
 
-Esta entidad permite auditar reintentos sin sobrecargar la fila principal del mensaje.
+Esta entidad es también la cola durable de inbound. El webhook crea el mensaje
+y una fila `PENDING` en la misma transacción; un worker reclama sólo el primer
+trabajo pendiente de cada conversación, procesa fuera del request y marca el
+resultado en una transacción con el outbox. La reclamación usa una actualización
+condicional para que dos instancias no procesen el mismo trabajo. Un lease
+vencido vuelve a `PENDING`; un mensaje no adelanta a otro anterior de la misma
+conversación aunque esté esperando un retry.
 
 ### `outbox_messages` — implementada en `V1__create_core_support_tables.sql`
 
@@ -70,7 +78,10 @@ Permite confirmar el webhook después de una transacción local y despachar el t
 * `attempts`, `available_at`, `version` y `sent_at`.
 * timestamps.
 
-La unicidad del `external_message_id` y el estado del outbox sobreviven a reinicios. `@Async` sin persistencia no es el mecanismo productivo.
+La unicidad del `external_message_id` y el estado del outbox sobreviven a
+reinicios. El dispatcher reclama cada fila con una actualización condicional,
+recupera estados `PROCESSING` antiguos y sólo entonces llama al adapter
+outbound. `@Async` sin persistencia no es el mecanismo productivo.
 
 ### `catalog_products` y `catalog_variants` — implementadas en `V2`/`V3`
 

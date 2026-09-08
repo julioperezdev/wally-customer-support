@@ -38,6 +38,7 @@ class OutboxDispatcherTest {
         OutboxMessage message = OutboxMessage.pendingReply(
                 OutboundMessage.text(Channel.WHATSAPP, UUID.randomUUID(), "synthetic-recipient", "Hola"), NOW);
         when(outboxRepository.findDue(NOW, 50)).thenReturn(List.of(message));
+        when(outboxRepository.claim(message.id(), NOW)).thenReturn(true);
         when(outboundMessagePort.channel()).thenReturn(Channel.WHATSAPP);
         doThrow(new IllegalStateException("synthetic failure"))
                 .when(outboundMessagePort).send(message.message());
@@ -49,7 +50,7 @@ class OutboxDispatcherTest {
                 Clock.fixed(NOW, ZoneOffset.UTC))
                 .dispatchDueMessages();
 
-        verify(outboxRepository).markProcessing(message.id());
+        verify(outboxRepository).claim(message.id(), NOW);
         verify(outboxRepository).markFailed(
                 eq(message.id()), eq("synthetic failure"), eq(NOW.plusSeconds(30)), eq(false));
     }
@@ -60,6 +61,7 @@ class OutboxDispatcherTest {
         OutboxMessage message = OutboxMessage.pendingReply(
                 OutboundMessage.text(Channel.TELEGRAM, UUID.randomUUID(), "synthetic-chat", "Hola"), NOW);
         when(outboxRepository.findDue(NOW, 50)).thenReturn(List.of(message));
+        when(outboxRepository.claim(message.id(), NOW)).thenReturn(true);
         when(outboundMessagePort.channel()).thenReturn(Channel.WHATSAPP);
         when(telegramPort.channel()).thenReturn(Channel.TELEGRAM);
 
