@@ -19,6 +19,17 @@ class AgentTrafficRoutingPolicyTest {
     }
 
     @Test
+    void shadowWithZeroPercentAlwaysFallsBack() {
+        AgentTrafficRoutingDecision decision = policy.decide(
+                new AgentTrafficRoutingRequest(AgentTrafficMode.SHADOW, 0, "conversation-hash"));
+
+        assertThat(decision.candidateSelected()).isFalse();
+        assertThat(decision.candidateResponsePublished()).isFalse();
+        assertThat(decision.fallbackToActive()).isTrue();
+        assertThat(decision.reason()).isEqualTo("SHADOW_BUCKET_NOT_SELECTED");
+    }
+
+    @Test
     void canarySelectionIsStableForTheSamePseudonymizedConversation() {
         AgentTrafficRoutingRequest request =
                 new AgentTrafficRoutingRequest(AgentTrafficMode.CANARY, 50, "conversation-hash");

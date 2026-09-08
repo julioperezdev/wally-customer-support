@@ -58,6 +58,7 @@ operacional necesario para diagnóstico y costo, pero sin contenido de negocio.
 | `AGENT_SPECIALIST_EXECUTION_FALLBACK` | `agentId`, `agentVersion`, `useCase`, `executionMode`, `outcome`, `reason`, `resultStatus`, `resultCount`, `durationMs` | Especialista omitido por allowlist, configuración o ausencia de respuesta |
 | `AGENT_SPECIALIST_EXECUTION_FAILED` | `agentId`, `agentVersion`, `useCase`, `executionMode`, `outcome`, `reason`, `resultStatus`, `resultCount`, `durationMs`, `errorType` | Fallo controlado de la ejecución especializada |
 | `AGENT_SHADOW_EXECUTION_COMPLETED` | `agentId`, `agentVersion`, `modelProvider`, `model`, `channel`, `useCase`, `outcome`, `fallbackReason`, `latencyMs`, `durationMs`, `candidateResponsePublished` | Resultado operativo de una candidata shadow; nunca contiene su respuesta |
+| `AGENT_SHADOW_EXECUTION_SKIPPED` | `environment`, `reason`, `trafficPercentage` | Shadow no seleccionado por configuración de ambiente o muestreo |
 | `AGENT_SHADOW_EVIDENCE_FAILED` | `agentId`, `agentVersion`, `errorType` | Fallo al publicar evidencia sin afectar la respuesta activa |
 | `AGENT_TRAFFIC_COMPARISON_RECORDED` | `comparisonRequestId`, `pseudonymizedConversationId`, `channel`, `useCase`, `agentId`, `agentVersion`, `modelProvider`, `model`, `mode`, `outcome`, `comparisonOutcome`, `latencyMs`, `inputTokens`, `outputTokens`, `totalTokens`, `estimatedCostUsd`, `fallbackReason`, `candidateResponsePublished` | Evidencia comparable y sanitizada para evaluar shadow/canary |
 | `CONVERSATION_QUERY_COMPLETED` | `queryType`, `outcome`, `responseGenerated`, `durationMs`, `correlationId` | Resultado y latencia total de la consulta |
@@ -311,3 +312,8 @@ El dashboard local agrega los paneles **Agentes · comparación shadow** y
 **Agentes · costo, tokens y latencia shadow**. Si no hay datos, primero
 comprobar que `shadow-enabled` esté habilitado sólo en el ambiente autorizado y
 que el provider no sea `noop`; un dashboard vacío no es evidencia de éxito.
+
+Los skips `SHADOW_ENVIRONMENT_NOT_ALLOWED`, `SHADOW_TRAFFIC_DISABLED` y
+`SHADOW_BUCKET_NOT_SELECTED` son esperables durante el rollout. La ausencia de
+`AGENT_TRAFFIC_COMPARISON_RECORDED` con porcentaje cero no indica un fallo del
+canal: indica que el candidato no fue invocado.

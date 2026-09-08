@@ -61,6 +61,13 @@ public class AgentShadowRuntimeService {
         if (!runtimeProperties.shadowEnabled()) {
             return AgentShadowExecutionResult.disabled("CONFIG_DISABLED");
         }
+        if (!runtimeProperties.shadowEnvironmentAllowed()) {
+            return skip("SHADOW_ENVIRONMENT_NOT_ALLOWED");
+        }
+        int trafficPercentage = runtimeProperties.effectiveShadowTrafficPercentage();
+        if (trafficPercentage == 0) {
+            return skip("SHADOW_TRAFFIC_DISABLED");
+        }
         if (definitionResolution == null || !definitionResolution.isActive()) {
             return AgentShadowExecutionResult.skipped("ACTIVE_DEFINITION_UNAVAILABLE");
         }
@@ -71,9 +78,9 @@ public class AgentShadowRuntimeService {
         AgentRuntimeDefinition definition = definitionResolution.definition();
         String pseudonymizedConversationId = pseudonymize(context.conversationId());
         AgentTrafficRoutingDecision routing = routingPolicy.decide(
-                new AgentTrafficRoutingRequest(AgentTrafficMode.SHADOW, 100, pseudonymizedConversationId));
+                new AgentTrafficRoutingRequest(AgentTrafficMode.SHADOW, trafficPercentage, pseudonymizedConversationId));
         if (!routing.candidateSelected()) {
-            return AgentShadowExecutionResult.skipped("SHADOW_BUCKET_NOT_SELECTED");
+            return skip("SHADOW_BUCKET_NOT_SELECTED");
         }
 
         long startedAt = System.nanoTime();
@@ -98,6 +105,14 @@ public class AgentShadowRuntimeService {
         StructuredEventLog.info(log, "AGENT_SHADOW_EXECUTION_COMPLETED", fields(
                 definition, context, useCase, result, startedAt));
         return result;
+    }
+
+    private AgentShadowExecutionResult skip(String reason) {
+        StructuredEventLog.info(log, "AGENT_SHADOW_EXECUTION_SKIPPED", Map.of(
+                "environment", runtimeProperties.effectiveEnvironment(),
+                "reason", reason,
+                "trafficPercentage", runtimeProperties.effectiveShadowTrafficPercentage()));
+        return AgentShadowExecutionResult.skipped(reason);
     }
 
     private AgentShadowExecutionResult executeWithTimeout(

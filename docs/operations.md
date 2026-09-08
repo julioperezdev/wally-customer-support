@@ -361,6 +361,8 @@ wcs.agent-runtime.environment=prod
 wcs.agent-runtime.shadow-enabled=false
 wcs.agent-runtime.shadow-timeout=PT5S
 wcs.agent-runtime.shadow-provider=noop
+wcs.agent-runtime.shadow-allowed-environments=test
+wcs.agent-runtime.shadow-traffic-percentage=0
 ```
 
 La flag falsa evita toda consulta al registry y conserva el flujo
@@ -734,6 +736,9 @@ compatible y el modelo Bedrock configurado:
 wcs.agent-runtime.shadow-enabled=true
 wcs.agent-runtime.shadow-provider=bedrock
 wcs.agent-runtime.activation-enabled=true
+wcs.agent-runtime.environment=test
+wcs.agent-runtime.shadow-allowed-environments=test
+wcs.agent-runtime.shadow-traffic-percentage=0
 ```
 
 El adapter Bedrock sólo soporta por ahora `CATALOG_SEARCH`, valida que el
@@ -744,9 +749,26 @@ la ejecución candidata falla y la respuesta activa no cambia. El primer smoke
 debe usar un executor fake en tests; no se habilita Bedrock real en CI ni en
 producción para validar este slice.
 
+### Rollout controlado WCS-109–111
+
+La flag no basta para habilitar shadow. Antes de aumentar el tráfico, verificar
+que el ambiente efectivo esté en `wcs.agent-runtime.shadow-allowed-environments`
+y que `wcs.agent-runtime.shadow-traffic-percentage` sea explícito. La secuencia
+aprobada es:
+
+1. mantener `shadow-enabled=false`, provider `noop` y porcentaje `0`;
+2. ejecutar `./scripts/smoke-agent-shadow.sh`;
+3. revisar el scorecard y los paneles de comparación;
+4. en un ambiente `test` autorizado, publicar un porcentaje de prueba;
+5. detenerse ante `BLOCK`, errores, costo o latencia fuera de límite.
+
+Un ambiente no allowlisted o un porcentaje inválido se bloquea sin invocar el
+executor. Los eventos `AGENT_SHADOW_EXECUTION_SKIPPED` permiten distinguir una
+configuración cerrada de una falla del canal.
+
 Rollback inmediato: `shadow-enabled=false`, `shadow-provider=noop` y
-`activation-enabled=false`. No requiere migración, Terraform ni cambio de
-secrets.
+`activation-enabled=false`; además, volver `shadow-traffic-percentage=0`. No
+requiere migración, Terraform ni cambio de secrets.
 
 ### Scorecard y smoke WCS-106–108
 
