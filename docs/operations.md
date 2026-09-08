@@ -358,6 +358,8 @@ conversacional. El bootstrap mantiene:
 ```text
 wcs.agent-runtime.activation-enabled=false
 wcs.agent-runtime.environment=prod
+wcs.agent-runtime.shadow-enabled=false
+wcs.agent-runtime.shadow-timeout=PT5S
 ```
 
 La flag falsa evita toda consulta al registry y conserva el flujo
@@ -691,3 +693,25 @@ modo, outcome, latencia, tokens, costo, razón de fallback y si se publicó la
 respuesta candidata. Nunca se almacenan prompts, mensajes completos, secretos
 ni números de teléfono. Hasta que exista evidencia de WCS-97/98/99, no se
 ejecuta Bedrock adicional ni se habilita tráfico shadow/canary en producción.
+
+### Runtime shadow WCS-100–102
+
+El runtime actual sigue siendo la única fuente de respuesta para el usuario.
+`AgentShadowRuntimeService` sólo se invoca después de construir el resultado
+activo y su puerto `AgentShadowExecutor` no tiene autoridad para crear outbox,
+enviar mensajes o cambiar el plan. El adapter instalado por defecto es
+`NoOpAgentShadowExecutor`, por lo que la configuración cerrada no produce
+llamadas externas.
+
+Para una futura prueba controlada, revisar que la definición tenga timeout,
+`maxInputTokens`, `maxOutputTokens` y `budgetLimitUsd` aprobados. El servicio
+cancela la ejecución al alcanzar el timeout efectivo, transforma un exceso de
+tokens/costo en `LIMIT_EXCEEDED`, y emite `AGENT_TRAFFIC_COMPARISON_RECORDED`
+con la conversación sólo en forma pseudonimizada. Si hay cualquier error,
+mantener la flag en `false`; el fallback activo no depende de la evidencia
+shadow.
+
+Rollback: publicar `wcs.agent-runtime.shadow-enabled=false` y conservar
+`wcs.agent-runtime.activation-enabled=false`. No requiere migración ni
+Terraform; si la configuración se carga sólo durante el bootstrap, reiniciar
+App Runner después de verificar el cambio en AppConfig.

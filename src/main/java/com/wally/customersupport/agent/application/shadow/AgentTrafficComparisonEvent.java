@@ -10,6 +10,8 @@ public record AgentTrafficComparisonEvent(
         String useCase,
         String agentId,
         int agentVersion,
+        String modelProvider,
+        String modelId,
         AgentTrafficMode mode,
         String outcome,
         long latencyMs,

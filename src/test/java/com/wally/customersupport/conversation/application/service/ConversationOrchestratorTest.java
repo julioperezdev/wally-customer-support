@@ -25,6 +25,7 @@ import com.wally.customersupport.agent.application.service.AgentDefinitionResolu
 import com.wally.customersupport.agent.application.service.AgentRuntimeDefinition;
 import com.wally.customersupport.agent.application.service.AgentRuntimeDefinitionResolution;
 import com.wally.customersupport.agent.application.service.AgentRuntimeDefinitionResolver;
+import com.wally.customersupport.agent.application.service.AgentShadowRuntimeService;
 import com.wally.customersupport.agent.application.service.CatalogSpecialistExecutionResult;
 import com.wally.customersupport.conversation.application.port.out.ConversationIntentClassifier;
 import com.wally.customersupport.conversation.application.port.out.ResponseHumanizer;
@@ -73,6 +74,8 @@ class ConversationOrchestratorTest {
     private com.wally.customersupport.agent.application.service.CatalogSpecialistExecutor catalogSpecialistExecutor;
     @Mock
     private ResponseHumanizer responseHumanizer;
+    @Mock
+    private AgentShadowRuntimeService agentShadowRuntimeService;
 
     private ConversationOrchestrator orchestrator;
     private ConversationContext context;
@@ -89,9 +92,10 @@ class ConversationOrchestratorTest {
                 new ConversationExecutionPlanFactory(),
                 agentActivationResolver,
                 agentRuntimeDefinitionResolver,
-                new AgentRuntimeProperties(false, "prod"),
+                new AgentRuntimeProperties(false, "prod", false, Duration.ofSeconds(5)),
                 catalogSpecialistExecutor,
-                responseHumanizer);
+                responseHumanizer,
+                agentShadowRuntimeService);
         context = new ConversationContext(
                 UUID.randomUUID(), "customer-1", "consulta", List.of("consulta"), List.of());
     }
@@ -132,9 +136,10 @@ class ConversationOrchestratorTest {
                 new ConversationExecutionPlanFactory(),
                 agentActivationResolver,
                 agentRuntimeDefinitionResolver,
-                new AgentRuntimeProperties(true, "prod"),
+                new AgentRuntimeProperties(true, "prod", false, Duration.ofSeconds(5)),
                 catalogSpecialistExecutor,
-                responseHumanizer);
+                responseHumanizer,
+                agentShadowRuntimeService);
         when(intentClassifier.classify(any(ConversationContext.class)))
                 .thenReturn(new ConversationIntentDecision(ConversationIntent.GREETING, 0.98, null, null));
         when(agentActivationResolver.resolve(new AgentActivationKey(
@@ -169,9 +174,10 @@ class ConversationOrchestratorTest {
                 new ConversationExecutionPlanFactory(),
                 agentActivationResolver,
                 agentRuntimeDefinitionResolver,
-                new AgentRuntimeProperties(true, "prod"),
+                new AgentRuntimeProperties(true, "prod", false, Duration.ofSeconds(5)),
                 catalogSpecialistExecutor,
-                responseHumanizer);
+                responseHumanizer,
+                agentShadowRuntimeService);
         AgentActivationKey key = new AgentActivationKey(
                 "response-humanizer", "prod", "telegram", "GREETING");
         when(intentClassifier.classify(any(ConversationContext.class)))
@@ -241,9 +247,10 @@ class ConversationOrchestratorTest {
                 new ConversationExecutionPlanFactory(),
                 agentActivationResolver,
                 agentRuntimeDefinitionResolver,
-                new AgentRuntimeProperties(true, "prod"),
+                new AgentRuntimeProperties(true, "prod", false, Duration.ofSeconds(5)),
                 catalogSpecialistExecutor,
-                responseHumanizer);
+                responseHumanizer,
+                agentShadowRuntimeService);
         CatalogQuery query = new CatalogQuery("nullpointer", null, "M", "negro");
         AgentActivationKey key = new AgentActivationKey(
                 "catalog-specialist", "prod", "telegram", "CATALOG_SEARCH");
