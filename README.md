@@ -22,6 +22,7 @@ El repositorio contiene la documentación y la base técnica del producto. La im
 - [`docs/testing-strategy.md`](docs/testing-strategy.md): estrategia y evidencia de testing.
 - [`docs/operations.md`](docs/operations.md): CI/CD, observabilidad, seguridad y operación.
 - [`docs/observability.md`](docs/observability.md): Grafana local, CloudWatch y eventos operativos.
+- [`docs/backoffice.md`](docs/backoffice.md): backoffice interno read-only de evaluaciones.
 - [`infra/README.md`](infra/README.md): base Terraform de AWS, state separado y servicios preparados.
 - [`docs/queries.md`](docs/queries.md): consultas SQL y CloudWatch sanitizadas.
 - [`docs/agents/playbook.md`](docs/agents/playbook.md): reglas para agentes de IA.
@@ -80,4 +81,12 @@ privada. La validación local se ejecuta sin backend remoto:
 terraform -chdir=infra/environments/prod init -backend=false
 terraform -chdir=infra/environments/prod fmt -check -recursive
 terraform -chdir=infra/environments/prod validate
+```
+
+El backoffice interno tiene su verificación separada del backend:
+
+```bash
+cd backoffice
+npm install
+npm run check
 ```

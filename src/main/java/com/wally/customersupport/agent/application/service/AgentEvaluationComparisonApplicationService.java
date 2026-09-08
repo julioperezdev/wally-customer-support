@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationComparison;
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationMetricDelta;
+import com.wally.customersupport.agent.application.evaluation.AgentEvaluationOperationalMetrics;
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationRun;
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationRunSummary;
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationScenarioComparison;
@@ -63,6 +64,7 @@ public class AgentEvaluationComparisonApplicationService {
 
     private static AgentEvaluationRunSummary summary(AgentEvaluationRun run) {
         var result = run.suiteResult();
+        var operationalMetrics = AgentEvaluationOperationalMetrics.from(result.scenarioResults());
         return new AgentEvaluationRunSummary(
                 run.runId(),
                 run.datasetVersion(),
@@ -78,7 +80,10 @@ public class AgentEvaluationComparisonApplicationService {
                 result.failedScenarios(),
                 result.passRate(),
                 result.averageScore(),
-                result.failureReasons());
+                result.failureReasons(),
+                operationalMetrics.totalTokens(),
+                operationalMetrics.providerLatencyMs(),
+                operationalMetrics.estimatedCostUsd());
     }
 
     private static AgentEvaluationMetricDelta metricDelta(

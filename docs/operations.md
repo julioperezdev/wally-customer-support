@@ -3,8 +3,8 @@
 Owner: Tech Lead  
 Status: `Accepted`
 Last reviewed: 2026-09-08
-Related Jira: `WCS-13`, `WCS-21`, `WCS-22`, `WCS-30`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-38`, `WCS-39`, `WCS-40`, `WCS-41`, `WCS-42`, `WCS-76`, `WCS-77`, `WCS-78`
-Related repository paths: `src/main/resources`, `.github/workflows`, `infra/`
+Related Jira: `WCS-13`, `WCS-21`, `WCS-22`, `WCS-30`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-38`, `WCS-39`, `WCS-40`, `WCS-41`, `WCS-42`, `WCS-76`, `WCS-77`, `WCS-78`, `WCS-85`, `WCS-86`, `WCS-87`
+Related repository paths: `src/main/resources`, `backoffice/`, `.github/workflows`, `infra/`
 
 ## Ambientes
 
@@ -69,6 +69,7 @@ infra/modules/github-backend-deploy/  OIDC y permisos de despliegue
 ci/backend-deploy.sh              despliegue por digest y health-check
 .github/workflows/backend.yml     verify; deploy manual
 .github/workflows/backend-restart.yml  restart manual para recargar AppConfig
+.github/workflows/frontend.yml    verify de tests y build del backoffice
 .github/workflows/knowledge-base-sync.yml  ingesta manual de la KB WCS
 .github/workflows/terraform.yml   validate; plan/apply manual
 knowledge-base/wcs/                documentos Markdown versionados para la KB
@@ -82,6 +83,10 @@ resumen del workflow y el apply sólo puede ejecutarse desde `main`, con
 `production`. El workflow bloquea destrucciones y reemplazos, y aplica el plan
 generado en esa misma ejecución. El deploy de backend también es manual y usa
 una imagen identificada por digest.
+
+El backoffice no forma parte de la imagen ni del deploy del backend. Su
+workflow sólo instala dependencias, ejecuta tests y genera el build cuando
+cambian sus archivos; no tiene permisos AWS y no publica el artefacto.
 
 ### Recargar AppConfig sin recompilar
 

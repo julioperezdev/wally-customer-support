@@ -2,8 +2,8 @@
 
 Owner: Tech Lead
 Status: `In Progress`
-Related Jira: `WCS-21`, `WCS-22`, `WCS-36`, `WCS-50`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-55`, `WCS-56`, `WCS-57`, `WCS-58`, `WCS-59`, `WCS-60`, `WCS-61`, `WCS-68`, `WCS-69`, `WCS-70`
-Related repository paths: `observability/grafana/`, `src/main/java/com/wally/customersupport/conversation/infrastructure/http/`, `src/main/java/com/wally/customersupport/conversation/application/service/`, `src/main/java/com/wally/customersupport/shared/infrastructure/observability/`
+Related Jira: `WCS-21`, `WCS-22`, `WCS-36`, `WCS-50`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-55`, `WCS-56`, `WCS-57`, `WCS-58`, `WCS-59`, `WCS-60`, `WCS-61`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-85`, `WCS-86`, `WCS-87`
+Related repository paths: `observability/grafana/`, `backoffice/`, `src/main/java/com/wally/customersupport/conversation/infrastructure/http/`, `src/main/java/com/wally/customersupport/conversation/application/service/`, `src/main/java/com/wally/customersupport/shared/infrastructure/observability/`
 
 ## Objetivo de esta iteración
 
@@ -95,6 +95,13 @@ persisten en el resultado sanitizado `providerLatencyMs`, `inputTokens`,
 ausencia de usage se representa como `null`, nunca como cero. El evento
 `AGENT_EVALUATION_COMPLETED` sigue siendo agregado y no contiene texto,
 prompts ni respuestas.
+
+El backoffice read-only consume el histórico persistido y las comparaciones
+sanitizadas. Las métricas operativas agregadas (`totalTokens`,
+`providerLatencyMs`, `estimatedCostUsd`) conservan `null` cuando el proveedor no
+entrega el dato; el panel no convierte ausencia en cero ni calcula una tarifa
+inventada. La UI tampoco consulta CloudWatch directamente: esa observabilidad
+continúa en Grafana y el panel sólo muestra evidencia de evaluación autorizada.
 
 Las evaluaciones offline emiten un evento agregado al finalizar cada run. El
 `runId` es un identificador interno, mientras que `datasetVersion` y la
