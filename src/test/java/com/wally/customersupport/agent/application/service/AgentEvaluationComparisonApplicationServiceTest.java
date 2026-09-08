@@ -10,9 +10,16 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.UUID;
 
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationRun;
+import com.wally.customersupport.agent.application.evaluation.AgentEvaluationEvidenceExport;
+import com.wally.customersupport.agent.application.evaluation.AgentEvaluationComparison;
+import com.wally.customersupport.agent.application.evaluation.AgentEvaluationMetricDelta;
+import com.wally.customersupport.agent.application.evaluation.AgentEvaluationRunSummary;
+import com.wally.customersupport.agent.application.evaluation.AgentEvaluationScenarioComparison;
+import com.wally.customersupport.agent.application.evaluation.EvaluationEvidenceExportLimitException;
 import com.wally.customersupport.agent.application.port.out.AgentEvaluationRunRepository;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationExecutionMetadata;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationResult;
@@ -87,6 +94,84 @@ class AgentEvaluationComparisonApplicationServiceTest {
                 .compare(BASELINE_ID, CANDIDATE_ID))
                 .isInstanceOf(IncompatibleEvaluationDatasetException.class)
                 .hasMessage("evaluation runs must use the same dataset");
+    }
+
+    @Test
+    void exportsOnlyTheVersionedSanitizedComparison() {
+        AgentEvaluationRunRepository repository = mock(AgentEvaluationRunRepository.class);
+        when(repository.findById(BASELINE_ID)).thenReturn(Optional.of(
+                run(BASELINE_ID, "catalog-response-v1", 10, 0.7, null)));
+        when(repository.findById(CANDIDATE_ID)).thenReturn(Optional.of(
+                run(CANDIDATE_ID, "catalog-response-v1", 15, 0.9, null)));
+
+        var comparisonService = new AgentEvaluationComparisonApplicationService(repository);
+        var export = new AgentEvaluationEvidenceExportApplicationService(comparisonService)
+                .export(BASELINE_ID, CANDIDATE_ID)
+                .orElseThrow();
+
+        assertThat(export.schemaVersion()).isEqualTo(AgentEvaluationEvidenceExport.SCHEMA_VERSION);
+        assertThat(export.comparison().baselineRunId()).isEqualTo(BASELINE_ID);
+        assertThat(export.comparison().candidateRunId()).isEqualTo(CANDIDATE_ID);
+        assertThat(export.comparison().metricDelta().totalTokensDelta()).isEmpty();
+        assertThat(export.toString()).doesNotContain("respuesta de prueba");
+    }
+
+    @Test
+    void preservesMissingRunAndIncompatibleDatasetOutcomes() {
+        AgentEvaluationRunRepository repository = mock(AgentEvaluationRunRepository.class);
+        var comparisonService = new AgentEvaluationComparisonApplicationService(repository);
+        var exportService = new AgentEvaluationEvidenceExportApplicationService(comparisonService);
+
+        when(repository.findById(BASELINE_ID)).thenReturn(Optional.empty());
+        when(repository.findById(CANDIDATE_ID)).thenReturn(Optional.empty());
+        assertThat(exportService.export(BASELINE_ID, CANDIDATE_ID)).isEmpty();
+
+        when(repository.findById(BASELINE_ID)).thenReturn(Optional.of(
+                run(BASELINE_ID, "catalog-response-v1", 10, 0.7, null)));
+        when(repository.findById(CANDIDATE_ID)).thenReturn(Optional.of(
+                run(CANDIDATE_ID, "other-dataset", 15, 0.9, null)));
+        assertThatThrownBy(() -> exportService.export(BASELINE_ID, CANDIDATE_ID))
+                .isInstanceOf(IncompatibleEvaluationDatasetException.class)
+                .hasMessage("evaluation runs must use the same dataset");
+    }
+
+    @Test
+    void rejectsAnEvidenceExportWithTooManyScenarios() {
+        var comparison = new AgentEvaluationComparison(
+                BASELINE_ID,
+                CANDIDATE_ID,
+                "catalog-response-v1",
+                summary(BASELINE_ID),
+                summary(CANDIDATE_ID),
+                new AgentEvaluationMetricDelta(
+                        0, 0, 0, 0, 0, OptionalLong.empty(), OptionalLong.empty(), Optional.empty()),
+                java.util.stream.IntStream.range(0, AgentEvaluationEvidenceExport.MAX_SCENARIOS + 1)
+                        .mapToObj(index -> new AgentEvaluationScenarioComparison(
+                                "scenario-" + index, true, true, 1.0, 1.0, 0.0))
+                        .toList());
+
+        assertThatThrownBy(() -> AgentEvaluationEvidenceExport.from(comparison))
+                .isInstanceOf(EvaluationEvidenceExportLimitException.class)
+                .hasMessage("evaluation evidence export exceeds the maximum scenario limit");
+    }
+
+    private static AgentEvaluationRunSummary summary(UUID runId) {
+        return new AgentEvaluationRunSummary(
+                runId,
+                "catalog-response-v1",
+                "catalog-specialist",
+                "v1",
+                "mock",
+                "deterministic-v1",
+                Instant.parse("2026-09-08T00:00:00Z"),
+                Instant.parse("2026-09-08T00:00:01Z"),
+                10,
+                1,
+                1,
+                0,
+                1.0,
+                1.0,
+                Map.of());
     }
 
     private static AgentEvaluationRun run(

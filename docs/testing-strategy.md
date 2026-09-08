@@ -99,6 +99,8 @@ necesitan iniciar el contenedor.
 | `TC-050` | P1 | Detalle de evaluación inexistente | Devuelve `Optional.empty` sin filtrar errores de infraestructura ni contenido | Unit + Testcontainers PostgreSQL |
 | `TC-051` | P1 | Comparación de runs compatibles | Calcula deltas de calidad y métricas operativas disponibles sin contenido | Unit + Testcontainers PostgreSQL |
 | `TC-052` | P1 | Comparación con datos faltantes o incompatibles | Marca metadata faltante como no disponible y rechaza datasets diferentes | Unit + Testcontainers PostgreSQL |
+| `TC-053` | P1 | Export de evidencia sanitizada | Devuelve schema versionado desde una comparación sin contenido conversacional | Unit + Testcontainers PostgreSQL |
+| `TC-054` | P1 | Límite de exportación | Rechaza una comparación con más de 1.000 escenarios antes de exportar | Unit |
 | `TC-041` | P1 | Uso real de Bedrock | Emite `AI_USAGE_RECORDED` con modelo, tokens, latencia, pricing version y costo estimado | Test del adapter + log sanitizado |
 | `TC-042` | P1 | Consultas de observabilidad | CloudWatch agrega consultas, IA, RAG y entregas sin errores de campos | Logs Insights/Grafana |
 
@@ -126,6 +128,11 @@ necesitan iniciar el contenedor.
   estados por escenario sin prompts ni respuestas.
 - `TC-052`: metadata ausente no se interpreta como cero y un dataset diferente
   debe rechazarse con un error de aplicación sanitizado.
+- `TC-053`: el export debe conservar la identidad, métricas y escenarios de la
+  comparación bajo `wcs.agent-evaluation-evidence.v1`, sin prompts ni
+  respuestas.
+- `TC-054`: un export que excede el límite de escenarios debe rechazarse con un
+  error sanitizado y no debe escribir ni modificar datos.
 
 ### Prueba manual de catálogo por Telegram
 

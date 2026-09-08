@@ -22,6 +22,7 @@ import com.wally.customersupport.agent.application.evaluation.CatalogResponseEva
 import com.wally.customersupport.agent.application.port.out.AgentEvaluationRunRepository;
 import com.wally.customersupport.agent.application.service.AgentEvaluationHistoryQueryService;
 import com.wally.customersupport.agent.application.service.AgentEvaluationComparisonApplicationService;
+import com.wally.customersupport.agent.application.service.AgentEvaluationEvidenceExportApplicationService;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationExecution;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationExecutionMetadata;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationResult;
@@ -115,6 +116,9 @@ class WallyCustomerSupportApplicationIntegrationTest {
 
     @Autowired
     private AgentEvaluationComparisonApplicationService agentEvaluationComparisonApplicationService;
+
+    @Autowired
+    private AgentEvaluationEvidenceExportApplicationService agentEvaluationEvidenceExportApplicationService;
 
     @Test
     void startsWithFlywayAndTestAdapters() {
@@ -425,6 +429,31 @@ class WallyCustomerSupportApplicationIntegrationTest {
         assertEquals(new BigDecimal("0.05"), comparison.metricDelta().estimatedCostUsdDelta().orElseThrow());
         assertEquals(1, comparison.scenarios().size());
         assertTrue(!comparison.toString().contains("Remera NullPointer"));
+    }
+
+    @Test
+    void exportsPersistedComparisonWithAStableSanitizedSchema() {
+        String datasetVersion = "export-dataset-" + UUID.randomUUID();
+        Instant completedAt = Instant.parse("2026-09-08T02:00:00Z");
+        UUID baselineId = UUID.randomUUID();
+        UUID candidateId = UUID.randomUUID();
+        agentEvaluationRunRepository.save(evaluationRun(
+                baselineId, datasetVersion, "export-agent", completedAt,
+                new AgentEvaluationExecutionMetadata(
+                        "export-agent", "v1", "mock", "model-v1", 10, 20L,
+                        null, null, 100, new BigDecimal("0.10"), "test-pricing-v1")));
+        agentEvaluationRunRepository.save(evaluationRun(
+                candidateId, datasetVersion, "export-agent", completedAt, null));
+
+        var export = agentEvaluationEvidenceExportApplicationService
+                .export(baselineId, candidateId)
+                .orElseThrow();
+
+        assertEquals("wcs.agent-evaluation-evidence.v1", export.schemaVersion());
+        assertEquals(baselineId, export.comparison().baselineRunId());
+        assertEquals(candidateId, export.comparison().candidateRunId());
+        assertTrue(export.comparison().metricDelta().totalTokensDelta().isEmpty());
+        assertTrue(!export.toString().contains("Remera NullPointer"));
     }
 
     private AgentEvaluationRun evaluationRun(
