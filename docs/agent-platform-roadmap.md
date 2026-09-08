@@ -3,7 +3,7 @@
 - Owner: Product/Tech Lead
 - Status: `Accepted`
 - Last reviewed: 2026-09-08
-- Related Jira: `WCS-45`, `WCS-60`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-71`, `WCS-72`, `WCS-73`, `WCS-74`, `WCS-75`, `WCS-76`, `WCS-77`, `WCS-78`
+- Related Jira: `WCS-45`, `WCS-60`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-71`, `WCS-72`, `WCS-73`, `WCS-74`, `WCS-75`, `WCS-76`, `WCS-77`, `WCS-78`, `WCS-79`, `WCS-80`, `WCS-81`
 - Baseline: [`wcs-baseline-2026-09-07`](baselines/wcs-baseline-2026-09-07.md)
 - Canonical Confluence: [WCS — Agent Platform Roadmap & Architecture Proposal](https://julioperezdev.atlassian.net/wiki/spaces/SD/pages/7569410/WCS+Agent+Platform+Roadmap+Architecture+Proposal)
 - Related repository paths: `docs/roadmap.md`, `docs/ai.md`, `docs/observability.md`, `docs/decisions/`
@@ -279,6 +279,16 @@ webhooks y health. `WCS-78` cubre los contratos `200/401/403`, tokens
 expirados/audience incorrecta y el fallback deny-by-default. La seguridad está
 deshabilitada por defecto hasta provisionar y aprobar un IdP; este slice no
 crea Cognito, IAM, endpoints de ejecución ni backoffice.
+
+`WCS-79`, `WCS-80` y `WCS-81` forman el siguiente slice agrupado. Exponen un
+trigger HTTP `POST /internal/agent-evaluations/runs` apagado por defecto,
+separan `agent-evaluation.read` de `agent-evaluation.execute`, toman el actor
+exclusivamente del JWT, exigen `Idempotency-Key` y delegan en la frontera
+idempotente ya existente. El executor inicial es explícitamente determinístico
+y evalúa la política de respuesta actual; no ejecuta Bedrock ni acepta SQL,
+prompts, tools o conversaciones desde el cliente. El resultado y los errores
+son sanitizados, y la evidencia incluye MockMvc, Testcontainers, logs y
+rollback por configuración.
 
 La ejecución de evaluaciones queda separada en tres piezas:
 

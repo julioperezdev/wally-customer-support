@@ -374,6 +374,9 @@ semántica o AgentCore.
 | WCS-76 | In Progress | Conectar el control plane con identidad JWT configurable |
 | WCS-77 | In Progress | Asegurar rutas del control plane y preservar webhooks públicos |
 | WCS-78 | In Progress | Cubrir contratos JWT y fallback deny-by-default |
+| WCS-79 | In Progress | Trigger HTTP autenticado para ejecuciones de evaluación |
+| WCS-80 | In Progress | Scopes separados de lectura y ejecución del control plane |
+| WCS-81 | In Progress | Idempotencia, errores y observabilidad del trigger de evaluación |
 
 WCS-60 no agrega todavía API, persistencia ni ejecución de Bedrock. WCS-61
 agrega persistencia create-only en el schema `wcs` para runs completados y
@@ -418,6 +421,15 @@ port provider-neutral; el filtro sólo protege `/internal/agent-evaluations/**`;
 y las pruebas cubren `200/401/403`, tokens inválidos y webhooks públicos. No se
 provisiona un IdP, IAM, backoffice ni endpoint de ejecución. La flag permanece
 deshabilitada por defecto hasta una aprobación operativa posterior.
+
+WCS-79, WCS-80 y WCS-81 se entregan como un único slice: el POST interno
+permanece deshabilitado por defecto, usa el subject del JWT como actor, exige
+`Idempotency-Key`, separa los scopes `read` y `execute`, y delega en el guard
+PostgreSQL y el servicio de evaluación existentes. La primera ejecución usa
+el executor determinístico explícito de la política de respuesta; no habilita
+Bedrock real, SQL generado, prompts remotos, SQS ni backoffice. El PR debe
+incluir los contratos HTTP, pruebas de seguridad y Testcontainers,
+observabilidad sanitizada y rollback por configuración.
 
 `WCS-14`–`WCS-16` y `WCS-17` ya tienen la fundación o el contrato inicial
 versionado; deben completarse/verificarse según la evidencia de cada issue antes

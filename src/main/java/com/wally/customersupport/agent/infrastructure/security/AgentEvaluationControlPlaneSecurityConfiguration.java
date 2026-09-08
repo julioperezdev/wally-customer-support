@@ -3,12 +3,14 @@ package com.wally.customersupport.agent.infrastructure.security;
 import java.util.List;
 
 import com.wally.customersupport.agent.application.port.out.AgentEvaluationControlPlaneAuthorizer;
+import com.wally.customersupport.agent.application.port.out.AgentEvaluationTriggerAuthorizer;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
@@ -33,6 +35,7 @@ public class AgentEvaluationControlPlaneSecurityConfiguration {
     private static final String AUDIENCE_PROPERTY =
             "wcs.agent-evaluation.control-plane.security.audience";
     private static final String REQUIRED_AUTHORITY = "SCOPE_agent-evaluation.read";
+    private static final String EXECUTE_AUTHORITY = "SCOPE_agent-evaluation.execute";
 
     @Bean
     @ConditionalOnProperty(
@@ -40,6 +43,14 @@ public class AgentEvaluationControlPlaneSecurityConfiguration {
             havingValue = "true")
     AgentEvaluationControlPlaneAuthorizer jwtAgentEvaluationControlPlaneAuthorizer() {
         return new JwtAgentEvaluationControlPlaneAuthorizer();
+    }
+
+    @Bean
+    @ConditionalOnProperty(
+            name = "wcs.agent-evaluation.control-plane.security.enabled",
+            havingValue = "true")
+    AgentEvaluationTriggerAuthorizer jwtAgentEvaluationTriggerAuthorizer() {
+        return new JwtAgentEvaluationTriggerAuthorizer();
     }
 
     @Bean
@@ -73,7 +84,11 @@ public class AgentEvaluationControlPlaneSecurityConfiguration {
                 .securityMatcher("/internal/agent-evaluations/**")
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(authorize -> authorize
-                        .anyRequest().hasAuthority(REQUIRED_AUTHORITY))
+                        .requestMatchers(HttpMethod.POST, "/internal/agent-evaluations/runs")
+                        .hasAuthority(EXECUTE_AUTHORITY)
+                        .requestMatchers(HttpMethod.GET, "/internal/agent-evaluations/**")
+                        .hasAuthority(REQUIRED_AUTHORITY)
+                        .anyRequest().denyAll())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
         return http.build();
     }

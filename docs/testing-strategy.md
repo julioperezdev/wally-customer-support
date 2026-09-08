@@ -210,6 +210,17 @@ contactan un IdP real.
 - `TC-066`: cada intento de acceso debe producir un evento estructurado con la
   operación y el resultado, sin registrar el valor del actor ni contenido de
   evaluación.
+- `TC-067`: un JWT con sólo `agent-evaluation.read` debe leer el histórico pero
+  recibir `403` al ejecutar; un JWT con sólo `agent-evaluation.execute` debe
+  poder alcanzar el POST pero no las lecturas.
+- `TC-068`: un POST sin `Idempotency-Key`, body incompleto o JSON inválido debe
+  devolver `INVALID_REQUEST` sin invocar el servicio de trigger ni el executor.
+- `TC-069`: un trigger autorizado debe devolver el `runId` sin exponer razones
+  internas, prompts, respuestas, claims, excepciones o secretos.
+- `TC-070`: una key repetida debe devolver `ALREADY_PROCESSED`/`409` y no crear
+  otra evaluación; la key cruda no puede persistirse ni aparecer en logs.
+- `TC-071`: la seguridad o el trigger deshabilitados deben mantener el
+  deny-by-default del control plane y no alterar webhooks ni health públicos.
 
 ### Prueba manual de catálogo por Telegram
 
