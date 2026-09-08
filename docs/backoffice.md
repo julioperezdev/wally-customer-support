@@ -2,8 +2,9 @@
 
 El directorio [`backoffice/`](../backoffice/) contiene el primer panel React +
 TypeScript de WCS. Esta entrega es exclusivamente read-only: consulta runs,
-detalle y comparación de evidencia sanitizada. No publica agentes, no cambia
-feature flags y no ejecuta evaluaciones.
+detalle, comparación de evidencia y el registry de agentes/activaciones
+sanitizado. No publica agentes, no cambia feature flags y no ejecuta
+evaluaciones.
 
 ## Seguridad
 
@@ -13,6 +14,8 @@ feature flags y no ejecuta evaluaciones.
 - El token se ingresa sólo en memoria de la sesión del navegador para pruebas
   internas; no se persiste en `localStorage`, archivos ni logs.
 - No se muestran prompts completos, conversaciones, PII, SQL ni secretos.
+- El registry muestra sólo metadata: estado, modelo, límites, allowlists,
+  versión/hash de prompt y activaciones; nunca contenido de prompts ni actores.
 - Un `401` o `403` es un resultado operativo esperado cuando JWT no está
   habilitado o el scope no es suficiente.
 
@@ -51,11 +54,19 @@ El cliente usa únicamente:
 - `GET /internal/agent-evaluations/runs`;
 - `GET /internal/agent-evaluations/runs/{runId}`;
 - `GET /internal/agent-evaluations/comparisons`.
+- `GET /internal/agent-registry/agents` con filtros opcionales `agentId`,
+  `environment`, `channel`, `useCase` y un `limit` máximo de 100.
 
 La lista puede mostrar `totalTokens`, `providerLatencyMs` y
 `estimatedCostUsd` cuando todas las ejecuciones del run tienen esos datos. Si
 el proveedor no los devuelve, el valor aparece como desconocido (`—`), nunca
 como cero inventado.
+
+El endpoint del registry requiere el scope independiente
+`agent-registry.read`; el scope `agent-evaluation.read` no lo habilita. La
+seguridad sigue deshabilitada por defecto hasta conectar un IdP aprobado. La
+respuesta es una lista acotada de agentes con versiones y activaciones, y no
+ofrece operaciones de escritura.
 
 ## Rollback
 

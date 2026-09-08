@@ -28,4 +28,20 @@ describe("control plane client", () => {
       new ControlPlaneError(403, "ACCESS_DENIED")
     );
   });
+
+  it("queries the registry through its own read-only endpoint", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify([]), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await createControlPlaneClient(
+      "/internal/agent-evaluations",
+      "session-token",
+      "/internal/agent-registry/"
+    ).listAgents({ environment: "prod", channel: "telegram", useCase: "catalog-search", limit: 10 });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/internal/agent-registry/agents?environment=prod&channel=telegram&useCase=catalog-search&limit=10",
+      { headers: { Accept: "application/json", Authorization: "Bearer session-token" } }
+    );
+  });
 });

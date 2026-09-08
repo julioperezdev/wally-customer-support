@@ -383,6 +383,9 @@ semántica o AgentCore.
 | WCS-85 | In Progress | Contrato agregado read-only para el backoffice de evaluaciones |
 | WCS-86 | In Progress | Backoffice React/TypeScript read-only para evaluaciones |
 | WCS-87 | In Progress | CI de frontend y contrato operativo del backoffice |
+| WCS-88 | In Progress | Exponer API read-only del registry de agentes |
+| WCS-89 | In Progress | Agregar vista de agentes y activaciones al backoffice |
+| WCS-90 | In Progress | Asegurar contrato y observabilidad del registry read-only |
 
 WCS-60 no agrega todavía API, persistencia ni ejecución de Bedrock. WCS-61
 agrega persistencia create-only en el schema `wcs` para runs completados y
@@ -449,6 +452,14 @@ contrato agrega métricas operativas sólo cuando están disponibles, la UI
 consulta runs/detalle/comparaciones sin escribir en el control plane y el CI de
 frontend queda separado del backend. No se embeben tokens, no se habilita JWT,
 no se ejecutan evaluaciones desde el navegador y no hay cambios Terraform.
+
+WCS-88, WCS-89 y WCS-90 se entregan como el siguiente slice agrupado: el
+backend consulta el registry mediante su port, expone versiones y activaciones
+sanitizadas bajo `agent-registry.read`, y el backoffice las presenta en modo
+read-only con filtros acotados. Se cubren límites, errores estables, eventos
+de acceso y separación entre el scope de evaluación y el del registry. No se
+agregan escrituras, publicación, canary, rollback, kill switch, IdP, cambios
+de schema ni infraestructura AWS.
 
 `WCS-14`–`WCS-16` y `WCS-17` ya tienen la fundación o el contrato inicial
 versionado; deben completarse/verificarse según la evidencia de cada issue antes

@@ -35,6 +35,7 @@ public class AgentEvaluationControlPlaneSecurityConfiguration {
     private static final String AUDIENCE_PROPERTY =
             "wcs.agent-evaluation.control-plane.security.audience";
     private static final String REQUIRED_AUTHORITY = "SCOPE_agent-evaluation.read";
+    private static final String REGISTRY_READ_AUTHORITY = "SCOPE_agent-registry.read";
     private static final String EXECUTE_AUTHORITY = "SCOPE_agent-evaluation.execute";
 
     @Bean
@@ -81,13 +82,15 @@ public class AgentEvaluationControlPlaneSecurityConfiguration {
             havingValue = "true")
     SecurityFilterChain agentEvaluationControlPlaneSecurityFilterChain(HttpSecurity http) throws Exception {
         http
-                .securityMatcher("/internal/agent-evaluations/**")
+                .securityMatcher("/internal/agent-evaluations/**", "/internal/agent-registry/**")
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.POST, "/internal/agent-evaluations/runs")
                         .hasAuthority(EXECUTE_AUTHORITY)
                         .requestMatchers(HttpMethod.GET, "/internal/agent-evaluations/**")
                         .hasAuthority(REQUIRED_AUTHORITY)
+                        .requestMatchers(HttpMethod.GET, "/internal/agent-registry/**")
+                        .hasAuthority(REGISTRY_READ_AUTHORITY)
                         .anyRequest().denyAll())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
         return http.build();

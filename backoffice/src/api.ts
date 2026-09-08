@@ -47,6 +47,55 @@ export type RunDetail = RunSummary & {
   };
 };
 
+export type AgentRegistryVersion = {
+  agentId: string;
+  version: number;
+  name: string;
+  purpose: string;
+  state: string;
+  modelProvider: string;
+  modelId: string;
+  temperature: number;
+  topP: number;
+  systemPromptVersion: string;
+  systemPromptHash: string;
+  inputSchemaVersion: string;
+  outputSchemaVersion: string;
+  allowedTools: string[];
+  knowledgeSources: string[];
+  memoryPolicy: string;
+  responsePolicy: string;
+  timeoutMs: number;
+  maxSteps: number;
+  maxInputTokens: number;
+  maxOutputTokens: number;
+  budgetLimitUsd: number;
+  fallbackAgentId: string | null;
+  evaluationSuiteVersion: string;
+  createdAt: string;
+  approvedAt: string | null;
+};
+
+export type AgentRegistryActivation = {
+  agentId: string;
+  agentVersion: number;
+  environment: string;
+  channel: string;
+  useCase: string;
+  reason: string;
+  rolloutPercentage: number;
+  enabled: boolean;
+  killSwitch: boolean;
+  previousVersion: number | null;
+  activatedAt: string;
+};
+
+export type AgentRegistryAgent = {
+  agentId: string;
+  versions: AgentRegistryVersion[];
+  activations: AgentRegistryActivation[];
+};
+
 export type Comparison = {
   baselineRunId: string;
   candidateRunId: string;
@@ -80,8 +129,9 @@ export class ControlPlaneError extends Error {
   }
 }
 
-export function createControlPlaneClient(baseUrl: string, token: string) {
+export function createControlPlaneClient(baseUrl: string, token: string, registryBaseUrl = "/internal/agent-registry") {
   const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
+  const normalizedRegistryBaseUrl = registryBaseUrl.replace(/\/+$/, "");
 
   async function request<T>(path: string): Promise<T> {
     const headers: Record<string, string> = { Accept: "application/json" };
@@ -116,6 +166,39 @@ export function createControlPlaneClient(baseUrl: string, token: string) {
     compare(baselineRunId: string, candidateRunId: string) {
       const params = new URLSearchParams({ baselineRunId, candidateRunId });
       return request<Comparison>(`/comparisons?${params.toString()}`);
+    },
+    listAgents(filters: {
+      agentId?: string;
+      environment?: string;
+      channel?: string;
+      useCase?: string;
+      limit?: number;
+    }) {
+      const params = new URLSearchParams();
+      if (filters.agentId?.trim()) params.set("agentId", filters.agentId.trim());
+      if (filters.environment?.trim()) params.set("environment", filters.environment.trim());
+      if (filters.channel?.trim()) params.set("channel", filters.channel.trim());
+      if (filters.useCase?.trim()) params.set("useCase", filters.useCase.trim());
+      params.set("limit", String(filters.limit ?? 50));
+      return requestFrom<AgentRegistryAgent[]>(normalizedRegistryBaseUrl, `/agents?${params.toString()}`);
     }
   };
+
+  async function requestFrom<T>(root: string, path: string): Promise<T> {
+    const headers: Record<string, string> = { Accept: "application/json" };
+    if (token.trim()) {
+      headers.Authorization = `Bearer ${token.trim()}`;
+    }
+    const response = await fetch(`${root}${path}`, { headers });
+    if (!response.ok) {
+      let code = "CONTROL_PLANE_ERROR";
+      try {
+        code = ((await response.json()) as { code?: string }).code ?? code;
+      } catch {
+        // The status is enough when the server has no JSON error envelope.
+      }
+      throw new ControlPlaneError(response.status, code);
+    }
+    return (await response.json()) as T;
+  }
 }

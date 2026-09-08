@@ -3,7 +3,7 @@
 Owner: Tech Lead  
 Status: `Accepted`
 Last reviewed: 2026-09-08
-Related Jira: `WCS-13`, `WCS-21`, `WCS-22`, `WCS-30`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-38`, `WCS-39`, `WCS-40`, `WCS-41`, `WCS-42`, `WCS-76`, `WCS-77`, `WCS-78`, `WCS-85`, `WCS-86`, `WCS-87`
+Related Jira: `WCS-13`, `WCS-21`, `WCS-22`, `WCS-30`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-38`, `WCS-39`, `WCS-40`, `WCS-41`, `WCS-42`, `WCS-76`, `WCS-77`, `WCS-78`, `WCS-85`, `WCS-86`, `WCS-87`, `WCS-88`, `WCS-89`, `WCS-90`
 Related repository paths: `src/main/resources`, `backoffice/`, `.github/workflows`, `infra/`
 
 ## Ambientes

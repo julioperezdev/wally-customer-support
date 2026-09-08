@@ -27,6 +27,20 @@ class AgentEvaluationControlPlaneAccessServiceTest {
     }
 
     @Test
+    void authorizesTheSeparateRegistryReadCapability() {
+        AgentEvaluationControlPlaneAuthorizer authorizer = mock(AgentEvaluationControlPlaneAuthorizer.class);
+        AgentEvaluationControlPlaneAccessRequest request = new AgentEvaluationControlPlaneAccessRequest(
+                "synthetic-actor", "prod", AgentEvaluationControlPlaneAccessService.REGISTRY_READ_CAPABILITY);
+        when(authorizer.authorize(request)).thenReturn(true);
+
+        var decision = new AgentEvaluationControlPlaneAccessService("prod", authorizer)
+                .authorizeRegistry("synthetic-actor");
+
+        assertThat(decision.status()).isEqualTo(AgentEvaluationControlPlaneAccessStatus.AUTHORIZED);
+        assertThat(decision.capability()).isEqualTo(AgentEvaluationControlPlaneAccessService.REGISTRY_READ_CAPABILITY);
+    }
+
+    @Test
     void deniesMissingActorBeforeCallingTheProvider() {
         AgentEvaluationControlPlaneAuthorizer authorizer = mock(AgentEvaluationControlPlaneAuthorizer.class);
 
@@ -50,6 +64,17 @@ class AgentEvaluationControlPlaneAccessServiceTest {
 
         assertThat(capabilityDecision.reason()).isEqualTo(AgentEvaluationControlPlaneAccessReason.CAPABILITY_NOT_ALLOWED);
         assertThat(environmentDecision.reason()).isEqualTo(AgentEvaluationControlPlaneAccessReason.ENVIRONMENT_NOT_ALLOWED);
+        org.mockito.Mockito.verifyNoInteractions(authorizer);
+    }
+
+    @Test
+    void doesNotTreatTheEvaluationCapabilityAsTheRegistryCapability() {
+        AgentEvaluationControlPlaneAuthorizer authorizer = mock(AgentEvaluationControlPlaneAuthorizer.class);
+        var decision = new AgentEvaluationControlPlaneAccessService("prod", authorizer)
+                .authorize(new AgentEvaluationControlPlaneAccessRequest(
+                        "synthetic-actor", "prod", "agent-evaluation.execute"));
+
+        assertThat(decision.reason()).isEqualTo(AgentEvaluationControlPlaneAccessReason.CAPABILITY_NOT_ALLOWED);
         org.mockito.Mockito.verifyNoInteractions(authorizer);
     }
 

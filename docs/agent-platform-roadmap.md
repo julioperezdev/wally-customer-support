@@ -3,7 +3,7 @@
 - Owner: Product/Tech Lead
 - Status: `Accepted`
 - Last reviewed: 2026-09-08
-- Related Jira: `WCS-45`, `WCS-60`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-71`, `WCS-72`, `WCS-73`, `WCS-74`, `WCS-75`, `WCS-76`, `WCS-77`, `WCS-78`, `WCS-79`, `WCS-80`, `WCS-81`, `WCS-82`, `WCS-83`, `WCS-84`, `WCS-85`, `WCS-86`, `WCS-87`
+- Related Jira: `WCS-45`, `WCS-60`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-71`, `WCS-72`, `WCS-73`, `WCS-74`, `WCS-75`, `WCS-76`, `WCS-77`, `WCS-78`, `WCS-79`, `WCS-80`, `WCS-81`, `WCS-82`, `WCS-83`, `WCS-84`, `WCS-85`, `WCS-86`, `WCS-87`, `WCS-88`, `WCS-89`, `WCS-90`
 - Baseline: [`wcs-baseline-2026-09-07`](baselines/wcs-baseline-2026-09-07.md)
 - Canonical Confluence: [WCS — Agent Platform Roadmap & Architecture Proposal](https://julioperezdev.atlassian.net/wiki/spaces/SD/pages/7569410/WCS+Agent+Platform+Roadmap+Architecture+Proposal)
 - Related repository paths: `docs/roadmap.md`, `docs/ai.md`, `docs/observability.md`, `docs/decisions/`
@@ -466,6 +466,15 @@ publicación, feature flags, canary y rollback.
 `WCS-85`–`WCS-87` implementan el primer corte read-only: contrato agregado
 sanitizado, panel de runs/comparaciones y CI aislado. No habilitan JWT,
 publicación, edición, ejecución remota ni despliegue público.
+
+`WCS-88`–`WCS-90` amplían ese corte read-only al registry: el backend expone
+versiones inmutables y activaciones históricas a través del port del dominio,
+con el scope separado `agent-registry.read`, límites y filtros por agente,
+ambiente, canal y caso de uso. El contrato omite prompts completos, actores,
+secretos, conversaciones y PII. El backoffice muestra lifecycle, modelo,
+hash/versión de prompt, límites y rollout, pero no puede editar, publicar,
+activar, hacer canary, revertir ni accionar kill switches. Los endpoints
+siguen cerrados por defecto y no requieren cambios de Terraform.
 
 ### Fase G — Migración controlada
 

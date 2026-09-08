@@ -15,9 +15,13 @@ public interface AgentRegistryRepository {
 
     List<AgentVersion> findVersions(String agentId);
 
+    List<AgentVersion> findAllVersions();
+
     Optional<AgentVersion> findLatestVersion(String agentId, AgentLifecycleState state);
 
     AgentActivation saveActivation(AgentActivation activation);
+
+    List<AgentActivation> findAllActivations();
 
     Optional<AgentActivation> findLatestActivation(
             String agentId,

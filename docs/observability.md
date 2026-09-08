@@ -2,7 +2,7 @@
 
 Owner: Tech Lead
 Status: `In Progress`
-Related Jira: `WCS-21`, `WCS-22`, `WCS-36`, `WCS-50`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-55`, `WCS-56`, `WCS-57`, `WCS-58`, `WCS-59`, `WCS-60`, `WCS-61`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-85`, `WCS-86`, `WCS-87`
+Related Jira: `WCS-21`, `WCS-22`, `WCS-36`, `WCS-50`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-55`, `WCS-56`, `WCS-57`, `WCS-58`, `WCS-59`, `WCS-60`, `WCS-61`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-85`, `WCS-86`, `WCS-87`, `WCS-88`, `WCS-89`, `WCS-90`
 Related repository paths: `observability/grafana/`, `backoffice/`, `src/main/java/com/wally/customersupport/conversation/infrastructure/http/`, `src/main/java/com/wally/customersupport/conversation/application/service/`, `src/main/java/com/wally/customersupport/shared/infrastructure/observability/`
 
 ## Objetivo de esta iteración
@@ -71,6 +71,8 @@ operacional necesario para diagnóstico y costo, pero sin contenido de negocio.
 | `AGENT_EVALUATION_TRIGGER_COMPLETED` | `status`, `reason`, `runId`, `datasetVersion`, `agentId`, `agentVersion`, `provider`, `model` | Trigger autorizado y evaluación delegada |
 | `AGENT_EVALUATION_TRIGGER_FAILED` | `status`, `reason`, `datasetVersion`, `agentId`, `agentVersion`, `provider`, `model`, `errorType` | Fallo del guard o de la evaluación sin mensaje de excepción |
 | `OUTBOUND_MESSAGE_DISPATCHED` | `channel`, `result`, `errorType`, `durationMs`, `correlationId` | Entrega o reintento del outbox |
+| `AGENT_REGISTRY_ACCESS_GRANTED` | `operation`, `capability`, `result`, `reason`, `durationMs` | Consulta autorizada de metadata del registry |
+| `AGENT_REGISTRY_ACCESS_DENIED` | `operation`, `capability`, `result`, `reason`, `durationMs` | Consulta rechazada antes de leer el registry |
 
 No se registran texto de usuario, prompts, respuestas completas, números de
 teléfono, chat IDs, secretos, firmas ni payloads de proveedores. Los campos
