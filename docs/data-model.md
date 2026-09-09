@@ -184,7 +184,7 @@ Las preferencias son contexto auxiliar: no pueden sobreescribir filtros
 actuales ni ser autoridad para stock, precio, carrito, pedidos o acciones
 sensibles.
 
-### Seguimiento humano y supresión de contacto — contrato en `WCS-26`, persistencia en `V15`
+### Seguimiento humano y supresión de contacto — contrato en `WCS-26`, persistencia en `V15`/`V16`
 
 `wcs.human_follow_up_tasks` es la cola durable que un backoffice presente o
 futuro puede consumir. La primera entrega no incluye panel ni asignación de
@@ -197,6 +197,9 @@ agentes, pero deja un contrato tipado y consultable:
 * `priority` usa `HIGH`, `NORMAL` o `LOW`; una solicitud explícita de persona
   se crea como `HIGH`;
 * `status` usa `OPEN`, `IN_PROGRESS`, `DONE` o `CANCELLED`;
+* `assigned_to` contiene únicamente la clave técnica del operador que tomó la
+  tarea; `claim`, `release` y `resolve` usan actualizaciones condicionales para
+  preservar ownership;
 * `due_at` se calcula inicialmente a 24 horas, sin convertirlo en una promesa
   de SLA legal;
 * se guardan timestamps y no se persiste el cuerpo del mensaje ni un resumen
@@ -212,6 +215,13 @@ limpia el estado conversacional, no crea outbox y los reintentos son seguros.
 La migración `V15__create_human_follow_up_and_contact_suppression.sql` no
 modifica migraciones aplicadas. Las referencias a mensajes usan `ON DELETE SET
 NULL` para que la retención pueda eliminar metadatos sin destruir la tarea.
+
+`V16__add_backoffice_operations.sql` agrega `assigned_to` y la tabla
+`wcs.catalog_stock_adjustments`. Cada ajuste guarda sólo SKU, stock anterior,
+delta, stock resultante, motivo, actor técnico, clave idempotente y timestamp.
+La variante usa una versión JPA y lock pesimista para evitar perder ajustes
+concurrentes. La migración no guarda imágenes: `catalog_products.image_object_key`
+continúa siendo la referencia a la key de S3 después de confirmar un upload.
 
 ### Retención operativa — job en `WCS-26`
 

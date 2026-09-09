@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ControlPlaneError, createControlPlaneClient } from "./api";
+import { ControlPlaneError, createBackofficeClient, createControlPlaneClient } from "./api";
 
 describe("control plane client", () => {
   afterEach(() => vi.restoreAllMocks());
@@ -77,6 +77,63 @@ describe("control plane client", () => {
         },
         body: expect.any(String)
       }
+    );
+  });
+});
+
+describe("backoffice client", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("loads catalog filters and human follow-ups with the session token", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ items: [], page: 0, size: 20, hasNext: false }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([]), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = createBackofficeClient("/internal/backoffice/", "session-token");
+    await client.searchCatalog({ name: "buzo", color: "negro", page: 0, limit: 20 });
+    await client.listHumanFollowUps(10);
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "/internal/backoffice/catalog?name=buzo&color=negro&page=0&limit=20",
+      { headers: { Accept: "application/json", Authorization: "Bearer session-token" } }
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "/internal/backoffice/human-follow-ups?limit=10",
+      { headers: { Accept: "application/json", Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("sends stock and ownership mutations with their safety headers", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: "IN_PROGRESS" }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ sku: "SKU-1", newStock: 4 }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = createBackofficeClient("/internal/backoffice", "session-token");
+    await client.changeHumanFollowUp("task-1", "claim", "operator-1");
+    await client.adjustStock("SKU-1", 2, "recepción", "operator-1");
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "/internal/backoffice/human-follow-ups/task-1/claim",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({ "X-WCS-Actor-Key": "operator-1" })
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "/internal/backoffice/catalog/variants/SKU-1/stock",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          "X-WCS-Actor-Key": "operator-1",
+          "Idempotency-Key": expect.any(String)
+        })
+      })
     );
   });
 });

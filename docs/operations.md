@@ -114,6 +114,21 @@ El backoffice no forma parte de la imagen ni del deploy del backend. Su
 workflow sólo instala dependencias, ejecuta tests y genera el build cuando
 cambian sus archivos; no tiene permisos AWS y no publica el artefacto.
 
+### Backoffice operativo WCS-119
+
+El módulo operativo permanece `404` por defecto. Para un smoke local controlado
+se habilita sólo en el proceso local con `spring.profiles.active=local`,
+`wcs.backoffice.enabled=true` y `wcs.backoffice.local-mode-enabled=true`; ese modo no es una frontera de
+autorización para producción. El acceso productivo requerirá el JWT/roles de
+los slices WCS-120/WCS-121.
+
+La carga de imágenes usa URLs prefirmadas de S3 y nunca entrega credenciales al
+navegador. Antes de activar `wcs.backoffice.media.enabled` se debe configurar
+un bucket, un prefijo dedicado y permisos mínimos de `s3:PutObject`/lectura
+necesaria para el servicio. El tamaño máximo actual es 5 MB y la expiración
+10 minutos. Si S3 no está configurado, el endpoint responde de forma explícita
+que media no está disponible y no cambia PostgreSQL.
+
 ### Recargar AppConfig sin recompilar
 
 WCS carga AppConfig una vez durante el arranque del proceso. Cuando sólo cambia

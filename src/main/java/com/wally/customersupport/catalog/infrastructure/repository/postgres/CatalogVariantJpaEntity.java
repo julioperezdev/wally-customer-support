@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 @Entity
 @Table(name = "catalog_variants", schema = "wcs")
@@ -51,6 +52,10 @@ public class CatalogVariantJpaEntity {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Version
+    @Column(name = "record_version", nullable = false)
+    private int recordVersion;
+
     protected CatalogVariantJpaEntity() {
     }
 
@@ -76,5 +81,17 @@ public class CatalogVariantJpaEntity {
 
     public BigDecimal getPrice() {
         return price;
+    }
+
+    public int getStock() {
+        return stock;
+    }
+
+    public void adjustStock(int newStock, Instant now) {
+        if (newStock < 0) {
+            throw new IllegalArgumentException("stock cannot be negative");
+        }
+        this.stock = newStock;
+        this.updatedAt = now;
     }
 }

@@ -572,4 +572,23 @@ de cualquier `apply`.
 
 ## Template común de issue
 
+## Épica WCS-118 — Backoffice operativo WCS MVP
+
+La épica agrupa el backoffice de tienda y la plataforma de agentes en cuatro
+slices grandes para evitar iteraciones artificialmente pequeñas. Mantiene el
+runtime conversacional actual como fallback y exige que cada slice incluya
+backend, frontend, pruebas, documentación, observabilidad, rollout y rollback.
+
+| Jira | Estado inicial | Slice |
+| --- | --- | --- |
+| WCS-119 | In Progress | Catálogo, stock, media S3 y bandeja humana |
+| WCS-120 | To Do | Mapa de casos de uso, agentes, fallback y trazabilidad |
+| WCS-121 | To Do | Feature flags de negocio con AppConfig sin reinicio |
+| WCS-122 | To Do | Pedidos y links de pago con Mercado Pago Sandbox |
+
+La descripción completa, los criterios de aceptación y el modelo de seguridad
+están en [`docs/backoffice-mvp-roadmap.md`](../docs/backoffice-mvp-roadmap.md) y
+en la página canónica de Confluence `WCS — Backoffice Operativo MVP — Plan de
+implementación`.
+
 Cada issue real debe agregar contexto, objetivo, alcance, fuera de alcance, FR/UC, criterios Given/When/Then, pruebas, evidencia, dependencias, riesgos, documentación, rollout y rollback.

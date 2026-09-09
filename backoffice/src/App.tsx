@@ -2,16 +2,21 @@ import { useEffect, useMemo, useState } from "react";
 import {
   AgentRegistryAgent,
   AgentActivationPreflight,
+  BackofficeCatalogProduct,
+  BackofficeCatalogPage,
+  BackofficeHumanFollowUp,
   Comparison,
   ControlPlaneError,
   RunDetail,
   RunPage,
   RunSummary,
+  createBackofficeClient,
   createControlPlaneClient
 } from "./api";
 
 const DEFAULT_BASE_URL = import.meta.env.VITE_WCS_CONTROL_PLANE_BASE_URL ?? "/internal/agent-evaluations";
 const DEFAULT_REGISTRY_BASE_URL = import.meta.env.VITE_WCS_AGENT_REGISTRY_BASE_URL ?? "/internal/agent-registry";
+const DEFAULT_BACKOFFICE_BASE_URL = import.meta.env.VITE_WCS_BACKOFFICE_BASE_URL ?? "/internal/backoffice";
 
 export function App() {
   const [baseUrl, setBaseUrl] = useState(DEFAULT_BASE_URL);
@@ -44,8 +49,18 @@ export function App() {
   const [preflightApproval, setPreflightApproval] = useState("");
   const [preflightOperationalApproval, setPreflightOperationalApproval] = useState("");
   const [preflightRollout, setPreflightRollout] = useState("100");
+  const [catalogPage, setCatalogPage] = useState<BackofficeCatalogPage | null>(null);
+  const [catalogName, setCatalogName] = useState("");
+  const [catalogType, setCatalogType] = useState("");
+  const [catalogColor, setCatalogColor] = useState("");
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [followUps, setFollowUps] = useState<BackofficeHumanFollowUp[] | null>(null);
+  const [followUpError, setFollowUpError] = useState<string | null>(null);
+  const [storeBusy, setStoreBusy] = useState(false);
+  const [storeActor, setStoreActor] = useState("local-operator");
 
   const client = useMemo(() => createControlPlaneClient(baseUrl, token, DEFAULT_REGISTRY_BASE_URL), [baseUrl, token]);
+  const backofficeClient = useMemo(() => createBackofficeClient(DEFAULT_BACKOFFICE_BASE_URL, token), [token]);
 
   async function loadRuns(nextPage = 0) {
     setBusy(true);
@@ -137,9 +152,61 @@ export function App() {
     }
   }
 
+  async function loadStore() {
+    setStoreBusy(true);
+    setCatalogError(null);
+    setFollowUpError(null);
+    try {
+      const [catalog, humanFollowUps] = await Promise.all([
+        backofficeClient.searchCatalog({
+          name: catalogName,
+          productType: catalogType,
+          color: catalogColor,
+          page: 0,
+          limit: 20
+        }),
+        backofficeClient.listHumanFollowUps(50)
+      ]);
+      setCatalogPage(catalog);
+      setFollowUps(humanFollowUps);
+    } catch (cause) {
+      const message = toUserMessage(cause);
+      setCatalogError(message);
+      setFollowUpError(message);
+    } finally {
+      setStoreBusy(false);
+    }
+  }
+
+  async function adjustStock(sku: string, delta: number) {
+    if (!Number.isInteger(delta) || delta === 0) return;
+    setStoreBusy(true);
+    try {
+      await backofficeClient.adjustStock(sku, delta, "backoffice MVP", storeActor);
+      await loadStore();
+    } catch (cause) {
+      setCatalogError(toUserMessage(cause));
+    } finally {
+      setStoreBusy(false);
+    }
+  }
+
+  async function changeFollowUp(id: string, operation: "claim" | "release" | "resolve") {
+    setStoreBusy(true);
+    try {
+      await backofficeClient.changeHumanFollowUp(id, operation, storeActor);
+      await loadStore();
+    } catch (cause) {
+      setFollowUpError(toUserMessage(cause));
+    } finally {
+      setStoreBusy(false);
+    }
+  }
+
   useEffect(() => {
     void loadRuns();
     void loadRegistry();
+    void loadStore();
     // The first load is intentionally tied to the initial client only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -168,6 +235,32 @@ export function App() {
           <label>Token de sesión (memoria)<input type="password" value={token} onChange={(event) => setToken(event.target.value)} autoComplete="off" /></label>
         </div>
         <div className="button-row"><button className="primary" onClick={() => void loadRuns()} disabled={busy}>Actualizar runs</button><button onClick={() => void loadRegistry()} disabled={registryBusy}>Actualizar registry</button></div>
+      </section>
+
+      <section className="card">
+        <div className="section-heading">
+          <div><h2>Operación de tienda</h2><p>Catálogo y solicitudes humanas con contexto mínimo sanitizado.</p></div>
+          <span className="security-note">CONTROLADO</span>
+        </div>
+        <div className="store-toolbar">
+          <input aria-label="Filtrar catálogo por nombre" placeholder="Nombre de producto" value={catalogName} onChange={(event) => setCatalogName(event.target.value)} />
+          <input aria-label="Filtrar catálogo por tipo" placeholder="Tipo: remera, buzo..." value={catalogType} onChange={(event) => setCatalogType(event.target.value)} />
+          <input aria-label="Filtrar catálogo por color" placeholder="Color" value={catalogColor} onChange={(event) => setCatalogColor(event.target.value)} />
+          <input aria-label="Actor de operación" placeholder="Actor" value={storeActor} onChange={(event) => setStoreActor(event.target.value)} />
+          <button className="primary" onClick={() => void loadStore()} disabled={storeBusy}>Actualizar tienda</button>
+        </div>
+        {catalogError && <div className="alert" role="alert">Catálogo: {catalogError}</div>}
+        {followUpError && !catalogError && <div className="alert" role="alert">Atención humana: {followUpError}</div>}
+        <div className="store-grid">
+          <div>
+            <h3>Catálogo</h3>
+          <CatalogView page={catalogPage} onAdjustStock={adjustStock} disabled={storeBusy} />
+          </div>
+          <div>
+            <h3>Solicitudes humanas</h3>
+            <HumanFollowUpView followUps={followUps} onAction={changeFollowUp} disabled={storeBusy} />
+          </div>
+        </div>
       </section>
 
       {error && <div className="alert" role="alert">{error}</div>}
@@ -245,6 +338,30 @@ function RunTable({ page, onOpen }: { page: RunPage | null; onOpen: (id: string)
   if (!page) return <p className="muted">El control plane no está disponible todavía.</p>;
   if (page.items.length === 0) return <p className="muted">No hay runs para los filtros seleccionados.</p>;
   return <div className="table-wrap"><table><thead><tr><th>Agente</th><th>Modelo</th><th>Resultado</th><th>Latencia</th><th>Tokens</th><th>Costo USD</th><th /></tr></thead><tbody>{page.items.map((run) => <tr key={run.runId}><td><strong>{run.agentId}</strong><small>{run.agentVersion} · {run.datasetVersion}</small></td><td>{run.provider}<small>{run.modelId}</small></td><td><span className={run.failedScenarios ? "negative" : "positive"}>{formatPercent(run.passRate)}</span><small>{run.passedScenarios}/{run.totalScenarios} escenarios</small></td><td>{formatMs(run.durationMs)}<small>provider: {formatMs(run.providerLatencyMs)}</small></td><td>{run.totalTokens ?? "—"}</td><td>{run.estimatedCostUsd == null ? "—" : run.estimatedCostUsd.toFixed(6)}</td><td><button className="link-button" onClick={() => void onOpen(run.runId)}>Ver</button></td></tr>)}</tbody></table></div>;
+}
+
+function CatalogView({ page, onAdjustStock, disabled }: { page: BackofficeCatalogPage | null; onAdjustStock: (sku: string, delta: number) => Promise<void>; disabled: boolean }) {
+  if (!page) return <p className="muted">El backoffice operativo no está disponible todavía.</p>;
+  if (page.items.length === 0) return <p className="muted">No hay productos para los filtros seleccionados.</p>;
+  return <div className="store-list">{page.items.map((product) => <article className="store-item" key={product.id}>
+    <div className="section-heading"><div><h4>{product.name}</h4><p className="muted">{product.productType ?? "producto"} · {product.active ? "activo" : "inactivo"}</p></div><span className="security-note">{product.variants.length} variantes</span></div>
+    <div className="table-wrap"><table><thead><tr><th>SKU</th><th>Variante</th><th>Precio</th><th>Stock</th><th>Operar</th></tr></thead><tbody>{product.variants.map((variant) => <CatalogVariantRow key={variant.id} variant={variant} onAdjustStock={onAdjustStock} disabled={disabled} />)}</tbody></table></div>
+  </article>)}</div>;
+}
+
+function CatalogVariantRow({ variant, onAdjustStock, disabled }: { variant: BackofficeCatalogProduct["variants"][number]; onAdjustStock: (sku: string, delta: number) => Promise<void>; disabled: boolean }) {
+  const [delta, setDelta] = useState("1");
+  return <tr><td><strong>{variant.sku}</strong></td><td>{variant.color} · {variant.size}</td><td>{variant.price.toLocaleString("es-AR")} {variant.currency}</td><td className={variant.stock > 0 ? "positive" : "negative"}>{variant.stock > 0 ? `${variant.stock} disponibles` : "Sin stock"}</td><td><div className="inline-action"><input aria-label={`Ajuste de stock ${variant.sku}`} inputMode="numeric" value={delta} onChange={(event) => setDelta(event.target.value)} /><button disabled={disabled} onClick={() => void onAdjustStock(variant.sku, Number.parseInt(delta, 10))}>Aplicar</button></div></td></tr>;
+}
+
+function HumanFollowUpView({ followUps, onAction, disabled }: { followUps: BackofficeHumanFollowUp[] | null; onAction: (id: string, operation: "claim" | "release" | "resolve") => Promise<void>; disabled: boolean }) {
+  if (!followUps) return <p className="muted">La cola de atención humana no está disponible todavía.</p>;
+  if (followUps.length === 0) return <p className="muted">No hay solicitudes abiertas.</p>;
+  return <div className="store-list">{followUps.map((followUp) => <article className="store-item" key={followUp.id}>
+    <div className="section-heading"><div><h4>{followUp.reason}</h4><p className="muted">{followUp.channel} · {followUp.status} · vence {new Date(followUp.dueAt).toLocaleString("es-AR")}</p></div><span className={followUp.priority === "HIGH" ? "negative status-label" : "warning status-label"}>{followUp.priority}</span></div>
+    <div className="context-preview">{followUp.contextPreview.length === 0 ? <p className="muted">Sin contexto reciente.</p> : followUp.contextPreview.map((message, index) => <p key={`${followUp.id}-${index}`}>{message}</p>)}</div>
+    <div className="button-row"><button disabled={disabled || followUp.status !== "OPEN"} onClick={() => void onAction(followUp.id, "claim")}>Tomar</button><button disabled={disabled || followUp.status !== "IN_PROGRESS"} onClick={() => void onAction(followUp.id, "release")}>Devolver</button><button className="primary" disabled={disabled || followUp.status !== "IN_PROGRESS"} onClick={() => void onAction(followUp.id, "resolve")}>Resolver</button></div>
+  </article>)}</div>;
 }
 
 function AgentRegistryView({ agents }: { agents: AgentRegistryAgent[] | null }) {

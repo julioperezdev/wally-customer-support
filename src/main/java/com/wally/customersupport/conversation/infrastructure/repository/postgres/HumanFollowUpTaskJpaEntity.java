@@ -49,6 +49,9 @@ public class HumanFollowUpTaskJpaEntity {
     @Column(name = "completed_at")
     private Instant completedAt;
 
+    @Column(name = "assigned_to", length = 128)
+    private String assignedTo;
+
     protected HumanFollowUpTaskJpaEntity() {
     }
 
@@ -63,6 +66,7 @@ public class HumanFollowUpTaskJpaEntity {
         this.createdAt = task.createdAt();
         this.updatedAt = task.updatedAt();
         this.completedAt = task.completedAt();
+        this.assignedTo = task.assignedTo();
     }
 
     public HumanFollowUpTask toDomain() {
@@ -76,6 +80,7 @@ public class HumanFollowUpTaskJpaEntity {
                 dueAt,
                 createdAt,
                 updatedAt,
-                completedAt);
+                completedAt,
+                assignedTo);
     }
 }
