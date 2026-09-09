@@ -65,11 +65,11 @@ locals {
     "wcs.rag.max-results"                                    = 5
     "wcs.outbox.max-attempts"                                = 3
     "wcs.conversation.retention.enabled"                     = false
-    "wcs.conversation.retention.content-retention"            = "PT720H"
-    "wcs.conversation.retention.metadata-retention"           = "PT2160H"
-    "wcs.conversation.retention.aggregate-metrics-retention"  = "PT8760H"
-    "wcs.conversation.retention.cleanup-batch-size"           = 500
-    "wcs.conversation.retention.schedule-delay-ms"            = 86400000
+    "wcs.conversation.retention.content-retention"           = "PT720H"
+    "wcs.conversation.retention.metadata-retention"          = "PT2160H"
+    "wcs.conversation.retention.aggregate-metrics-retention" = "PT8760H"
+    "wcs.conversation.retention.cleanup-batch-size"          = 500
+    "wcs.conversation.retention.schedule-delay-ms"           = 86400000
     "wcs.whatsapp.adapter"                                   = "mock"
     "wcs.telegram.enabled"                                   = false
     "wcs.telegram.adapter"                                   = "telegram"
