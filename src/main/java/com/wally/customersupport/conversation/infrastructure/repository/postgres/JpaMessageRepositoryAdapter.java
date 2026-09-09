@@ -9,6 +9,7 @@ import com.wally.customersupport.conversation.infrastructure.repository.postgres
 import com.wally.customersupport.conversation.application.port.out.MessageRepository;
 import com.wally.customersupport.conversation.domain.model.Channel;
 import com.wally.customersupport.conversation.domain.model.Message;
+import com.wally.customersupport.conversation.domain.model.MessageDirection;
 import com.wally.customersupport.conversation.domain.model.MessageWriteResult;
 import org.springframework.stereotype.Repository;
 
@@ -58,7 +59,8 @@ public class JpaMessageRepositoryAdapter implements MessageRepository {
 
     @Override
     public List<String> findRecentBodies(UUID conversationId, int limit) {
-        return repository.findTop20ByConversationIdOrderByOccurredAtDesc(conversationId).stream()
+        return repository.findTop20ByConversationIdAndDirectionOrderByOccurredAtDesc(
+                        conversationId, MessageDirection.INBOUND).stream()
                 .limit(Math.max(1, limit))
                 .map(MessageJpaEntity::body)
                 .toList();

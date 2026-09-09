@@ -14,7 +14,7 @@ public record AiPromptProperties(
         Integer maxHistoryMessages) {
 
     public String effectiveIntentVersion() {
-        return nonBlank(intentVersion, "conversation-intent-v1");
+        return nonBlank(intentVersion, "conversation-intent-v2");
     }
 
     public int effectiveIntentMaxOutputTokens() {

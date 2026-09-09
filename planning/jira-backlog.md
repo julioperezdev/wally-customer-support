@@ -68,6 +68,21 @@ Fase 3 y AgentCore continúa fuera de alcance.
 **Evidencia:** tests de aislamiento/expiración/borrado/límites, `mvn verify`,
 `docs/privacy-retention.md` y actualización de arquitectura, modelo y plan.
 
+## WCS-117 — Mejorar refinamiento contextual y consultas compuestas del catálogo
+
+**Tipo:** Story · **Prioridad:** High · **Estimate:** 4d · **Estado:** In Progress
+· **Depends on:** WCS-33, WCS-20, WCS-21
+
+Conservar filtros estructurados en seguimientos como “qué opciones tienen” y
+“de lo anterior”, evitar que las respuestas outbound contaminen el contexto,
+componer consultas acotadas de catálogo y envíos, y unificar el fallback de
+categorías que no existen en el catálogo. PostgreSQL continúa siendo la fuente
+de verdad y el LLM no genera SQL ni hechos de negocio.
+
+**Evidencia:** tests de parser y merge, tests de aplicación para consultas
+compuestas, Testcontainers para contexto inbound-only, `mvn verify`, smoke
+sanitizado por Telegram y documentación de IA/observabilidad.
+
 ## WCS-35 — Persistir memoria de sesión conversacional en PostgreSQL
 
 **Tipo:** Story · **Prioridad:** High · **Estimate:** 5d · **Estado:** In Progress
@@ -317,7 +332,7 @@ Bedrock/RAG, cambio de RDS o publicación productiva.
 
 **Métricas:** resolución, handoff, fallback, latencia, costo, fallos, duplicados y feedback.
 
-## Orden de ejecución vigente — 2026-09-06
+## Orden de ejecución vigente — 2026-09-09
 
 El backlog se reordenó por dependencia funcional y por el estado real del
 repositorio. `WCS-33` ya resolvió la pérdida de contexto observada en búsquedas
@@ -338,14 +353,15 @@ semántica o AgentCore.
 | 8 | WCS-22 | In Progress | Deploy, health, smoke, observabilidad y rollback productivo | WCS-18, WCS-21 |
 | 9 | WCS-29 | In Progress | Canal Telegram, routing por canal, webhook, secret y configuración AWS | WCS-14, WCS-15, WCS-22 |
 | 10 | WCS-33 | Done | Contexto conversacional, filtros multi-turno y `productType` | WCS-20, WCS-25 |
-| 11 | WCS-34 | In Progress | Contrato de memoria, privacidad, retención, aislamiento y borrado | WCS-33 |
-| 12 | WCS-35 | In Progress | Memoria de sesión PostgreSQL, TTL, ownership, conflictos y activación controlada | WCS-34 |
-| 13 | WCS-36 | In Progress | Resumen versionado, ventana reciente, checkpoint y fallback controlado | WCS-35 |
-| 14 | WCS-37 | In Progress | Preferencias explícitas PostgreSQL, TTL, ownership, borrado y contexto auxiliar | WCS-34, WCS-35, WCS-36 |
-| 15 | WCS-38 | In Progress | Captura determinística de preferencias explícitas en inbound | WCS-20, WCS-37 |
-| 16 | WCS-39 | Done | Baseline AppConfig v5 y preferencias explícitas declarados en Terraform | WCS-22, WCS-38 |
-| 17 | WCS-40 | Done | Restart manual de App Runner para recargar AppConfig sin recompilar | WCS-22, WCS-39 |
-| 18 | WCS-41 | In Progress | Ingesta manual, validación y smoke de Knowledge Base documental WCS | WCS-30, WCS-39, WCS-40 |
+| 11 | WCS-117 | In Progress | Refinamiento contextual, consultas catálogo+envíos y fallback uniforme | WCS-33, WCS-20, WCS-21 |
+| 12 | WCS-34 | In Progress | Contrato de memoria, privacidad, retención, aislamiento y borrado | WCS-33 |
+| 13 | WCS-35 | In Progress | Memoria de sesión PostgreSQL, TTL, ownership, conflictos y activación controlada | WCS-34 |
+| 14 | WCS-36 | In Progress | Resumen versionado, ventana reciente, checkpoint y fallback controlado | WCS-35 |
+| 15 | WCS-37 | In Progress | Preferencias explícitas PostgreSQL, TTL, ownership, borrado y contexto auxiliar | WCS-34, WCS-35, WCS-36 |
+| 16 | WCS-38 | In Progress | Captura determinística de preferencias explícitas en inbound | WCS-20, WCS-37 |
+| 17 | WCS-39 | Done | Baseline AppConfig v5 y preferencias explícitas declarados en Terraform | WCS-22, WCS-38 |
+| 18 | WCS-40 | Done | Restart manual de App Runner para recargar AppConfig sin recompilar | WCS-22, WCS-39 |
+| 19 | WCS-41 | In Progress | Ingesta manual, validación y smoke de Knowledge Base documental WCS | WCS-30, WCS-39, WCS-40 |
 
 ## Extensión de plataforma de agentes — 2026-09-07
 

@@ -48,7 +48,7 @@ locals {
     "wcs.ai.provider"                                        = "mock"
     "wcs.ai.model"                                           = "llm.mock.v1"
     "wcs.ai.request-timeout"                                 = "PT5S"
-    "wcs.ai.prompt.intent-version"                           = "conversation-intent-v1"
+    "wcs.ai.prompt.intent-version"                           = "conversation-intent-v2"
     "wcs.ai.prompt.intent-max-output-tokens"                 = 1024
     "wcs.ai.prompt.intent-temperature"                       = 0.0
     "wcs.ai.prompt.max-input-characters"                     = 2000

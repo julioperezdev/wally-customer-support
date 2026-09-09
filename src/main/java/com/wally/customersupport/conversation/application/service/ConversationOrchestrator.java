@@ -16,6 +16,8 @@ import com.wally.customersupport.agent.application.service.AgentRuntimeDefinitio
 import com.wally.customersupport.agent.application.service.AgentRuntimeDefinitionResolver;
 import com.wally.customersupport.agent.application.service.AgentShadowRuntimeService;
 import com.wally.customersupport.catalog.application.service.CatalogConversationService;
+import com.wally.customersupport.catalog.application.service.CatalogQueryParser;
+import com.wally.customersupport.catalog.domain.model.CatalogQuery;
 import com.wally.customersupport.conversation.application.port.out.ConversationIntentClassifier;
 import com.wally.customersupport.knowledge.application.port.out.KnowledgeRetriever;
 import com.wally.customersupport.conversation.application.port.out.LlmClient;
@@ -104,6 +106,7 @@ public class ConversationOrchestrator {
                     executionPlanFactory.safeFallback("NULL_DECISION"),
                     startedAt);
         }
+        decision = normalizeDeterministicCatalogDecision(context, decision);
         StructuredEventLog.info(log, "INTENT_CLASSIFIED", Map.of(
                 "intent", decision.intent().name(),
                 "confidence", decision.confidence(),
@@ -152,7 +155,9 @@ public class ConversationOrchestrator {
 
         ConversationExecutionResult result;
         try {
-            String reply = switch (plan.action()) {
+            String reply = isCatalogShippingComposite(context, decision)
+                    ? executeCatalogShippingComposite(context, decision)
+                    : switch (plan.action()) {
                 case DIRECT_RESPONSE -> GREETING;
                 case CATALOG_SEARCH -> executeCatalogSearch(context, decision, definition);
                 case BUSINESS_HOURS -> formatBusinessHours();
@@ -180,6 +185,74 @@ public class ConversationOrchestrator {
         }
         runShadowSafely(definition, context, plan.useCase(), decision, result.response());
         return completeQuery(context, result, startedAt);
+    }
+
+    private ConversationIntentDecision normalizeDeterministicCatalogDecision(
+            ConversationContext context,
+            ConversationIntentDecision decision) {
+        if (context == null
+                || (decision.intent() != ConversationIntent.GENERAL_SUPPORT
+                        && decision.intent() != ConversationIntent.UNKNOWN)) {
+            return decision;
+        }
+
+        boolean deterministicCatalogTurn = CatalogQueryParser.isUnsupportedCatalogCategory(context.latestMessage())
+                || CatalogQueryParser.isContextualContinuation(context.latestMessage())
+                || CatalogQueryParser.followUpKind(context.latestMessage()) != CatalogQueryParser.FollowUpKind.NONE;
+        if (!deterministicCatalogTurn) {
+            return decision;
+        }
+
+        CatalogQuery query = CatalogQueryParser.parseConversation(context.recentMessages(), context.latestMessage())
+                .or(() -> CatalogQueryParser.parse(context.latestMessage()))
+                .orElse(CatalogQuery.empty());
+        if (query.isEmpty()) {
+            return decision;
+        }
+        return new ConversationIntentDecision(
+                ConversationIntent.CATALOG_SEARCH,
+                0.99,
+                query,
+                null);
+    }
+
+    private boolean isCatalogShippingComposite(
+            ConversationContext context,
+            ConversationIntentDecision decision) {
+        if (context == null || !CatalogQueryParser.isShippingQuestion(context.latestMessage())) {
+            return false;
+        }
+        return resolveCatalogQuery(context, decision)
+                .map(query -> !query.isEmpty())
+                .orElse(false);
+    }
+
+    private String executeCatalogShippingComposite(
+            ConversationContext context,
+            ConversationIntentDecision decision) {
+        CatalogQuery query = resolveCatalogQuery(context, decision).orElseThrow();
+        String catalogReply = catalogConversationService
+                .replyFor(query, context.recentMessages(), context.latestMessage())
+                .orElse(LOW_CONFIDENCE);
+        String shippingReply = formatPolicy("shipping");
+        StructuredEventLog.info(log, "INTENT_COMPOSED", Map.of(
+                "primaryIntent", decision.intent().name(),
+                "secondaryIntent", "POLICY_QUERY",
+                "components", "CATALOG_SEARCH+SHIPPING",
+                "result", "COMPOSED"));
+        return catalogReply + "\n\n" + shippingReply;
+    }
+
+    private java.util.Optional<CatalogQuery> resolveCatalogQuery(
+            ConversationContext context,
+            ConversationIntentDecision decision) {
+        if (decision != null && decision.catalogQuery() != null && !decision.catalogQuery().isEmpty()) {
+            return java.util.Optional.of(decision.catalogQuery());
+        }
+        return CatalogQueryParser.parseConversation(context.recentMessages(), context.latestMessage())
+                .filter(query -> !query.isEmpty())
+                .or(() -> CatalogQueryParser.parse(context.latestMessage())
+                        .filter(query -> !query.isEmpty()));
     }
 
     private void runShadowSafely(

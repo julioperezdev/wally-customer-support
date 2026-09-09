@@ -149,6 +149,38 @@ class CatalogConversationServiceTest {
         assertEquals("¿De qué producto o SKU querés conocer ese dato?", reply);
     }
 
+    @Test
+    void preservesTheActiveTypeWhenTheCustomerAsksForMoreOptions() {
+        when(catalogQueryService.search(argThat(query ->
+                "buzo".equals(query.productType()) && query.name() == null)))
+                .thenReturn(List.of(product("Buzo Spring Boot", "RP-BUZ-SB-GRI-L", "L", "Gris", 5)));
+
+        String reply = new CatalogConversationService(catalogQueryService)
+                .replyFor(
+                        new CatalogQuery(null, null, null, null),
+                        List.of("Mejor un buzo"),
+                        "¿Qué opciones tienen?")
+                .orElseThrow();
+
+        assertTrue(reply.contains("Buzo Spring Boot"));
+        verify(catalogQueryService).search(argThat(query -> "buzo".equals(query.productType())));
+    }
+
+    @Test
+    void usesTheSameSafeFallbackForAnUnsupportedCatalogCategory() {
+        when(catalogQueryService.search(argThat(query -> "gorras".equals(query.name()))))
+                .thenReturn(List.of());
+
+        String reply = new CatalogConversationService(catalogQueryService)
+                .replyFor("¿Venden gorras?")
+                .orElseThrow();
+
+        assertEquals(
+                "No encontré coincidencias en el catálogo demo para esa consulta. "
+                        + "No puedo confirmar disponibilidad fuera de los datos registrados.",
+                reply);
+    }
+
     private static CatalogProduct product(String name, String sku, String size, String color, int stock) {
         CatalogVariant variant = new CatalogVariant(
                 UUID.randomUUID(), sku, size, color, new BigDecimal("18900.00"), "ARS", stock, true);

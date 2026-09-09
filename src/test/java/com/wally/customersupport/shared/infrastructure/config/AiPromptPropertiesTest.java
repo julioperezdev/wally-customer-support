@@ -17,7 +17,7 @@ class AiPromptPropertiesTest {
                 0,
                 99);
 
-        assertEquals("conversation-intent-v1", properties.effectiveIntentVersion());
+        assertEquals("conversation-intent-v2", properties.effectiveIntentVersion());
         assertEquals(1_024, properties.effectiveIntentMaxOutputTokens());
         assertEquals(0.0f, properties.effectiveIntentTemperature());
         assertEquals(2_000, properties.effectiveMaxInputCharacters());

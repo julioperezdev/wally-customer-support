@@ -326,6 +326,39 @@ class ConversationOrchestratorTest {
     }
 
     @Test
+    void composesCatalogPriceAndShippingForAProductFollowUp() {
+        ConversationContext compositeContext = new ConversationContext(
+                UUID.randomUUID(),
+                "customer-1",
+                "¿Cuánto cuesta y cómo se hace el envío?",
+                List.of("Busco un buzo negro talle L"),
+                List.of(),
+                null,
+                List.of(),
+                Channel.TELEGRAM);
+        when(intentClassifier.classify(any(ConversationContext.class)))
+                .thenReturn(new ConversationIntentDecision(
+                        ConversationIntent.POLICY_QUERY, 0.97, null, "shipping"));
+        when(catalogConversationService.replyFor(
+                argThat(query -> "buzo".equals(query.productType()) && "negro".equals(query.color())
+                        && "l".equalsIgnoreCase(query.size())),
+                any(),
+                any()))
+                .thenReturn(Optional.of("El precio actual es 42.900,00 ARS."));
+        when(supportConfigurationQueryService.activePolicy("shipping"))
+                .thenReturn(Optional.of(new SupportPolicy(
+                        UUID.randomUUID(), "shipping", "Envíos", "Se confirma antes de finalizar la compra.",
+                        true, true, 1, Instant.parse("2026-09-01T12:00:00Z"))));
+
+        String reply = orchestrator.replyFor(compositeContext);
+
+        assertTrue(reply.contains("42.900,00 ARS"));
+        assertTrue(reply.contains("Se confirma antes de finalizar la compra."));
+        verify(catalogConversationService).replyFor(any(CatalogQuery.class), any(), any());
+        verify(supportConfigurationQueryService).activePolicy("shipping");
+    }
+
+    @Test
     void usesKnowledgeAndLlmOnlyForGeneralSupport() {
         when(intentClassifier.classify(any(ConversationContext.class)))
                 .thenReturn(new ConversationIntentDecision(ConversationIntent.GENERAL_SUPPORT, 0.90, null, null));

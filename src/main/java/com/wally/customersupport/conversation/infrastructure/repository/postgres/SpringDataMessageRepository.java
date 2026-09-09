@@ -6,6 +6,7 @@ import java.time.Instant;
 
 import com.wally.customersupport.conversation.infrastructure.repository.postgres.MessageJpaEntity;
 import com.wally.customersupport.conversation.domain.model.Channel;
+import com.wally.customersupport.conversation.domain.model.MessageDirection;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -41,4 +42,8 @@ public interface SpringDataMessageRepository extends JpaRepository<MessageJpaEnt
             @Param("createdAt") Instant createdAt);
 
     List<MessageJpaEntity> findTop20ByConversationIdOrderByOccurredAtDesc(UUID conversationId);
+
+    List<MessageJpaEntity> findTop20ByConversationIdAndDirectionOrderByOccurredAtDesc(
+            UUID conversationId,
+            MessageDirection direction);
 }

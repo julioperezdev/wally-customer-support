@@ -110,12 +110,18 @@ public class CatalogConversationService {
         if (query != null && !query.isEmpty()) {
             return query;
         }
-        if (CatalogQueryParser.followUpKind(latestMessage) == CatalogQueryParser.FollowUpKind.NONE) {
-            return query;
+        Optional<CatalogQuery> explicitLatestQuery = CatalogQueryParser.parse(latestMessage)
+                .filter(parsed -> !parsed.isEmpty());
+        if (explicitLatestQuery.isPresent()) {
+            return explicitLatestQuery.get();
         }
-        return CatalogQueryParser.parseConversation(recentMessages, latestMessage)
-                .filter(parsed -> !parsed.isEmpty())
-                .orElse(query);
+        if (CatalogQueryParser.followUpKind(latestMessage) != CatalogQueryParser.FollowUpKind.NONE
+                || CatalogQueryParser.isContextualContinuation(latestMessage)) {
+            return CatalogQueryParser.parseConversation(recentMessages, latestMessage)
+                    .filter(parsed -> !parsed.isEmpty())
+                    .orElse(query);
+        }
+        return query;
     }
 
     private static List<CatalogFact> facts(List<CatalogProduct> products) {
