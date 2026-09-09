@@ -16,6 +16,11 @@ public class AgentEvaluationControlPlaneAccessService {
     public static final String REGISTRY_WRITE_CAPABILITY = "agent-registry.write";
     public static final String FEATURE_FLAGS_READ_CAPABILITY = "feature-flags.read";
     public static final String FEATURE_FLAGS_WRITE_CAPABILITY = "feature-flags.write";
+    public static final String BACKOFFICE_CATALOG_READ_CAPABILITY = "backoffice.catalog.read";
+    public static final String BACKOFFICE_CATALOG_WRITE_CAPABILITY = "backoffice.catalog.write";
+    public static final String BACKOFFICE_CATALOG_MEDIA_WRITE_CAPABILITY = "backoffice.catalog.media.write";
+    public static final String BACKOFFICE_HUMAN_FOLLOW_UP_READ_CAPABILITY = "backoffice.human-follow-up.read";
+    public static final String BACKOFFICE_HUMAN_FOLLOW_UP_WRITE_CAPABILITY = "backoffice.human-follow-up.write";
 
     private final String allowedEnvironment;
     private final AgentEvaluationControlPlaneAuthorizer authorizer;
@@ -80,6 +85,13 @@ public class AgentEvaluationControlPlaneAccessService {
                 actorId, allowedEnvironment, FEATURE_FLAGS_WRITE_CAPABILITY));
     }
 
+    public AgentEvaluationControlPlaneAccessDecision authorizeBackoffice(
+            String actorId,
+            String capability) {
+        return authorize(new AgentEvaluationControlPlaneAccessRequest(
+                actorId, allowedEnvironment, capability));
+    }
+
     public AgentEvaluationControlPlaneAccessDecision authorize(
             AgentEvaluationControlPlaneAccessRequest request) {
         AgentEvaluationControlPlaneAccessRequest accessRequest = Objects.requireNonNull(request, "request");
@@ -96,7 +108,12 @@ public class AgentEvaluationControlPlaneAccessService {
                 && !REGISTRY_READ_CAPABILITY.equals(accessRequest.capability())
                 && !REGISTRY_WRITE_CAPABILITY.equals(accessRequest.capability())
                 && !FEATURE_FLAGS_READ_CAPABILITY.equals(accessRequest.capability())
-                && !FEATURE_FLAGS_WRITE_CAPABILITY.equals(accessRequest.capability())) {
+                && !FEATURE_FLAGS_WRITE_CAPABILITY.equals(accessRequest.capability())
+                && !BACKOFFICE_CATALOG_READ_CAPABILITY.equals(accessRequest.capability())
+                && !BACKOFFICE_CATALOG_WRITE_CAPABILITY.equals(accessRequest.capability())
+                && !BACKOFFICE_CATALOG_MEDIA_WRITE_CAPABILITY.equals(accessRequest.capability())
+                && !BACKOFFICE_HUMAN_FOLLOW_UP_READ_CAPABILITY.equals(accessRequest.capability())
+                && !BACKOFFICE_HUMAN_FOLLOW_UP_WRITE_CAPABILITY.equals(accessRequest.capability())) {
             return denied(accessRequest, AgentEvaluationControlPlaneAccessReason.CAPABILITY_NOT_ALLOWED);
         }
         if (!allowedEnvironment.equals(accessRequest.environment())) {

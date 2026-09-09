@@ -269,6 +269,8 @@ wcs.conversation.guardrails.min-intent-confidence
 wcs.rag.provider
 wcs.rag.max-results
 wcs.rag.knowledge-base-id (cuando el adapter Bedrock KB esté habilitado)
+wcs.backoffice.enabled
+wcs.backoffice.preview.enabled
 wcs.agent-evaluation.control-plane.security.enabled
 wcs.agent-evaluation.control-plane.security.issuer-uri
 wcs.agent-evaluation.control-plane.security.audience
@@ -290,6 +292,9 @@ wcs/{environment}/database
   username
   password
   jdbc-url (si no lo provee el runtime)
+
+wcs/{environment}/backoffice
+  preview-token (sólo para el preview temporal read-only; nunca en AppConfig)
 
 wcs/{environment}/providers
   api keys de proveedores externos, sólo si fueran necesarias
@@ -358,6 +363,7 @@ Las referencias admitidas actualmente son:
 | `database-secret-id` | `jdbc-url`/`jdbc_url`/`url`, `username`/`user`, `password` | `spring.datasource.url`, `spring.datasource.username`, `spring.datasource.password` |
 | `whatsapp-secret-id` | `access-token`, `verify-token`, `app-secret` y variantes snake/camel | `wcs.whatsapp.access-token`, `wcs.whatsapp.verify-token`, `wcs.whatsapp.app-secret` |
 | `telegram-secret-id` | `bot-token`, `webhook-secret-token` y variantes snake/camel | `wcs.telegram.bot-token`, `wcs.telegram.webhook-secret-token` |
+| `backoffice-secret-id` | `preview-token` y variantes snake/camel | `wcs.backoffice.preview.token` |
 | `runtime-secret-id` | combinación explícita de los campos anteriores | propiedades correspondientes |
 
 El `secret-id` legacy sólo se usa como referencia genérica cuando no hay

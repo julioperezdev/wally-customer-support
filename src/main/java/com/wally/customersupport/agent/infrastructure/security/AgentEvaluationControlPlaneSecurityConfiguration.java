@@ -5,12 +5,14 @@ import java.util.List;
 import com.wally.customersupport.agent.application.port.out.AgentEvaluationControlPlaneAuthorizer;
 import com.wally.customersupport.agent.application.port.out.AgentEvaluationTriggerAuthorizer;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
@@ -23,6 +25,8 @@ import org.springframework.security.oauth2.jwt.JwtDecoders;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 
 /** Conditional JWT security limited to the internal evaluation control plane. */
 @Configuration(proxyBeanMethods = false)
@@ -79,6 +83,48 @@ public class AgentEvaluationControlPlaneSecurityConfiguration {
     }
 
     @Bean
+    @Order(0)
+    @ConditionalOnExpression("'${wcs.backoffice.preview.enabled:false}' == 'true'"
+            + " && '${wcs.agent-evaluation.control-plane.security.enabled:false}' == 'false'")
+    SecurityFilterChain backofficePreviewSecurityFilterChain(
+            HttpSecurity http,
+            BackofficePreviewAuthenticationFilter previewFilter) throws Exception {
+        http
+                .securityMatcher("/internal/**")
+                .csrf(csrf -> csrf.disable())
+                .addFilterBefore(previewFilter, AnonymousAuthenticationFilter.class)
+                .exceptionHandling(exceptionHandling -> exceptionHandling
+                        .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+                .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers(HttpMethod.GET, "/internal/agent-evaluations/**")
+                        .hasAuthority(REQUIRED_AUTHORITY)
+                        .requestMatchers(HttpMethod.GET, "/internal/agent-registry/**")
+                        .hasAuthority(REGISTRY_READ_AUTHORITY)
+                        .requestMatchers(HttpMethod.POST, "/internal/agent-registry/activations/preflight")
+                        .hasAuthority(REGISTRY_READ_AUTHORITY)
+                        .requestMatchers(HttpMethod.GET, "/internal/backoffice/agent-map/**")
+                        .hasAuthority(REGISTRY_READ_AUTHORITY)
+                        .requestMatchers(HttpMethod.POST, "/internal/backoffice/agent-map/simulations")
+                        .hasAuthority(REGISTRY_READ_AUTHORITY)
+                        .requestMatchers(HttpMethod.GET, "/internal/backoffice/feature-flags/**")
+                        .hasAuthority(FEATURE_FLAGS_READ_AUTHORITY)
+                        .requestMatchers(HttpMethod.GET, "/internal/backoffice/catalog/**")
+                        .hasAuthority("SCOPE_backoffice.catalog.read")
+                        .requestMatchers(HttpMethod.GET, "/internal/backoffice/human-follow-ups/**")
+                        .hasAuthority("SCOPE_backoffice.human-follow-up.read")
+                        .anyRequest().denyAll());
+        return http.build();
+    }
+
+    @Bean
+    @ConditionalOnExpression("'${wcs.backoffice.preview.enabled:false}' == 'true'"
+            + " && '${wcs.agent-evaluation.control-plane.security.enabled:false}' == 'false'")
+    BackofficePreviewAuthenticationFilter backofficePreviewAuthenticationFilter(
+            @Value("${wcs.backoffice.preview.token:}") String previewToken) {
+        return new BackofficePreviewAuthenticationFilter(previewToken);
+    }
+
+    @Bean
     @Order(1)
     @ConditionalOnProperty(
             name = "wcs.agent-evaluation.control-plane.security.enabled",
@@ -89,7 +135,9 @@ public class AgentEvaluationControlPlaneSecurityConfiguration {
                         "/internal/agent-evaluations/**",
                         "/internal/agent-registry/**",
                         "/internal/backoffice/agent-map/**",
-                        "/internal/backoffice/feature-flags/**")
+                        "/internal/backoffice/feature-flags/**",
+                        "/internal/backoffice/catalog/**",
+                        "/internal/backoffice/human-follow-ups/**")
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.POST, "/internal/agent-evaluations/runs")
@@ -110,6 +158,16 @@ public class AgentEvaluationControlPlaneSecurityConfiguration {
                         .hasAuthority(FEATURE_FLAGS_READ_AUTHORITY)
                         .requestMatchers(HttpMethod.POST, "/internal/backoffice/feature-flags/**")
                         .hasAuthority(FEATURE_FLAGS_WRITE_AUTHORITY)
+                        .requestMatchers(HttpMethod.GET, "/internal/backoffice/catalog/**")
+                        .hasAuthority("SCOPE_backoffice.catalog.read")
+                        .requestMatchers(HttpMethod.POST, "/internal/backoffice/catalog/variants/*/stock")
+                        .hasAuthority("SCOPE_backoffice.catalog.write")
+                        .requestMatchers(HttpMethod.POST, "/internal/backoffice/catalog/products/*/image/**")
+                        .hasAuthority("SCOPE_backoffice.catalog.media.write")
+                        .requestMatchers(HttpMethod.GET, "/internal/backoffice/human-follow-ups/**")
+                        .hasAuthority("SCOPE_backoffice.human-follow-up.read")
+                        .requestMatchers(HttpMethod.POST, "/internal/backoffice/human-follow-ups/**")
+                        .hasAuthority("SCOPE_backoffice.human-follow-up.write")
                         .anyRequest().denyAll())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
         return http.build();

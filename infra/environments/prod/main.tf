@@ -36,61 +36,68 @@ locals {
     "webhook-secret-token" = "REPLACE_ME_TELEGRAM_WEBHOOK_SECRET"
   })
 
+  fake_backoffice_secret_json = jsonencode({
+    "preview-token" = "REPLACE_ME_BACKOFFICE_PREVIEW_TOKEN"
+  })
+
   # This bootstrap document mirrors the currently deployed AppConfig v5
   # non-secret baseline. Runtime changes made in AppConfig remain protected by
   # ignore_changes in the AppConfig module; this document is used when the
   # hosted configuration is created or explicitly overridden.
   default_appconfig_configuration = {
-    "wcs.whatsapp.adapter"                                   = "meta"
-    "wcs.whatsapp.graph-api-version"                         = "v25.0"
-    "wcs.whatsapp.graph-api-base-url"                        = "https://graph.facebook.com"
-    "wcs.whatsapp.phone-number-id"                           = "1271920986004478"
-    "wcs.whatsapp.business-account-id"                       = "1684722242599448"
-    "wcs.whatsapp.allowed-recipient"                         = "5491159230699"
-    "wcs.telegram.enabled"                                   = true
-    "wcs.telegram.adapter"                                   = "telegram"
-    "wcs.telegram.api-base-url"                              = "https://api.telegram.org"
-    "wcs.telegram.allowed-chat-id"                           = ""
-    "wcs.telegram.connect-timeout"                           = "PT2S"
-    "wcs.telegram.read-timeout"                              = "PT5S"
-    "wcs.ai.provider"                                        = "bedrock"
-    "wcs.ai.model"                                           = "openai.gpt-oss-20b-1:0"
-    "wcs.ai.region"                                          = var.aws_region
-    "wcs.ai.pricing-version"                                 = "aws-bedrock-us-east-1-standard-2026-09"
-    "wcs.ai.input-price-usd-per-million-tokens"              = 0.0721
-    "wcs.ai.output-price-usd-per-million-tokens"             = 0.3090
-    "wcs.ai.request-timeout"                                 = "PT30S"
-    "wcs.ai.prompt.intent-version"                           = "conversation-intent-v2"
-    "wcs.ai.prompt.intent-max-output-tokens"                 = 1024
-    "wcs.ai.prompt.intent-temperature"                       = 0.0
-    "wcs.ai.prompt.max-input-characters"                     = 2000
-    "wcs.ai.prompt.max-history-messages"                     = 12
-    "wcs.ai.response.prompt-version"                         = "conversation-response-v1"
-    "wcs.ai.response.max-output-tokens"                      = 1024
-    "wcs.ai.response.temperature"                            = 0.2
-    "wcs.ai.response.max-input-characters"                   = 2000
-    "wcs.ai.response.max-history-messages"                   = 6
-    "wcs.ai.response.max-knowledge-characters"               = 8000
-    "wcs.ai.response.max-summary-characters"                 = 4000
-    "wcs.conversation.guardrails.min-intent-confidence"      = 0.65
-    "wcs.rag.provider"                                       = "bedrock-kb"
-    "wcs.rag.max-results"                                    = 5
-    "wcs.rag.knowledge-base-id"                              = module.wcs_knowledge_base.knowledge_base_id
-    "wcs.rag.region"                                         = var.aws_region
-    "wcs.outbox.max-attempts"                                = 3
-    "wcs.conversation.preferences.enabled"                   = false
-    "wcs.conversation.preferences.ttl"                       = "PT24H"
-    "wcs.conversation.preferences.max-preferences"           = 5
-    "wcs.conversation.preferences.max-value-characters"      = 64
-    "wcs.conversation.retention.enabled"                     = false
-    "wcs.conversation.retention.content-retention"           = "PT720H"
-    "wcs.conversation.retention.metadata-retention"          = "PT2160H"
-    "wcs.conversation.retention.aggregate-metrics-retention" = "PT8760H"
-    "wcs.conversation.retention.cleanup-batch-size"          = 500
-    "wcs.conversation.retention.schedule-delay-ms"           = 86400000
-    "wcs.external-config.secrets-manager.database-secret-id" = module.database_secrets.secret_name
-    "wcs.external-config.secrets-manager.whatsapp-secret-id" = module.whatsapp_secrets.secret_name
-    "wcs.external-config.secrets-manager.telegram-secret-id" = module.telegram_secrets.secret_name
+    "wcs.whatsapp.adapter"                                     = "meta"
+    "wcs.whatsapp.graph-api-version"                           = "v25.0"
+    "wcs.whatsapp.graph-api-base-url"                          = "https://graph.facebook.com"
+    "wcs.whatsapp.phone-number-id"                             = "1271920986004478"
+    "wcs.whatsapp.business-account-id"                         = "1684722242599448"
+    "wcs.whatsapp.allowed-recipient"                           = "5491159230699"
+    "wcs.telegram.enabled"                                     = true
+    "wcs.telegram.adapter"                                     = "telegram"
+    "wcs.telegram.api-base-url"                                = "https://api.telegram.org"
+    "wcs.telegram.allowed-chat-id"                             = ""
+    "wcs.telegram.connect-timeout"                             = "PT2S"
+    "wcs.telegram.read-timeout"                                = "PT5S"
+    "wcs.ai.provider"                                          = "bedrock"
+    "wcs.ai.model"                                             = "openai.gpt-oss-20b-1:0"
+    "wcs.ai.region"                                            = var.aws_region
+    "wcs.ai.pricing-version"                                   = "aws-bedrock-us-east-1-standard-2026-09"
+    "wcs.ai.input-price-usd-per-million-tokens"                = 0.0721
+    "wcs.ai.output-price-usd-per-million-tokens"               = 0.3090
+    "wcs.ai.request-timeout"                                   = "PT30S"
+    "wcs.ai.prompt.intent-version"                             = "conversation-intent-v2"
+    "wcs.ai.prompt.intent-max-output-tokens"                   = 1024
+    "wcs.ai.prompt.intent-temperature"                         = 0.0
+    "wcs.ai.prompt.max-input-characters"                       = 2000
+    "wcs.ai.prompt.max-history-messages"                       = 12
+    "wcs.ai.response.prompt-version"                           = "conversation-response-v1"
+    "wcs.ai.response.max-output-tokens"                        = 1024
+    "wcs.ai.response.temperature"                              = 0.2
+    "wcs.ai.response.max-input-characters"                     = 2000
+    "wcs.ai.response.max-history-messages"                     = 6
+    "wcs.ai.response.max-knowledge-characters"                 = 8000
+    "wcs.ai.response.max-summary-characters"                   = 4000
+    "wcs.conversation.guardrails.min-intent-confidence"        = 0.65
+    "wcs.rag.provider"                                         = "bedrock-kb"
+    "wcs.rag.max-results"                                      = 5
+    "wcs.rag.knowledge-base-id"                                = module.wcs_knowledge_base.knowledge_base_id
+    "wcs.rag.region"                                           = var.aws_region
+    "wcs.outbox.max-attempts"                                  = 3
+    "wcs.conversation.preferences.enabled"                     = false
+    "wcs.conversation.preferences.ttl"                         = "PT24H"
+    "wcs.conversation.preferences.max-preferences"             = 5
+    "wcs.conversation.preferences.max-value-characters"        = 64
+    "wcs.conversation.retention.enabled"                       = false
+    "wcs.conversation.retention.content-retention"             = "PT720H"
+    "wcs.conversation.retention.metadata-retention"            = "PT2160H"
+    "wcs.conversation.retention.aggregate-metrics-retention"   = "PT8760H"
+    "wcs.conversation.retention.cleanup-batch-size"            = 500
+    "wcs.conversation.retention.schedule-delay-ms"             = 86400000
+    "wcs.external-config.secrets-manager.database-secret-id"   = module.database_secrets.secret_name
+    "wcs.external-config.secrets-manager.whatsapp-secret-id"   = module.whatsapp_secrets.secret_name
+    "wcs.external-config.secrets-manager.telegram-secret-id"   = module.telegram_secrets.secret_name
+    "wcs.external-config.secrets-manager.backoffice-secret-id" = module.backoffice_secrets.secret_name
+    "wcs.backoffice.enabled"                                   = var.backoffice_preview_enabled
+    "wcs.backoffice.preview.enabled"                           = var.backoffice_preview_enabled
   }
 
   default_feature_flags_configuration = {
@@ -116,7 +123,8 @@ locals {
     toset([
       module.database_secrets.secret_arn,
       module.whatsapp_secrets.secret_arn,
-      module.telegram_secrets.secret_arn
+      module.telegram_secrets.secret_arn,
+      module.backoffice_secrets.secret_arn
     ]),
     var.shared_rds_secret_arn == null ? toset([]) : toset([var.shared_rds_secret_arn]),
     var.appconfig_secret_arns
@@ -182,6 +190,15 @@ module "runtime_secrets" {
   name        = coalesce(var.runtime_secret_name, "wcs/${var.environment}/runtime")
   description = "WCS runtime secret container; values are written outside Terraform."
   tags        = local.common_tags
+}
+
+module "backoffice_secrets" {
+  source = "../../modules/runtime-secrets"
+
+  name                = coalesce(var.backoffice_secret_name, "wcs/${var.environment}/backoffice")
+  description         = "WCS backoffice preview token. Replace the fake bootstrap JSON before enabling the preview."
+  initial_secret_json = local.fake_backoffice_secret_json
+  tags                = local.common_tags
 }
 
 module "backend_apprunner" {

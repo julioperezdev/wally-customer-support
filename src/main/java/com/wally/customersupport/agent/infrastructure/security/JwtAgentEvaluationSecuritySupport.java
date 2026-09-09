@@ -15,14 +15,30 @@ final class JwtAgentEvaluationSecuritySupport {
 
     static boolean authorize(String actorId, String capability) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (!(authentication instanceof JwtAuthenticationToken jwtAuthentication)
-                || !jwtAuthentication.isAuthenticated()) {
+        if (!(authentication instanceof JwtAuthenticationToken token)
+                || !token.isAuthenticated()) {
             return false;
         }
-        if (!hasRequiredAuthority(jwtAuthentication, capability)) {
+        return authorize(token, actorId, capability);
+    }
+
+    static boolean authorizeAuthenticatedToken(String actorId, String capability) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (!(authentication instanceof AbstractAuthenticationToken token)
+                || !token.isAuthenticated()) {
             return false;
         }
-        return Objects.equals(jwtAuthentication.getName(), actorId);
+        return authorize(token, actorId, capability);
+    }
+
+    private static boolean authorize(
+            AbstractAuthenticationToken token,
+            String actorId,
+            String capability) {
+        if (!hasRequiredAuthority(token, capability)) {
+            return false;
+        }
+        return Objects.equals(token.getName(), actorId);
     }
 
     private static boolean hasRequiredAuthority(

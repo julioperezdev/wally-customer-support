@@ -26,11 +26,13 @@ final class SecretsManagerConfigurationLoader {
         loadSecret(properties.databaseSecretId(), "database", resolved);
         loadSecret(properties.whatsappSecretId(), "whatsapp", resolved);
         loadSecret(properties.telegramSecretId(), "telegram", resolved);
+        loadSecret(properties.backofficeSecretId(), "backoffice", resolved);
         String runtimeSecretId = properties.runtimeSecretId();
         if (runtimeSecretId == null || runtimeSecretId.isBlank()) {
             boolean hasDedicatedReferences = isPresent(properties.databaseSecretId())
                     || isPresent(properties.whatsappSecretId())
-                    || isPresent(properties.telegramSecretId());
+                    || isPresent(properties.telegramSecretId())
+                    || isPresent(properties.backofficeSecretId());
             runtimeSecretId = hasDedicatedReferences ? null : properties.secretId();
         }
         loadSecret(runtimeSecretId, "runtime", resolved);
@@ -60,6 +62,7 @@ final class SecretsManagerConfigurationLoader {
                 case "database" -> mapDatabase(root, target);
                 case "whatsapp" -> mapWhatsApp(root, target);
                 case "telegram" -> mapTelegram(root, target);
+                case "backoffice" -> mapBackoffice(root, target);
                 case "runtime" -> mapRuntime(root, target);
                 default -> throw new IllegalArgumentException("Unsupported secret kind: " + kind);
             }
@@ -91,6 +94,11 @@ final class SecretsManagerConfigurationLoader {
                 "token", "TELEGRAM_BOT_TOKEN");
         putIfPresent(root, target, "wcs.telegram.webhook-secret-token", "webhook-secret-token",
                 "webhook_secret_token", "webhookSecretToken", "secret-token", "TELEGRAM_WEBHOOK_SECRET_TOKEN");
+    }
+
+    private static void mapBackoffice(JsonNode root, Map<String, Object> target) {
+        putIfPresent(root, target, "wcs.backoffice.preview.token", "preview-token", "preview_token",
+                "previewToken", "WCS_BACKOFFICE_PREVIEW_TOKEN");
     }
 
     private static void mapRuntime(JsonNode root, Map<String, Object> target) {

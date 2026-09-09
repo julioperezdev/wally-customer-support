@@ -1,6 +1,7 @@
 package com.wally.customersupport.backoffice.infrastructure.http;
 
 import java.math.BigDecimal;
+import java.security.Principal;
 import java.util.Map;
 
 import com.wally.customersupport.backoffice.application.model.BackofficeCatalogPage;
@@ -27,6 +28,7 @@ public class BackofficeCatalogController {
 
     @GetMapping
     public ResponseEntity<?> search(
+            Principal principal,
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String sku,
             @RequestParam(required = false) String size,
@@ -36,7 +38,8 @@ public class BackofficeCatalogController {
             @RequestParam(required = false) BigDecimal maxPrice,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int limit) {
-        BackofficeAccessService.Decision decision = accessService.authorize("backoffice.catalog.read");
+        BackofficeAccessService.Decision decision = accessService.authorize(
+                "backoffice.catalog.read", actorId(principal));
         if (!decision.authorized()) {
             StructuredEventLog.warn(log, "BACKOFFICE_ACCESS_DENIED", Map.of(
                     "operation", "catalog.search",
@@ -50,5 +53,9 @@ public class BackofficeCatalogController {
                 "resultCount", result.items().size(),
                 "page", result.page()));
         return ResponseEntity.ok(result);
+    }
+
+    private static String actorId(Principal principal) {
+        return principal == null ? null : principal.getName();
     }
 }

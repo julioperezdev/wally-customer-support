@@ -1,5 +1,6 @@
 package com.wally.customersupport.backoffice.infrastructure.http;
 
+import java.security.Principal;
 import java.util.Map;
 
 import com.wally.customersupport.backoffice.application.model.BackofficeStockAdjustment;
@@ -27,11 +28,13 @@ public class BackofficeCatalogCommandController {
 
     @PostMapping("/variants/{sku}/stock")
     public ResponseEntity<?> adjustStock(
+            Principal principal,
             @PathVariable String sku,
             @RequestBody StockAdjustmentRequest request,
             @RequestHeader("X-WCS-Actor-Key") String actorKey,
             @RequestHeader("Idempotency-Key") String idempotencyKey) {
-        BackofficeAccessService.Decision decision = accessService.authorize("backoffice.catalog.write");
+        BackofficeAccessService.Decision decision = accessService.authorize(
+                "backoffice.catalog.write", actorId(principal));
         if (!decision.authorized()) {
             StructuredEventLog.warn(log, "BACKOFFICE_ACCESS_DENIED", Map.of(
                     "operation", "catalog.stock.adjust",
@@ -55,5 +58,9 @@ public class BackofficeCatalogCommandController {
     }
 
     public record StockAdjustmentRequest(int delta, String reason) {
+    }
+
+    private static String actorId(Principal principal) {
+        return principal == null ? null : principal.getName();
     }
 }

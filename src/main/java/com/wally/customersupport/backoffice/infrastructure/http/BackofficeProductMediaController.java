@@ -1,5 +1,6 @@
 package com.wally.customersupport.backoffice.infrastructure.http;
 
+import java.security.Principal;
 import java.util.Map;
 import java.util.UUID;
 
@@ -27,24 +28,30 @@ public class BackofficeProductMediaController {
 
     @PostMapping("/upload-url")
     public ResponseEntity<?> requestUpload(
+            Principal principal,
             @PathVariable UUID productId,
             @RequestBody ImageUploadRequest request) {
-        return execute("catalog.image.request", () -> mediaService.requestUpload(
+        return execute(principal, "catalog.image.request", () -> mediaService.requestUpload(
                 productId, request.fileName(), request.contentType(), request.contentLength()));
     }
 
     @PostMapping("/confirm")
     public ResponseEntity<?> confirmUpload(
+            Principal principal,
             @PathVariable UUID productId,
             @RequestBody ImageConfirmationRequest request) {
-        return execute("catalog.image.confirm", () -> {
+        return execute(principal, "catalog.image.confirm", () -> {
             mediaService.confirmUpload(productId, request.objectKey());
             return Map.of("status", "CONFIRMED");
         });
     }
 
-    private ResponseEntity<?> execute(String operation, java.util.function.Supplier<Object> command) {
-        BackofficeAccessService.Decision decision = accessService.authorize("backoffice.catalog.media.write");
+    private ResponseEntity<?> execute(
+            Principal principal,
+            String operation,
+            java.util.function.Supplier<Object> command) {
+        BackofficeAccessService.Decision decision = accessService.authorize(
+                "backoffice.catalog.media.write", actorId(principal));
         if (!decision.authorized()) {
             return ResponseEntity.status(decision.status()).body(Map.of("code", decision.reason()));
         }
@@ -63,5 +70,9 @@ public class BackofficeProductMediaController {
     }
 
     public record ImageConfirmationRequest(String objectKey) {
+    }
+
+    private static String actorId(Principal principal) {
+        return principal == null ? null : principal.getName();
     }
 }
