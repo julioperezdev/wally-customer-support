@@ -10,6 +10,7 @@ import com.wally.customersupport.conversation.application.port.out.MessageReposi
 import com.wally.customersupport.conversation.application.port.out.OutboxRepository;
 import com.wally.customersupport.conversation.application.port.out.ProcessingAttemptRepository;
 import com.wally.customersupport.conversation.domain.model.ConversationContext;
+import com.wally.customersupport.conversation.domain.model.ConversationExecutionResult;
 import com.wally.customersupport.conversation.domain.model.ConversationState;
 import com.wally.customersupport.conversation.domain.model.Message;
 import com.wally.customersupport.conversation.domain.model.OutboxMessage;
@@ -39,6 +40,9 @@ public class InboundMessageProcessingService {
     private final ConversationSummaryService conversationSummaryService;
     private final CustomerPreferenceService customerPreferenceService;
     private final ExplicitPreferenceCaptureService explicitPreferenceCaptureService;
+    private final OptOutDetector optOutDetector;
+    private final ContactSuppressionService contactSuppressionService;
+    private final HumanFollowUpTaskService humanFollowUpTaskService;
     private final InboundProcessingProperties properties;
     private final Clock clock;
 
@@ -50,14 +54,46 @@ public class InboundMessageProcessingService {
                 .orElseThrow(() -> new IllegalStateException("Conversation was not found"));
         Instant now = clock.instant();
         String actorId = conversation.id().toString();
+
+        if (optOutDetector.isOptOut(inboundMessage.body())) {
+            contactSuppressionService.suppress(
+                    conversation.channel(),
+                    conversation.externalCustomerId(),
+                    inboundMessage.id(),
+                    now);
+            conversationMemory.clear(conversation.id(), actorId);
+            customerPreferenceService.clearConversation(conversation.id(), actorId);
+            StructuredEventLog.info(log, "MESSAGE_OPTED_OUT", java.util.Map.of(
+                    "operation", "conversation.opt_out",
+                    "result", "SUPPRESSED",
+                    "channel", conversation.channel().name(),
+                    "correlationId", conversation.id()));
+            processingAttemptRepository.markCompleted(attempt.id(), now);
+            return;
+        }
+
+        if (contactSuppressionService.isSuppressed(
+                conversation.channel(), conversation.externalCustomerId())) {
+            StructuredEventLog.info(log, "MESSAGE_SUPPRESSED", java.util.Map.of(
+                    "operation", "conversation.opt_out.guard",
+                    "result", "DO_NOT_CONTACT",
+                    "channel", conversation.channel().name(),
+                    "correlationId", conversation.id()));
+            processingAttemptRepository.markCompleted(attempt.id(), now);
+            return;
+        }
+
         ConversationState conversationState = loadConversationState(conversation.id(), actorId, now);
         conversationSummaryService.recordContextPrepared(conversationState);
         ExplicitPreferenceCaptureService.CaptureResult preferenceCapture =
                 explicitPreferenceCaptureService.capture(actorId, inboundMessage.body(), now);
         var preferences = customerPreferenceService.findForContext(conversation.id().toString(), conversation.id());
-        String reply = preferenceCapture.shouldAcknowledge()
-                ? preferenceReply(preferenceCapture)
-                : conversationOrchestrator.replyFor(new ConversationContext(
+        ConversationExecutionResult executionResult = null;
+        String reply;
+        if (preferenceCapture.shouldAcknowledge()) {
+            reply = preferenceReply(preferenceCapture);
+        } else {
+            executionResult = conversationOrchestrator.replyForDetailed(new ConversationContext(
                         conversation.id(),
                         conversation.externalCustomerId(),
                         inboundMessage.body(),
@@ -66,11 +102,15 @@ public class InboundMessageProcessingService {
                         conversationSummaryService.summaryForContext(conversationState),
                         preferences,
                         inboundMessage.channel()));
+            reply = executionResult.response();
+        }
 
         saveConversationMemory(conversationSummaryService.appendAndMaybeSummarize(
                 conversationState,
                 inboundMessage.body(),
                 now));
+
+        humanFollowUpTaskService.createIfRequired(conversation, inboundMessage, executionResult);
 
         if (!isBlank(reply)) {
             outboxRepository.save(OutboxMessage.pendingReply(

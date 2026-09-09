@@ -220,6 +220,12 @@ wcs.conversation.preferences.enabled
 wcs.conversation.preferences.ttl
 wcs.conversation.preferences.max-preferences
 wcs.conversation.preferences.max-value-characters
+wcs.conversation.retention.enabled
+wcs.conversation.retention.content-retention
+wcs.conversation.retention.metadata-retention
+wcs.conversation.retention.aggregate-metrics-retention
+wcs.conversation.retention.cleanup-batch-size
+wcs.conversation.retention.schedule-delay-ms
 wcs.ai.provider
 wcs.ai.model
 wcs.ai.region
@@ -402,6 +408,26 @@ la flag es falsa o falta. Para rollback funcional se vuelve a publicar la flag
 en `false`; la tabla se conserva para no modificar migraciones aplicadas.
 Antes de habilitarla en producción deben aprobarse retención, borrado,
 ownership y observabilidad sin PII.
+
+### Seguimiento humano, opt-out y retención (`WCS-26`)
+
+La derivación humana se crea automáticamente cuando el resultado del
+orquestador es `HANDOFF`, `LOW_CONFIDENCE` o `FALLBACK`. La tabla queda lista
+para el backoffice mediante `findOpen`, ordenada por vencimiento; no hay panel,
+asignación ni notificación proactiva en esta fase.
+
+Para probar la supresión en un ambiente no productivo:
+
+1. enviar `BAJA` o `STOP` por el canal habilitado;
+2. comprobar en logs únicamente `MESSAGE_OPTED_OUT` con resultado
+   `SUPPRESSED`;
+3. enviar otro mensaje desde el mismo actor y comprobar `MESSAGE_SUPPRESSED`;
+4. confirmar que no existe un nuevo `outbox_messages` ni una llamada a Bedrock.
+
+El job `ConversationRetentionCleanupJob` sólo se registra cuando
+`wcs.conversation.retention.enabled=true`. Primero redacciona contenido y
+después elimina metadatos en lotes. Para rollback operativo volver a publicar
+la flag en `false`; no se eliminan tablas ni se editan migraciones aplicadas.
 
 ### Activación de agentes desde el runtime
 

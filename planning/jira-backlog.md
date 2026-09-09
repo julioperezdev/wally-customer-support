@@ -329,7 +329,7 @@ semántica o AgentCore.
 | ---: | --- | --- | --- | --- |
 | 1 | WCS-25 | In Progress | Catálogo demo, variantes, stock, precio, referencia S3 y consulta determinística | WCS-10, WCS-11, WCS-13 |
 | 1 | WCS-28 | In Progress | Horarios y políticas demo versionadas/configurables | WCS-11, WCS-13 |
-| 2 | WCS-26 | To Do | Seguimiento humano priorizado, opt-out y retención | WCS-25 |
+| 2 | WCS-26 | In Progress | Seguimiento humano priorizado, opt-out y retención | WCS-25 |
 | 3 | WCS-27 | To Do | Recepción rápida y procesamiento asíncrono durable | WCS-25 |
 | 4 | WCS-20 | To Do | Prompt, selección de modelo y guardrails | WCS-11, WCS-25, WCS-28 |
 | 5 | WCS-21 | To Do | Bedrock real, métricas de costo y latencia | WCS-20, WCS-27 |

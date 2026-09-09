@@ -96,3 +96,28 @@ Para verificar que la idempotencia del control plane guarda sólo hashes:
 
 No se debe consultar ni exportar la key cruda: la tabla sólo contiene su
 hash SHA-256 y timestamp de claim.
+
+## SQL — tareas humanas abiertas
+
+La consulta devuelve sólo metadata operativa para el backoffice y no incluye
+contenido del cliente ni identificadores externos:
+
+```sql
+SELECT priority,
+       status,
+       reason,
+       COUNT(*) AS open_tasks
+FROM wcs.human_follow_up_tasks
+WHERE status IN ('OPEN', 'IN_PROGRESS')
+GROUP BY priority, status, reason
+ORDER BY priority, status, reason;
+```
+
+Para auditar una supresión sin revelar el actor se puede contar por estado:
+
+```sql
+SELECT status, reason, COUNT(*) AS contacts
+FROM wcs.contact_suppressions
+GROUP BY status, reason
+ORDER BY status, reason;
+```

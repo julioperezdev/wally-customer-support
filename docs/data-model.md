@@ -184,6 +184,52 @@ Las preferencias son contexto auxiliar: no pueden sobreescribir filtros
 actuales ni ser autoridad para stock, precio, carrito, pedidos o acciones
 sensibles.
 
+### Seguimiento humano y supresión de contacto — contrato en `WCS-26`, persistencia en `V15`
+
+`wcs.human_follow_up_tasks` es la cola durable que un backoffice presente o
+futuro puede consumir. La primera entrega no incluye panel ni asignación de
+agentes, pero deja un contrato tipado y consultable:
+
+* `conversation_id` mantiene el ownership de la tarea;
+* `source_message_id` referencia el evento que originó la derivación y permite
+  idempotencia por `source_message_id + reason`;
+* `reason` distingue `HUMAN_REQUEST`, `LOW_CONFIDENCE` y `UNRESOLVED`;
+* `priority` usa `HIGH`, `NORMAL` o `LOW`; una solicitud explícita de persona
+  se crea como `HIGH`;
+* `status` usa `OPEN`, `IN_PROGRESS`, `DONE` o `CANCELLED`;
+* `due_at` se calcula inicialmente a 24 horas, sin convertirlo en una promesa
+  de SLA legal;
+* se guardan timestamps y no se persiste el cuerpo del mensaje ni un resumen
+  libre potencialmente identificable.
+
+`wcs.contact_suppressions` contiene una fila por actor y guarda solamente un
+`actor_key` SHA-256 de `channel + externalCustomerId`, el estado
+`DO_NOT_CONTACT`, el motivo, el mensaje origen y timestamps. No se replica el
+teléfono o identificador externo en la lista. `BAJA`, `STOP` y frases
+equivalentes se detectan antes de memoria, preferencias y LLM; la operación
+limpia el estado conversacional, no crea outbox y los reintentos son seguros.
+
+La migración `V15__create_human_follow_up_and_contact_suppression.sql` no
+modifica migraciones aplicadas. Las referencias a mensajes usan `ON DELETE SET
+NULL` para que la retención pueda eliminar metadatos sin destruir la tarea.
+
+### Retención operativa — job en `WCS-26`
+
+`ConversationRetentionCleanupService` redacciona el cuerpo de mensajes después
+de 30 días y elimina filas de mensaje y sus intentos de procesamiento después
+de 90 días, en lotes acotados. Las métricas agregadas y los logs no son tocados
+por este job. La ejecución queda desactivada por defecto hasta aprobar la
+política legal/comercial:
+
+```text
+wcs.conversation.retention.enabled=false
+wcs.conversation.retention.content-retention=PT720H
+wcs.conversation.retention.metadata-retention=PT2160H
+wcs.conversation.retention.aggregate-metrics-retention=PT8760H
+wcs.conversation.retention.cleanup-batch-size=500
+wcs.conversation.retention.schedule-delay-ms=86400000
+```
+
 ### Registry de agentes y activaciones — contrato en `WCS-47`, persistencia en `V9`/`WCS-48`
 
 El control plane inicial persiste dos grupos separados:

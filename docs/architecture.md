@@ -322,6 +322,31 @@ preferencia y recibe una confirmación; una frase como “busco una remera negra
 continúa siendo sólo una consulta de catálogo. No se usa el LLM para decidir
 qué dato persistir.
 
+### Seguimiento humano, opt-out y retención
+
+`WCS-26` mantiene estas políticas en la aplicación común, después de persistir
+el inbound y antes del orquestador:
+
+```text
+inbound persisted
+      │
+      ├─ opt-out → suppression + clear memory/preferences → completed, no outbox
+      ├─ suppressed actor → completed, no memory/LLM/outbox
+      └─ normal turn → orchestrator → task on HANDOFF/LOW_CONFIDENCE/FALLBACK
+```
+
+`ConversationOrchestrator.replyForDetailed` conserva el resultado tipado de la
+ejecución además del texto compatible con los callers existentes. Esto permite
+crear `human_follow_up_tasks` sin volver a clasificar el mensaje ni inferir el
+resultado a partir del texto generado. La persistencia usa V15, claves únicas y
+referencias internas; el futuro backoffice consume un contrato de tareas y no
+reglas especiales por canal.
+
+`ConversationRetentionCleanupJob` redacciona cuerpos a 30 días y elimina
+metadata a 90 días en lotes, con la flag desactivada por defecto. El job no
+modifica logs ni métricas agregadas y no se activa en producción hasta el gate
+legal/comercial de [`privacy-retention.md`](privacy-retention.md).
+
 ## Puertos principales
 
 ```java
