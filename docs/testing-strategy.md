@@ -11,6 +11,11 @@ Las pruebas usan datos sintéticos marcados como `DEMO`. No se guardan tokens,
 números reales, conversaciones reales ni PII innecesaria en fixtures, logs o
 capturas.
 
+El procedimiento de cierre funcional, incluyendo la matriz ejecutable y las
+pruebas de memoria, retención y opt-out, está en
+[`docs/mvp-acceptance-runbook.md`](mvp-acceptance-runbook.md). Telegram es el
+canal de aceptación temporal mientras WhatsApp continúa sin habilitarse.
+
 ## Capas
 
 | Capa | Cubre | Evidencia |
