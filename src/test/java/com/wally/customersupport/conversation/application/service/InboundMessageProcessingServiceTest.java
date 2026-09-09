@@ -22,6 +22,7 @@ import com.wally.customersupport.conversation.application.port.out.OutboxReposit
 import com.wally.customersupport.conversation.application.port.out.ProcessingAttemptRepository;
 import com.wally.customersupport.conversation.domain.model.Channel;
 import com.wally.customersupport.conversation.domain.model.Conversation;
+import com.wally.customersupport.conversation.domain.model.ConversationExecutionResult;
 import com.wally.customersupport.conversation.domain.model.ConversationStatus;
 import com.wally.customersupport.conversation.domain.model.Message;
 import com.wally.customersupport.conversation.domain.model.MessageDirection;
@@ -58,6 +59,12 @@ class InboundMessageProcessingServiceTest {
     private CustomerPreferenceService customerPreferenceService;
     @Mock
     private ExplicitPreferenceCaptureService explicitPreferenceCaptureService;
+    @Mock
+    private OptOutDetector optOutDetector;
+    @Mock
+    private ContactSuppressionService contactSuppressionService;
+    @Mock
+    private HumanFollowUpTaskService humanFollowUpTaskService;
 
     private InboundMessageProcessingService service;
     private Conversation conversation;
@@ -76,6 +83,9 @@ class InboundMessageProcessingServiceTest {
                 conversationSummaryService,
                 customerPreferenceService,
                 explicitPreferenceCaptureService,
+                optOutDetector,
+                contactSuppressionService,
+                humanFollowUpTaskService,
                 new InboundProcessingProperties(1000, 20, 3, Duration.ofMinutes(5), Duration.ofSeconds(30)),
                 Clock.fixed(NOW, ZoneOffset.UTC));
         UUID conversationId = UUID.randomUUID();
@@ -98,15 +108,19 @@ class InboundMessageProcessingServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
         lenient().when(explicitPreferenceCaptureService.capture(anyString(), anyString(), any()))
                 .thenReturn(ExplicitPreferenceCaptureService.CaptureResult.notDetected());
+        lenient().when(optOutDetector.isOptOut(anyString())).thenReturn(false);
+        lenient().when(contactSuppressionService.isSuppressed(any(), anyString())).thenReturn(false);
         lenient().when(customerPreferenceService.findForContext(anyString(), any())).thenReturn(List.of());
-        lenient().when(conversationOrchestrator.replyFor(any())).thenReturn("Respuesta segura");
+        lenient().when(conversationOrchestrator.replyForDetailed(any())).thenReturn(
+                new ConversationExecutionResult(
+                        "wcs-agent-runtime-v1", "GENERAL_SUPPORT", "REPLIED", "Respuesta segura", null, 1));
     }
 
     @Test
     void processesOutsideTheWebhookAndMarksTheAttemptWithTheOutbox() {
         service.process(attempt);
 
-        verify(conversationOrchestrator).replyFor(any());
+        verify(conversationOrchestrator).replyForDetailed(any());
         verify(outboxRepository).save(any());
         verify(processingAttemptRepository).markCompleted(attempt.id(), NOW);
     }
@@ -118,6 +132,21 @@ class InboundMessageProcessingServiceTest {
         verify(outboxRepository).save(any());
         verify(processingAttemptRepository).markFailed(
                 attempt.id(), "BedrockTimeout", NOW.plusSeconds(30), true, NOW);
-        verify(conversationOrchestrator, never()).replyFor(any());
+        verify(conversationOrchestrator, never()).replyForDetailed(any());
+    }
+
+    @Test
+    void optsOutBeforeCallingTheOrchestratorAndClearsConversationState() {
+        when(optOutDetector.isOptOut(message.body())).thenReturn(true);
+
+        service.process(attempt);
+
+        verify(contactSuppressionService).suppress(
+                conversation.channel(), conversation.externalCustomerId(), message.id(), NOW);
+        verify(conversationMemory).clear(conversation.id(), conversation.id().toString());
+        verify(customerPreferenceService).clearConversation(conversation.id(), conversation.id().toString());
+        verify(conversationOrchestrator, never()).replyForDetailed(any());
+        verify(outboxRepository, never()).save(any());
+        verify(processingAttemptRepository).markCompleted(attempt.id(), NOW);
     }
 }

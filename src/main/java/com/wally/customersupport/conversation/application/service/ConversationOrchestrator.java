@@ -70,6 +70,10 @@ public class ConversationOrchestrator {
     private final AgentShadowRuntimeService agentShadowRuntimeService;
 
     public String replyFor(ConversationContext context) {
+        return replyForDetailed(context).response();
+    }
+
+    public ConversationExecutionResult replyForDetailed(ConversationContext context) {
         long startedAt = System.nanoTime();
         if (context == null || context.latestMessage() == null || context.latestMessage().isBlank()) {
             return completeQuery(
@@ -107,14 +111,14 @@ public class ConversationOrchestrator {
         return executePlan(context, executionPlanFactory.create(decision), decision, startedAt);
     }
 
-    private String executePlan(
+    private ConversationExecutionResult executePlan(
             ConversationContext context,
             ConversationExecutionPlan plan,
             long startedAt) {
         return executePlan(context, plan, null, startedAt);
     }
 
-    private String executePlan(
+    private ConversationExecutionResult executePlan(
             ConversationContext context,
             ConversationExecutionPlan plan,
             ConversationIntentDecision decision,
@@ -326,7 +330,7 @@ public class ConversationOrchestrator {
         }
     }
 
-    private String completeQuery(
+    private ConversationExecutionResult completeQuery(
             ConversationContext context,
             ConversationExecutionPlan plan,
             String reply,
@@ -337,7 +341,7 @@ public class ConversationOrchestrator {
                 startedAt);
     }
 
-    private String completeQuery(
+    private ConversationExecutionResult completeQuery(
             ConversationContext context,
             ConversationExecutionResult result,
             long startedAt) {
@@ -354,7 +358,7 @@ public class ConversationOrchestrator {
         addCorrelationId(fields, context);
         StructuredEventLog.info(log, "AGENT_EXECUTION_COMPLETED", fields);
         StructuredEventLog.info(log, "CONVERSATION_QUERY_COMPLETED", fields);
-        return result.response();
+        return result;
     }
 
     private static void addCorrelationId(Map<String, Object> fields, ConversationContext context) {

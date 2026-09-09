@@ -3,7 +3,7 @@
 Owner: Product/Tech Lead  
 Status: `Proposed — pending legal and business approval`  
 Last reviewed: 2026-09-06  
-Related Jira: `WCS-34`, `WCS-35`, `WCS-36`, `WCS-37`
+Related Jira: `WCS-26`, `WCS-34`, `WCS-35`, `WCS-36`, `WCS-37`
 Related decision: [`003-conversational-memory-boundary.md`](decisions/003-conversational-memory-boundary.md)
 
 ## Propósito y alcance
@@ -82,6 +82,18 @@ eso se evalúa con métricas de contexto, latencia y costo.
   requiere una política de retención y un caso de uso de eliminación propio.
 - No se deben reconstituir datos borrados desde logs, outbox, backups o un
   proveedor de memoria externo sin una base legal y operativa aprobada.
+
+`WCS-26` agrega una retención operativa separada del TTL de memoria: el cuerpo
+de los mensajes se redacciona a los 30 días y sus metadatos se eliminan a los
+90 días, en lotes idempotentes y con un evento agregado de auditoría. El job
+no borra métricas agregadas ni logs operativos. La configuración permanece en
+`false` por defecto hasta que Product/Legal apruebe los períodos definitivos.
+
+La solicitud `BAJA`, `STOP` o equivalente se atiende antes de cualquier llamada
+a IA. WCS guarda una supresión pseudonimizada `DO_NOT_CONTACT`, limpia la
+memoria y preferencias de la conversación y no genera una respuesta/outbox
+automático. Los futuros flujos proactivos deben consultar la misma supresión
+antes de enviar; no existe todavía un flujo para revocar la supresión.
 
 La extracción automática de preferencias queda fuera de esta fase. Sólo se
 persisten preferencias explícitas o confirmadas y, inicialmente, el color

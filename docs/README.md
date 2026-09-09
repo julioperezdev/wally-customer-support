@@ -44,6 +44,7 @@
   - [`028-shadow-quality-comparison-and-bedrock-candidate.md`](decisions/028-shadow-quality-comparison-and-bedrock-candidate.md): comparación efímera y candidata Bedrock cerrada por defecto.
   - [`029-shadow-quality-scorecard-and-observability.md`](decisions/029-shadow-quality-scorecard-and-observability.md): scorecard determinístico y observabilidad de shadow sin autoridad de activación.
   - [`030-controlled-shadow-rollout.md`](decisions/030-controlled-shadow-rollout.md): allowlist de ambiente y porcentaje determinístico para rollout shadow.
+  - [`031-human-follow-up-opt-out-retention.md`](decisions/031-human-follow-up-opt-out-retention.md): derivación humana, supresión y limpieza operativa.
 
 ## Calidad y operación
 

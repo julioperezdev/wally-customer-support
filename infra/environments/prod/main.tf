@@ -82,6 +82,12 @@ locals {
     "wcs.conversation.preferences.ttl"                       = "PT24H"
     "wcs.conversation.preferences.max-preferences"           = 5
     "wcs.conversation.preferences.max-value-characters"      = 64
+    "wcs.conversation.retention.enabled"                     = false
+    "wcs.conversation.retention.content-retention"           = "PT720H"
+    "wcs.conversation.retention.metadata-retention"          = "PT2160H"
+    "wcs.conversation.retention.aggregate-metrics-retention" = "PT8760H"
+    "wcs.conversation.retention.cleanup-batch-size"          = 500
+    "wcs.conversation.retention.schedule-delay-ms"           = 86400000
     "wcs.external-config.secrets-manager.database-secret-id" = module.database_secrets.secret_name
     "wcs.external-config.secrets-manager.whatsapp-secret-id" = module.whatsapp_secrets.secret_name
     "wcs.external-config.secrets-manager.telegram-secret-id" = module.telegram_secrets.secret_name
