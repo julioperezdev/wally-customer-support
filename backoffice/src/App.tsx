@@ -335,7 +335,7 @@ export function App() {
         <div className="section-heading">
           <div>
             <h2>Conexión</h2>
-            <p>El control plane permanece cerrado si el backend no tiene JWT habilitado.</p>
+            <p>El backend requiere un token temporal de preview o un JWT autorizado; el panel nunca persiste el token.</p>
           </div>
           <span className="security-note">Sin secretos en el build</span>
         </div>
