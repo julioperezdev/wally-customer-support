@@ -37,7 +37,7 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
         this(
                 converseClient,
                 objectMapper,
-                new AiPromptProperties("conversation-intent-v1", 1_024, BigDecimal.ZERO, 2_000, 12),
+                new AiPromptProperties("conversation-intent-v2", 1_024, BigDecimal.ZERO, 2_000, 12),
                 new ClasspathPromptRegistry());
     }
 

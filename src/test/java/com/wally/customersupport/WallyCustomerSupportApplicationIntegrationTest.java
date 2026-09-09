@@ -49,6 +49,9 @@ import com.wally.customersupport.conversation.domain.model.ConversationSummary;
 import com.wally.customersupport.conversation.domain.model.ConversationStatus;
 import com.wally.customersupport.conversation.domain.model.InboundMessageCommand;
 import com.wally.customersupport.conversation.domain.model.InboundMessageResult;
+import com.wally.customersupport.conversation.domain.model.Message;
+import com.wally.customersupport.conversation.domain.model.MessageDirection;
+import com.wally.customersupport.conversation.domain.model.MessageType;
 import com.wally.customersupport.conversation.domain.model.ProcessingAttempt;
 import com.wally.customersupport.conversation.infrastructure.repository.postgres.ConversationMemoryJpaEntity;
 import com.wally.customersupport.conversation.infrastructure.repository.postgres.SpringDataConversationMemoryRepository;
@@ -166,6 +169,34 @@ class WallyCustomerSupportApplicationIntegrationTest {
 
         assertEquals(1, processingAttemptRepository.findDue(
                 now.plusSeconds(3), 20, Duration.ofMinutes(5)).size());
+    }
+
+    @Test
+    void loadsOnlyInboundMessagesWhenRebuildingCatalogContext() {
+        Instant now = Instant.now();
+        UUID conversationId = UUID.randomUUID();
+        conversationRepository.save(new Conversation(
+                conversationId,
+                Channel.TELEGRAM,
+                "context-chat-" + conversationId,
+                "context-customer",
+                ConversationStatus.OPEN,
+                now,
+                now));
+
+        messageRepository.save(new Message(
+                UUID.randomUUID(), conversationId, Channel.TELEGRAM, "inbound-old-" + conversationId,
+                MessageDirection.INBOUND, MessageType.TEXT, "Mejor un buzo", now, now));
+        messageRepository.save(new Message(
+                UUID.randomUUID(), conversationId, Channel.TELEGRAM, "outbound-old-" + conversationId,
+                MessageDirection.OUTBOUND, MessageType.TEXT, "Encontré estos productos", now.plusSeconds(1), now));
+        messageRepository.save(new Message(
+                UUID.randomUUID(), conversationId, Channel.TELEGRAM, "inbound-new-" + conversationId,
+                MessageDirection.INBOUND, MessageType.TEXT, "¿Qué opciones tienen?", now.plusSeconds(2), now));
+
+        assertEquals(
+                List.of("¿Qué opciones tienen?", "Mejor un buzo"),
+                messageRepository.findRecentBodies(conversationId, 20));
     }
 
     @Test

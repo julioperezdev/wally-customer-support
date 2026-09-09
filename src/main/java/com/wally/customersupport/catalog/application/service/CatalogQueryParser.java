@@ -37,10 +37,22 @@ public final class CatalogQueryParser {
             Pattern.CASE_INSENSITIVE);
     private static final Pattern REFINEMENT_MARKER = Pattern.compile(
             "\\b(que|sea|tambien|también|ahora|solo|sólo|pero|mejor|tipo)\\b");
+    private static final Pattern CONTINUATION_MARKER = Pattern.compile(
+            "\\b(opcion|opciones|alternativa|alternativas|mostrame|muestrame|mostrar|"
+                    + "anterior|anteriores|eso|esa|esas|asi|algo asi)\\b");
+    private static final Pattern SHIPPING_MARKER = Pattern.compile(
+            "\\b(envio|envios|entrega|despacho)\\b");
+    private static final Pattern UNSUPPORTED_CATALOG_CATEGORY = Pattern.compile(
+            "\\b(gorra|gorras|zapatilla|zapatillas|zapato|zapatos|pantalon|pantalones|"
+                    + "camisa|camisas|short|shorts|accesorio|accesorios|bufanda|bufandas|"
+                    + "media|medias)\\b");
     private static final Pattern CATALOG_MARKER = Pattern.compile(
             "\\b(remera|remeras|buzo|buzos|campera|camperas|producto|productos|catalogo|stock|disponible|"
                     + "disponibilidad|talle|tamano|size|sku|precio|precios|cuesta|cueste|color|barato|barata|"
-                    + "caro|cara|menos|mas|hasta|debajo|encima|entre)\\b");
+                    + "caro|cara|menos|mas|hasta|debajo|encima|entre|"
+                    + "gorra|gorras|zapatilla|zapatillas|zapato|zapatos|pantalon|pantalones|"
+                    + "camisa|camisas|short|shorts|accesorio|accesorios|bufanda|bufandas|"
+                    + "media|medias)\\b");
     private static final Pattern AVAILABILITY_FOLLOW_UP = Pattern.compile(
             "\\b(disponible|disponibilidad|hay stock|tiene stock)\\b");
     private static final Pattern PRICE_FOLLOW_UP = Pattern.compile(
@@ -56,7 +68,9 @@ public final class CatalogQueryParser {
                     + "disponibilidad|precio|precios|color|talle|tamano|size|sku|productos?|catalogo|algo|"
                     + "alguna|alguno|que|qué|sea|estilo|mi|ahora|solo|sólo|tambien|también|mejor|tipo|"
                     + "cuesta|cueste|menos|mas|barato|barata|caro|cara|hasta|debajo|encima|entre|"
-                    + "pesos?|ars)\\b");
+                    + "opcion|opciones|alternativa|alternativas|mostrame|muestrame|mostrar|anterior|"
+                    + "anteriores|eso|esa|esas|asi|algo|y|como|hace|hacen|se|envio|envios|entrega|"
+                    + "despacho|pesos?|ars)\\b");
 
     private CatalogQueryParser() {
     }
@@ -109,10 +123,15 @@ public final class CatalogQueryParser {
             return Optional.empty();
         }
         List<String> boundedHistory = recentMessages == null ? List.of() : recentMessages;
-        if (!looksLikeCatalogTurn(latestMessage)) {
+        boolean continuation = isContextualContinuation(latestMessage);
+        if (!looksLikeCatalogTurn(latestMessage) && !continuation) {
             return Optional.empty();
         }
         Optional<CatalogQuery> latestQuery = parse(latestMessage).or(() -> parseRefinement(latestMessage));
+        if (latestQuery.isEmpty()
+                && (continuation || followUpKind(latestMessage) != FollowUpKind.NONE)) {
+            latestQuery = Optional.of(CatalogQuery.empty());
+        }
         if (latestQuery.isEmpty()) {
             return Optional.empty();
         }
@@ -130,6 +149,27 @@ public final class CatalogQueryParser {
             activeQuery = activeQuery == null ? latestQuery.get() : activeQuery.merge(latestQuery.get());
         }
         return Optional.ofNullable(activeQuery);
+    }
+
+    public static boolean isContextualContinuation(String message) {
+        if (message == null || message.isBlank()) {
+            return false;
+        }
+        return CONTINUATION_MARKER.matcher(normalize(message)).find();
+    }
+
+    public static boolean isShippingQuestion(String message) {
+        if (message == null || message.isBlank()) {
+            return false;
+        }
+        return SHIPPING_MARKER.matcher(normalize(message)).find();
+    }
+
+    public static boolean isUnsupportedCatalogCategory(String message) {
+        if (message == null || message.isBlank()) {
+            return false;
+        }
+        return UNSUPPORTED_CATALOG_CATEGORY.matcher(normalize(message)).find();
     }
 
     public static FollowUpKind followUpKind(String message) {

@@ -81,7 +81,8 @@ selecciona con `wcs.ai.prompt.intent-version`, pero el valor sólo puede resolve
 un archivo incluido en el artefacto; no se acepta prompt arbitrario desde
 requests, AppConfig como texto libre ni el usuario final.
 
-La primera versión es `conversation-intent-v1.system.md`. Al iniciar una
+Las versiones aprobadas incluyen `conversation-intent-v1.system.md` y
+`conversation-intent-v2.system.md`. La versión activa de esta iteración es v2. Al iniciar una
 clasificación, WCS calcula un SHA-256 del contenido y registra únicamente
 `promptVersion` y `promptHash` junto con el evento `AI_USAGE_RECORDED`. El
 contenido, el mensaje y la respuesta no se registran. Para publicar una nueva
@@ -166,7 +167,7 @@ los filtros y ejecuta el caso de uso. Una respuesta malformada o una intención
 con baja confianza nunca habilita una búsqueda sin filtros ni una operación
 sensible.
 
-El prompt de clasificación está versionado como `conversation-intent-v1` y el
+El prompt de clasificación está versionado como `conversation-intent-v2` y el
 texto del cliente se envía como datos delimitados y acotados. El modelo real es
 `openai.gpt-oss-20b-1:0`, seleccionado por `wcs.ai.model`.
 GPT-OSS puede emitir un bloque de razonamiento antes del resultado final; por
@@ -199,6 +200,27 @@ persistencia equivalente.
 Las preguntas documentales pasan por `KnowledgeRetriever`; las preguntas
 dinámicas pasan por tools de aplicación. Una pregunta mixta puede combinar
 ambos caminos antes de redactar la respuesta final.
+
+### Continuidad y consultas compuestas del catálogo
+
+El contexto de catálogo se conserva como filtros estructurados y no como una verdad
+generada por el modelo. Seguimientos como `qué opciones tienen`, `mostrame
+alternativas` o `de lo anterior` reutilizan el último filtro activo y sólo lo
+reemplazan cuando el cliente expresa un cambio de tipo, nombre, talle, color o
+precio. La ventana de mensajes usada para reconstruir ese estado contiene sólo
+mensajes inbound; las respuestas del bot no se vuelven a interpretar como
+consultas del cliente.
+
+Una consulta mixta acotada, como `cuánto cuesta y cómo se hace el envío`, se
+resuelve en dos componentes: el precio se vuelve a consultar en PostgreSQL y
+la información de envío se obtiene de la política publicada. La respuesta se
+compone después de obtener ambas fuentes. Si no existe un producto activo, se
+responde sólo con la política o se solicita una identificación más precisa.
+
+Las categorías que no existen en el catálogo, por ejemplo gorras o zapatillas,
+se tratan como una búsqueda de catálogo sin coincidencias. El fallback es único
+y seguro: no confirma disponibilidad y sólo ofrece alternativas que realmente
+fueron retornadas por PostgreSQL.
 
 Una consulta general de catálogo, por ejemplo `¿Qué productos tienen?`, se
 resuelve como `search_catalog` sin filtros y devuelve una lista acotada de

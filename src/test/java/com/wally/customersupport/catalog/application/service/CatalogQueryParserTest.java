@@ -52,6 +52,17 @@ class CatalogQueryParserTest {
     }
 
     @Test
+    void preservesActiveProductForAvailabilityFollowUp() {
+        CatalogQuery query = CatalogQueryParser.parseConversation(
+                List.of("Busco una remera negra talle M"),
+                "¿Está disponible?").orElseThrow();
+
+        assertEquals("remera", query.productType());
+        assertEquals("negro", query.color());
+        assertEquals("m", query.size());
+    }
+
+    @Test
     void extractsMaximumPriceWithoutPollutingTheProductName() {
         CatalogQuery query = CatalogQueryParser.parse(
                 "Busco una remera negra talle M que cueste menos de 20.000 pesos").orElseThrow();
@@ -74,5 +85,32 @@ class CatalogQueryParserTest {
         assertEquals("negro", query.color());
         assertEquals(new BigDecimal("30000"), query.minPrice());
         assertEquals(new BigDecimal("45000"), query.maxPrice());
+    }
+
+    @Test
+    void preservesActiveProductTypeForOptionsContinuation() {
+        CatalogQuery query = CatalogQueryParser.parseConversation(
+                List.of("Mejor un buzo"),
+                "¿Qué opciones tienen?").orElseThrow();
+
+        assertEquals("buzo", query.productType());
+    }
+
+    @Test
+    void treatsUnsupportedStoreCategoryAsCatalogDataWithoutInventingAvailability() {
+        CatalogQuery query = CatalogQueryParser.parse("¿Venden gorras?").orElseThrow();
+
+        assertEquals("gorras", query.name());
+        assertTrue(CatalogQueryParser.isUnsupportedCatalogCategory("¿Venden gorras?"));
+    }
+
+    @Test
+    void recognizesShippingAndRemovesShippingWordsFromCatalogName() {
+        CatalogQuery query = CatalogQueryParser.parse(
+                "¿Cuánto cuesta el buzo y cómo se hace el envío?").orElseThrow();
+
+        assertEquals("buzo", query.productType());
+        assertNull(query.name());
+        assertTrue(CatalogQueryParser.isShippingQuestion("¿Cuánto cuesta y cómo se hace el envío?"));
     }
 }

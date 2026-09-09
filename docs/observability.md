@@ -50,6 +50,7 @@ operacional necesario para diagnóstico y costo, pero sin contenido de negocio.
 | `INBOUND_MESSAGE_FAILED` | `result`, `attempt`, `durationMs`, `errorType`, `correlationId` | Intentos agotados; se encola fallback seguro |
 | `INTENT_CLASSIFIED` | `intent`, `confidence`, `durationMs` | Clasificación del orquestador |
 | `INTENT_CLASSIFICATION_FAILED` | `errorType`, `durationMs` | Fallo del clasificador |
+| `INTENT_COMPOSED` | `primaryIntent`, `secondaryIntent`, `components`, `result` | Consulta acotada que combina catálogo con una política publicada |
 | `AGENT_ACTIVATION_RESOLUTION_SKIPPED` | `useCase`, `reason` | Registry no consultado porque la flag está deshabilitada |
 | `AGENT_ACTIVATION_RESOLVED` | `useCase`, `channel`, `activationStatus`, `activationReason`, `agentId`, `agentVersion` | Activación seleccionada o fallback sanitizado |
 | `AGENT_ACTIVATION_FALLBACK` | `useCase`, `reason` | No se pudo resolver por falta de canal sin interrumpir la respuesta |
