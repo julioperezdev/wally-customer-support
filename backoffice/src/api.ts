@@ -96,6 +96,77 @@ export type AgentRegistryAgent = {
   activations: AgentRegistryActivation[];
 };
 
+export type BackofficeAgentNode = {
+  agentId: string;
+  version: number;
+  name: string;
+  purpose: string;
+  state: string;
+  status: string;
+  modelProvider: string;
+  modelId: string;
+  createdAt: string;
+  ageDays: number;
+  enabled: boolean;
+  killSwitch: boolean;
+  rolloutPercentage: number;
+  executionCount: number;
+  successCount: number;
+  failureCount: number;
+  successRate: number;
+  averageLatencyMs: number | null;
+  totalTokens: number | null;
+  estimatedCostUsd: number | null;
+  fallbackAgentId: string | null;
+  allowedTools: string[];
+  knowledgeSources: string[];
+  metricsSource: string;
+};
+
+export type BackofficeAgentEdge = {
+  source: string;
+  relation: string;
+  target: string;
+};
+
+export type BackofficeUseCaseMap = {
+  environment: string;
+  channel: string | null;
+  useCase: string;
+  agents: BackofficeAgentNode[];
+  edges: BackofficeAgentEdge[];
+};
+
+export type BackofficeAgentMap = {
+  generatedAt: string;
+  filters: {
+    environment: string;
+    channel: string | null;
+    useCase: string | null;
+    agentId: string | null;
+  };
+  useCases: BackofficeUseCaseMap[];
+  evidenceRunsScanned: number;
+  evidenceTruncated: boolean;
+};
+
+export type BackofficeAgentMapSimulation = {
+  environment: string;
+  channel: string;
+  useCase: string;
+  disabledAgentId: string;
+  disabledVersion: number | null;
+  changed: boolean;
+  outcome: "FALLBACK_AGENT" | "HUMAN_REQUIRED" | "NO_CHANGE" | string;
+  reason: string;
+  route: Array<{
+    kind: string;
+    agentId: string | null;
+    version: number | null;
+    reason: string;
+  }>;
+};
+
 export type AgentActivationPreflightCheck = {
   code: string;
   status: "PASS" | "WARN" | "FAIL";
@@ -197,9 +268,15 @@ export class ControlPlaneError extends Error {
   }
 }
 
-export function createControlPlaneClient(baseUrl: string, token: string, registryBaseUrl = "/internal/agent-registry") {
+export function createControlPlaneClient(
+  baseUrl: string,
+  token: string,
+  registryBaseUrl = "/internal/agent-registry",
+  agentMapBaseUrl = "/internal/backoffice/agent-map"
+) {
   const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
   const normalizedRegistryBaseUrl = registryBaseUrl.replace(/\/+$/, "");
+  const normalizedAgentMapBaseUrl = agentMapBaseUrl.replace(/\/+$/, "");
 
   async function request<T>(path: string): Promise<T> {
     const headers: Record<string, string> = { Accept: "application/json" };
@@ -265,6 +342,41 @@ export function createControlPlaneClient(baseUrl: string, token: string, registr
       return requestFrom<AgentActivationPreflight>(
         normalizedRegistryBaseUrl,
         "/activations/preflight",
+        {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            ...(token.trim() ? { Authorization: `Bearer ${token.trim()}` } : {})
+          },
+          body: JSON.stringify(request)
+        });
+    },
+    getAgentMap(filters: {
+      environment?: string;
+      channel?: string;
+      useCase?: string;
+      agentId?: string;
+    } = {}) {
+      const params = new URLSearchParams();
+      params.set("environment", filters.environment?.trim() || "prod");
+      if (filters.channel?.trim()) params.set("channel", filters.channel.trim());
+      if (filters.useCase?.trim()) params.set("useCase", filters.useCase.trim());
+      if (filters.agentId?.trim()) params.set("agentId", filters.agentId.trim());
+      return requestFrom<BackofficeAgentMap>(
+        normalizedAgentMapBaseUrl,
+        `?${params.toString()}`);
+    },
+    simulateAgentMap(request: {
+      environment: string;
+      channel: string;
+      useCase: string;
+      disabledAgentId: string;
+      disabledVersion?: number | null;
+    }) {
+      return requestFrom<BackofficeAgentMapSimulation>(
+        normalizedAgentMapBaseUrl,
+        "/simulations",
         {
           method: "POST",
           headers: {

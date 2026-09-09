@@ -79,6 +79,34 @@ describe("control plane client", () => {
       }
     );
   });
+
+  it("loads the agent map and simulates a route without mutating activations", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ useCases: [], evidenceRunsScanned: 0 }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ outcome: "HUMAN_REQUIRED", route: [] }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = createControlPlaneClient("/internal/agent-evaluations", "session-token");
+    await client.getAgentMap({ environment: "prod", channel: "telegram", useCase: "catalog-search" });
+    await client.simulateAgentMap({
+      environment: "prod",
+      channel: "telegram",
+      useCase: "catalog-search",
+      disabledAgentId: "catalog-specialist",
+      disabledVersion: 1
+    });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "/internal/backoffice/agent-map?environment=prod&channel=telegram&useCase=catalog-search",
+      { headers: { Accept: "application/json", Authorization: "Bearer session-token" } }
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "/internal/backoffice/agent-map/simulations",
+      expect.objectContaining({ method: "POST", body: expect.stringContaining("catalog-specialist") })
+    );
+  });
 });
 
 describe("backoffice client", () => {

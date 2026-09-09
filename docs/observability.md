@@ -116,6 +116,13 @@ entrega el dato; el panel no convierte ausencia en cero ni calcula una tarifa
 inventada. La UI tampoco consulta CloudWatch directamente: esa observabilidad
 continúa en Grafana y el panel sólo muestra evidencia de evaluación autorizada.
 
+El mapa de agentes de WCS-120 agrega una vista operativa de esa evidencia por
+`agentId` y versión: cantidad de runs, éxito/fallo, duración promedio, tokens y
+costo acumulado cuando están disponibles. Se limita a 100 runs por consulta y
+marca el resultado con `evidenceTruncated` si hay más historia. Esta métrica no
+se presenta como conteo de conversaciones productivas; para eso se requiere el
+store de trazas de runtime previsto para una fase posterior.
+
 Las evaluaciones offline emiten un evento agregado al finalizar cada run. El
 `runId` es un identificador interno, mientras que `datasetVersion` y la
 identidad del agente/modelo permiten agrupar resultados comparables. El runner

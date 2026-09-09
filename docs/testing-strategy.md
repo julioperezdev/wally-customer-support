@@ -325,3 +325,17 @@ No alcanza con que compile. Para aceptar el MVP:
   escalamiento. También se verifica que los límites configurados sean acotados
   por el backend y que `AI_USAGE_RECORDED` registre sólo versión/hash, modelo y
   métricas operativas, nunca prompt, respuesta o PII.
+
+### Mapa de agentes y simulación
+
+- `TC-055`: el mapa filtra por ambiente, canal y caso de uso, devuelve sólo
+  metadata sanitizada y expone relaciones hacia tools, Knowledge Bases y
+  fallback/humano.
+- `TC-056`: el mapa agrega los runs de evaluación por agente y versión,
+  conserva `null` cuando faltan tokens o costo y marca la evidencia truncada
+  cuando supera los 100 runs.
+- `TC-057`: una simulación con agente activo y fallback compatible devuelve
+  `FALLBACK_AGENT`; una sin fallback devuelve `HUMAN_REQUIRED`; el registry no
+  cambia en ninguno de los dos casos.
+- `TC-058`: un actor ausente o sin `agent-registry.read` recibe `403` sin
+  metadata del mapa ni del fallback.

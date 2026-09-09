@@ -3,10 +3,10 @@
 Estado: `Accepted / In progress`  
 Épica: [WCS-118](https://julioperezdev.atlassian.net/browse/WCS-118)
 
-La primera entrega de implementación se concentra en WCS-119 para validar el
-vertical completo con un único PR: consulta operativa, stock auditado, media
-desacoplada y ownership de seguimientos. La autorización productiva, el mapa
-de agentes y los feature flags de negocio permanecen en los slices siguientes.
+La primera entrega de implementación se concentra en WCS-119 y WCS-120 para
+validar dos verticales amplios: operación de tienda y lectura de la plataforma
+de agentes. La autorización productiva y los feature flags de negocio
+permanecen en los slices siguientes.
 
 Este documento define el MVP del backoffice operativo de WCS. La entrega se
 organiza en cuatro slices grandes para reducir la fricción de múltiples PR
@@ -82,6 +82,12 @@ caso de uso
 Cada nodo muestra agente, versión, estado, antigüedad, ejecuciones, latencia,
 tokens, costo estimado, tasa de éxito y fallback. La simulación de una
 desactivación debe mostrar la ruta alternativa antes de modificar nada.
+
+WCS-120 implementa esta vista con el registry y los runs de evaluación
+sanitizados. Hasta que exista un store de trazas de runtime, las ejecuciones
+mostradas son runs de evaluación y la UI lo identifica explícitamente. La
+simulación produce `FALLBACK_AGENT`, `HUMAN_REQUIRED` o `NO_CHANGE` y no
+persiste cambios.
 
 ### Feature flags
 
