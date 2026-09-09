@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  BackofficeAgentMap,
+  BackofficeAgentMapSimulation,
   AgentRegistryAgent,
   AgentActivationPreflight,
   BackofficeCatalogProduct,
@@ -17,6 +19,7 @@ import {
 const DEFAULT_BASE_URL = import.meta.env.VITE_WCS_CONTROL_PLANE_BASE_URL ?? "/internal/agent-evaluations";
 const DEFAULT_REGISTRY_BASE_URL = import.meta.env.VITE_WCS_AGENT_REGISTRY_BASE_URL ?? "/internal/agent-registry";
 const DEFAULT_BACKOFFICE_BASE_URL = import.meta.env.VITE_WCS_BACKOFFICE_BASE_URL ?? "/internal/backoffice";
+const DEFAULT_AGENT_MAP_BASE_URL = import.meta.env.VITE_WCS_AGENT_MAP_BASE_URL ?? "/internal/backoffice/agent-map";
 
 export function App() {
   const [baseUrl, setBaseUrl] = useState(DEFAULT_BASE_URL);
@@ -37,6 +40,16 @@ export function App() {
   const [registryBusy, setRegistryBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [registryError, setRegistryError] = useState<string | null>(null);
+  const [agentMap, setAgentMap] = useState<BackofficeAgentMap | null>(null);
+  const [agentMapError, setAgentMapError] = useState<string | null>(null);
+  const [agentMapBusy, setAgentMapBusy] = useState(false);
+  const [mapEnvironment, setMapEnvironment] = useState("prod");
+  const [mapChannel, setMapChannel] = useState("telegram");
+  const [mapUseCase, setMapUseCase] = useState("");
+  const [mapAgentId, setMapAgentId] = useState("");
+  const [simulation, setSimulation] = useState<BackofficeAgentMapSimulation | null>(null);
+  const [simulationAgentId, setSimulationAgentId] = useState("");
+  const [simulationVersion, setSimulationVersion] = useState("");
   const [preflight, setPreflight] = useState<AgentActivationPreflight | null>(null);
   const [preflightBusy, setPreflightBusy] = useState(false);
   const [preflightError, setPreflightError] = useState<string | null>(null);
@@ -59,7 +72,7 @@ export function App() {
   const [storeBusy, setStoreBusy] = useState(false);
   const [storeActor, setStoreActor] = useState("local-operator");
 
-  const client = useMemo(() => createControlPlaneClient(baseUrl, token, DEFAULT_REGISTRY_BASE_URL), [baseUrl, token]);
+  const client = useMemo(() => createControlPlaneClient(baseUrl, token, DEFAULT_REGISTRY_BASE_URL, DEFAULT_AGENT_MAP_BASE_URL), [baseUrl, token]);
   const backofficeClient = useMemo(() => createBackofficeClient(DEFAULT_BACKOFFICE_BASE_URL, token), [token]);
 
   async function loadRuns(nextPage = 0) {
@@ -152,6 +165,54 @@ export function App() {
     }
   }
 
+  async function loadAgentMap() {
+    setAgentMapBusy(true);
+    setAgentMapError(null);
+    try {
+      const result = await client.getAgentMap({
+        environment: mapEnvironment,
+        channel: mapChannel,
+        useCase: mapUseCase,
+        agentId: mapAgentId
+      });
+      setAgentMap(result);
+      const firstAgent = result.useCases[0]?.agents[0];
+      if (firstAgent && !simulationAgentId) setSimulationAgentId(firstAgent.agentId);
+      if (firstAgent && !simulationVersion) setSimulationVersion(String(firstAgent.version));
+    } catch (cause) {
+      setAgentMapError(toUserMessage(cause));
+    } finally {
+      setAgentMapBusy(false);
+    }
+  }
+
+  async function simulateAgentMap() {
+    if (!mapUseCase.trim() || !simulationAgentId.trim()) {
+      setAgentMapError("Para simular indicá el caso de uso y el agentId.");
+      return;
+    }
+    const version = simulationVersion.trim() ? Number.parseInt(simulationVersion, 10) : null;
+    if (simulationVersion.trim() && !Number.isInteger(version)) {
+      setAgentMapError("La versión a simular debe ser un número.");
+      return;
+    }
+    setAgentMapBusy(true);
+    setAgentMapError(null);
+    try {
+      setSimulation(await client.simulateAgentMap({
+        environment: mapEnvironment,
+        channel: mapChannel,
+        useCase: mapUseCase,
+        disabledAgentId: simulationAgentId,
+        disabledVersion: version
+      }));
+    } catch (cause) {
+      setAgentMapError(toUserMessage(cause));
+    } finally {
+      setAgentMapBusy(false);
+    }
+  }
+
   async function loadStore() {
     setStoreBusy(true);
     setCatalogError(null);
@@ -206,6 +267,7 @@ export function App() {
   useEffect(() => {
     void loadRuns();
     void loadRegistry();
+    void loadAgentMap();
     void loadStore();
     // The first load is intentionally tied to the initial client only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -279,6 +341,22 @@ export function App() {
           <button onClick={() => void loadRegistry()} disabled={registryBusy}>Filtrar</button>
         </div>
         <AgentRegistryView agents={registryAgents} />
+      </section>
+
+      <section className="card">
+        <div className="section-heading">
+          <div><h2>Mapa de casos de uso</h2><p>Ruta read-only: caso de uso → agentes → tools/Knowledge Base → fallback o humano.</p></div>
+          <span className="security-note">SIN MUTACIÓN</span>
+        </div>
+        <div className="filters registry-filters">
+          <input aria-label="Ambiente del mapa" placeholder="environment" value={mapEnvironment} onChange={(event) => setMapEnvironment(event.target.value)} />
+          <input aria-label="Canal del mapa" placeholder="channel" value={mapChannel} onChange={(event) => setMapChannel(event.target.value)} />
+          <input aria-label="Caso de uso del mapa" placeholder="useCase (opcional)" value={mapUseCase} onChange={(event) => setMapUseCase(event.target.value)} />
+          <input aria-label="Agente del mapa" placeholder="agentId (opcional)" value={mapAgentId} onChange={(event) => setMapAgentId(event.target.value)} />
+          <button onClick={() => void loadAgentMap()} disabled={agentMapBusy}>Actualizar mapa</button>
+        </div>
+        {agentMapError && <div className="alert" role="alert">Mapa: {agentMapError}</div>}
+        <AgentMapView map={agentMap} simulation={simulation} simulationAgentId={simulationAgentId} simulationVersion={simulationVersion} onAgentChange={setSimulationAgentId} onVersionChange={setSimulationVersion} onSimulate={() => void simulateAgentMap()} disabled={agentMapBusy} />
       </section>
 
       <section className="card">
@@ -373,6 +451,52 @@ function AgentRegistryView({ agents }: { agents: AgentRegistryAgent[] | null }) 
     <h4>Activaciones</h4>
     {agent.activations.length === 0 ? <p className="muted">Sin activaciones registradas.</p> : <div className="activation-list">{agent.activations.map((activation, index) => <div className="activation" key={`${activation.activatedAt}-${index}`}><span><strong>{activation.environment}</strong> · {activation.channel} · {activation.useCase}</span><span>{activation.enabled && !activation.killSwitch ? `${activation.rolloutPercentage}% activa` : "kill switch / inactiva"}<small>{activation.reason}</small></span></div>)}</div>}
   </article>)}</div>;
+}
+
+function AgentMapView({
+  map,
+  simulation,
+  simulationAgentId,
+  simulationVersion,
+  onAgentChange,
+  onVersionChange,
+  onSimulate,
+  disabled
+}: {
+  map: BackofficeAgentMap | null;
+  simulation: BackofficeAgentMapSimulation | null;
+  simulationAgentId: string;
+  simulationVersion: string;
+  onAgentChange: (value: string) => void;
+  onVersionChange: (value: string) => void;
+  onSimulate: () => void;
+  disabled: boolean;
+}) {
+  if (!map) return <p className="muted">El mapa no está disponible todavía.</p>;
+  return <div className="agent-map">
+    <div className="map-meta">
+      <span>{map.useCases.length} casos de uso</span>
+      <span>{map.evidenceRunsScanned} runs de evidencia agregados</span>
+      {map.evidenceTruncated && <span className="warning">Evidencia limitada a la primera página</span>}
+    </div>
+    {map.useCases.length === 0 ? <p className="muted">No hay activaciones para los filtros seleccionados.</p> : map.useCases.map((useCase) => <article className="use-case-map" key={`${useCase.environment}-${useCase.channel}-${useCase.useCase}`}>
+      <div className="section-heading"><div><h3>{useCase.useCase}</h3><p className="muted">{useCase.environment} · {useCase.channel ?? "todos los canales"}</p></div><span className="security-note">{useCase.agents.length} agentes</span></div>
+      <div className="agent-map-grid">{useCase.agents.map((agent) => <div className="agent-node" key={`${agent.agentId}-${agent.version}`}>
+        <div className="section-heading"><div><h4>{agent.agentId} · v{agent.version}</h4><p className="muted">{agent.name}</p></div><span className={agent.status === "ACTIVE" ? "positive status-label" : "warning status-label"}>{agent.status}</span></div>
+        <p className="muted">{agent.modelProvider} / {agent.modelId}</p>
+        <div className="metric-row"><Metric label="Ejecuciones" value={String(agent.executionCount)} /><Metric label="Éxito" value={formatPercent(agent.successRate)} /><Metric label="Latencia" value={formatMs(agent.averageLatencyMs)} /></div>
+        <div className="node-details"><span>Edad: {agent.ageDays} días</span><span>Tokens: {agent.totalTokens ?? "—"}</span><span>Costo: {agent.estimatedCostUsd == null ? "—" : agent.estimatedCostUsd.toFixed(6)} USD</span><span>Fallback: {agent.fallbackAgentId ?? "humano"}</span></div>
+        <div className="node-tags">{agent.allowedTools.map((tool) => <span key={`tool-${tool}`}>tool:{tool}</span>)}{agent.knowledgeSources.map((source) => <span key={`kb-${source}`}>kb:{source}</span>)}</div>
+      </div>)}</div>
+      <details><summary>Relaciones del flujo</summary><div className="relation-list">{useCase.edges.map((edge, index) => <span key={`${edge.source}-${edge.relation}-${edge.target}-${index}`}>{edge.source} <strong>{edge.relation}</strong> {edge.target}</span>)}</div></details>
+    </article>)}
+    <div className="simulation-box">
+      <div className="section-heading"><div><h3>Simular desactivación</h3><p className="muted">No escribe activaciones ni cambia feature flags.</p></div><span className="security-note">PREVIEW</span></div>
+      <div className="form-grid"><label>Agente<input value={simulationAgentId} onChange={(event) => onAgentChange(event.target.value)} /></label><label>Versión (opcional)<input inputMode="numeric" value={simulationVersion} onChange={(event) => onVersionChange(event.target.value)} /></label></div>
+      <button className="primary" onClick={onSimulate} disabled={disabled}>Simular ruta</button>
+      {simulation && <div className="simulation-result"><div className="section-heading"><strong>{simulation.outcome}</strong><span className={simulation.changed ? "warning status-label" : "positive status-label"}>{simulation.changed ? "CAMBIARÍA" : "SIN CAMBIOS"}</span></div><p>{simulation.reason}</p><div className="relation-list">{simulation.route.map((step, index) => <span key={`${step.kind}-${index}`}>{step.kind}: {step.agentId ?? "humano"}{step.version ? ` v${step.version}` : ""} · {step.reason}</span>)}</div></div>}
+    </div>
+  </div>;
 }
 
 function PreflightView({ result }: { result: AgentActivationPreflight }) {

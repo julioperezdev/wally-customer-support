@@ -83,7 +83,10 @@ public class AgentEvaluationControlPlaneSecurityConfiguration {
             havingValue = "true")
     SecurityFilterChain agentEvaluationControlPlaneSecurityFilterChain(HttpSecurity http) throws Exception {
         http
-                .securityMatcher("/internal/agent-evaluations/**", "/internal/agent-registry/**")
+                .securityMatcher(
+                        "/internal/agent-evaluations/**",
+                        "/internal/agent-registry/**",
+                        "/internal/backoffice/agent-map/**")
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.POST, "/internal/agent-evaluations/runs")
@@ -96,6 +99,10 @@ public class AgentEvaluationControlPlaneSecurityConfiguration {
                         .hasAuthority(REGISTRY_READ_AUTHORITY)
                         .requestMatchers(HttpMethod.POST, "/internal/agent-registry/activations/**")
                         .hasAuthority(REGISTRY_WRITE_AUTHORITY)
+                        .requestMatchers(HttpMethod.GET, "/internal/backoffice/agent-map/**")
+                        .hasAuthority(REGISTRY_READ_AUTHORITY)
+                        .requestMatchers(HttpMethod.POST, "/internal/backoffice/agent-map/simulations")
+                        .hasAuthority(REGISTRY_READ_AUTHORITY)
                         .anyRequest().denyAll())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
         return http.build();

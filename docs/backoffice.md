@@ -36,6 +36,34 @@ la transición válida del owner. Las imágenes admitidas son JPEG, PNG y WebP,
 con máximo de 5 MB y URL válida durante 10 minutos. S3 permanece deshabilitado
 hasta configurar bucket y rol.
 
+## Mapa de agentes — WCS-120
+
+El panel incorpora una proyección read-only del mapa de ejecución y una
+simulación de desactivación. Los endpoints están protegidos por la capacidad
+`agent-registry.read` y no mutan activaciones, AppConfig ni PostgreSQL:
+
+| Endpoint | Propósito |
+| --- | --- |
+| `GET /internal/backoffice/agent-map` | Casos de uso, agentes, versiones, tools, Knowledge Bases, fallback y métricas agregadas |
+| `POST /internal/backoffice/agent-map/simulations` | Simula desactivar un agente y devuelve fallback compatible, handoff humano o ausencia de cambio |
+
+Los filtros son `environment`, `channel`, `useCase` y `agentId`. La respuesta
+agrupa cada caso de uso y expone relaciones `ROUTES_TO`, `USES_TOOL`,
+`USES_KNOWLEDGE_SOURCE`, `FALLBACK_TO` y `HANDOFF_TO_HUMAN`. La simulación es
+explícita y no equivale a un kill switch real.
+
+En esta primera versión, `executionCount`, latencia, tokens, costo y tasa de
+éxito se calculan sobre los runs de evaluación sanitizados persistidos por
+WCS-61. La respuesta declara `metricsSource=EVALUATION_RUNS` y el contador de
+runs inspeccionados; no debe interpretarse como tráfico productivo. Si la
+historia supera la página acotada de 100 runs, `evidenceTruncated=true`. La
+telemetría de runtime productivo se incorporará cuando exista un store de
+trazas de ejecución.
+
+Si el agente activo no tiene fallback compatible, la simulación devuelve
+`HUMAN_REQUIRED`. El sistema no promueve una versión ni cambia el estado de
+ningún agente desde este panel.
+
 Para un smoke local controlado, iniciar el backend con el perfil `local` y las
 dos propiedades de backoffice habilitadas; luego ejecutar `npm run dev` dentro
 de `backoffice`. El proxy de Vite redirige `/internal` a `localhost:8080`; no
@@ -74,6 +102,9 @@ El endpoint del registry se configura de forma independiente con
 `VITE_WCS_AGENT_REGISTRY_BASE_URL`; por defecto es
 `/internal/agent-registry`.
 
+El mapa se configura con `VITE_WCS_AGENT_MAP_BASE_URL`; por defecto es
+`/internal/backoffice/agent-map`.
+
 ```bash
 VITE_WCS_CONTROL_PLANE_BASE_URL=http://localhost:8080/internal/agent-evaluations npm run dev
 ```
@@ -100,6 +131,10 @@ El cliente usa únicamente:
   `environment`, `channel`, `useCase` y un `limit` máximo de 100.
 - `POST /internal/agent-registry/activations/preflight`, que valida una
   solicitud completa sin persistir claims ni activaciones.
+- `GET /internal/backoffice/agent-map`, que proyecta el grafo sanitizado y
+  métricas de evidencia.
+- `POST /internal/backoffice/agent-map/simulations`, que calcula una ruta de
+  fallback sin mutar activaciones.
 
 La lista puede mostrar `totalTokens`, `providerLatencyMs` y
 `estimatedCostUsd` cuando todas las ejecuciones del run tienen esos datos. Si
@@ -124,6 +159,9 @@ no modifica AppConfig y no ejecuta Bedrock.
 La ruta de escritura permanece cerrada por
 `wcs.agent-registry.activation-write-enabled=false`; el runtime también sigue
 cerrado por `wcs.agent-runtime.activation-enabled=false`.
+
+El mapa reutiliza la misma autorización de registry. Un actor ausente o sin
+`agent-registry.read` recibe `403` y no recibe metadata del mapa.
 
 ## Rollback
 
