@@ -1,6 +1,7 @@
 package com.wally.customersupport.backoffice.application.service;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /**
@@ -14,6 +15,7 @@ public class BackofficeAccessService {
     private final boolean localModeEnabled;
     private final String activeProfile;
 
+    @Autowired
     public BackofficeAccessService(
             @Value("${wcs.backoffice.enabled:false}") boolean enabled,
             @Value("${wcs.backoffice.local-mode-enabled:false}") boolean localModeEnabled,
