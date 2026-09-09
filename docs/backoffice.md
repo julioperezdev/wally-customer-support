@@ -140,6 +140,51 @@ El panel no habilita JWT en el backend. Para una prueba autorizada se ingresa
 un token temporal en el campo de sesión; no se agrega un token al `.env`, al
 repositorio ni al pipeline.
 
+### Preview remoto read-only del backend
+
+El preview remoto permite consultar desde el frontend local la información ya
+implementada en WCS contra App Runner, sin habilitar todavía un IdP ni exponer
+operaciones de escritura. Terraform crea el secreto dedicado
+`wcs/prod/backoffice` con un valor placeholder; antes de activar el preview hay
+que reemplazarlo en AWS Secrets Manager por un token aleatorio fuerte con este
+formato:
+
+```json
+{
+  "preview-token": "<token-temporal-fuerte>"
+}
+```
+
+En una instalación nueva, se publica `backoffice_preview_enabled=true` en el
+`terraform.tfvars` del environment de producción y el baseline de AppConfig
+incluye estas claves:
+
+```text
+wcs.backoffice.enabled=true
+wcs.backoffice.preview.enabled=true
+wcs.external-config.secrets-manager.backoffice-secret-id=wcs/prod/backoffice
+```
+
+En el stack existente, Terraform conserva por diseño el contenido y la
+versión desplegada del profile hosted de AppConfig (`ignore_changes`). Por eso,
+además de crear el secret y sus permisos, hay que agregar las tres claves al
+profile `runtime`, publicar una nueva versión y reiniciar App Runner. No se debe
+pegar el token en AppConfig: sólo se guarda la referencia al secret.
+
+La aplicación carga el token desde Secrets Manager al arrancar. En el panel se
+ingresa el mismo token en `Token de sesión (memoria)`. El preview permite sólo
+lecturas de catálogo, bandeja de atención humana, evaluaciones, registry, mapa
+de agentes y feature flags, además de los endpoints no mutantes de preflight y
+simulación de rutas. Ajustes de stock, claims/releases/resolutions, uploads de
+imágenes y publicaciones/rollbacks de flags responden `403`, incluso con el
+token correcto.
+
+Para rollback, volver `backoffice_preview_enabled=false`, aplicar el cambio y
+reiniciar App Runner; como medida inmediata también se puede revocar o rotar el
+valor del secreto. Esta modalidad es temporal: luego se reemplazará por un
+cliente autenticado mediante IdP, sin cambiar los endpoints ni la autorización
+de aplicación.
+
 ## Pipeline
 
 `.github/workflows/frontend.yml` ejecuta `npm ci`, tests y build sólo cuando

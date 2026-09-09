@@ -21,6 +21,7 @@ public record ExternalConfigurationProperties(
             String databaseSecretId,
             String whatsappSecretId,
             String telegramSecretId,
+            String backofficeSecretId,
             boolean enabled,
             boolean failFast) {
     }

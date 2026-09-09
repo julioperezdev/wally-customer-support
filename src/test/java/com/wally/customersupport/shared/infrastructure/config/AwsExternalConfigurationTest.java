@@ -85,7 +85,7 @@ class AwsExternalConfigurationTest {
     }
 
     @Test
-    void resolvesOnlyAllowListedDatabaseAndWhatsAppSecretFields() {
+    void resolvesOnlyAllowListedSecretFields() {
         SecretsManagerClient client = mock(SecretsManagerClient.class);
         when(client.getSecretValue(org.mockito.ArgumentMatchers.<GetSecretValueRequest>any()))
                 .thenReturn(GetSecretValueResponse.builder()
@@ -105,10 +105,16 @@ class AwsExternalConfigurationTest {
                                 {"bot-token":"bot-token-value","webhook-secret-token":"webhook-token-value",
                                  "ignored":"must-not-become-a-property"}
                                 """)
+                        .build())
+                .thenReturn(GetSecretValueResponse.builder()
+                        .secretString("""
+                                {"preview-token":"preview-token-value",
+                                 "ignored":"must-not-become-a-property"}
+                                """)
                         .build());
 
         var properties = new ExternalConfigurationProperties.SecretsManager(
-                null, null, "database-secret", "whatsapp-secret", "telegram-secret", true, true);
+                null, null, "database-secret", "whatsapp-secret", "telegram-secret", "backoffice-secret", true, true);
 
         var loaded = new SecretsManagerConfigurationLoader(client, objectMapper).load(properties);
 
@@ -120,6 +126,7 @@ class AwsExternalConfigurationTest {
                 .containsEntry("wcs.whatsapp.app-secret", "app-value")
                 .containsEntry("wcs.telegram.bot-token", "bot-token-value")
                 .containsEntry("wcs.telegram.webhook-secret-token", "webhook-token-value")
+                .containsEntry("wcs.backoffice.preview.token", "preview-token-value")
                 .doesNotContainKey("ignored");
     }
 }
