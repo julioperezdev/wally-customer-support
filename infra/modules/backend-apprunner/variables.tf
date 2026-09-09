@@ -126,6 +126,12 @@ variable "enable_appconfig_access" {
   default     = true
 }
 
+variable "enable_appconfig_management" {
+  type        = bool
+  description = "Whether the runtime may publish AppConfig hosted versions and deployments. Keep disabled until the protected backoffice writer is enabled."
+  default     = false
+}
+
 variable "ecr_images_to_keep" {
   type        = number
   description = "Number of ECR images retained by lifecycle policy."

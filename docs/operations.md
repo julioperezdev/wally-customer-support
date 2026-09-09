@@ -3,7 +3,7 @@
 Owner: Tech Lead  
 Status: `Accepted`
 Last reviewed: 2026-09-08
-Related Jira: `WCS-13`, `WCS-21`, `WCS-22`, `WCS-30`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-38`, `WCS-39`, `WCS-40`, `WCS-41`, `WCS-42`, `WCS-76`, `WCS-77`, `WCS-78`, `WCS-85`, `WCS-86`, `WCS-87`, `WCS-88`, `WCS-89`, `WCS-90`, `WCS-91`, `WCS-92`, `WCS-93`, `WCS-94`, `WCS-95`, `WCS-96`, `WCS-103`, `WCS-104`, `WCS-105`, `WCS-109`, `WCS-110`, `WCS-111`, `WCS-112`, `WCS-113`, `WCS-114`, `WCS-115`, `WCS-116`
+Related Jira: `WCS-13`, `WCS-21`, `WCS-22`, `WCS-30`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-38`, `WCS-39`, `WCS-40`, `WCS-41`, `WCS-42`, `WCS-76`, `WCS-77`, `WCS-78`, `WCS-85`, `WCS-86`, `WCS-87`, `WCS-88`, `WCS-89`, `WCS-90`, `WCS-91`, `WCS-92`, `WCS-93`, `WCS-94`, `WCS-95`, `WCS-96`, `WCS-103`, `WCS-104`, `WCS-105`, `WCS-109`, `WCS-110`, `WCS-111`, `WCS-112`, `WCS-113`, `WCS-114`, `WCS-115`, `WCS-116`, `WCS-120`, `WCS-121`
 Related repository paths: `src/main/resources`, `backoffice/`, `.github/workflows`, `infra/`
 
 ## Ambientes
@@ -161,9 +161,14 @@ gh workflow run "Restart Backend (AppConfig)" \
   -f confirm_restart=true
 ```
 
-El refresh dinámico sin reiniciar queda fuera de alcance: requeriría polling
-con `GetLatestConfiguration` o AppConfig Agent y un diseño explícito para
-actualizar beans que hoy se seleccionan con propiedades de Spring al arranque.
+### Flags de negocio en caliente — WCS-121
+
+Los cambios de comportamiento usan el perfil AppConfig `feature-flags`,
+separado de `runtime`. El backend consulta `GetLatestConfiguration` mediante
+polling y actualiza un snapshot atómico sin reiniciar App Runner. El contrato,
+allowlist, rollback, scopes y límites están en
+[`feature-flags.md`](feature-flags.md). No usar este mecanismo para secrets,
+URLs, credenciales o configuración bootstrap.
 
 Para habilitar Terraform en GitHub se deben configurar en el Environment
 `production`:

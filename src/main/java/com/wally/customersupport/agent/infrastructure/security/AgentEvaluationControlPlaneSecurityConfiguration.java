@@ -37,6 +37,8 @@ public class AgentEvaluationControlPlaneSecurityConfiguration {
     private static final String REQUIRED_AUTHORITY = "SCOPE_agent-evaluation.read";
     private static final String REGISTRY_READ_AUTHORITY = "SCOPE_agent-registry.read";
     private static final String REGISTRY_WRITE_AUTHORITY = "SCOPE_agent-registry.write";
+    private static final String FEATURE_FLAGS_READ_AUTHORITY = "SCOPE_feature-flags.read";
+    private static final String FEATURE_FLAGS_WRITE_AUTHORITY = "SCOPE_feature-flags.write";
     private static final String EXECUTE_AUTHORITY = "SCOPE_agent-evaluation.execute";
 
     @Bean
@@ -86,7 +88,8 @@ public class AgentEvaluationControlPlaneSecurityConfiguration {
                 .securityMatcher(
                         "/internal/agent-evaluations/**",
                         "/internal/agent-registry/**",
-                        "/internal/backoffice/agent-map/**")
+                        "/internal/backoffice/agent-map/**",
+                        "/internal/backoffice/feature-flags/**")
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.POST, "/internal/agent-evaluations/runs")
@@ -103,6 +106,10 @@ public class AgentEvaluationControlPlaneSecurityConfiguration {
                         .hasAuthority(REGISTRY_READ_AUTHORITY)
                         .requestMatchers(HttpMethod.POST, "/internal/backoffice/agent-map/simulations")
                         .hasAuthority(REGISTRY_READ_AUTHORITY)
+                        .requestMatchers(HttpMethod.GET, "/internal/backoffice/feature-flags/**")
+                        .hasAuthority(FEATURE_FLAGS_READ_AUTHORITY)
+                        .requestMatchers(HttpMethod.POST, "/internal/backoffice/feature-flags/**")
+                        .hasAuthority(FEATURE_FLAGS_WRITE_AUTHORITY)
                         .anyRequest().denyAll())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
         return http.build();

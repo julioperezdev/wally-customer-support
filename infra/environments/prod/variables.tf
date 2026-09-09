@@ -106,6 +106,12 @@ variable "backend_create_service" {
   default     = false
 }
 
+variable "enable_appconfig_management" {
+  type        = bool
+  description = "Allow the protected backoffice writer to publish AppConfig feature flags."
+  default     = false
+}
+
 variable "backend_image_tag" {
   type        = string
   description = "Immutable ECR tag used when App Runner is created."

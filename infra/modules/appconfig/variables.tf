@@ -26,6 +26,19 @@ variable "configuration_content" {
   default     = null
 }
 
+variable "feature_flags_profile_name" {
+  type        = string
+  description = "Dedicated hosted profile for non-secret business feature flags."
+  default     = "feature-flags"
+}
+
+variable "feature_flags_configuration_content" {
+  type        = string
+  nullable    = true
+  description = "Initial non-secret feature-flag document. Runtime publications are preserved outside Terraform."
+  default     = null
+}
+
 variable "tags" {
   type        = map(string)
   description = "Tags applied to AppConfig resources."
