@@ -103,6 +103,28 @@ La URL del control plane se puede cambiar con la variable no sensible
 `/internal/agent-evaluations`, lo que permite servir el panel detrás del mismo
 origen cuando exista un proxy autenticado.
 
+### Backend desplegado desde el frontend local
+
+Para probar el panel en `http://localhost:5173` contra el backend publicado en
+AWS App Runner, crear `backoffice/.env.local` —este archivo está ignorado por
+Git— con:
+
+```dotenv
+VITE_WCS_BACKEND_BASE_URL=https://guapajjmta.us-east-1.awsapprunner.com
+```
+
+El proxy de Vite enviará todas las rutas `/internal` al backend desplegado y
+mantendrá el navegador en el mismo origen, evitando una configuración CORS
+adicional para esta prueba local. Reiniciar Vite después de crear o cambiar el
+archivo. El hostname no es un secreto; los tokens de sesión siguen siendo
+temporales, se ingresan en memoria desde el panel y no deben guardarse en este
+archivo.
+
+Si `VITE_WCS_BACKEND_BASE_URL` no existe, el comportamiento vuelve a ser el
+backend local en `http://localhost:8080`. Un `401` o `403` después del cambio
+confirma que la solicitud llegó a App Runner y representa autorización del
+backoffice, no un problema de conectividad.
+
 El endpoint del registry se configura de forma independiente con
 `VITE_WCS_AGENT_REGISTRY_BASE_URL`; por defecto es
 `/internal/agent-registry`.
