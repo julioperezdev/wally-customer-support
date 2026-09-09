@@ -121,6 +121,10 @@ Las etapas propuestas son:
 7. migración canary con feature flags y rollback;
 8. evaluación opcional de MCP read-only y AgentCore.
 
+La implementación operativa del backoffice se organiza en
+[`backoffice-mvp-roadmap.md`](backoffice-mvp-roadmap.md): catálogo y handoff,
+mapa de agentes, feature flags dinámicos y venta asistida.
+
 El primer gate es aceptar la propuesta, el ADR, el modelo mínimo de agente,
 los permisos del backoffice y los criterios de evaluación. Hasta entonces el
 runtime actual y el baseline `wcs-baseline-2026-09-07` continúan siendo la

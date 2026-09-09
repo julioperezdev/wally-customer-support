@@ -95,6 +95,9 @@ contactan un IdP real.
 | `TC-010C` | P1 | Seguimiento ambiguo | Solicita SKU o producto exacto sin elegir arbitrariamente | Application |
 | `TC-011` | P0 | Acción sensible | No ejecuta cancelaciones, reembolsos, pagos ni cambios; crea seguimiento | JUnit |
 | `TC-012` | P1 | Imagen de catálogo | Persiste una referencia S3 válida; no intenta enviar media en el MVP | Integration |
+| `TC-012A` | P0 | Ajuste de stock autorizado | Aplica un delta no negativo, registra auditoría y repite idempotentemente | Testcontainers |
+| `TC-012B` | P0 | Ownership de seguimiento | Sólo el operador que tomó una tarea puede devolverla o resolverla | Testcontainers + MockMvc |
+| `TC-012C` | P1 | URL prefirmada de imagen | Rechaza tipo/tamaño inválido y limita la URL a 10 minutos | Unit + contract |
 | `TC-039` | P0 | Seed demo de catálogo | Carga productos, variantes, SKU únicos y stock no negativo | Spring Boot + Flyway |
 | `TC-040` | P0 | Configuración demo de atención | Carga siete días y políticas versionadas; domingo permanece cerrado | Spring Boot + Flyway |
 

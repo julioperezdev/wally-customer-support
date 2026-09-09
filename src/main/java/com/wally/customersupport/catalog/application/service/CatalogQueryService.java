@@ -23,6 +23,14 @@ public class CatalogQueryService {
         return List.copyOf(catalogRepository.search(query));
     }
 
+    @Transactional(readOnly = true)
+    public List<CatalogProduct> search(CatalogQuery query, int maxResults) {
+        if (query == null || maxResults <= 0) {
+            return List.of();
+        }
+        return List.copyOf(catalogRepository.search(query, maxResults));
+    }
+
     /**
      * Returns a bounded catalog listing for an intentionally unfiltered query.
      * Filtered searches remain separate so an accidental empty query cannot

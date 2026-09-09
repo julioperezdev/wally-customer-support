@@ -23,6 +23,30 @@ public interface SpringDataHumanFollowUpTaskRepository
 
     @Modifying
     @Query(value = """
+            update wcs.human_follow_up_tasks
+               set status = 'IN_PROGRESS', assigned_to = :actor, updated_at = :updatedAt
+             where id = :id and status = 'OPEN'
+            """, nativeQuery = true)
+    int claim(@Param("id") UUID id, @Param("actor") String actor, @Param("updatedAt") Instant updatedAt);
+
+    @Modifying
+    @Query(value = """
+            update wcs.human_follow_up_tasks
+               set status = 'OPEN', assigned_to = null, updated_at = :updatedAt
+             where id = :id and status = 'IN_PROGRESS' and assigned_to = :actor
+            """, nativeQuery = true)
+    int release(@Param("id") UUID id, @Param("actor") String actor, @Param("updatedAt") Instant updatedAt);
+
+    @Modifying
+    @Query(value = """
+            update wcs.human_follow_up_tasks
+               set status = 'DONE', completed_at = :updatedAt, updated_at = :updatedAt
+             where id = :id and status = 'IN_PROGRESS' and assigned_to = :actor
+            """, nativeQuery = true)
+    int resolve(@Param("id") UUID id, @Param("actor") String actor, @Param("updatedAt") Instant updatedAt);
+
+    @Modifying
+    @Query(value = """
             insert into wcs.human_follow_up_tasks (
                 id, conversation_id, source_message_id, reason, priority, status,
                 due_at, created_at, updated_at, completed_at

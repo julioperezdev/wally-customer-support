@@ -74,4 +74,9 @@ public class CatalogProductJpaEntity {
     public String getName() {
         return name;
     }
+
+    public void setImageObjectKey(String imageObjectKey, Instant now) {
+        this.imageObjectKey = imageObjectKey;
+        this.updatedAt = now;
+    }
 }

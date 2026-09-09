@@ -14,7 +14,23 @@ public record HumanFollowUpTask(
         Instant dueAt,
         Instant createdAt,
         Instant updatedAt,
-        Instant completedAt) {
+        Instant completedAt,
+        String assignedTo) {
+
+    public HumanFollowUpTask(
+            UUID id,
+            UUID conversationId,
+            UUID sourceMessageId,
+            String reason,
+            HumanFollowUpPriority priority,
+            HumanFollowUpStatus status,
+            Instant dueAt,
+            Instant createdAt,
+            Instant updatedAt,
+            Instant completedAt) {
+        this(id, conversationId, sourceMessageId, reason, priority, status, dueAt,
+                createdAt, updatedAt, completedAt, null);
+    }
 
     public HumanFollowUpTask {
         Objects.requireNonNull(id, "id");
@@ -47,6 +63,7 @@ public record HumanFollowUpTask(
                 dueAt,
                 now,
                 now,
+                null,
                 null);
     }
 }

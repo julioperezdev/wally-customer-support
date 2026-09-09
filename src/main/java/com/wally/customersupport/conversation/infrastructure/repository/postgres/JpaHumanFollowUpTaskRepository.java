@@ -3,6 +3,7 @@ package com.wally.customersupport.conversation.infrastructure.repository.postgre
 import java.util.List;
 
 import com.wally.customersupport.conversation.application.port.out.HumanFollowUpTaskRepository;
+import com.wally.customersupport.conversation.application.port.out.HumanFollowUpTaskOperator;
 import com.wally.customersupport.conversation.domain.model.HumanFollowUpStatus;
 import com.wally.customersupport.conversation.domain.model.HumanFollowUpTask;
 import lombok.RequiredArgsConstructor;
@@ -11,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 @RequiredArgsConstructor
-public class JpaHumanFollowUpTaskRepository implements HumanFollowUpTaskRepository {
+public class JpaHumanFollowUpTaskRepository implements HumanFollowUpTaskRepository, HumanFollowUpTaskOperator {
 
     private final SpringDataHumanFollowUpTaskRepository repository;
 
@@ -50,5 +51,20 @@ public class JpaHumanFollowUpTaskRepository implements HumanFollowUpTaskReposito
     public long countOpen() {
         return repository.countByStatusIn(
                 List.of(HumanFollowUpStatus.OPEN, HumanFollowUpStatus.IN_PROGRESS));
+    }
+
+    @Transactional
+    public boolean claim(java.util.UUID id, String actor, java.time.Instant now) {
+        return repository.claim(id, actor, now) == 1;
+    }
+
+    @Transactional
+    public boolean release(java.util.UUID id, String actor, java.time.Instant now) {
+        return repository.release(id, actor, now) == 1;
+    }
+
+    @Transactional
+    public boolean resolve(java.util.UUID id, String actor, java.time.Instant now) {
+        return repository.resolve(id, actor, now) == 1;
     }
 }

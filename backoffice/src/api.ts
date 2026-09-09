@@ -139,6 +139,57 @@ export type Comparison = {
   }>;
 };
 
+export type BackofficeCatalogVariant = {
+  id: string;
+  sku: string;
+  size: string;
+  color: string;
+  price: number;
+  currency: string;
+  stock: number;
+  active: boolean;
+};
+
+export type BackofficeCatalogProduct = {
+  id: string;
+  name: string;
+  description: string;
+  productType: string | null;
+  imageObjectKey: string | null;
+  active: boolean;
+  demo: boolean;
+  variants: BackofficeCatalogVariant[];
+};
+
+export type BackofficeCatalogPage = {
+  items: BackofficeCatalogProduct[];
+  page: number;
+  size: number;
+  hasNext: boolean;
+};
+
+export type BackofficeHumanFollowUp = {
+  id: string;
+  conversationId: string;
+  channel: string;
+  reason: string;
+  priority: string;
+  status: string;
+  dueAt: string;
+  assignedTo: string | null;
+  contextPreview: string[];
+};
+
+export type BackofficeStockAdjustment = {
+  sku: string;
+  previousStock: number;
+  delta: number;
+  newStock: number;
+  reason: string;
+  actorKey: string;
+  idempotencyKey: string;
+};
+
 export class ControlPlaneError extends Error {
   constructor(public readonly status: number, public readonly code: string) {
     super(`${code} (${status})`);
@@ -241,6 +292,96 @@ export function createControlPlaneClient(baseUrl: string, token: string, registr
     const response = await fetch(`${root}${path}`, { ...init, headers });
     if (!response.ok) {
       let code = "CONTROL_PLANE_ERROR";
+      try {
+        code = ((await response.json()) as { code?: string }).code ?? code;
+      } catch {
+        // The status is enough when the server has no JSON error envelope.
+      }
+      throw new ControlPlaneError(response.status, code);
+    }
+    return (await response.json()) as T;
+  }
+}
+
+export function createBackofficeClient(baseUrl: string, token: string) {
+  const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
+
+  async function request<T>(path: string): Promise<T> {
+    const headers: Record<string, string> = { Accept: "application/json" };
+    if (token.trim()) {
+      headers.Authorization = `Bearer ${token.trim()}`;
+    }
+    const response = await fetch(`${normalizedBaseUrl}${path}`, { headers });
+    if (!response.ok) {
+      let code = "BACKOFFICE_ERROR";
+      try {
+        code = ((await response.json()) as { code?: string }).code ?? code;
+      } catch {
+        // The status is enough when the server has no JSON error envelope.
+      }
+      throw new ControlPlaneError(response.status, code);
+    }
+    return (await response.json()) as T;
+  }
+
+  return {
+    searchCatalog(filters: {
+      name?: string;
+      sku?: string;
+      size?: string;
+      color?: string;
+      productType?: string;
+      page?: number;
+      limit?: number;
+    }) {
+      const params = new URLSearchParams();
+      for (const [key, value] of Object.entries(filters)) {
+        if (value !== undefined && String(value).trim()) params.set(key, String(value).trim());
+      }
+      return request<BackofficeCatalogPage>(`/catalog?${params.toString()}`);
+    },
+    listHumanFollowUps(limit = 50) {
+      return request<BackofficeHumanFollowUp[]>(`/human-follow-ups?limit=${encodeURIComponent(String(limit))}`);
+    },
+    changeHumanFollowUp(id: string, operation: "claim" | "release" | "resolve", actor: string) {
+      return requestFrom<BackofficeHumanFollowUp>(
+        normalizedBaseUrl,
+        `/human-follow-ups/${encodeURIComponent(id)}/${operation}`,
+        {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            "X-WCS-Actor-Key": actor
+          }
+        });
+    },
+    adjustStock(sku: string, delta: number, reason: string, actorKey: string) {
+      return requestFrom<BackofficeStockAdjustment>(
+        normalizedBaseUrl,
+        `/catalog/variants/${encodeURIComponent(sku)}/stock`,
+        {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            "X-WCS-Actor-Key": actorKey,
+            "Idempotency-Key": crypto.randomUUID()
+          },
+          body: JSON.stringify({ delta, reason })
+        });
+    }
+  };
+
+  async function requestFrom<T>(root: string, path: string, init: RequestInit): Promise<T> {
+    const headers: Record<string, string> = {
+      Accept: "application/json",
+      ...(init.headers as Record<string, string> | undefined)
+    };
+    if (token.trim()) headers.Authorization = `Bearer ${token.trim()}`;
+    const response = await fetch(`${root}${path}`, { ...init, headers });
+    if (!response.ok) {
+      let code = "BACKOFFICE_ERROR";
       try {
         code = ((await response.json()) as { code?: string }).code ?? code;
       } catch {
