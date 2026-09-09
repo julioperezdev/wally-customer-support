@@ -107,6 +107,22 @@ describe("control plane client", () => {
       expect.objectContaining({ method: "POST", body: expect.stringContaining("catalog-specialist") })
     );
   });
+
+  it("reads and publishes the separate business feature flag profile", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ effectiveVersion: "v1", flags: [] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ effectiveVersion: "v2", flags: [] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ effectiveVersion: "v1", flags: [] }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const client = createControlPlaneClient("/internal/agent-evaluations", "session-token");
+    await client.getFeatureFlags();
+    await client.publishFeatureFlags({ schemaVersion: "1", version: "v2", flags: [] });
+    await client.rollbackFeatureFlags();
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, "/internal/backoffice/feature-flags", expect.anything());
+    expect(fetchMock).toHaveBeenNthCalledWith(2, "/internal/backoffice/feature-flags/publish", expect.objectContaining({ method: "POST" }));
+    expect(fetchMock).toHaveBeenNthCalledWith(3, "/internal/backoffice/feature-flags/rollback", expect.objectContaining({ method: "POST" }));
+  });
 });
 
 describe("backoffice client", () => {

@@ -7,6 +7,7 @@ import {
   BackofficeCatalogProduct,
   BackofficeCatalogPage,
   BackofficeHumanFollowUp,
+  FeatureFlagSnapshot,
   Comparison,
   ControlPlaneError,
   RunDetail,
@@ -71,6 +72,14 @@ export function App() {
   const [followUpError, setFollowUpError] = useState<string | null>(null);
   const [storeBusy, setStoreBusy] = useState(false);
   const [storeActor, setStoreActor] = useState("local-operator");
+  const [featureFlags, setFeatureFlags] = useState<FeatureFlagSnapshot | null>(null);
+  const [featureFlagsError, setFeatureFlagsError] = useState<string | null>(null);
+  const [featureFlagsBusy, setFeatureFlagsBusy] = useState(false);
+  const [featureFlagsJson, setFeatureFlagsJson] = useState(`{
+  "schemaVersion": "1",
+  "version": "backoffice-${new Date().toISOString().slice(0, 10)}",
+  "flags": []
+}`);
 
   const client = useMemo(() => createControlPlaneClient(baseUrl, token, DEFAULT_REGISTRY_BASE_URL, DEFAULT_AGENT_MAP_BASE_URL), [baseUrl, token]);
   const backofficeClient = useMemo(() => createBackofficeClient(DEFAULT_BACKOFFICE_BASE_URL, token), [token]);
@@ -264,11 +273,49 @@ export function App() {
     }
   }
 
+  async function loadFeatureFlags() {
+    setFeatureFlagsBusy(true);
+    setFeatureFlagsError(null);
+    try {
+      setFeatureFlags(await client.getFeatureFlags());
+    } catch (cause) {
+      setFeatureFlagsError(toUserMessage(cause));
+    } finally {
+      setFeatureFlagsBusy(false);
+    }
+  }
+
+  async function publishFeatureFlags() {
+    setFeatureFlagsBusy(true);
+    setFeatureFlagsError(null);
+    try {
+      const document = JSON.parse(featureFlagsJson) as { schemaVersion: string; version: string; flags: unknown[] };
+      setFeatureFlags(await client.publishFeatureFlags(document as Parameters<typeof client.publishFeatureFlags>[0]));
+    } catch (cause) {
+      setFeatureFlagsError(cause instanceof SyntaxError ? "El documento no es JSON válido." : toUserMessage(cause));
+    } finally {
+      setFeatureFlagsBusy(false);
+    }
+  }
+
+  async function rollbackFeatureFlags() {
+    setFeatureFlagsBusy(true);
+    setFeatureFlagsError(null);
+    try {
+      setFeatureFlags(await client.rollbackFeatureFlags());
+    } catch (cause) {
+      setFeatureFlagsError(toUserMessage(cause));
+    } finally {
+      setFeatureFlagsBusy(false);
+    }
+  }
+
   useEffect(() => {
     void loadRuns();
     void loadRegistry();
     void loadAgentMap();
     void loadStore();
+    void loadFeatureFlags();
     // The first load is intentionally tied to the initial client only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -297,6 +344,19 @@ export function App() {
           <label>Token de sesión (memoria)<input type="password" value={token} onChange={(event) => setToken(event.target.value)} autoComplete="off" /></label>
         </div>
         <div className="button-row"><button className="primary" onClick={() => void loadRuns()} disabled={busy}>Actualizar runs</button><button onClick={() => void loadRegistry()} disabled={registryBusy}>Actualizar registry</button></div>
+      </section>
+
+      <section className="card">
+        <div className="section-heading">
+          <div><h2>Feature flags de negocio</h2><p>Perfil AppConfig separado del runtime técnico. Publicar requiere el scope de escritura y no reinicia App Runner.</p></div>
+          <span className={featureFlags?.stale ? "negative status-label" : "security-note"}>{featureFlags?.stale ? "STALE" : "HOT RELOAD"}</span>
+        </div>
+        {featureFlagsError && <div className="alert" role="alert">Feature flags: {featureFlagsError}</div>}
+        <div className="button-row"><button onClick={() => void loadFeatureFlags()} disabled={featureFlagsBusy}>Actualizar snapshot</button><button onClick={() => void rollbackFeatureFlags()} disabled={featureFlagsBusy}>Rollback última versión</button></div>
+        {featureFlags && <div className="metric-row"><Metric label="Versión efectiva" value={featureFlags.effectiveVersion} /><Metric label="Flags" value={String(featureFlags.flags.length)} /><Metric label="Auditoría" value={String(featureFlags.audit.length)} /></div>}
+        <label>Documento de publicación (sin secretos)<textarea rows={9} value={featureFlagsJson} onChange={(event) => setFeatureFlagsJson(event.target.value)} /></label>
+        <button className="primary" onClick={() => void publishFeatureFlags()} disabled={featureFlagsBusy}>Publicar nueva versión</button>
+        {featureFlags && <FeatureFlagView snapshot={featureFlags} />}
       </section>
 
       <section className="card">
@@ -440,6 +500,14 @@ function HumanFollowUpView({ followUps, onAction, disabled }: { followUps: Backo
     <div className="context-preview">{followUp.contextPreview.length === 0 ? <p className="muted">Sin contexto reciente.</p> : followUp.contextPreview.map((message, index) => <p key={`${followUp.id}-${index}`}>{message}</p>)}</div>
     <div className="button-row"><button disabled={disabled || followUp.status !== "OPEN"} onClick={() => void onAction(followUp.id, "claim")}>Tomar</button><button disabled={disabled || followUp.status !== "IN_PROGRESS"} onClick={() => void onAction(followUp.id, "release")}>Devolver</button><button className="primary" disabled={disabled || followUp.status !== "IN_PROGRESS"} onClick={() => void onAction(followUp.id, "resolve")}>Resolver</button></div>
   </article>)}</div>;
+}
+
+function FeatureFlagView({ snapshot }: { snapshot: FeatureFlagSnapshot }) {
+  return <div className="store-list">
+    <p className="muted">Versión efectiva: {snapshot.effectiveVersion} · último refresh: {new Date(snapshot.loadedAt).toLocaleString("es-AR")}</p>
+    {snapshot.flags.length === 0 ? <p className="muted">No hay flags publicados.</p> : <div className="table-wrap"><table><thead><tr><th>Key</th><th>Estado</th><th>Alcance</th><th>Agentes/versiones</th></tr></thead><tbody>{snapshot.flags.map((flag) => <tr key={flag.key}><td><strong>{flag.key}</strong></td><td className={flag.enabled && !flag.killSwitch ? "positive" : "negative"}>{flag.killSwitch ? "KILL SWITCH" : flag.enabled ? "ACTIVA" : "INACTIVA"}</td><td>{flag.environments.join(", ") || "todos"} · {flag.channels.join(", ") || "todos"}</td><td>{flag.agentIds.join(", ") || "todos"}{flag.agentVersions.length ? ` · v${flag.agentVersions.join(", v")}` : ""}</td></tr>)}</tbody></table></div>}
+    <details><summary>Auditoría reciente</summary><div className="relation-list">{snapshot.audit.slice().reverse().slice(0, 10).map((entry, index) => <span key={`${entry.timestamp}-${index}`}>{entry.operation} · {entry.result} · {entry.version} · {entry.actor}</span>)}</div></details>
+  </div>;
 }
 
 function AgentRegistryView({ agents }: { agents: AgentRegistryAgent[] | null }) {

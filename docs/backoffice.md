@@ -7,6 +7,11 @@ consulta de catálogo, ajustes de stock auditados y acciones acotadas sobre la
 bandeja de atención humana; no publica agentes, no cambia feature flags, no
 activa versiones y no ejecuta evaluaciones.
 
+WCS-121 agrega un panel separado para consultar el snapshot de feature flags,
+ver su versión efectiva/stale/auditoría y preparar publicación o rollback. La
+escritura requiere el scope `feature-flags.write` y el backend sigue siendo la
+autoridad de validación y autorización.
+
 La evolución hacia el backoffice operativo de tienda está definida en
 [`backoffice-mvp-roadmap.md`](backoffice-mvp-roadmap.md) y se implementa en los
 slices `WCS-119` a `WCS-122`. Este documento conserva el contrato del primer
@@ -135,6 +140,10 @@ El cliente usa únicamente:
   métricas de evidencia.
 - `POST /internal/backoffice/agent-map/simulations`, que calcula una ruta de
   fallback sin mutar activaciones.
+- `GET /internal/backoffice/feature-flags`, que muestra el snapshot efectivo y
+  auditoría sanitizada.
+- `POST /internal/backoffice/feature-flags/publish` y `/rollback`, protegidos
+  con `feature-flags.write` y cerrados por defecto.
 
 La lista puede mostrar `totalTokens`, `providerLatencyMs` y
 `estimatedCostUsd` cuando todas las ejecuciones del run tienen esos datos. Si

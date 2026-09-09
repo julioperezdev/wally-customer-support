@@ -93,6 +93,23 @@ locals {
     "wcs.external-config.secrets-manager.telegram-secret-id" = module.telegram_secrets.secret_name
   }
 
+  default_feature_flags_configuration = {
+    schemaVersion = "1"
+    version       = "wcs-121-initial"
+    flags = [
+      {
+        key           = "wcs.agent.catalog-specialist.enabled"
+        enabled       = true
+        killSwitch    = false
+        environments  = [var.environment]
+        channels      = []
+        useCases      = []
+        agentIds      = ["catalog-specialist"]
+        agentVersions = []
+      }
+    ]
+  }
+
   runtime_secret_arns = setunion(
     toset(values(var.backend_runtime_environment_secrets)),
     toset([module.runtime_secrets.secret_arn]),
@@ -144,7 +161,9 @@ module "appconfig" {
     local.default_appconfig_configuration,
     var.appconfig_configuration_content == null ? {} : jsondecode(var.appconfig_configuration_content)
   ))
-  tags = local.common_tags
+  feature_flags_profile_name          = "feature-flags"
+  feature_flags_configuration_content = jsonencode(local.default_feature_flags_configuration)
+  tags                                = local.common_tags
 }
 
 module "wcs_knowledge_base" {
@@ -185,6 +204,7 @@ module "backend_apprunner" {
   egress_type                   = var.backend_egress_type
   vpc_connector_arn             = var.backend_vpc_connector_arn
   enable_bedrock_access         = var.enable_bedrock_access
+  enable_appconfig_management   = var.enable_appconfig_management
   bedrock_model_arns            = var.bedrock_model_arns
   bedrock_knowledge_base_arns   = var.enable_bedrock_access ? [module.wcs_knowledge_base.knowledge_base_arn] : []
   tags                          = local.common_tags

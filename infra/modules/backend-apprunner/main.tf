@@ -115,6 +115,17 @@ data "aws_iam_policy_document" "apprunner_instance" {
       resources = ["*"]
     }
   }
+
+  dynamic "statement" {
+    for_each = var.enable_appconfig_management ? [1] : []
+
+    content {
+      sid       = "PublishFeatureFlags"
+      effect    = "Allow"
+      actions   = ["appconfig:CreateHostedConfigurationVersion", "appconfig:StartDeployment"]
+      resources = ["*"]
+    }
+  }
 }
 
 resource "aws_iam_role_policy" "apprunner_instance" {

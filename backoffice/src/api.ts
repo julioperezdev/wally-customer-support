@@ -261,6 +261,34 @@ export type BackofficeStockAdjustment = {
   idempotencyKey: string;
 };
 
+export type FeatureFlagDefinition = {
+  key: string;
+  enabled: boolean;
+  killSwitch: boolean;
+  environments: string[];
+  channels: string[];
+  useCases: string[];
+  agentIds: string[];
+  agentVersions: number[];
+};
+
+export type FeatureFlagSnapshot = {
+  environment: string;
+  effectiveVersion: string;
+  loadedAt: string;
+  lastSuccessfulRefreshAt: string | null;
+  stale: boolean;
+  flags: FeatureFlagDefinition[];
+  audit: Array<{
+    operation: string;
+    actor: string;
+    version: string;
+    timestamp: string;
+    result: string;
+    reason: string;
+  }>;
+};
+
 export class ControlPlaneError extends Error {
   constructor(public readonly status: number, public readonly code: string) {
     super(`${code} (${status})`);
@@ -272,11 +300,13 @@ export function createControlPlaneClient(
   baseUrl: string,
   token: string,
   registryBaseUrl = "/internal/agent-registry",
-  agentMapBaseUrl = "/internal/backoffice/agent-map"
+  agentMapBaseUrl = "/internal/backoffice/agent-map",
+  featureFlagsBaseUrl = "/internal/backoffice/feature-flags"
 ) {
   const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
   const normalizedRegistryBaseUrl = registryBaseUrl.replace(/\/+$/, "");
   const normalizedAgentMapBaseUrl = agentMapBaseUrl.replace(/\/+$/, "");
+  const normalizedFeatureFlagsBaseUrl = featureFlagsBaseUrl.replace(/\/+$/, "");
 
   async function request<T>(path: string): Promise<T> {
     const headers: Record<string, string> = { Accept: "application/json" };
@@ -385,7 +415,28 @@ export function createControlPlaneClient(
             ...(token.trim() ? { Authorization: `Bearer ${token.trim()}` } : {})
           },
           body: JSON.stringify(request)
-        });
+      });
+    },
+    getFeatureFlags() {
+      return requestFrom<FeatureFlagSnapshot>(normalizedFeatureFlagsBaseUrl, "");
+    },
+    publishFeatureFlags(document: {
+      schemaVersion: string;
+      version: string;
+      flags: FeatureFlagDefinition[];
+    }) {
+      return requestFrom<FeatureFlagSnapshot>(normalizedFeatureFlagsBaseUrl, "/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(document)
+      });
+    },
+    rollbackFeatureFlags() {
+      return requestFrom<FeatureFlagSnapshot>(normalizedFeatureFlagsBaseUrl, "/rollback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}"
+      });
     }
   };
 

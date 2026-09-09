@@ -20,6 +20,15 @@ resource "aws_appconfig_configuration_profile" "this" {
   tags           = var.tags
 }
 
+resource "aws_appconfig_configuration_profile" "feature_flags" {
+  application_id = aws_appconfig_application.this.id
+  name           = var.feature_flags_profile_name
+  location_uri   = "hosted"
+  type           = "AWS.Freeform"
+  description    = "Versioned non-secret WCS business feature flags."
+  tags           = var.tags
+}
+
 resource "aws_appconfig_hosted_configuration_version" "this" {
   count = var.configuration_content == null ? 0 : 1
 
@@ -35,7 +44,7 @@ resource "aws_appconfig_hosted_configuration_version" "this" {
 }
 
 resource "aws_appconfig_deployment_strategy" "this" {
-  count = var.configuration_content == null ? 0 : 1
+  count = var.configuration_content == null && var.feature_flags_configuration_content == null ? 0 : 1
 
   name                           = coalesce(var.deployment_strategy_name, "${var.application_name}-all-at-once")
   deployment_duration_in_minutes = 0
@@ -44,6 +53,35 @@ resource "aws_appconfig_deployment_strategy" "this" {
   replicate_to                   = "NONE"
   description                    = "Controlled deployment strategy for WCS AppConfig configuration."
   tags                           = var.tags
+}
+
+resource "aws_appconfig_hosted_configuration_version" "feature_flags" {
+  count = var.feature_flags_configuration_content == null ? 0 : 1
+
+  application_id           = aws_appconfig_application.this.id
+  configuration_profile_id = aws_appconfig_configuration_profile.feature_flags.configuration_profile_id
+  content                  = var.feature_flags_configuration_content
+  content_type             = "application/json"
+  description              = "Initial WCS business feature flags managed by Terraform."
+
+  lifecycle {
+    ignore_changes = [content]
+  }
+}
+
+resource "aws_appconfig_deployment" "feature_flags" {
+  count = var.feature_flags_configuration_content == null ? 0 : 1
+
+  application_id           = aws_appconfig_application.this.id
+  configuration_profile_id = aws_appconfig_configuration_profile.feature_flags.configuration_profile_id
+  configuration_version    = aws_appconfig_hosted_configuration_version.feature_flags[0].version_number
+  deployment_strategy_id   = aws_appconfig_deployment_strategy.this[0].id
+  environment_id           = aws_appconfig_environment.this.environment_id
+  description              = "Deploy initial WCS business feature flags."
+
+  lifecycle {
+    ignore_changes = [configuration_version]
+  }
 }
 
 resource "aws_appconfig_deployment" "this" {
