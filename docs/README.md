@@ -50,6 +50,8 @@
 - [`testing-strategy.md`](testing-strategy.md)
 - [`operations.md`](operations.md)
 - [`observability.md`](observability.md): Grafana local, CloudWatch y eventos operativos.
+- [`pilot-runbook.md`](pilot-runbook.md): protocolo, límites, criterios y rollback del piloto WCS-23.
+- [`pilot-report-template.md`](pilot-report-template.md): plantilla de evidencia y decisión del piloto.
 - [`backoffice.md`](backoffice.md): panel React/TypeScript read-only para evaluación.
 - [`queries.md`](queries.md)
 - [`../infra/README.md`](../infra/README.md): base AWS, state y reglas de activación.

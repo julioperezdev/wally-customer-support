@@ -90,6 +90,11 @@ sí misma la activación productiva.
 
 **Salida:** métricas de resolución, derivación, latencia, costo y satisfacción; backlog para FAQ/RAG, herramientas, media y multi-tenant sólo si la evidencia lo justifica.
 
+La ejecución controlada de esta fase está definida en
+[`pilot-runbook.md`](pilot-runbook.md), con su reporte en
+[`pilot-report-template.md`](pilot-report-template.md) y el scorecard de
+CloudWatch en [`observability/grafana/queries/pilot-scorecard.md`](../observability/grafana/queries/pilot-scorecard.md).
+
 ## Programa siguiente — Plataforma de agentes
 
 **Estado:** `Accepted` · Jira `WCS-45`
