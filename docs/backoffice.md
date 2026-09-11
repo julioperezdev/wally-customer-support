@@ -90,6 +90,20 @@ modo local pueda habilitarse accidentalmente en `prod`.
 - Un `401` o `403` es un resultado operativo esperado cuando JWT no está
   habilitado o el scope no es suficiente.
 
+### Conexión y actualización global
+
+El panel ofrece la acción `Conectar y actualizar todo`. Se habilita únicamente
+cuando el campo `Token de sesión (memoria)` tiene contenido. Al ejecutarla,
+primero realiza la lectura read-only de `runs` para validar la URL, el token y
+la autorización; sólo si esa lectura es exitosa solicita en paralelo registry,
+mapa de agentes, operación de tienda y feature flags.
+
+La acción informa si todas las áreas se actualizaron o si el resultado fue
+parcial. Cada loader conserva su propio error y los botones individuales siguen
+disponibles para reintentar una sección. Durante la actualización global se
+deshabilitan los refresh read-only individuales para evitar solicitudes
+duplicadas. El token permanece sólo en memoria, igual que antes.
+
 ## Ejecución local
 
 ```bash

@@ -16,6 +16,7 @@ import {
   createBackofficeClient,
   createControlPlaneClient
 } from "./api";
+import { refreshReadOnlyPanels } from "./refresh";
 
 const DEFAULT_BASE_URL = import.meta.env.VITE_WCS_CONTROL_PLANE_BASE_URL ?? "/internal/agent-evaluations";
 const DEFAULT_REGISTRY_BASE_URL = import.meta.env.VITE_WCS_AGENT_REGISTRY_BASE_URL ?? "/internal/agent-registry";
@@ -75,6 +76,9 @@ export function App() {
   const [featureFlags, setFeatureFlags] = useState<FeatureFlagSnapshot | null>(null);
   const [featureFlagsError, setFeatureFlagsError] = useState<string | null>(null);
   const [featureFlagsBusy, setFeatureFlagsBusy] = useState(false);
+  const [globalRefreshBusy, setGlobalRefreshBusy] = useState(false);
+  const [globalRefreshError, setGlobalRefreshError] = useState<string | null>(null);
+  const [globalRefreshMessage, setGlobalRefreshMessage] = useState<string | null>(null);
   const [featureFlagsJson, setFeatureFlagsJson] = useState(`{
   "schemaVersion": "1",
   "version": "backoffice-${new Date().toISOString().slice(0, 10)}",
@@ -84,7 +88,7 @@ export function App() {
   const client = useMemo(() => createControlPlaneClient(baseUrl, token, DEFAULT_REGISTRY_BASE_URL, DEFAULT_AGENT_MAP_BASE_URL), [baseUrl, token]);
   const backofficeClient = useMemo(() => createBackofficeClient(DEFAULT_BACKOFFICE_BASE_URL, token), [token]);
 
-  async function loadRuns(nextPage = 0) {
+  async function loadRuns(nextPage = 0): Promise<boolean> {
     setBusy(true);
     setError(null);
     try {
@@ -92,8 +96,10 @@ export function App() {
       setPage(result);
       if (!baselineId && result.items[0]) setBaselineId(result.items[0].runId);
       if (!candidateId && result.items[1]) setCandidateId(result.items[1].runId);
+      return true;
     } catch (cause) {
       setError(toUserMessage(cause));
+      return false;
     } finally {
       setBusy(false);
     }
@@ -127,7 +133,7 @@ export function App() {
     }
   }
 
-  async function loadRegistry() {
+  async function loadRegistry(): Promise<boolean> {
     setRegistryBusy(true);
     setRegistryError(null);
     try {
@@ -138,8 +144,10 @@ export function App() {
         useCase: registryUseCase,
         limit: 50
       }));
+      return true;
     } catch (cause) {
       setRegistryError(toUserMessage(cause));
+      return false;
     } finally {
       setRegistryBusy(false);
     }
@@ -174,7 +182,7 @@ export function App() {
     }
   }
 
-  async function loadAgentMap() {
+  async function loadAgentMap(): Promise<boolean> {
     setAgentMapBusy(true);
     setAgentMapError(null);
     try {
@@ -188,8 +196,10 @@ export function App() {
       const firstAgent = result.useCases[0]?.agents[0];
       if (firstAgent && !simulationAgentId) setSimulationAgentId(firstAgent.agentId);
       if (firstAgent && !simulationVersion) setSimulationVersion(String(firstAgent.version));
+      return true;
     } catch (cause) {
       setAgentMapError(toUserMessage(cause));
+      return false;
     } finally {
       setAgentMapBusy(false);
     }
@@ -222,30 +232,35 @@ export function App() {
     }
   }
 
-  async function loadStore() {
+  async function loadStore(): Promise<boolean> {
     setStoreBusy(true);
     setCatalogError(null);
     setFollowUpError(null);
-    try {
-      const [catalog, humanFollowUps] = await Promise.all([
-        backofficeClient.searchCatalog({
+    const [catalogResult, followUpsResult] = await Promise.allSettled([
+      backofficeClient.searchCatalog({
           name: catalogName,
           productType: catalogType,
           color: catalogColor,
           page: 0,
           limit: 20
-        }),
-        backofficeClient.listHumanFollowUps(50)
-      ]);
-      setCatalogPage(catalog);
-      setFollowUps(humanFollowUps);
-    } catch (cause) {
-      const message = toUserMessage(cause);
-      setCatalogError(message);
-      setFollowUpError(message);
-    } finally {
-      setStoreBusy(false);
+      }),
+      backofficeClient.listHumanFollowUps(50)
+    ]);
+    let succeeded = true;
+    if (catalogResult.status === "fulfilled") {
+      setCatalogPage(catalogResult.value);
+    } else {
+      setCatalogError(toUserMessage(catalogResult.reason));
+      succeeded = false;
     }
+    if (followUpsResult.status === "fulfilled") {
+      setFollowUps(followUpsResult.value);
+    } else {
+      setFollowUpError(toUserMessage(followUpsResult.reason));
+      succeeded = false;
+    }
+    setStoreBusy(false);
+    return succeeded;
   }
 
   async function adjustStock(sku: string, delta: number) {
@@ -273,15 +288,47 @@ export function App() {
     }
   }
 
-  async function loadFeatureFlags() {
+  async function loadFeatureFlags(): Promise<boolean> {
     setFeatureFlagsBusy(true);
     setFeatureFlagsError(null);
     try {
       setFeatureFlags(await client.getFeatureFlags());
+      return true;
     } catch (cause) {
       setFeatureFlagsError(toUserMessage(cause));
+      return false;
     } finally {
       setFeatureFlagsBusy(false);
+    }
+  }
+
+  async function refreshAll() {
+    if (globalRefreshBusy || !token.trim()) {
+      if (!token.trim()) setGlobalRefreshError("Ingresá un token de sesión antes de conectar.");
+      return;
+    }
+    setGlobalRefreshBusy(true);
+    setGlobalRefreshError(null);
+    setGlobalRefreshMessage(null);
+    try {
+      const result = await refreshReadOnlyPanels(
+        () => loadRuns(),
+        {
+          registry: () => loadRegistry(),
+          agentMap: () => loadAgentMap(),
+          store: () => loadStore(),
+          featureFlags: () => loadFeatureFlags()
+        }
+      );
+      if (!result.validated) {
+        setGlobalRefreshError("No se pudo validar la sesión. Revisá el token y la URL del backend.");
+      } else if (result.failedPanels.length > 0) {
+        setGlobalRefreshMessage(`Sesión validada. Actualización parcial; revisá: ${formatPanelNames(result.failedPanels)}.`);
+      } else {
+        setGlobalRefreshMessage("Sesión validada. Todas las secciones read-only fueron actualizadas.");
+      }
+    } finally {
+      setGlobalRefreshBusy(false);
     }
   }
 
@@ -341,9 +388,15 @@ export function App() {
         </div>
         <div className="form-grid">
           <label>API base URL<input value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} /></label>
-          <label>Token de sesión (memoria)<input type="password" value={token} onChange={(event) => setToken(event.target.value)} autoComplete="off" /></label>
+          <label>Token de sesión (memoria)<input type="password" value={token} onChange={(event) => { setToken(event.target.value); setGlobalRefreshError(null); setGlobalRefreshMessage(null); }} autoComplete="off" /></label>
         </div>
-        <div className="button-row"><button className="primary" onClick={() => void loadRuns()} disabled={busy}>Actualizar runs</button><button onClick={() => void loadRegistry()} disabled={registryBusy}>Actualizar registry</button></div>
+        <div className="button-row">
+          <button className="primary" onClick={() => void refreshAll()} disabled={globalRefreshBusy || !token.trim()}>{globalRefreshBusy ? "Conectando y actualizando..." : "Conectar y actualizar todo"}</button>
+          <span className="muted">Valida el acceso y actualiza sólo las vistas read-only.</span>
+        </div>
+        {globalRefreshError && <div className="alert" role="alert">Conexión: {globalRefreshError}</div>}
+        {globalRefreshMessage && <div className="success-alert" role="status" aria-live="polite">{globalRefreshMessage}</div>}
+        <div className="button-row"><button onClick={() => void loadRuns()} disabled={busy || globalRefreshBusy}>Actualizar runs</button><button onClick={() => void loadRegistry()} disabled={registryBusy || globalRefreshBusy}>Actualizar registry</button></div>
       </section>
 
       <section className="card">
@@ -352,7 +405,7 @@ export function App() {
           <span className={featureFlags?.stale ? "negative status-label" : "security-note"}>{featureFlags?.stale ? "STALE" : "HOT RELOAD"}</span>
         </div>
         {featureFlagsError && <div className="alert" role="alert">Feature flags: {featureFlagsError}</div>}
-        <div className="button-row"><button onClick={() => void loadFeatureFlags()} disabled={featureFlagsBusy}>Actualizar snapshot</button><button onClick={() => void rollbackFeatureFlags()} disabled={featureFlagsBusy}>Rollback última versión</button></div>
+        <div className="button-row"><button onClick={() => void loadFeatureFlags()} disabled={featureFlagsBusy || globalRefreshBusy}>Actualizar snapshot</button><button onClick={() => void rollbackFeatureFlags()} disabled={featureFlagsBusy}>Rollback última versión</button></div>
         {featureFlags && <div className="metric-row"><Metric label="Versión efectiva" value={featureFlags.effectiveVersion} /><Metric label="Flags" value={String(featureFlags.flags.length)} /><Metric label="Auditoría" value={String(featureFlags.audit.length)} /></div>}
         <label>Documento de publicación (sin secretos)<textarea rows={9} value={featureFlagsJson} onChange={(event) => setFeatureFlagsJson(event.target.value)} /></label>
         <button className="primary" onClick={() => void publishFeatureFlags()} disabled={featureFlagsBusy}>Publicar nueva versión</button>
@@ -369,7 +422,7 @@ export function App() {
           <input aria-label="Filtrar catálogo por tipo" placeholder="Tipo: remera, buzo..." value={catalogType} onChange={(event) => setCatalogType(event.target.value)} />
           <input aria-label="Filtrar catálogo por color" placeholder="Color" value={catalogColor} onChange={(event) => setCatalogColor(event.target.value)} />
           <input aria-label="Actor de operación" placeholder="Actor" value={storeActor} onChange={(event) => setStoreActor(event.target.value)} />
-          <button className="primary" onClick={() => void loadStore()} disabled={storeBusy}>Actualizar tienda</button>
+          <button className="primary" onClick={() => void loadStore()} disabled={storeBusy || globalRefreshBusy}>Actualizar tienda</button>
         </div>
         {catalogError && <div className="alert" role="alert">Catálogo: {catalogError}</div>}
         {followUpError && !catalogError && <div className="alert" role="alert">Atención humana: {followUpError}</div>}
@@ -398,7 +451,7 @@ export function App() {
           <input aria-label="Filtrar registry por ambiente" placeholder="environment" value={registryEnvironment} onChange={(event) => setRegistryEnvironment(event.target.value)} />
           <input aria-label="Filtrar registry por canal" placeholder="channel" value={registryChannel} onChange={(event) => setRegistryChannel(event.target.value)} />
           <input aria-label="Filtrar registry por caso de uso" placeholder="useCase" value={registryUseCase} onChange={(event) => setRegistryUseCase(event.target.value)} />
-          <button onClick={() => void loadRegistry()} disabled={registryBusy}>Filtrar</button>
+          <button onClick={() => void loadRegistry()} disabled={registryBusy || globalRefreshBusy}>Filtrar</button>
         </div>
         <AgentRegistryView agents={registryAgents} />
       </section>
@@ -413,7 +466,7 @@ export function App() {
           <input aria-label="Canal del mapa" placeholder="channel" value={mapChannel} onChange={(event) => setMapChannel(event.target.value)} />
           <input aria-label="Caso de uso del mapa" placeholder="useCase (opcional)" value={mapUseCase} onChange={(event) => setMapUseCase(event.target.value)} />
           <input aria-label="Agente del mapa" placeholder="agentId (opcional)" value={mapAgentId} onChange={(event) => setMapAgentId(event.target.value)} />
-          <button onClick={() => void loadAgentMap()} disabled={agentMapBusy}>Actualizar mapa</button>
+          <button onClick={() => void loadAgentMap()} disabled={agentMapBusy || globalRefreshBusy}>Actualizar mapa</button>
         </div>
         {agentMapError && <div className="alert" role="alert">Mapa: {agentMapError}</div>}
         <AgentMapView map={agentMap} simulation={simulation} simulationAgentId={simulationAgentId} simulationVersion={simulationVersion} onAgentChange={setSimulationAgentId} onVersionChange={setSimulationVersion} onSimulate={() => void simulateAgentMap()} disabled={agentMapBusy} />
@@ -590,6 +643,14 @@ function formatSignedPercent(value: number) { return `${value >= 0 ? "+" : ""}${
 function formatMs(value: number | null) { return value == null ? "—" : `${value} ms`; }
 function formatSigned(value: number) { return `${value >= 0 ? "+" : ""}${value}`; }
 function formatSignedMs(value: number) { return formatSigned(value) + " ms"; }
+function formatPanelNames(panels: Array<"registry" | "agentMap" | "store" | "featureFlags">) {
+  return panels.map((panel) => ({
+    registry: "registry",
+    agentMap: "mapa de agentes",
+    store: "tienda",
+    featureFlags: "feature flags"
+  })[panel]).join(", ");
+}
 function toUserMessage(cause: unknown) {
   if (cause instanceof ControlPlaneError) {
     if (cause.status === 401) return "La sesión no es válida. El control plane requiere un JWT válido.";
