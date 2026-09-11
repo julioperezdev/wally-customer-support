@@ -1,5 +1,6 @@
 package com.wally.customersupport.conversation.application.port.out;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -19,4 +20,6 @@ public interface MessageRepository {
     Message save(Message message);
 
     List<String> findRecentBodies(UUID conversationId, int limit);
+
+    List<String> findRecentBodiesAfter(UUID conversationId, Instant occurredAfter, int limit);
 }

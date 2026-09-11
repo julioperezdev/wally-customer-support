@@ -95,6 +95,17 @@ Verificar que cada respuesta se apoye en PostgreSQL o en la política publicada.
 La última instrucción debe detener el flujo antes de Bedrock y no generar una
 respuesta automática de salida.
 
+Para reactivar el mismo chat de prueba, enviar:
+
+```text
+ALTA
+```
+
+También son válidos `REANUDAR` y `/start`. Debe recibirse una confirmación,
+observarse `MESSAGE_REACTIVATED`/`CONTACT_REACTIVATED` y comprobarse que una
+consulta posterior no hereda el contexto ni las preferencias anteriores.
+Un mensaje común antes de la orden explícita no debe producir respuesta.
+
 ## Procedimiento para probar memoria
 
 La prueba debe ejecutarse localmente con Testcontainers o en el ambiente AWS

@@ -1,5 +1,6 @@
 package com.wally.customersupport.conversation.infrastructure.repository.postgres;
 
+import java.time.Instant;
 import java.util.Optional;
 
 import com.wally.customersupport.conversation.application.port.out.ContactSuppressionRepository;
@@ -31,9 +32,23 @@ public class JpaContactSuppressionRepository implements ContactSuppressionReposi
                 suppression.sourceMessageId(),
                 suppression.createdAt(),
                 suppression.updatedAt());
-        return repository.findByActorKeyAndStatus(suppression.actorKey(), "DO_NOT_CONTACT")
+        return repository.findByActorKey(suppression.actorKey())
                 .map(ContactSuppressionJpaEntity::toDomain)
                 .orElseThrow(() -> new IllegalStateException("Contact suppression was not persisted"));
+    }
+
+    @Override
+    @Transactional
+    public boolean reactivate(String actorKey, Instant now) {
+        return actorKey != null && now != null && repository.reactivate(actorKey, now) > 0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Instant> findLastReactivationAt(String actorKey) {
+        return repository.findByActorKeyAndStatusAndReason(
+                        actorKey, "REVOKED", "USER_REACTIVATED")
+                .map(ContactSuppressionJpaEntity::updatedAt);
     }
 
     @Override

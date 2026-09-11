@@ -92,8 +92,10 @@ no borra métricas agregadas ni logs operativos. La configuración permanece en
 La solicitud `BAJA`, `STOP` o equivalente se atiende antes de cualquier llamada
 a IA. WCS guarda una supresión pseudonimizada `DO_NOT_CONTACT`, limpia la
 memoria y preferencias de la conversación y no genera una respuesta/outbox
-automático. Los futuros flujos proactivos deben consultar la misma supresión
-antes de enviar; no existe todavía un flujo para revocar la supresión.
+automático. La reactivación sólo acepta `ALTA`, `REANUDAR` o `/start`: revoca la
+supresión, limpia nuevamente el estado y establece un límite de contexto para
+que los mensajes anteriores no se rehidraten en la nueva conversación. El
+historial persistido no se borra y queda sujeto a la política de retención.
 
 La extracción automática de preferencias queda fuera de esta fase. Sólo se
 persisten preferencias explícitas o confirmadas y, inicialmente, el color

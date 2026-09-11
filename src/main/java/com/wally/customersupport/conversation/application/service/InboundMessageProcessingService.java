@@ -12,6 +12,7 @@ import com.wally.customersupport.conversation.application.port.out.ProcessingAtt
 import com.wally.customersupport.conversation.domain.model.ConversationContext;
 import com.wally.customersupport.conversation.domain.model.ConversationExecutionResult;
 import com.wally.customersupport.conversation.domain.model.ConversationState;
+import com.wally.customersupport.conversation.domain.model.Channel;
 import com.wally.customersupport.conversation.domain.model.Message;
 import com.wally.customersupport.conversation.domain.model.OutboxMessage;
 import com.wally.customersupport.conversation.domain.model.OutboundMessage;
@@ -30,6 +31,8 @@ public class InboundMessageProcessingService {
 
     private static final String TERMINAL_FALLBACK =
             "No pude procesar tu consulta en este momento. Un agente revisará tu mensaje.";
+    private static final String REACTIVATION_REPLY =
+            "Listo, reactivé la conversación y reinicié el contexto anterior. ¿Cómo te puedo ayudar?";
 
     private final ConversationRepository conversationRepository;
     private final ConversationMemory conversationMemory;
@@ -41,6 +44,7 @@ public class InboundMessageProcessingService {
     private final CustomerPreferenceService customerPreferenceService;
     private final ExplicitPreferenceCaptureService explicitPreferenceCaptureService;
     private final OptOutDetector optOutDetector;
+    private final OptInDetector optInDetector;
     private final ContactSuppressionService contactSuppressionService;
     private final HumanFollowUpTaskService humanFollowUpTaskService;
     private final InboundProcessingProperties properties;
@@ -54,6 +58,28 @@ public class InboundMessageProcessingService {
                 .orElseThrow(() -> new IllegalStateException("Conversation was not found"));
         Instant now = clock.instant();
         String actorId = conversation.id().toString();
+
+        if (optInDetector.isOptIn(inboundMessage.body())) {
+            boolean reactivated = contactSuppressionService.reactivate(
+                    conversation.channel(),
+                    conversation.externalCustomerId(),
+                    now);
+            resetConversationContext(conversation.id(), actorId, now);
+            StructuredEventLog.info(log, "MESSAGE_REACTIVATED", java.util.Map.of(
+                    "operation", "conversation.reactivate",
+                    "result", reactivated ? "REACTIVATED" : "ALREADY_ACTIVE",
+                    "channel", conversation.channel().name(),
+                    "correlationId", conversation.id()));
+            outboxRepository.save(OutboxMessage.pendingReply(
+                    OutboundMessage.text(
+                            conversation.channel(),
+                            conversation.id(),
+                            conversation.externalCustomerId(),
+                            REACTIVATION_REPLY),
+                    now));
+            processingAttemptRepository.markCompleted(attempt.id(), now);
+            return;
+        }
 
         if (optOutDetector.isOptOut(inboundMessage.body())) {
             contactSuppressionService.suppress(
@@ -83,7 +109,12 @@ public class InboundMessageProcessingService {
             return;
         }
 
-        ConversationState conversationState = loadConversationState(conversation.id(), actorId, now);
+        ConversationState conversationState = loadConversationState(
+                conversation.id(),
+                actorId,
+                conversation.channel(),
+                conversation.externalCustomerId(),
+                now);
         conversationSummaryService.recordContextPrepared(conversationState);
         ExplicitPreferenceCaptureService.CaptureResult preferenceCapture =
                 explicitPreferenceCaptureService.capture(actorId, inboundMessage.body(), now);
@@ -149,13 +180,15 @@ public class InboundMessageProcessingService {
     private ConversationState loadConversationState(
             java.util.UUID conversationId,
             String actorId,
+            Channel channel,
+            String externalCustomerId,
             Instant now) {
         try {
             return conversationMemory.load(conversationId, actorId)
                     .orElseGet(() -> new ConversationState(
                             conversationId,
                             actorId,
-                            messageRepository.findRecentBodies(conversationId, 20),
+                            recentMessages(conversationId, channel, externalCustomerId),
                             now));
         } catch (RuntimeException exception) {
             StructuredEventLog.warn(log, "MEMORY_STATE_LOAD_FAILED", java.util.Map.of(
@@ -164,9 +197,34 @@ public class InboundMessageProcessingService {
             return new ConversationState(
                     conversationId,
                     actorId,
-                    messageRepository.findRecentBodies(conversationId, 20),
+                    recentMessages(conversationId, channel, externalCustomerId),
                     now);
         }
+    }
+
+    private List<String> recentMessages(
+            java.util.UUID conversationId,
+            Channel channel,
+            String externalCustomerId) {
+        // A reactivation boundary is persisted in the suppression record so a
+        // no-op memory adapter cannot rehydrate messages from the old context.
+        Instant resetAt = contactSuppressionService.lastReactivationAt(channel, externalCustomerId);
+        return resetAt == null
+                ? messageRepository.findRecentBodies(conversationId, 20)
+                : messageRepository.findRecentBodiesAfter(conversationId, resetAt, 20);
+    }
+
+    private void resetConversationContext(
+            java.util.UUID conversationId,
+            String actorId,
+            Instant now) {
+        conversationMemory.clear(conversationId, actorId);
+        customerPreferenceService.clearConversation(conversationId, actorId);
+        saveConversationMemory(new ConversationState(
+                conversationId,
+                actorId,
+                List.of(),
+                now));
     }
 
     private void saveConversationMemory(ConversationState state) {

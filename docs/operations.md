@@ -450,6 +450,14 @@ Para probar la supresión en un ambiente no productivo:
 3. enviar otro mensaje desde el mismo actor y comprobar `MESSAGE_SUPPRESSED`;
 4. confirmar que no existe un nuevo `outbox_messages` ni una llamada a Bedrock.
 
+Para reactivar explícitamente el mismo actor y comenzar con contexto limpio,
+enviar `ALTA`, `REANUDAR` o `/start`. El flujo revoca la supresión, limpia
+memoria/preferencias, conserva el historial para auditoría y responde con una
+confirmación. Cualquier otro mensaje sigue bloqueado mientras el estado sea
+`DO_NOT_CONTACT`. Verificar los eventos sanitizados `MESSAGE_REACTIVATED` y
+`CONTACT_REACTIVATED`; la siguiente consulta no debe incluir mensajes ni
+preferencias anteriores.
+
 El job `ConversationRetentionCleanupJob` sólo se registra cuando
 `wcs.conversation.retention.enabled=true`. Primero redacciona contenido y
 después elimina metadatos en lotes. Para rollback operativo volver a publicar

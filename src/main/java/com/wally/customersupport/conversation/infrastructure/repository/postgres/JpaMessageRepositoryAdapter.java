@@ -1,5 +1,6 @@
 package com.wally.customersupport.conversation.infrastructure.repository.postgres;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -61,6 +62,15 @@ public class JpaMessageRepositoryAdapter implements MessageRepository {
     public List<String> findRecentBodies(UUID conversationId, int limit) {
         return repository.findTop20ByConversationIdAndDirectionOrderByOccurredAtDesc(
                         conversationId, MessageDirection.INBOUND).stream()
+                .limit(Math.max(1, limit))
+                .map(MessageJpaEntity::body)
+                .toList();
+    }
+
+    @Override
+    public List<String> findRecentBodiesAfter(UUID conversationId, Instant occurredAfter, int limit) {
+        return repository.findTop20ByConversationIdAndDirectionAndOccurredAtAfterOrderByOccurredAtDesc(
+                        conversationId, MessageDirection.INBOUND, occurredAfter).stream()
                 .limit(Math.max(1, limit))
                 .map(MessageJpaEntity::body)
                 .toList();

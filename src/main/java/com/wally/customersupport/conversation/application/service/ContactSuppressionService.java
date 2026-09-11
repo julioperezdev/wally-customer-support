@@ -42,6 +42,24 @@ public class ContactSuppressionService {
                 "correlationId", sourceMessageId));
     }
 
+    public boolean reactivate(Channel channel, String externalCustomerId, Instant now) {
+        String actorKey = actorKey(channel, externalCustomerId);
+        boolean reactivated = actorKey != null && now != null && repository.reactivate(actorKey, now);
+        StructuredEventLog.info(log, "CONTACT_REACTIVATED", java.util.Map.of(
+                "operation", "conversation.contact.reactivation",
+                "result", reactivated ? "REVOKED" : "ALREADY_ACTIVE",
+                "channel", channel == null ? "unknown" : channel.name()));
+        return reactivated;
+    }
+
+    public Instant lastReactivationAt(Channel channel, String externalCustomerId) {
+        String actorKey = actorKey(channel, externalCustomerId);
+        if (actorKey == null) {
+            return null;
+        }
+        return repository.findLastReactivationAt(actorKey).orElse(null);
+    }
+
     public String actorKey(Channel channel, String externalCustomerId) {
         if (channel == null || externalCustomerId == null || externalCustomerId.isBlank()) {
             return null;
