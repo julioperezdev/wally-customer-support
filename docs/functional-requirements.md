@@ -80,6 +80,11 @@ Estado: `Accepted` para el MVP. Aprobado por el Product Owner el 2026-09-03. La 
 
 **Dado** un mensaje como `BAJA`, `STOP` o “no me escribas más”, **cuando** el sistema lo recibe, **entonces** marca el contacto como `DO_NOT_CONTACT`, detiene las respuestas automáticas y no crea seguimientos proactivos. Este caso es distinto de solicitar atención humana.
 
+La reactivación requiere una orden explícita: `ALTA`, `REANUDAR` o `/start`.
+Cuando se recibe, el sistema revoca la supresión, limpia memoria y preferencias,
+reinicia el contexto sin borrar el historial de auditoría y confirma la
+reactivación. Un mensaje común no revoca una baja.
+
 ### UC-008 — Consulta de catálogo
 
 **Dado** un producto o filtro de nombre, SKU, tipo, talle, color o rango de precio, **cuando** el cliente consulta, **entonces** el sistema obtiene precio y stock desde PostgreSQL y el bot redacta la respuesta usando únicamente esos resultados. Si no hay filtros, devuelve una lista acotada del catálogo; si la consulta continúa un resultado único, conserva el contexto sólo durante la ventana de memoria configurada.

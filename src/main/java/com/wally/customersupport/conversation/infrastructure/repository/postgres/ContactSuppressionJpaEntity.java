@@ -50,4 +50,8 @@ public class ContactSuppressionJpaEntity {
     public ContactSuppression toDomain() {
         return new ContactSuppression(id, actorKey, status, reason, sourceMessageId, createdAt, updatedAt);
     }
+
+    public Instant updatedAt() {
+        return updatedAt;
+    }
 }

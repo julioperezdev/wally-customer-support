@@ -46,4 +46,9 @@ public interface SpringDataMessageRepository extends JpaRepository<MessageJpaEnt
     List<MessageJpaEntity> findTop20ByConversationIdAndDirectionOrderByOccurredAtDesc(
             UUID conversationId,
             MessageDirection direction);
+
+    List<MessageJpaEntity> findTop20ByConversationIdAndDirectionAndOccurredAtAfterOrderByOccurredAtDesc(
+            UUID conversationId,
+            MessageDirection direction,
+            Instant occurredAfter);
 }

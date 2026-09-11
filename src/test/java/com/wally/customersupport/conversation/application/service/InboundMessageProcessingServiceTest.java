@@ -62,6 +62,8 @@ class InboundMessageProcessingServiceTest {
     @Mock
     private OptOutDetector optOutDetector;
     @Mock
+    private OptInDetector optInDetector;
+    @Mock
     private ContactSuppressionService contactSuppressionService;
     @Mock
     private HumanFollowUpTaskService humanFollowUpTaskService;
@@ -84,6 +86,7 @@ class InboundMessageProcessingServiceTest {
                 customerPreferenceService,
                 explicitPreferenceCaptureService,
                 optOutDetector,
+                optInDetector,
                 contactSuppressionService,
                 humanFollowUpTaskService,
                 new InboundProcessingProperties(1000, 20, 3, Duration.ofMinutes(5), Duration.ofSeconds(30)),
@@ -109,6 +112,7 @@ class InboundMessageProcessingServiceTest {
         lenient().when(explicitPreferenceCaptureService.capture(anyString(), anyString(), any()))
                 .thenReturn(ExplicitPreferenceCaptureService.CaptureResult.notDetected());
         lenient().when(optOutDetector.isOptOut(anyString())).thenReturn(false);
+        lenient().when(optInDetector.isOptIn(anyString())).thenReturn(false);
         lenient().when(contactSuppressionService.isSuppressed(any(), anyString())).thenReturn(false);
         lenient().when(customerPreferenceService.findForContext(anyString(), any())).thenReturn(List.of());
         lenient().when(conversationOrchestrator.replyForDetailed(any())).thenReturn(
@@ -145,6 +149,39 @@ class InboundMessageProcessingServiceTest {
                 conversation.channel(), conversation.externalCustomerId(), message.id(), NOW);
         verify(conversationMemory).clear(conversation.id(), conversation.id().toString());
         verify(customerPreferenceService).clearConversation(conversation.id(), conversation.id().toString());
+        verify(conversationOrchestrator, never()).replyForDetailed(any());
+        verify(outboxRepository, never()).save(any());
+        verify(processingAttemptRepository).markCompleted(attempt.id(), NOW);
+    }
+
+    @Test
+    void reactivatesAndResetsContextBeforeCallingTheOrchestrator() {
+        when(optInDetector.isOptIn(message.body())).thenReturn(true);
+        when(contactSuppressionService.reactivate(
+                conversation.channel(), conversation.externalCustomerId(), NOW)).thenReturn(true);
+
+        service.process(attempt);
+
+        verify(contactSuppressionService).reactivate(
+                conversation.channel(), conversation.externalCustomerId(), NOW);
+        verify(conversationMemory).clear(conversation.id(), conversation.id().toString());
+        verify(customerPreferenceService).clearConversation(conversation.id(), conversation.id().toString());
+        verify(conversationMemory).save(org.mockito.ArgumentMatchers.argThat(state ->
+                state.conversationId().equals(conversation.id())
+                        && state.recentMessages().isEmpty()
+                        && state.summary() == null));
+        verify(outboxRepository).save(any());
+        verify(conversationOrchestrator, never()).replyForDetailed(any());
+        verify(processingAttemptRepository).markCompleted(attempt.id(), NOW);
+    }
+
+    @Test
+    void suppressesRegularMessagesUntilExplicitReactivation() {
+        when(contactSuppressionService.isSuppressed(
+                conversation.channel(), conversation.externalCustomerId())).thenReturn(true);
+
+        service.process(attempt);
+
         verify(conversationOrchestrator, never()).replyForDetailed(any());
         verify(outboxRepository, never()).save(any());
         verify(processingAttemptRepository).markCompleted(attempt.id(), NOW);

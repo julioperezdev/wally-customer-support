@@ -106,6 +106,14 @@ class HumanFollowUpAndSuppressionPersistenceIntegrationTest {
         assertThat(followUpTaskRepository.countOpen()).isEqualTo(1);
         assertThat(suppressionRepository.existsActiveByActorKey(actorKey)).isTrue();
         assertThat(persistedSuppression.actorKey()).isEqualTo(actorKey);
+        assertThat(suppressionRepository.reactivate(actorKey, NOW.plusSeconds(10))).isTrue();
+        assertThat(suppressionRepository.existsActiveByActorKey(actorKey)).isFalse();
+        assertThat(suppressionRepository.findLastReactivationAt(actorKey))
+                .contains(NOW.plusSeconds(10));
+        assertThat(suppressionRepository.saveIfAbsent(
+                ContactSuppression.doNotContact(actorKey, persistedMessage.id(), NOW.plusSeconds(20)))
+                .status()).isEqualTo("DO_NOT_CONTACT");
+        assertThat(suppressionRepository.existsActiveByActorKey(actorKey)).isTrue();
         assertThat(conversation.status()).isEqualTo(ConversationStatus.OPEN);
     }
 }

@@ -14,7 +14,14 @@ public interface SpringDataContactSuppressionRepository
 
     boolean existsByActorKeyAndStatus(String actorKey, String status);
 
+    Optional<ContactSuppressionJpaEntity> findByActorKey(String actorKey);
+
     Optional<ContactSuppressionJpaEntity> findByActorKeyAndStatus(String actorKey, String status);
+
+    Optional<ContactSuppressionJpaEntity> findByActorKeyAndStatusAndReason(
+            String actorKey,
+            String status,
+            String reason);
 
     @Modifying
     @Query(value = """
@@ -22,7 +29,11 @@ public interface SpringDataContactSuppressionRepository
                 id, actor_key, status, reason, source_message_id, created_at, updated_at
             ) values (
                 :id, :actorKey, :status, :reason, :sourceMessageId, :createdAt, :updatedAt
-            ) on conflict (actor_key) do nothing
+            ) on conflict (actor_key) do update set
+                status = excluded.status,
+                reason = excluded.reason,
+                source_message_id = excluded.source_message_id,
+                updated_at = excluded.updated_at
             """, nativeQuery = true)
     int insertIfAbsent(
             @Param("id") UUID id,
@@ -31,5 +42,18 @@ public interface SpringDataContactSuppressionRepository
             @Param("reason") String reason,
             @Param("sourceMessageId") UUID sourceMessageId,
             @Param("createdAt") Instant createdAt,
+            @Param("updatedAt") Instant updatedAt);
+
+    @Modifying
+    @Query(value = """
+            update wcs.contact_suppressions
+            set status = 'REVOKED',
+                reason = 'USER_REACTIVATED',
+                updated_at = :updatedAt
+            where actor_key = :actorKey
+              and status = 'DO_NOT_CONTACT'
+            """, nativeQuery = true)
+    int reactivate(
+            @Param("actorKey") String actorKey,
             @Param("updatedAt") Instant updatedAt);
 }
