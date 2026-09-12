@@ -111,10 +111,17 @@ class AwsExternalConfigurationTest {
                                 {"preview-token":"preview-token-value",
                                  "ignored":"must-not-become-a-property"}
                                 """)
+                        .build())
+                .thenReturn(GetSecretValueResponse.builder()
+                        .secretString("""
+                                {"actor-key-secret":"actor-hmac-key",
+                                 "ignored":"must-not-become-a-property"}
+                                """)
                         .build());
 
         var properties = new ExternalConfigurationProperties.SecretsManager(
-                null, null, "database-secret", "whatsapp-secret", "telegram-secret", "backoffice-secret", true, true);
+                null, null, "database-secret", "whatsapp-secret", "telegram-secret", "backoffice-secret",
+                "observability-secret", true, true);
 
         var loaded = new SecretsManagerConfigurationLoader(client, objectMapper).load(properties);
 
@@ -127,6 +134,7 @@ class AwsExternalConfigurationTest {
                 .containsEntry("wcs.telegram.bot-token", "bot-token-value")
                 .containsEntry("wcs.telegram.webhook-secret-token", "webhook-token-value")
                 .containsEntry("wcs.backoffice.preview.token", "preview-token-value")
+                .containsEntry("wcs.observability.actor-key-secret", "actor-hmac-key")
                 .doesNotContainKey("ignored");
     }
 }

@@ -44,49 +44,54 @@ locals {
     "webhook-secret-token" = "REPLACE_ME_TEST_TELEGRAM_WEBHOOK_SECRET"
   })
 
+  fake_observability_secret_json = jsonencode({
+    "actor-key-secret" = "REPLACE_ME_TEST_OBSERVABILITY_ACTOR_KEY_SECRET"
+  })
+
   test_configuration = {
-    "wcs.ai.provider"                                        = "mock"
-    "wcs.ai.model"                                           = "llm.mock.v1"
-    "wcs.ai.request-timeout"                                 = "PT5S"
-    "wcs.ai.prompt.intent-version"                           = "conversation-intent-v2"
-    "wcs.ai.prompt.intent-max-output-tokens"                 = 1024
-    "wcs.ai.prompt.intent-temperature"                       = 0.0
-    "wcs.ai.prompt.max-input-characters"                     = 2000
-    "wcs.ai.prompt.max-history-messages"                     = 12
-    "wcs.ai.response.prompt-version"                         = "conversation-response-v1"
-    "wcs.ai.response.max-output-tokens"                      = 256
-    "wcs.ai.response.temperature"                            = 0.0
-    "wcs.ai.response.max-input-characters"                   = 2000
-    "wcs.ai.response.max-history-messages"                   = 6
-    "wcs.ai.response.max-knowledge-characters"               = 8000
-    "wcs.ai.response.max-summary-characters"                 = 4000
-    "wcs.conversation.guardrails.min-intent-confidence"      = 0.65
-    "wcs.rag.provider"                                       = "mock"
-    "wcs.rag.max-results"                                    = 5
-    "wcs.outbox.max-attempts"                                = 3
-    "wcs.conversation.retention.enabled"                     = false
-    "wcs.conversation.retention.content-retention"           = "PT720H"
-    "wcs.conversation.retention.metadata-retention"          = "PT2160H"
-    "wcs.conversation.retention.aggregate-metrics-retention" = "PT8760H"
-    "wcs.conversation.retention.cleanup-batch-size"          = 500
-    "wcs.conversation.retention.schedule-delay-ms"           = 86400000
-    "wcs.whatsapp.adapter"                                   = "mock"
-    "wcs.telegram.enabled"                                   = false
-    "wcs.telegram.adapter"                                   = "telegram"
-    "wcs.external-config.appconfig.application"              = var.appconfig_application_name
-    "wcs.external-config.appconfig.environment"              = var.environment
-    "wcs.external-config.appconfig.profile"                  = var.appconfig_profile_name
-    "wcs.external-config.appconfig.enabled"                  = true
-    "wcs.external-config.secrets-manager.enabled"            = true
-    "wcs.external-config.secrets-manager.database-secret-id" = module.database_secrets.secret_name
-    "wcs.external-config.secrets-manager.whatsapp-secret-id" = module.whatsapp_secrets.secret_name
-    "wcs.external-config.secrets-manager.telegram-secret-id" = module.telegram_secrets.secret_name
-    "wcs.agent-runtime.activation-enabled"                   = false
-    "wcs.agent-runtime.environment"                          = var.environment
-    "wcs.agent-runtime.shadow-enabled"                       = false
-    "wcs.agent-runtime.shadow-provider"                      = "noop"
-    "wcs.agent-runtime.shadow-allowed-environments"          = var.environment
-    "wcs.agent-runtime.shadow-traffic-percentage"            = 0
+    "wcs.ai.provider"                                             = "mock"
+    "wcs.ai.model"                                                = "llm.mock.v1"
+    "wcs.ai.request-timeout"                                      = "PT5S"
+    "wcs.ai.prompt.intent-version"                                = "conversation-intent-v2"
+    "wcs.ai.prompt.intent-max-output-tokens"                      = 1024
+    "wcs.ai.prompt.intent-temperature"                            = 0.0
+    "wcs.ai.prompt.max-input-characters"                          = 2000
+    "wcs.ai.prompt.max-history-messages"                          = 12
+    "wcs.ai.response.prompt-version"                              = "conversation-response-v1"
+    "wcs.ai.response.max-output-tokens"                           = 256
+    "wcs.ai.response.temperature"                                 = 0.0
+    "wcs.ai.response.max-input-characters"                        = 2000
+    "wcs.ai.response.max-history-messages"                        = 6
+    "wcs.ai.response.max-knowledge-characters"                    = 8000
+    "wcs.ai.response.max-summary-characters"                      = 4000
+    "wcs.conversation.guardrails.min-intent-confidence"           = 0.65
+    "wcs.rag.provider"                                            = "mock"
+    "wcs.rag.max-results"                                         = 5
+    "wcs.outbox.max-attempts"                                     = 3
+    "wcs.conversation.retention.enabled"                          = false
+    "wcs.conversation.retention.content-retention"                = "PT720H"
+    "wcs.conversation.retention.metadata-retention"               = "PT2160H"
+    "wcs.conversation.retention.aggregate-metrics-retention"      = "PT8760H"
+    "wcs.conversation.retention.cleanup-batch-size"               = 500
+    "wcs.conversation.retention.schedule-delay-ms"                = 86400000
+    "wcs.whatsapp.adapter"                                        = "mock"
+    "wcs.telegram.enabled"                                        = false
+    "wcs.telegram.adapter"                                        = "telegram"
+    "wcs.external-config.appconfig.application"                   = var.appconfig_application_name
+    "wcs.external-config.appconfig.environment"                   = var.environment
+    "wcs.external-config.appconfig.profile"                       = var.appconfig_profile_name
+    "wcs.external-config.appconfig.enabled"                       = true
+    "wcs.external-config.secrets-manager.enabled"                 = true
+    "wcs.external-config.secrets-manager.database-secret-id"      = module.database_secrets.secret_name
+    "wcs.external-config.secrets-manager.whatsapp-secret-id"      = module.whatsapp_secrets.secret_name
+    "wcs.external-config.secrets-manager.telegram-secret-id"      = module.telegram_secrets.secret_name
+    "wcs.external-config.secrets-manager.observability-secret-id" = module.observability_secrets.secret_name
+    "wcs.agent-runtime.activation-enabled"                        = false
+    "wcs.agent-runtime.environment"                               = var.environment
+    "wcs.agent-runtime.shadow-enabled"                            = false
+    "wcs.agent-runtime.shadow-provider"                           = "noop"
+    "wcs.agent-runtime.shadow-allowed-environments"               = var.environment
+    "wcs.agent-runtime.shadow-traffic-percentage"                 = 0
   }
 }
 
@@ -159,6 +164,15 @@ module "telegram_secrets" {
   tags                = local.common_tags
 }
 
+module "observability_secrets" {
+  source = "../../modules/runtime-secrets"
+
+  name                = "wcs/${var.environment}/observability"
+  description         = "WCS test pseudonymous observability key. Do not use production values."
+  initial_secret_json = local.fake_observability_secret_json
+  tags                = local.common_tags
+}
+
 module "backend_apprunner" {
   source = "../../modules/backend-apprunner"
 
@@ -174,7 +188,8 @@ module "backend_apprunner" {
   runtime_secret_arns = toset([
     module.database_secrets.secret_arn,
     module.whatsapp_secrets.secret_arn,
-    module.telegram_secrets.secret_arn
+    module.telegram_secrets.secret_arn,
+    module.observability_secrets.secret_arn
   ])
   enable_appconfig_access = true
   enable_bedrock_access   = false

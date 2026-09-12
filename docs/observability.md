@@ -2,7 +2,7 @@
 
 Owner: Tech Lead
 Status: `In Progress`
-Related Jira: `WCS-21`, `WCS-22`, `WCS-23`, `WCS-36`, `WCS-50`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-55`, `WCS-56`, `WCS-57`, `WCS-58`, `WCS-59`, `WCS-60`, `WCS-61`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-85`, `WCS-86`, `WCS-87`, `WCS-88`, `WCS-89`, `WCS-90`, `WCS-91`, `WCS-92`, `WCS-93`, `WCS-94`, `WCS-95`, `WCS-96`, `WCS-100`, `WCS-101`, `WCS-102`, `WCS-103`, `WCS-104`, `WCS-105`
+Related Jira: `WCS-21`, `WCS-22`, `WCS-23`, `WCS-36`, `WCS-50`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-55`, `WCS-56`, `WCS-57`, `WCS-58`, `WCS-59`, `WCS-60`, `WCS-61`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-85`, `WCS-86`, `WCS-87`, `WCS-88`, `WCS-89`, `WCS-90`, `WCS-91`, `WCS-92`, `WCS-93`, `WCS-94`, `WCS-95`, `WCS-96`, `WCS-100`, `WCS-101`, `WCS-102`, `WCS-103`, `WCS-104`, `WCS-105`, `WCS-126`
 Related repository paths: `observability/grafana/`, `backoffice/`, `src/main/java/com/wally/customersupport/conversation/infrastructure/http/`, `src/main/java/com/wally/customersupport/conversation/application/service/`, `src/main/java/com/wally/customersupport/shared/infrastructure/observability/`
 
 ## Objetivo de esta iteración
@@ -65,7 +65,7 @@ operacional necesario para diagnóstico y costo, pero sin contenido de negocio.
 | `AGENT_SHADOW_EXECUTION_SKIPPED` | `environment`, `reason`, `trafficPercentage` | Shadow no seleccionado por configuración de ambiente o muestreo |
 | `AGENT_SHADOW_EVIDENCE_FAILED` | `agentId`, `agentVersion`, `errorType` | Fallo al publicar evidencia sin afectar la respuesta activa |
 | `AGENT_TRAFFIC_COMPARISON_RECORDED` | `comparisonRequestId`, `pseudonymizedConversationId`, `channel`, `useCase`, `agentId`, `agentVersion`, `modelProvider`, `model`, `mode`, `outcome`, `comparisonOutcome`, `latencyMs`, `inputTokens`, `outputTokens`, `totalTokens`, `estimatedCostUsd`, `fallbackReason`, `candidateResponsePublished` | Evidencia comparable y sanitizada para evaluar shadow/canary |
-| `CONVERSATION_QUERY_COMPLETED` | `queryType`, `outcome`, `responseGenerated`, `durationMs`, `correlationId` | Resultado y latencia total de la consulta |
+| `CONVERSATION_QUERY_COMPLETED` | `queryType`, `outcome`, `responseGenerated`, `durationMs`, `correlationId`, `channel`, `actorKey` opcional | Resultado, latencia total y trazabilidad pseudónima de la consulta |
 | `GENERAL_SUPPORT_FAILED` | `errorType`, `correlationId` | Fallback de conocimiento/LLM |
 | `CONVERSATION_CONTEXT_PREPARED` | `recentMessageCount`, `recentCharacters`, `summaryPresent`, `summaryCharacters`, `summaryEnabled` | Tamaño del contexto y activación del resumen, sin contenido |
 | `CONVERSATION_SUMMARY_CREATED` | `summaryVersion`, `summarizedMessageCount`, `recentMessageCount`, `summaryCharacters`, `durationMs` | Resumen versionado, tamaño y latencia |
@@ -101,6 +101,17 @@ precio por millón de tokens de entrada/salida vigente en la configuración
 efectiva y `pricingVersion` identifica la tabla utilizada. Es una estimación
 operativa y no una conciliación de facturación. Si el provider está en `mock`,
 no existe una llamada de IA real y no se emite este evento.
+
+### Trazabilidad de actores
+
+Los eventos conversacionales pueden incluir `actorKey`, un HMAC-SHA-256 de
+`channel + externalCustomerId` generado por `ActorKeyGenerator`. La clave se
+resuelve desde el secret dedicado `wcs/{environment}/observability` y nunca se
+registra. El valor permite agrupar varias consultas del mismo actor sin
+exponer teléfonos o chat IDs y no debe utilizarse como identidad de negocio.
+Si el secret no está disponible, se omite el campo sin interrumpir el flujo del
+cliente. `correlationId` continúa identificando una conversación concreta y no
+debe utilizarse como dimensión de métricas agregadas.
 
 Las evaluaciones Bedrock emiten el mismo evento por escenario y además
 persisten en el resultado sanitizado `providerLatencyMs`, `inputTokens`,
@@ -261,8 +272,9 @@ Después de iniciar Grafana:
 4. Buscar `WEBHOOK_ACCEPTED`, `INBOUND_MESSAGE_ENQUEUED`,
    `INBOUND_MESSAGE_PROCESSED`,
    `INTENT_CLASSIFIED` y `OUTBOUND_MESSAGE_DISPATCHED`.
-5. Si AppConfig usa `wcs.ai.provider=bedrock`, verificar los paneles **IA ·
-   tokens, costo y latencia** y **Consultas · tipo, resultado y latencia**.
+5. Si AppConfig usa `wcs.ai.provider=bedrock`, verificar las tablas **IA ·
+   tokens, costo y latencia** y **Consultas · tendencias por hora**. Para
+   revisar cada mensaje individual usar **Consultas · detalle por mensaje**.
 6. Usar el panel **App Runner · errores** sólo para diagnóstico y no compartir
    su contenido sin revisar PII.
 
