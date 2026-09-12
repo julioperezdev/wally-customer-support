@@ -241,20 +241,35 @@
     },
     {
       "id": 6,
-      "type": "logs",
+      "type": "table",
       "title": "IA · tokens, costo y latencia",
-      "description": "Agregado por llamada de Bedrock. El costo es estimado según la versión de pricing configurada.",
-      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 20},
+      "description": "Agregado por llamada real de Bedrock. El costo es estimado según la versión de pricing configurada; el adapter mock no genera este evento.",
+      "gridPos": {"h": 14, "w": 24, "x": 0, "y": 20},
       "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
+      "fieldConfig": {
+        "defaults": {"custom": {"align": "auto", "cellOptions": {"type": "auto"}, "inspect": false}},
+        "overrides": [
+          {"matcher": {"id": "byName", "options": "bin(1h)"}, "properties": [{"id": "displayName", "value": "Hora"}, {"id": "unit", "value": "time:YYYY-MM-DD HH:mm:ss"}]},
+          {"matcher": {"id": "byName", "options": "parsedStage"}, "properties": [{"id": "displayName", "value": "Etapa"}]},
+          {"matcher": {"id": "byName", "options": "parsedOperation"}, "properties": [{"id": "displayName", "value": "Operación"}]},
+          {"matcher": {"id": "byName", "options": "parsedProvider"}, "properties": [{"id": "displayName", "value": "Proveedor"}]},
+          {"matcher": {"id": "byName", "options": "parsedModel"}, "properties": [{"id": "displayName", "value": "Modelo"}]},
+          {"matcher": {"id": "byName", "options": "parsedPricingVersion"}, "properties": [{"id": "displayName", "value": "Pricing"}]},
+          {"matcher": {"id": "byName", "options": "inputTokens"}, "properties": [{"id": "displayName", "value": "Tokens entrada"}, {"id": "unit", "value": "short"}]},
+          {"matcher": {"id": "byName", "options": "outputTokens"}, "properties": [{"id": "displayName", "value": "Tokens salida"}, {"id": "unit", "value": "short"}]},
+          {"matcher": {"id": "byName", "options": "totalTokens"}, "properties": [{"id": "displayName", "value": "Tokens total"}, {"id": "unit", "value": "short"}]},
+          {"matcher": {"id": "byName", "options": "estimatedCostUsd"}, "properties": [{"id": "displayName", "value": "Costo estimado (USD)"}, {"id": "unit", "value": "currencyUSD"}]},
+          {"matcher": {"id": "byName", "options": "averageDurationMs"}, "properties": [{"id": "displayName", "value": "Latencia media (ms)"}, {"id": "unit", "value": "ms"}]},
+          {"matcher": {"id": "byName", "options": "p95DurationMs"}, "properties": [{"id": "displayName", "value": "P95 (ms)"}, {"id": "unit", "value": "ms"}]},
+          {"matcher": {"id": "byName", "options": "aiCalls"}, "properties": [{"id": "displayName", "value": "Llamadas"}]},
+          {"matcher": {"id": "byName", "options": "failures"}, "properties": [{"id": "displayName", "value": "Fallos"}]}
+        ]
+      },
       "options": {
-        "showTime": true,
-        "showLabels": false,
-        "showCommonLabels": false,
-        "wrapLogMessage": false,
-        "prettifyLogMessage": true,
-        "enableLogDetails": false,
-        "dedupStrategy": "none",
-        "sortOrder": "Descending"
+        "cellHeight": "sm",
+        "footer": {"show": false},
+        "showHeader": true,
+        "sortBy": [{"displayName": "Hora", "desc": true}]
       },
       "targets": [
         {
@@ -276,20 +291,27 @@
     },
     {
       "id": 7,
-      "type": "logs",
-      "title": "Consultas · tipo, resultado y latencia",
-      "description": "Una fila por consulta conversacional completada, sin contenido del usuario.",
-      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 32},
+      "type": "table",
+      "title": "Consultas · tendencias por hora",
+      "description": "Volumen y latencia agregada por hora. Para investigar cada mensaje usar la tabla de detalle.",
+      "gridPos": {"h": 14, "w": 24, "x": 0, "y": 34},
       "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
+      "fieldConfig": {
+        "defaults": {"custom": {"align": "auto", "cellOptions": {"type": "auto"}, "inspect": false}},
+        "overrides": [
+          {"matcher": {"id": "byName", "options": "bin(1h)"}, "properties": [{"id": "displayName", "value": "Hora"}, {"id": "unit", "value": "time:YYYY-MM-DD HH:mm:ss"}]},
+          {"matcher": {"id": "byName", "options": "parsedQueryType"}, "properties": [{"id": "displayName", "value": "Tipo"}]},
+          {"matcher": {"id": "byName", "options": "parsedOutcome"}, "properties": [{"id": "displayName", "value": "Resultado"}]},
+          {"matcher": {"id": "byName", "options": "queries"}, "properties": [{"id": "displayName", "value": "Consultas"}]},
+          {"matcher": {"id": "byName", "options": "averageDurationMs"}, "properties": [{"id": "displayName", "value": "Latencia media (ms)"}, {"id": "unit", "value": "ms"}]},
+          {"matcher": {"id": "byName", "options": "p95DurationMs"}, "properties": [{"id": "displayName", "value": "P95 (ms)"}, {"id": "unit", "value": "ms"}]}
+        ]
+      },
       "options": {
-        "showTime": true,
-        "showLabels": false,
-        "showCommonLabels": false,
-        "wrapLogMessage": false,
-        "prettifyLogMessage": true,
-        "enableLogDetails": false,
-        "dedupStrategy": "none",
-        "sortOrder": "Descending"
+        "cellHeight": "sm",
+        "footer": {"show": false},
+        "showHeader": true,
+        "sortBy": [{"displayName": "Hora", "desc": true}]
       },
       "targets": [
         {
@@ -310,26 +332,86 @@
       ]
     },
     {
-      "id": 10,
-      "type": "logs",
-      "title": "Agentes · comparación shadow",
-      "description": "Resultado sanitizado de la candidata frente a la respuesta activa. No publica respuestas ni contenido conversacional.",
-      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 44},
+      "id": 12,
+      "type": "table",
+      "title": "Consultas · detalle por mensaje",
+      "description": "Una fila por consulta completada. Actor pseudónimo y correlationId sirven para investigar sin exponer el identificador del canal.",
+      "gridPos": {"h": 14, "w": 24, "x": 0, "y": 48},
       "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
+      "fieldConfig": {
+        "defaults": {"custom": {"align": "auto", "cellOptions": {"type": "auto"}, "inspect": false}},
+        "overrides": [
+          {"matcher": {"id": "byName", "options": "@timestamp"}, "properties": [{"id": "displayName", "value": "Hora"}, {"id": "unit", "value": "time:YYYY-MM-DD HH:mm:ss"}]},
+          {"matcher": {"id": "byName", "options": "parsedChannel"}, "properties": [{"id": "displayName", "value": "Canal"}]},
+          {"matcher": {"id": "byName", "options": "parsedActorKey"}, "properties": [{"id": "displayName", "value": "Actor (pseudónimo)"}]},
+          {"matcher": {"id": "byName", "options": "parsedQueryType"}, "properties": [{"id": "displayName", "value": "Tipo"}]},
+          {"matcher": {"id": "byName", "options": "parsedOutcome"}, "properties": [{"id": "displayName", "value": "Resultado"}]},
+          {"matcher": {"id": "byName", "options": "parsedDurationMs"}, "properties": [{"id": "displayName", "value": "Latencia (ms)"}, {"id": "unit", "value": "ms"}]},
+          {"matcher": {"id": "byName", "options": "parsedWorkflowVersion"}, "properties": [{"id": "displayName", "value": "Workflow"}]},
+          {"matcher": {"id": "byName", "options": "parsedCorrelationId"}, "properties": [{"id": "displayName", "value": "Conversación"}]},
+          {"matcher": {"id": "byName", "options": "parsedFallbackReason"}, "properties": [{"id": "displayName", "value": "Fallback"}]}
+        ]
+      },
       "options": {
-        "showTime": true,
-        "showLabels": false,
-        "showCommonLabels": false,
-        "wrapLogMessage": false,
-        "prettifyLogMessage": true,
-        "enableLogDetails": false,
-        "dedupStrategy": "none",
-        "sortOrder": "Descending"
+        "cellHeight": "sm",
+        "footer": {"show": false},
+        "showHeader": true,
+        "sortBy": [{"displayName": "Hora", "desc": true}]
       },
       "targets": [
         {
           "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
-          "expression": "fields @timestamp, @message\n| filter @message like /\\\"eventType\\\":\\\"AGENT_TRAFFIC_COMPARISON_RECORDED\\\"/\n| parse @message /\\\"agentId\\\":\\\"(?<parsedAgentId>[^\\\"]+)\\\"/\n| parse @message /\\\"agentVersion\\\":(?<parsedAgentVersion>[0-9]+)/\n| parse @message /\\\"model\\\":\\\"(?<parsedModel>[^\\\"]+)\\\"/\n| parse @message /\\\"channel\\\":\\\"(?<parsedChannel>[^\\\"]+)\\\"/\n| parse @message /\\\"useCase\\\":\\\"(?<parsedUseCase>[^\\\"]+)\\\"/\n| parse @message /\\\"outcome\\\":\\\"(?<parsedOutcome>[^\\\"]+)\\\"/\n| parse @message /\\\"comparisonOutcome\\\":\\\"(?<parsedComparisonOutcome>[^\\\"]+)\\\"/\n| stats count() as executions, sum(if(parsedComparisonOutcome = \"MATCH\", 1, 0)) as matches, sum(if(parsedComparisonOutcome = \"MISMATCH\", 1, 0)) as mismatches, sum(if(parsedComparisonOutcome = \"UNKNOWN\", 1, 0)) as unknowns, sum(if(parsedOutcome = \"COMPLETED\", 1, 0)) as completed, sum(if(parsedOutcome != \"COMPLETED\", 1, 0)) as failures by parsedAgentId, parsedAgentVersion, parsedModel, parsedChannel, parsedUseCase, bin(1h)\n| fields @timestamp, parsedAgentId, parsedAgentVersion, parsedModel, parsedChannel, parsedUseCase, executions, matches, mismatches, unknowns, completed, failures, (matches * 100.0 / executions) as matchRatePercent, (mismatches * 100.0 / executions) as mismatchRatePercent, (unknowns * 100.0 / executions) as unknownRatePercent\n| sort @timestamp asc",
+          "expression": "fields @timestamp, @message\n| filter @message like /\\\"eventType\\\":\\\"CONVERSATION_QUERY_COMPLETED\\\"/\n| parse @message /\\\"channel\\\":\\\"(?<parsedChannel>[^\\\"]+)\\\"/\n| parse @message /\\\"actorKey\\\":\\\"(?<parsedActorKey>[^\\\"]+)\\\"/\n| parse @message /\\\"queryType\\\":\\\"(?<parsedQueryType>[^\\\"]+)\\\"/\n| parse @message /\\\"outcome\\\":\\\"(?<parsedOutcome>[^\\\"]+)\\\"/\n| parse @message /\\\"durationMs\\\":(?<parsedDurationMs>[0-9]+)/\n| parse @message /\\\"workflowVersion\\\":\\\"(?<parsedWorkflowVersion>[^\\\"]+)\\\"/\n| parse @message /\\\"correlationId\\\":\\\"(?<parsedCorrelationId>[^\\\"]+)\\\"/\n| parse @message /\\\"fallbackReason\\\":\\\"(?<parsedFallbackReason>[^\\\"]+)\\\"/\n| sort @timestamp desc\n| limit 100\n| display @timestamp, parsedChannel, parsedActorKey, parsedQueryType, parsedOutcome, parsedDurationMs, parsedWorkflowVersion, parsedCorrelationId, parsedFallbackReason",
+          "id": "",
+          "label": "",
+          "logsMode": "Insights",
+          "logsQueryScope": "namePrefix",
+          "logGroupClass": "STANDARD",
+          "logGroupPrefixes": ["/aws/apprunner/wally-customer-support-prod-backend"],
+          "queryLanguage": "CWLI",
+          "queryMode": "Logs",
+          "refId": "A",
+          "region": "us-east-1"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "table",
+      "title": "Agentes · comparación shadow",
+      "description": "Resultado sanitizado de la candidata frente a la respuesta activa. No publica respuestas ni contenido conversacional. Sin datos es esperado mientras shadow esté desactivado o no haya tráfico seleccionado.",
+      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 62},
+      "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
+      "fieldConfig": {
+        "defaults": {"custom": {"align": "auto", "cellOptions": {"type": "auto"}, "inspect": false}},
+        "overrides": [
+          {"matcher": {"id": "byName", "options": "bin(1h)"}, "properties": [{"id": "displayName", "value": "Hora"}, {"id": "unit", "value": "time:YYYY-MM-DD HH:mm:ss"}]},
+          {"matcher": {"id": "byName", "options": "parsedAgentId"}, "properties": [{"id": "displayName", "value": "Agente"}]},
+          {"matcher": {"id": "byName", "options": "parsedAgentVersion"}, "properties": [{"id": "displayName", "value": "Versión"}]},
+          {"matcher": {"id": "byName", "options": "parsedModel"}, "properties": [{"id": "displayName", "value": "Modelo"}]},
+          {"matcher": {"id": "byName", "options": "parsedChannel"}, "properties": [{"id": "displayName", "value": "Canal"}]},
+          {"matcher": {"id": "byName", "options": "parsedUseCase"}, "properties": [{"id": "displayName", "value": "Caso de uso"}]},
+          {"matcher": {"id": "byName", "options": "executions"}, "properties": [{"id": "displayName", "value": "Ejecuciones"}]},
+          {"matcher": {"id": "byName", "options": "matches"}, "properties": [{"id": "displayName", "value": "Coincidencias"}]},
+          {"matcher": {"id": "byName", "options": "mismatches"}, "properties": [{"id": "displayName", "value": "Diferencias"}]},
+          {"matcher": {"id": "byName", "options": "unknowns"}, "properties": [{"id": "displayName", "value": "Indeterminadas"}]},
+          {"matcher": {"id": "byName", "options": "matchRatePercent"}, "properties": [{"id": "displayName", "value": "Coincidencia (%)"}, {"id": "unit", "value": "percent"}]},
+          {"matcher": {"id": "byName", "options": "mismatchRatePercent"}, "properties": [{"id": "displayName", "value": "Diferencia (%)"}, {"id": "unit", "value": "percent"}]},
+          {"matcher": {"id": "byName", "options": "unknownRatePercent"}, "properties": [{"id": "displayName", "value": "Indeterminada (%)"}, {"id": "unit", "value": "percent"}]},
+          {"matcher": {"id": "byName", "options": "completed"}, "properties": [{"id": "displayName", "value": "Completadas"}]},
+          {"matcher": {"id": "byName", "options": "failures"}, "properties": [{"id": "displayName", "value": "Fallos"}]}
+        ]
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {"show": false},
+        "showHeader": true,
+        "sortBy": [{"displayName": "Hora", "desc": true}]
+      },
+      "targets": [
+        {
+          "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
+          "expression": "fields @timestamp, @message\n| filter @message like /\\\"eventType\\\":\\\"AGENT_TRAFFIC_COMPARISON_RECORDED\\\"/\n| parse @message /\\\"agentId\\\":\\\"(?<parsedAgentId>[^\\\"]+)\\\"/\n| parse @message /\\\"agentVersion\\\":(?<parsedAgentVersion>[0-9]+)/\n| parse @message /\\\"model\\\":\\\"(?<parsedModel>[^\\\"]+)\\\"/\n| parse @message /\\\"channel\\\":\\\"(?<parsedChannel>[^\\\"]+)\\\"/\n| parse @message /\\\"useCase\\\":\\\"(?<parsedUseCase>[^\\\"]+)\\\"/\n| parse @message /\\\"outcome\\\":\\\"(?<parsedOutcome>[^\\\"]+)\\\"/\n| parse @message /\\\"comparisonOutcome\\\":\\\"(?<parsedComparisonOutcome>[^\\\"]+)\\\"/\n| stats count() as executions, sum(if(parsedComparisonOutcome = \"MATCH\", 1, 0)) as matches, sum(if(parsedComparisonOutcome = \"MISMATCH\", 1, 0)) as mismatches, sum(if(parsedComparisonOutcome = \"UNKNOWN\", 1, 0)) as unknowns, sum(if(parsedOutcome = \"COMPLETED\", 1, 0)) as completed, sum(if(parsedOutcome != \"COMPLETED\", 1, 0)) as failures, (sum(if(parsedComparisonOutcome = \"MATCH\", 1, 0)) * 100.0 / count()) as matchRatePercent, (sum(if(parsedComparisonOutcome = \"MISMATCH\", 1, 0)) * 100.0 / count()) as mismatchRatePercent, (sum(if(parsedComparisonOutcome = \"UNKNOWN\", 1, 0)) * 100.0 / count()) as unknownRatePercent by parsedAgentId, parsedAgentVersion, parsedModel, parsedChannel, parsedUseCase, bin(1h)\n| sort @timestamp desc",
           "id": "",
           "label": "",
           "logsMode": "Insights",
@@ -346,25 +428,40 @@
     },
     {
       "id": 11,
-      "type": "logs",
+      "type": "table",
       "title": "Agentes · costo, tokens y latencia shadow",
-      "description": "Métricas operativas de la candidata. El costo es estimado y no sustituye la facturación de AWS.",
-      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 56},
+      "description": "Métricas operativas de la candidata. El costo es estimado y no sustituye la facturación de AWS. Sin datos es esperado mientras shadow esté desactivado o no haya tráfico seleccionado.",
+      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 74},
       "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
+      "fieldConfig": {
+        "defaults": {"custom": {"align": "auto", "cellOptions": {"type": "auto"}, "inspect": false}},
+        "overrides": [
+          {"matcher": {"id": "byName", "options": "bin(1h)"}, "properties": [{"id": "displayName", "value": "Hora"}, {"id": "unit", "value": "time:YYYY-MM-DD HH:mm:ss"}]},
+          {"matcher": {"id": "byName", "options": "parsedAgentId"}, "properties": [{"id": "displayName", "value": "Agente"}]},
+          {"matcher": {"id": "byName", "options": "parsedAgentVersion"}, "properties": [{"id": "displayName", "value": "Versión"}]},
+          {"matcher": {"id": "byName", "options": "parsedModel"}, "properties": [{"id": "displayName", "value": "Modelo"}]},
+          {"matcher": {"id": "byName", "options": "parsedChannel"}, "properties": [{"id": "displayName", "value": "Canal"}]},
+          {"matcher": {"id": "byName", "options": "parsedUseCase"}, "properties": [{"id": "displayName", "value": "Caso de uso"}]},
+          {"matcher": {"id": "byName", "options": "executions"}, "properties": [{"id": "displayName", "value": "Ejecuciones"}]},
+          {"matcher": {"id": "byName", "options": "averageLatencyMs"}, "properties": [{"id": "displayName", "value": "Latencia media (ms)"}, {"id": "unit", "value": "ms"}]},
+          {"matcher": {"id": "byName", "options": "p50LatencyMs"}, "properties": [{"id": "displayName", "value": "P50 (ms)"}, {"id": "unit", "value": "ms"}]},
+          {"matcher": {"id": "byName", "options": "p95LatencyMs"}, "properties": [{"id": "displayName", "value": "P95 (ms)"}, {"id": "unit", "value": "ms"}]},
+          {"matcher": {"id": "byName", "options": "inputTokens"}, "properties": [{"id": "displayName", "value": "Tokens entrada"}]},
+          {"matcher": {"id": "byName", "options": "outputTokens"}, "properties": [{"id": "displayName", "value": "Tokens salida"}]},
+          {"matcher": {"id": "byName", "options": "totalTokens"}, "properties": [{"id": "displayName", "value": "Tokens total"}]},
+          {"matcher": {"id": "byName", "options": "estimatedCostUsd"}, "properties": [{"id": "displayName", "value": "Costo estimado (USD)"}, {"id": "unit", "value": "currencyUSD"}]}
+        ]
+      },
       "options": {
-        "showTime": true,
-        "showLabels": false,
-        "showCommonLabels": false,
-        "wrapLogMessage": false,
-        "prettifyLogMessage": true,
-        "enableLogDetails": false,
-        "dedupStrategy": "none",
-        "sortOrder": "Descending"
+        "cellHeight": "sm",
+        "footer": {"show": false},
+        "showHeader": true,
+        "sortBy": [{"displayName": "Hora", "desc": true}]
       },
       "targets": [
         {
           "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
-          "expression": "fields @timestamp, @message\n| filter @message like /\\\"eventType\\\":\\\"AGENT_TRAFFIC_COMPARISON_RECORDED\\\"/\n| parse @message /\\\"agentId\\\":\\\"(?<parsedAgentId>[^\\\"]+)\\\"/\n| parse @message /\\\"agentVersion\\\":(?<parsedAgentVersion>[0-9]+)/\n| parse @message /\\\"model\\\":\\\"(?<parsedModel>[^\\\"]+)\\\"/\n| parse @message /\\\"latencyMs\\\":(?<parsedLatencyMs>[0-9]+)/\n| parse @message /\\\"inputTokens\\\":(?<parsedInputTokens>[0-9]+)/\n| parse @message /\\\"outputTokens\\\":(?<parsedOutputTokens>[0-9]+)/\n| parse @message /\\\"totalTokens\\\":(?<parsedTotalTokens>[0-9]+)/\n| parse @message /\\\"estimatedCostUsd\\\":(?<parsedEstimatedCostUsd>[0-9.]+)/\n| stats count() as executions, avg(parsedLatencyMs) as averageLatencyMs, pct(parsedLatencyMs, 50) as p50LatencyMs, pct(parsedLatencyMs, 95) as p95LatencyMs, sum(parsedInputTokens) as inputTokens, sum(parsedOutputTokens) as outputTokens, sum(parsedTotalTokens) as totalTokens, sum(parsedEstimatedCostUsd) as estimatedCostUsd by parsedAgentId, parsedAgentVersion, parsedModel, bin(1h)\n| sort @timestamp asc",
+          "expression": "fields @timestamp, @message\n| filter @message like /\\\"eventType\\\":\\\"AGENT_TRAFFIC_COMPARISON_RECORDED\\\"/\n| parse @message /\\\"agentId\\\":\\\"(?<parsedAgentId>[^\\\"]+)\\\"/\n| parse @message /\\\"agentVersion\\\":(?<parsedAgentVersion>[0-9]+)/\n| parse @message /\\\"model\\\":\\\"(?<parsedModel>[^\\\"]+)\\\"/\n| parse @message /\\\"channel\\\":\\\"(?<parsedChannel>[^\\\"]+)\\\"/\n| parse @message /\\\"useCase\\\":\\\"(?<parsedUseCase>[^\\\"]+)\\\"/\n| parse @message /\\\"latencyMs\\\":(?<parsedLatencyMs>[0-9]+)/\n| parse @message /\\\"inputTokens\\\":(?<parsedInputTokens>[0-9]+)/\n| parse @message /\\\"outputTokens\\\":(?<parsedOutputTokens>[0-9]+)/\n| parse @message /\\\"totalTokens\\\":(?<parsedTotalTokens>[0-9]+)/\n| parse @message /\\\"estimatedCostUsd\\\":(?<parsedEstimatedCostUsd>[0-9.]+)/\n| stats count() as executions, avg(parsedLatencyMs) as averageLatencyMs, pct(parsedLatencyMs, 50) as p50LatencyMs, pct(parsedLatencyMs, 95) as p95LatencyMs, sum(parsedInputTokens) as inputTokens, sum(parsedOutputTokens) as outputTokens, sum(parsedTotalTokens) as totalTokens, sum(parsedEstimatedCostUsd) as estimatedCostUsd by parsedAgentId, parsedAgentVersion, parsedModel, parsedChannel, parsedUseCase, bin(1h)\n| sort @timestamp desc",
           "id": "",
           "label": "",
           "logsMode": "Insights",
@@ -375,7 +472,7 @@
           "queryMode": "Logs",
           "refId": "A",
           "region": "us-east-1",
-          "statsGroups": ["parsedAgentId", "parsedAgentVersion", "parsedModel"]
+          "statsGroups": ["parsedAgentId", "parsedAgentVersion", "parsedModel", "parsedChannel", "parsedUseCase"]
         }
       ]
     },
@@ -384,7 +481,7 @@
       "type": "logs",
       "title": "WCS · últimos eventos operativos",
       "description": "Eventos agregados de webhook, mensajes, intenciones y entregas. No muestra texto del usuario.",
-      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 68},
+      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 86},
       "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
       "options": {
         "showTime": true,
@@ -419,7 +516,7 @@
       "type": "logs",
       "title": "App Runner · errores",
       "description": "Diagnóstico de errores del runtime. Revisar siempre que no haya PII antes de compartir evidencia.",
-      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 80},
+      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 98},
       "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
       "options": {
         "showTime": true,

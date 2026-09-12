@@ -296,6 +296,9 @@ wcs/{environment}/database
 wcs/{environment}/backoffice
   preview-token (sólo para el preview temporal read-only; nunca en AppConfig)
 
+wcs/{environment}/observability
+  actor-key-secret (clave HMAC para actorKey; nunca se publica en AppConfig)
+
 wcs/{environment}/providers
   api keys de proveedores externos, sólo si fueran necesarias
 ```
@@ -364,6 +367,7 @@ Las referencias admitidas actualmente son:
 | `whatsapp-secret-id` | `access-token`, `verify-token`, `app-secret` y variantes snake/camel | `wcs.whatsapp.access-token`, `wcs.whatsapp.verify-token`, `wcs.whatsapp.app-secret` |
 | `telegram-secret-id` | `bot-token`, `webhook-secret-token` y variantes snake/camel | `wcs.telegram.bot-token`, `wcs.telegram.webhook-secret-token` |
 | `backoffice-secret-id` | `preview-token` y variantes snake/camel | `wcs.backoffice.preview.token` |
+| `observability-secret-id` | `actor-key-secret` y variantes snake/camel | `wcs.observability.actor-key-secret` |
 | `runtime-secret-id` | combinación explícita de los campos anteriores | propiedades correspondientes |
 
 El `secret-id` legacy sólo se usa como referencia genérica cuando no hay

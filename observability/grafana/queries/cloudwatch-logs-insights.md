@@ -40,7 +40,7 @@ secretos, números de teléfono ni tokens de autenticación. `inputTokens`,
 `outputTokens` y `totalTokens` son contadores de consumo del proveedor de IA,
 no credenciales.
 
-## Consultas completas por tipo, resultado y latencia
+## Consultas agregadas por tipo, resultado y latencia
 
 ```text
 fields @timestamp, @message
@@ -55,6 +55,38 @@ fields @timestamp, @message
 | sort @timestamp asc
 ```
 
+## Detalle de cada consulta y trazabilidad segura del actor
+
+Esta variante no usa `stats` ni `bin(1h)`: conserva una fila por evento y el
+`@timestamp` individual que CloudWatch asigna al log. La tabla puede mostrar
+hasta 100 consultas recientes dentro de la ventana seleccionada.
+
+```text
+fields @timestamp, @message
+| filter @message like /\"eventType\":\"CONVERSATION_QUERY_COMPLETED\"/
+| parse @message /\"channel\":\"(?<parsedChannel>[^\"]+)\"/
+| parse @message /\"actorKey\":\"(?<parsedActorKey>[^\"]+)\"/
+| parse @message /\"queryType\":\"(?<parsedQueryType>[^\"]+)\"/
+| parse @message /\"outcome\":\"(?<parsedOutcome>[^\"]+)\"/
+| parse @message /\"durationMs\":(?<parsedDurationMs>[0-9]+)/
+| parse @message /\"workflowVersion\":\"(?<parsedWorkflowVersion>[^\"]+)\"/
+| parse @message /\"correlationId\":\"(?<parsedCorrelationId>[^\"]+)\"/
+| parse @message /\"fallbackReason\":\"(?<parsedFallbackReason>[^\"]+)\"/
+| sort @timestamp desc
+| limit 100
+| display @timestamp, parsedChannel, parsedActorKey, parsedQueryType,
+          parsedOutcome, parsedDurationMs, parsedWorkflowVersion,
+          parsedCorrelationId, parsedFallbackReason
+```
+
+`actorKey` es un HMAC-SHA-256 estable por canal y cliente, generado con una
+clave exclusiva del servidor en Secrets Manager. Es útil para agrupar eventos
+del mismo actor, pero no reemplaza una identidad de usuario en el producto ni
+permite recuperar el teléfono o chat ID. Si la clave no está configurada, el
+evento no incluye `actorKey`; la consulta continúa funcionando. `correlationId`
+identifica la conversación y se reserva para diagnóstico puntual, no para
+dimensiones agregadas de alta cardinalidad.
+
 ## Uso de IA por operación, modelo y costo estimado
 
 ```text
@@ -64,6 +96,8 @@ fields @timestamp, @message
 | parse @message /\"operation\":\"(?<parsedOperation>[^\"]+)\"/
 | parse @message /\"provider\":\"(?<parsedProvider>[^\"]+)\"/
 | parse @message /\"model\":\"(?<parsedModel>[^\"]+)\"/
+| parse @message /\"channel\":\"(?<parsedChannel>[^\"]+)\"/
+| parse @message /\"useCase\":\"(?<parsedUseCase>[^\"]+)\"/
 | parse @message /\"pricingVersion\":\"(?<parsedPricingVersion>[^\"]+)\"/
 | parse @message /\"success\":(?<parsedSuccess>true|false)/
 | parse @message /\"inputTokens\":(?<parsedInputTokens>[0-9]+)/
@@ -196,14 +230,12 @@ fields @timestamp, @message
         sum(if(parsedComparisonOutcome = "MISMATCH", 1, 0)) as mismatches,
         sum(if(parsedComparisonOutcome = "UNKNOWN", 1, 0)) as unknowns,
         sum(if(parsedOutcome = "COMPLETED", 1, 0)) as completed,
-        sum(if(parsedOutcome != "COMPLETED", 1, 0)) as failures
+        sum(if(parsedOutcome != "COMPLETED", 1, 0)) as failures,
+        (sum(if(parsedComparisonOutcome = "MATCH", 1, 0)) * 100.0 / count()) as matchRatePercent,
+        (sum(if(parsedComparisonOutcome = "MISMATCH", 1, 0)) * 100.0 / count()) as mismatchRatePercent,
+        (sum(if(parsedComparisonOutcome = "UNKNOWN", 1, 0)) * 100.0 / count()) as unknownRatePercent
   by parsedAgentId, parsedAgentVersion, parsedModel, parsedChannel, parsedUseCase, bin(1h)
-| fields @timestamp, parsedAgentId, parsedAgentVersion, parsedModel, parsedChannel,
-          parsedUseCase, executions, matches, mismatches, unknowns, completed, failures,
-          (matches * 100.0 / executions) as matchRatePercent,
-          (mismatches * 100.0 / executions) as mismatchRatePercent,
-          (unknowns * 100.0 / executions) as unknownRatePercent
-| sort @timestamp asc
+| sort @timestamp desc
 ```
 
 Esta consulta sólo usa metadata sanitizada. `UNKNOWN` no debe interpretarse
@@ -218,6 +250,8 @@ fields @timestamp, @message
 | parse @message /\"agentId\":\"(?<parsedAgentId>[^\"]+)\"/
 | parse @message /\"agentVersion\":(?<parsedAgentVersion>[0-9]+)/
 | parse @message /\"model\":\"(?<parsedModel>[^\"]+)\"/
+| parse @message /\"channel\":\"(?<parsedChannel>[^\"]+)\"/
+| parse @message /\"useCase\":\"(?<parsedUseCase>[^\"]+)\"/
 | parse @message /\"latencyMs\":(?<parsedLatencyMs>[0-9]+)/
 | parse @message /\"inputTokens\":(?<parsedInputTokens>[0-9]+)/
 | parse @message /\"outputTokens\":(?<parsedOutputTokens>[0-9]+)/
@@ -231,8 +265,8 @@ fields @timestamp, @message
         sum(parsedOutputTokens) as outputTokens,
         sum(parsedTotalTokens) as totalTokens,
         sum(parsedEstimatedCostUsd) as estimatedCostUsd
-  by parsedAgentId, parsedAgentVersion, parsedModel, bin(1h)
-| sort @timestamp asc
+  by parsedAgentId, parsedAgentVersion, parsedModel, parsedChannel, parsedUseCase, bin(1h)
+| sort @timestamp desc
 ```
 
 Los campos operativos pueden ser nulos cuando el proveedor no entrega
