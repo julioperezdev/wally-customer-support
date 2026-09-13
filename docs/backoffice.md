@@ -210,9 +210,8 @@ VITE_WCS_BACKEND_BASE_URL=https://guapajjmta.us-east-1.awsapprunner.com
 El proxy de Vite enviará todas las rutas `/internal` al backend desplegado y
 mantendrá el navegador en el mismo origen, evitando una configuración CORS
 adicional para esta prueba local. Reiniciar Vite después de crear o cambiar el
-archivo. El hostname no es un secreto; los tokens de sesión siguen siendo
-temporales, se ingresan en memoria desde el panel y no deben guardarse en este
-archivo.
+archivo. El hostname no es un secreto; el login se realiza desde el panel y
+la sesión queda en cookies `HttpOnly` administradas por la API.
 
 Si `VITE_WCS_BACKEND_BASE_URL` no existe, el comportamiento vuelve a ser el
 backend local en `http://localhost:8080`. Un `401` o `403` después del cambio
@@ -230,9 +229,10 @@ El mapa se configura con `VITE_WCS_AGENT_MAP_BASE_URL`; por defecto es
 VITE_WCS_CONTROL_PLANE_BASE_URL=http://localhost:8080/internal/agent-evaluations npm run dev
 ```
 
-El panel no habilita JWT en el backend. Para una prueba autorizada se ingresa
-un token temporal en el campo de sesión; no se agrega un token al `.env`, al
-repositorio ni al pipeline.
+El panel usa `POST /internal/auth/login` para iniciar la sesión Cognito a través
+de la API. No se agrega ningún token al `.env`, al repositorio ni al pipeline.
+El campo legacy de preview-token sólo queda disponible para pruebas read-only
+cuando está explícitamente habilitado; no representa el login productivo.
 
 ### Preview remoto read-only del backend
 
