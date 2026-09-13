@@ -1,6 +1,6 @@
 # Pedidos y pagos — WCS-122
 
-Status: `In Progress`
+Status: `In Review`
 Related Jira: [WCS-122](https://julioperezdev.atlassian.net/browse/WCS-122)
 Related migration: `V18__create_orders_and_payments.sql`
 
@@ -87,7 +87,7 @@ El adapter verifica `x-signature` con HMAC-SHA256 y una ventana de 15 minutos.
 El manifiesto firmado es:
 
 ```text
-id:{notification_id};request-id:{x-request-id};ts:{timestamp};
+id:{data.id};request-id:{x-request-id};ts:{timestamp};
 ```
 
 Cada evento se guarda una sola vez por `provider + provider_event_id` en
