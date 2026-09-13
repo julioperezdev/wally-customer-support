@@ -184,6 +184,39 @@ export type AgentActivationPreflight = {
   checks: AgentActivationPreflightCheck[];
 };
 
+export type AgentActivationRequest = {
+  agentId: string;
+  agentVersion: number;
+  environment: string;
+  channel: string;
+  useCase: string;
+  reason: string;
+  rolloutPercentage: number;
+  enabled: boolean;
+  approvalReference: string;
+  operationalApprovalReference: string;
+};
+
+export type AgentActivationActionRequest = {
+  agentId: string;
+  environment: string;
+  channel: string;
+  useCase: string;
+  approvalReference: string;
+  operationalApprovalReference: string;
+};
+
+export type AgentActivationMutation = {
+  status: "ACTIVATED" | "KILL_SWITCHED" | "ROLLED_BACK" | "ALREADY_PROCESSED" | "DENIED" | "DISABLED" | "INVALID" | "FAILED" | string;
+  reason: string;
+  agentId: string;
+  agentVersion: number | null;
+  environment: string;
+  channel: string;
+  useCase: string;
+  activatedAt: string | null;
+};
+
 export type Comparison = {
   baselineRunId: string;
   candidateRunId: string;
@@ -357,18 +390,7 @@ export function createControlPlaneClient(
       params.set("limit", String(filters.limit ?? 50));
       return requestFrom<AgentRegistryAgent[]>(normalizedRegistryBaseUrl, `/agents?${params.toString()}`);
     },
-    preflightActivation(request: {
-      agentId: string;
-      agentVersion: number;
-      environment: string;
-      channel: string;
-      useCase: string;
-      reason: string;
-      rolloutPercentage: number;
-      enabled: boolean;
-      approvalReference: string;
-      operationalApprovalReference: string;
-    }) {
+    preflightActivation(request: AgentActivationRequest) {
       return requestFrom<AgentActivationPreflight>(
         normalizedRegistryBaseUrl,
         "/activations/preflight",
@@ -380,7 +402,38 @@ export function createControlPlaneClient(
             ...(token.trim() ? { Authorization: `Bearer ${token.trim()}` } : {})
           },
           body: JSON.stringify(request)
-        });
+        },
+        [HttpStatus.UNPROCESSABLE_ENTITY, HttpStatus.FORBIDDEN]);
+    },
+    activateAgent(request: AgentActivationRequest, idempotencyKey: string) {
+      return requestFrom<AgentActivationMutation>(normalizedRegistryBaseUrl, "/activations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKey
+        },
+        body: JSON.stringify(request)
+      });
+    },
+    killSwitchAgent(request: AgentActivationActionRequest, idempotencyKey: string) {
+      return requestFrom<AgentActivationMutation>(normalizedRegistryBaseUrl, "/activations/kill-switch", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKey
+        },
+        body: JSON.stringify(request)
+      });
+    },
+    rollbackAgent(request: AgentActivationActionRequest, idempotencyKey: string) {
+      return requestFrom<AgentActivationMutation>(normalizedRegistryBaseUrl, "/activations/rollback", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKey
+        },
+        body: JSON.stringify(request)
+      });
     },
     getAgentMap(filters: {
       environment?: string;
@@ -443,7 +496,8 @@ export function createControlPlaneClient(
   async function requestFrom<T>(
     root: string,
     path: string,
-    init?: RequestInit
+    init?: RequestInit,
+    acceptedStatuses: number[] = []
   ): Promise<T> {
     const headers: Record<string, string> = {
       Accept: "application/json",
@@ -453,7 +507,7 @@ export function createControlPlaneClient(
       headers.Authorization = `Bearer ${token.trim()}`;
     }
     const response = await fetch(`${root}${path}`, { ...init, headers });
-    if (!response.ok) {
+    if (!response.ok && !acceptedStatuses.includes(response.status)) {
       let code = "CONTROL_PLANE_ERROR";
       try {
         code = ((await response.json()) as { code?: string }).code ?? code;
@@ -465,6 +519,11 @@ export function createControlPlaneClient(
     return (await response.json()) as T;
   }
 }
+
+const HttpStatus = {
+  FORBIDDEN: 403,
+  UNPROCESSABLE_ENTITY: 422
+} as const;
 
 export function createBackofficeClient(baseUrl: string, token: string) {
   const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");

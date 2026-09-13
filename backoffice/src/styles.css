@@ -22,6 +22,11 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .primary { background: #4b68cb; border-color: #6984e5; font-weight: 700; }
 .alert { background: #3a2028; border: 1px solid #9f5265; color: #ffd7de; border-radius: 12px; padding: 14px 16px; margin-bottom: 18px; }
 .success-alert { background: #102b27; border: 1px solid #2e795d; color: #9af2c9; border-radius: 12px; padding: 14px 16px; margin-bottom: 18px; }
+.warning-alert { background: #332c19; border: 1px solid #8f793d; color: #f1cf7c; border-radius: 12px; padding: 14px 16px; margin-bottom: 18px; line-height: 1.45; }
+.warning-alert code { color: #fff0b2; }
+.activation-console .muted { margin-top: 12px; }
+.mutation-result { margin-top: 18px; border: 1px solid #35435f; border-radius: 12px; padding: 16px; }
+.negative-button { border-color: #9f5265; background: #3a2028; }
 .filters { display: flex; gap: 8px; min-width: min(100%, 450px); }
 .button-row { display: flex; gap: 10px; flex-wrap: wrap; }
 .registry-filters { margin-bottom: 16px; }

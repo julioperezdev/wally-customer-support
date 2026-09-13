@@ -17,6 +17,7 @@ import {
   createControlPlaneClient
 } from "./api";
 import { refreshReadOnlyPanels } from "./refresh";
+import { AgentActivationPanel } from "./AgentActivationPanel";
 
 const DEFAULT_BASE_URL = import.meta.env.VITE_WCS_CONTROL_PLANE_BASE_URL ?? "/internal/agent-evaluations";
 const DEFAULT_REGISTRY_BASE_URL = import.meta.env.VITE_WCS_AGENT_REGISTRY_BASE_URL ?? "/internal/agent-registry";
@@ -373,9 +374,9 @@ export function App() {
         <div>
           <p className="eyebrow">WALLY CUSTOMER SUPPORT · CONTROL PLANE</p>
           <h1>Evaluaciones de agentes</h1>
-          <p className="lead">Consulta read-only de evidencia sanitizada. Esta pantalla no publica, activa ni ejecuta agentes.</p>
+          <p className="lead">Consulta evidencia sanitizada y opera activaciones sólo mediante controles protegidos y auditables.</p>
         </div>
-        <span className="status-pill">READ ONLY</span>
+        <span className="status-pill">CONTROL PLANE</span>
       </header>
 
       <section className="card connection-card">
@@ -492,6 +493,8 @@ export function App() {
         {preflightError && <div className="alert" role="alert">Preflight: {preflightError}</div>}
         {preflight && <PreflightView result={preflight} />}
       </section>
+
+      <AgentActivationPanel client={client} onRegistryChanged={loadRegistry} />
 
       <section className="card">
         <div className="section-heading">
