@@ -317,4 +317,32 @@ describe("backoffice client", () => {
       })
     );
   });
+
+  it("lists orders and sends an idempotency key for assisted sales", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ items: [], page: 1, size: 10, hasNext: false }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: "order-1", status: "PENDING_PAYMENT" }), { status: 201 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = createBackofficeClient("/internal/backoffice", "session-token");
+    await client.listOrders("PAID", 1, 10);
+    await client.createOrder({ items: [{ sku: "SKU-1", quantity: 1 }] }, "order-request-1");
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "/internal/backoffice/orders?page=1&limit=10&status=PAID",
+      { headers: { Accept: "application/json", Authorization: "Bearer session-token" } }
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "/internal/backoffice/orders",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          Authorization: "Bearer session-token",
+          "Idempotency-Key": "order-request-1"
+        })
+      })
+    );
+  });
 });

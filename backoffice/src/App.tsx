@@ -19,6 +19,7 @@ import {
 import { refreshReadOnlyPanels } from "./refresh";
 import { AgentAuthoringPanel } from "./AgentAuthoringPanel";
 import { AgentActivationPanel } from "./AgentActivationPanel";
+import { OrderPanel } from "./OrderPanel";
 
 const DEFAULT_BASE_URL = import.meta.env.VITE_WCS_CONTROL_PLANE_BASE_URL ?? "/internal/agent-evaluations";
 const DEFAULT_REGISTRY_BASE_URL = import.meta.env.VITE_WCS_AGENT_REGISTRY_BASE_URL ?? "/internal/agent-registry";
@@ -439,6 +440,8 @@ export function App() {
           </div>
         </div>
       </section>
+
+      <OrderPanel client={backofficeClient} />
 
       {error && <div className="alert" role="alert">{error}</div>}
       {registryError && <div className="alert" role="alert">Registry: {registryError}</div>}

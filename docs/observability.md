@@ -84,6 +84,12 @@ operacional necesario para diagnóstico y costo, pero sin contenido de negocio.
 | `AGENT_REGISTRY_MUTATION_DISABLED` | `operation`, `agentId`, `status`, `reason` | Mutación rechazada por la flag cerrada |
 | `AGENT_REGISTRY_MUTATION_DENIED` | `operation`, `agentId`, `status`, `reason` | Mutación rechazada por autorización o ambiente |
 | `AGENT_REGISTRY_MUTATION_FAILED` | `operation`, `agentId`, `status`, `reason` | Fallo controlado del guard o persistencia |
+| `BACKOFFICE_ORDER_CREATED` | `operation`, `orderId`, `status`, `paymentLinkCreated` | Pedido creado desde la operación asistida, sin datos de cliente |
+| `PAYMENT_PREFERENCE_CREATION_FAILED` | `operation`, `orderId`, `provider`, `errorType` | El pedido quedó pendiente sin link por una falla del proveedor |
+| `PAYMENT_WEBHOOK_APPLIED` | `orderId`, `provider`, `eventId`, `paymentId`, `paymentStatus`, `result` | Estado de pago reconciliado desde el proveedor |
+| `PAYMENT_WEBHOOK_DEDUPLICATED` | `provider`, `eventId`, `result` | Reintento ya procesado sin nueva transición |
+| `PAYMENT_WEBHOOK_IGNORED` | `provider`, `eventId`, `paymentId`, `paymentStatus`, `result` | Evento válido sin pedido WCS asociado |
+| `PAYMENT_WEBHOOK_REJECTED` | `provider`, `result` | Notificación rechazada por firma inválida |
 
 No se registran texto de usuario, prompts, respuestas completas, números de
 teléfono, chat IDs, secretos, firmas ni payloads de proveedores. Los campos

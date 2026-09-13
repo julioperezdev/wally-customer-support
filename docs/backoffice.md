@@ -34,6 +34,14 @@ siguientes endpoints internos:
 | `POST /internal/backoffice/human-follow-ups/{id}/resolve` | Marca la tarea como resuelta |
 | `POST /internal/backoffice/catalog/products/{id}/image/upload-url` | Solicita URL prefirmada de S3 |
 | `POST /internal/backoffice/catalog/products/{id}/image/confirm` | Persiste la key después del upload |
+| `POST /internal/backoffice/orders` | Valida catálogo y crea un pedido idempotente con link de checkout |
+| `GET /internal/backoffice/orders` | Lista pedidos por estado para operación |
+| `GET /internal/backoffice/orders/{id}` | Consulta el detalle de un pedido |
+
+Los pedidos y pagos están documentados en [`orders-and-payments.md`](orders-and-payments.md).
+El `POST` exige `backoffice.orders.write`; las lecturas usan
+`backoffice.orders.read`. El proveedor de pago se selecciona detrás de
+`PaymentGateway` y queda en `mock` hasta configurar Mercado Pago Sandbox.
 
 El ajuste de stock usa lock pesimista, rechaza resultados negativos y guarda
 actor, motivo, delta y clave idempotente en

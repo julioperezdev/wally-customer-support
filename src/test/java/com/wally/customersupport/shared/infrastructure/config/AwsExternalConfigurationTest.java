@@ -117,11 +117,17 @@ class AwsExternalConfigurationTest {
                                 {"actor-key-secret":"actor-hmac-key",
                                  "ignored":"must-not-become-a-property"}
                                 """)
+                        .build())
+                .thenReturn(GetSecretValueResponse.builder()
+                        .secretString("""
+                                {"access-token":"mercado-token","webhook-secret":"mercado-secret",
+                                 "ignored":"must-not-become-a-property"}
+                                """)
                         .build());
 
         var properties = new ExternalConfigurationProperties.SecretsManager(
                 null, null, "database-secret", "whatsapp-secret", "telegram-secret", "backoffice-secret",
-                "observability-secret", true, true);
+                "observability-secret", "mercado-pago-secret", true, true);
 
         var loaded = new SecretsManagerConfigurationLoader(client, objectMapper).load(properties);
 
@@ -135,6 +141,8 @@ class AwsExternalConfigurationTest {
                 .containsEntry("wcs.telegram.webhook-secret-token", "webhook-token-value")
                 .containsEntry("wcs.backoffice.preview.token", "preview-token-value")
                 .containsEntry("wcs.observability.actor-key-secret", "actor-hmac-key")
+                .containsEntry("wcs.payment.mercado-pago.access-token", "mercado-token")
+                .containsEntry("wcs.payment.webhook.secret", "mercado-secret")
                 .doesNotContainKey("ignored");
     }
 }

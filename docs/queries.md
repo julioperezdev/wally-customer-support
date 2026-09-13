@@ -121,3 +121,45 @@ FROM wcs.contact_suppressions
 GROUP BY status, reason
 ORDER BY status, reason;
 ```
+
+## SQL — pedidos por estado y proveedor
+
+Consulta agregada para el seguimiento operativo. No devuelve referencias del
+cliente, keys de idempotencia ni links de pago:
+
+```sql
+SELECT status,
+       payment_provider,
+       COUNT(*) AS orders,
+       SUM(total) AS amount
+FROM wcs.orders
+WHERE created_at >= :since
+GROUP BY status, payment_provider
+ORDER BY status, payment_provider;
+```
+
+Para detectar pedidos que necesitan reintento del link, sin inspeccionar el
+contenido del pedido:
+
+```sql
+SELECT status,
+       payment_provider,
+       COUNT(*) AS pending_without_link
+FROM wcs.orders
+WHERE status = 'PENDING_PAYMENT'
+  AND payment_url IS NULL
+  AND created_at >= :since
+GROUP BY status, payment_provider;
+```
+
+Para medir reintentos y eventos ignorados del webhook:
+
+```sql
+SELECT event_type,
+       payment_status,
+       COUNT(*) AS events
+FROM wcs.payment_events
+WHERE created_at >= :since
+GROUP BY event_type, payment_status
+ORDER BY events DESC;
+```

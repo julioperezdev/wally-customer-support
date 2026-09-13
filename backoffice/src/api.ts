@@ -329,6 +329,37 @@ export type BackofficeStockAdjustment = {
   idempotencyKey: string;
 };
 
+export type BackofficeOrderItem = {
+  sku: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  currency: string;
+  lineTotal: number;
+};
+
+export type BackofficeOrder = {
+  id: string;
+  customerReference: string | null;
+  status: string;
+  currency: string;
+  total: number;
+  paymentProvider: string;
+  paymentPreferenceId: string | null;
+  paymentUrl: string | null;
+  externalPaymentId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  items: BackofficeOrderItem[];
+};
+
+export type BackofficeOrderPage = {
+  items: BackofficeOrder[];
+  page: number;
+  size: number;
+  hasNext: boolean;
+};
+
 export type FeatureFlagDefinition = {
   key: string;
   enabled: boolean;
@@ -671,6 +702,27 @@ export function createBackofficeClient(baseUrl: string, token: string) {
           },
           body: JSON.stringify({ delta, reason })
         });
+    },
+    listOrders(status = "", page = 0, limit = 20) {
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(limit)
+      });
+      if (status.trim()) params.set("status", status.trim());
+      return request<BackofficeOrderPage>(`/orders?${params.toString()}`);
+    },
+    createOrder(
+      body: { customerReference?: string; items: Array<{ sku: string; quantity: number }> },
+      idempotencyKey: string = crypto.randomUUID()) {
+      return requestFrom<BackofficeOrder>(normalizedBaseUrl, "/orders", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKey
+        },
+        body: JSON.stringify(body)
+      });
     }
   };
 

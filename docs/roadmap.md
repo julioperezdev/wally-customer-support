@@ -139,8 +139,10 @@ todavía no permite crear o editar versiones ni completar su ciclo de promoción
 
 Por lo tanto, el siguiente desarrollo obligatorio es cerrar el control plane de
 WCS-120. Luego se verifica la operación productiva de WCS-121 y sus permisos.
-Sólo después de esos gates se habilita WCS-122 (pedidos y Mercado Pago Sandbox).
-No se debe seleccionar WCS-122 únicamente porque tenga un número posterior.
+WCS-122 puede implementarse de forma aislada con provider mock mientras esos
+gates avanzan. Sólo después de ellos, y con credenciales, firma, migración y
+smoke verificados, se habilita Mercado Pago Sandbox; ningún pago productivo se
+habilita por el mero hecho de implementar el endpoint.
 
 El primer gate es aceptar la propuesta, el ADR, el modelo mínimo de agente,
 los permisos del backoffice y los criterios de evaluación. Hasta entonces el

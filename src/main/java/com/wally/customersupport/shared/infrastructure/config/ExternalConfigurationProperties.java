@@ -23,6 +23,7 @@ public record ExternalConfigurationProperties(
             String telegramSecretId,
             String backofficeSecretId,
             String observabilitySecretId,
+            String mercadoPagoSecretId,
             boolean enabled,
             boolean failFast) {
     }

@@ -21,6 +21,8 @@ public class AgentEvaluationControlPlaneAccessService {
     public static final String BACKOFFICE_CATALOG_MEDIA_WRITE_CAPABILITY = "backoffice.catalog.media.write";
     public static final String BACKOFFICE_HUMAN_FOLLOW_UP_READ_CAPABILITY = "backoffice.human-follow-up.read";
     public static final String BACKOFFICE_HUMAN_FOLLOW_UP_WRITE_CAPABILITY = "backoffice.human-follow-up.write";
+    public static final String BACKOFFICE_ORDERS_READ_CAPABILITY = "backoffice.orders.read";
+    public static final String BACKOFFICE_ORDERS_WRITE_CAPABILITY = "backoffice.orders.write";
 
     private final String allowedEnvironment;
     private final AgentEvaluationControlPlaneAuthorizer authorizer;
@@ -113,7 +115,9 @@ public class AgentEvaluationControlPlaneAccessService {
                 && !BACKOFFICE_CATALOG_WRITE_CAPABILITY.equals(accessRequest.capability())
                 && !BACKOFFICE_CATALOG_MEDIA_WRITE_CAPABILITY.equals(accessRequest.capability())
                 && !BACKOFFICE_HUMAN_FOLLOW_UP_READ_CAPABILITY.equals(accessRequest.capability())
-                && !BACKOFFICE_HUMAN_FOLLOW_UP_WRITE_CAPABILITY.equals(accessRequest.capability())) {
+                && !BACKOFFICE_HUMAN_FOLLOW_UP_WRITE_CAPABILITY.equals(accessRequest.capability())
+                && !BACKOFFICE_ORDERS_READ_CAPABILITY.equals(accessRequest.capability())
+                && !BACKOFFICE_ORDERS_WRITE_CAPABILITY.equals(accessRequest.capability())) {
             return denied(accessRequest, AgentEvaluationControlPlaneAccessReason.CAPABILITY_NOT_ALLOWED);
         }
         if (!allowedEnvironment.equals(accessRequest.environment())) {
