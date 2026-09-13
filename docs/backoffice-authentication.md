@@ -170,6 +170,33 @@ administrativa en Cognito y debe quedar como evidencia operativa. MFA,
 passkeys, federación y administración de usuarios desde el panel quedan fuera
 de WCS-128.
 
+### Usuario de smoke productivo
+
+Se creó un usuario técnico de prueba en el User Pool
+`wally-customer-support-prod-backoffice`:
+
+| Dato | Valor |
+| --- | --- |
+| Username | `wcs.demo.admin@example.com` |
+| Grupo | `admin` (sólo para el smoke inicial) |
+| Credenciales | Secret Manager `wcs/prod/backoffice-cognito-bootstrap` |
+
+La contraseña no se guarda en el repositorio, Jira, Confluence ni logs. Para
+obtenerla durante una prueba controlada, con una identidad AWS autorizada:
+
+```bash
+aws secretsmanager get-secret-value \
+  --secret-id wcs/prod/backoffice-cognito-bootstrap \
+  --region us-east-1 \
+  --query SecretString \
+  --output text | jq .
+```
+
+Este usuario es sólo para validar el flujo y debe rotarse o eliminarse al
+finalizar el smoke test. Para operación normal se recomienda un usuario por
+persona y grupos con mínimo privilegio (`store-viewer`, `store-operator`,
+`order-operator` o `agent-operator`).
+
 ## Smoke test local
 
 Con el backend habilitado y el usuario creado, el frontend se levanta con:
