@@ -12,6 +12,19 @@ La entrega se agrupa en pocos incrementos de alto valor. Cada incremento puede
 contener varios issues Jira relacionados y se integra mediante un único PR
 coherente para reducir el costo operativo de revisión, merge y deploy.
 
+## Estado de implementación y regla de avance
+
+El panel actual es el primer corte de observabilidad del control plane, no el
+backoffice completo de agentes. Permite consultar evidencia sanitizada,
+registry, mapa, simulaciones y preflight, pero no crear ni editar definiciones
+ni promover versiones desde la interfaz.
+
+El próximo incremento debe completar WCS-120 con authoring, ciclo de vida,
+permisos y trazas runtime. WCS-122 (pedidos y Mercado Pago Sandbox) queda fuera
+de la cola hasta que ese incremento cumpla sus gates. Esta regla evita
+interpretar la entrega read-only como cierre de la plataforma sólo porque ya
+exista una vista visual.
+
 ## PR 1 — Runtime de prompts y foundation del control plane
 
 Incluye:
@@ -51,7 +64,7 @@ configuración global. La migración de cada step del plan a un agente
 independiente y la exposición de escrituras desde el backoffice se mantienen
 para los siguientes cortes del mismo PR ampliado.
 
-## PR 3 — Backoffice operativo del control plane
+## PR 3 — Backoffice operativo del control plane (parcialmente entregado)
 
 Incluye en el mismo repositorio React/TypeScript:
 
@@ -66,6 +79,22 @@ Incluye en el mismo repositorio React/TypeScript:
 
 La API será contract-first y no expondrá secretos, conversaciones completas ni
 PII. La versión estable siempre se mostrará separada de una candidata.
+
+El corte ya entregado cubre el listado, el mapa, la simulación, el preflight y
+la consulta de evaluaciones. El siguiente PR amplio de esta misma línea debe
+agregar:
+
+- creación, clonación y edición de versiones;
+- referencias versionadas a prompts, modelos, parámetros, variables, schemas,
+  tools y Knowledge Bases;
+- transición auditable del lifecycle y publicación protegida;
+- activación, desactivación y rollback reales desde el panel, con autorización e
+  idempotencia;
+- trazas runtime persistidas para que las métricas de ejecución no dependan
+  solamente de `EVALUATION_RUNS`.
+
+Hasta completar ese incremento, cualquier control no disponible debe continuar
+rotulado como `READ_ONLY`, `PREVIEW` o `DISABLED`.
 
 ## PR 4 — Evaluación, observabilidad y decisión de calidad
 
