@@ -136,6 +136,87 @@ describe("control plane client", () => {
     );
   });
 
+  it("keeps blocked preflight details instead of hiding the validation response", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      status: "BLOCKED",
+      canActivate: false,
+      agentId: "catalog-specialist",
+      agentVersion: 2,
+      environment: "prod",
+      channel: "telegram",
+      useCase: "catalog-search",
+      checks: [{ code: "VERSION_NOT_APPROVED", status: "FAIL", message: "La versión no está aprobada." }]
+    }), { status: 422 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await createControlPlaneClient("/internal/agent-evaluations", "session-token").preflightActivation({
+      agentId: "catalog-specialist",
+      agentVersion: 2,
+      environment: "prod",
+      channel: "telegram",
+      useCase: "catalog-search",
+      reason: "preflight",
+      rolloutPercentage: 100,
+      enabled: true,
+      approvalReference: "approval-1",
+      operationalApprovalReference: "ops-approval-1"
+    });
+
+    expect(result.status).toBe("BLOCKED");
+    expect(result.checks[0].code).toBe("VERSION_NOT_APPROVED");
+  });
+
+  it("sends protected activation mutations with an idempotency key", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: "ACTIVATED" }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: "KILL_SWITCHED" }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: "ROLLED_BACK" }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = createControlPlaneClient("/internal/agent-evaluations", "session-token");
+    const activation = {
+      agentId: "catalog-specialist",
+      agentVersion: 2,
+      environment: "prod",
+      channel: "telegram",
+      useCase: "catalog-search",
+      reason: "approved rollout",
+      rolloutPercentage: 25,
+      enabled: true,
+      approvalReference: "approval-1",
+      operationalApprovalReference: "ops-approval-1"
+    };
+    const action = {
+      agentId: activation.agentId,
+      environment: activation.environment,
+      channel: activation.channel,
+      useCase: activation.useCase,
+      approvalReference: activation.approvalReference,
+      operationalApprovalReference: activation.operationalApprovalReference
+    };
+
+    await client.activateAgent(activation, "idem-activate");
+    await client.killSwitchAgent(action, "idem-kill");
+    await client.rollbackAgent(action, "idem-rollback");
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, "/internal/agent-registry/activations", expect.objectContaining({
+      method: "POST",
+      headers: expect.objectContaining({
+        Authorization: "Bearer session-token",
+        "Idempotency-Key": "idem-activate",
+        "Content-Type": "application/json"
+      })
+    }));
+    expect(fetchMock).toHaveBeenNthCalledWith(2, "/internal/agent-registry/activations/kill-switch", expect.objectContaining({
+      method: "POST",
+      headers: expect.objectContaining({ "Idempotency-Key": "idem-kill" })
+    }));
+    expect(fetchMock).toHaveBeenNthCalledWith(3, "/internal/agent-registry/activations/rollback", expect.objectContaining({
+      method: "POST",
+      headers: expect.objectContaining({ "Idempotency-Key": "idem-rollback" })
+    }));
+  });
+
   it("loads the agent map and simulates a route without mutating activations", async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ useCases: [], evidenceRunsScanned: 0 }), { status: 200 }))
