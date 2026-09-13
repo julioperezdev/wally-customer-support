@@ -4,8 +4,9 @@ El directorio [`backoffice/`](../backoffice/) contiene el primer panel React +
 TypeScript de WCS. El panel técnico mantiene consultas read-only de runs,
 comparación de evidencia, registry y preflight. El slice operativo agrega
 consulta de catálogo, ajustes de stock auditados y acciones acotadas sobre la
-bandeja de atención humana; no publica agentes, no cambia feature flags, no
-activa versiones y no ejecuta evaluaciones.
+bandeja de atención humana. La consola de activaciones agrega promoción,
+rollback y kill switch, pero permanece cerrada por defecto y separada del
+runtime conversacional.
 
 WCS-121 agrega un panel separado para consultar el snapshot de feature flags,
 ver su versión efectiva/stale/auditoría y preparar publicación o rollback. La
@@ -66,8 +67,34 @@ telemetría de runtime productivo se incorporará cuando exista un store de
 trazas de ejecución.
 
 Si el agente activo no tiene fallback compatible, la simulación devuelve
-`HUMAN_REQUIRED`. El sistema no promueve una versión ni cambia el estado de
-ningún agente desde este panel.
+`HUMAN_REQUIRED`. El mapa no promueve una versión ni cambia el estado de
+ningún agente; las mutaciones sólo están disponibles en la consola de
+activaciones descrita más abajo.
+
+## Control de activaciones — WCS-120
+
+La consola permite operar una versión ya aprobada después de ejecutar un
+preflight con la misma solicitud. La activación queda bloqueada en la UI si el
+preflight está ausente, desactualizado o no responde `READY`. Rollback y kill
+switch requieren referencias de aprobación, pero no necesitan un nuevo
+preflight porque operan sobre la activación vigente.
+
+| Acción | Endpoint | Resultado |
+| --- | --- | --- |
+| Activar versión | `POST /internal/agent-registry/activations` | Crea una referencia de activación para `agentId + version` |
+| Kill switch | `POST /internal/agent-registry/activations/kill-switch` | Deshabilita la activación vigente sin borrar historial |
+| Rollback | `POST /internal/agent-registry/activations/rollback` | Crea una nueva referencia hacia la versión anterior |
+
+Las tres acciones envían `Idempotency-Key`. El backend exige además el scope
+`agent-registry.write`, la flag
+`wcs.agent-registry.activation-write-enabled=true` y las aprobaciones
+correspondientes. El cliente genera una clave nueva por acción; si una orden
+recibe `ALREADY_PROCESSED`, no se reintenta automáticamente. Las respuestas
+son sanitizadas y sólo incluyen estado, motivo y referencia de la activación.
+
+La interfaz refresca el registry después de una mutación exitosa. No habilita
+el runtime ni cambia AppConfig: la activación del tráfico continúa siendo un
+gate operativo independiente (`wcs.agent-runtime.activation-enabled`).
 
 Para un smoke local controlado, iniciar el backend con el perfil `local` y las
 dos propiedades de backoffice habilitadas; luego ejecutar `npm run dev` dentro
@@ -87,6 +114,10 @@ modo local pueda habilitarse accidentalmente en `prod`.
   versión/hash de prompt y activaciones; nunca contenido de prompts ni actores.
 - El preflight usa el scope `agent-registry.read`; no necesita ni acepta el
   scope de escritura y no reclama `Idempotency-Key`.
+- Las mutaciones usan el scope separado `agent-registry.write`, exigen
+  `Idempotency-Key` y permanecen cerradas por la flag de backend. El formulario
+  nunca muestra prompts, secretos, actores ni el contenido de las
+  aprobaciones.
 - Un `401` o `403` es un resultado operativo esperado cuando JWT no está
   habilitado o el scope no es suficiente.
 
@@ -217,6 +248,9 @@ El cliente usa únicamente:
   `environment`, `channel`, `useCase` y un `limit` máximo de 100.
 - `POST /internal/agent-registry/activations/preflight`, que valida una
   solicitud completa sin persistir claims ni activaciones.
+- `POST /internal/agent-registry/activations`, `/kill-switch` y `/rollback`,
+  que ejecutan mutaciones idempotentes sólo con `agent-registry.write` y la
+  flag de escritura habilitada.
 - `GET /internal/backoffice/agent-map`, que proyecta el grafo sanitizado y
   métricas de evidencia.
 - `POST /internal/backoffice/agent-map/simulations`, que calcula una ruta de
@@ -249,6 +283,11 @@ no modifica AppConfig y no ejecuta Bedrock.
 La ruta de escritura permanece cerrada por
 `wcs.agent-registry.activation-write-enabled=false`; el runtime también sigue
 cerrado por `wcs.agent-runtime.activation-enabled=false`.
+
+La consola web refleja esas dos condiciones, pero no puede sustituir la
+autorización del backend. Para una prueba local se debe usar un token de
+desarrollo con los scopes adecuados y una base de datos de prueba; nunca se
+deben reutilizar referencias ni credenciales de producción.
 
 El mapa reutiliza la misma autorización de registry. Un actor ausente o sin
 `agent-registry.read` recibe `403` y no recibe metadata del mapa.
