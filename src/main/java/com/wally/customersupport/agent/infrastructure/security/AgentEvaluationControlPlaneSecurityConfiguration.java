@@ -2,6 +2,7 @@ package com.wally.customersupport.agent.infrastructure.security;
 
 import com.wally.customersupport.agent.application.port.out.AgentEvaluationControlPlaneAuthorizer;
 import com.wally.customersupport.agent.application.port.out.AgentEvaluationTriggerAuthorizer;
+import com.wally.customersupport.backoffice.infrastructure.security.BackofficeCookieBearerTokenResolver;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -13,6 +14,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
@@ -146,6 +148,7 @@ public class AgentEvaluationControlPlaneSecurityConfiguration {
     SecurityFilterChain agentEvaluationControlPlaneSecurityFilterChain(HttpSecurity http) throws Exception {
         http
                 .securityMatcher(
+                        "/internal/auth/**",
                         "/internal/agent-evaluations/**",
                         "/internal/agent-registry/**",
                         "/internal/backoffice/agent-map/**",
@@ -154,7 +157,12 @@ public class AgentEvaluationControlPlaneSecurityConfiguration {
                         "/internal/backoffice/orders/**",
                         "/internal/backoffice/human-follow-ups/**")
                 .csrf(csrf -> csrf.disable())
+                .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers(HttpMethod.POST, "/internal/auth/login", "/internal/auth/refresh", "/internal/auth/logout")
+                        .permitAll()
+                        .requestMatchers(HttpMethod.GET, "/internal/auth/me")
+                        .authenticated()
                         .requestMatchers(HttpMethod.POST, "/internal/agent-evaluations/runs")
                         .hasAuthority(EXECUTE_AUTHORITY)
                         .requestMatchers(HttpMethod.GET, "/internal/agent-evaluations/**")
@@ -191,7 +199,8 @@ public class AgentEvaluationControlPlaneSecurityConfiguration {
                         .hasAuthority("SCOPE_backoffice.human-follow-up.write")
                         .anyRequest().denyAll())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt
-                        .jwtAuthenticationConverter(cognitoJwtAuthenticationConverter())));
+                        .jwtAuthenticationConverter(cognitoJwtAuthenticationConverter()))
+                        .bearerTokenResolver(new BackofficeCookieBearerTokenResolver()));
         return http.build();
     }
 

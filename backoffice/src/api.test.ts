@@ -17,7 +17,7 @@ describe("control plane client", () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       "/internal/agent-evaluations/runs?agentId=catalog-specialist&provider=bedrock&page=1&size=10",
-      { headers: { Accept: "application/json", Authorization: "Bearer session-token" } }
+      { credentials: "include", headers: { Accept: "application/json", Authorization: "Bearer session-token" } }
     );
   });
 
@@ -41,7 +41,7 @@ describe("control plane client", () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       "/internal/agent-registry/agents?environment=prod&channel=telegram&useCase=catalog-search&limit=10",
-      { headers: { Accept: "application/json", Authorization: "Bearer session-token" } }
+      { credentials: "include", headers: { Accept: "application/json", Authorization: "Bearer session-token" } }
     );
   });
 
@@ -70,6 +70,7 @@ describe("control plane client", () => {
       "/internal/agent-registry/activations/preflight",
       {
         method: "POST",
+        credentials: "include",
         headers: {
           Accept: "application/json",
           "Content-Type": "application/json",
@@ -236,7 +237,7 @@ describe("control plane client", () => {
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
       "/internal/backoffice/agent-map?environment=prod&channel=telegram&useCase=catalog-search",
-      { headers: { Accept: "application/json", Authorization: "Bearer session-token" } }
+      { credentials: "include", headers: { Accept: "application/json", Authorization: "Bearer session-token" } }
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
@@ -278,12 +279,12 @@ describe("backoffice client", () => {
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
       "/internal/backoffice/catalog?name=buzo&color=negro&page=0&limit=20",
-      { headers: { Accept: "application/json", Authorization: "Bearer session-token" } }
+      { credentials: "include", headers: { Accept: "application/json", Authorization: "Bearer session-token" } }
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
       "/internal/backoffice/human-follow-ups?limit=10",
-      { headers: { Accept: "application/json", Authorization: "Bearer session-token" } }
+      { credentials: "include", headers: { Accept: "application/json", Authorization: "Bearer session-token" } }
     );
   });
 
@@ -331,7 +332,7 @@ describe("backoffice client", () => {
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
       "/internal/backoffice/orders?page=1&limit=10&status=PAID",
-      { headers: { Accept: "application/json", Authorization: "Bearer session-token" } }
+      { credentials: "include", headers: { Accept: "application/json", Authorization: "Bearer session-token" } }
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,

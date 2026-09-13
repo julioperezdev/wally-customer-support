@@ -145,10 +145,10 @@ modo local pueda habilitarse accidentalmente en `prod`.
 ## Seguridad
 
 La autenticación productiva con Cognito está definida en
-[`backoffice-authentication.md`](backoffice-authentication.md) para WCS-127.
-El User Pool, el Resource Server, los grupos y el cliente PKCE se crean detrás
-de Terraform, pero `backoffice_cognito_enabled=false` mantiene el rollout
-cerrado hasta completar el smoke test. Las capacidades se derivan de grupos
+[`backoffice-authentication.md`](backoffice-authentication.md) para WCS-128.
+El User Pool, el Resource Server, los grupos y el cliente para login server-side
+se crean detrás de Terraform, pero `backoffice_cognito_enabled=false` mantiene
+el rollout cerrado hasta completar el smoke test. Las capacidades se derivan de grupos
 (`store-viewer`, `store-operator`, `order-operator`, `agent-operator` y
 `admin`) y el backend las valida en cada endpoint; el cliente web no recibe
 los scopes de negocio completos.
@@ -156,8 +156,8 @@ los scopes de negocio completos.
 - El backend sigue siendo la autoridad de autorización y mantiene el control
   plane cerrado por defecto.
 - El panel no incluye secretos en el código ni en el build.
-- El token se ingresa sólo en memoria de la sesión del navegador para pruebas
-  internas; no se persiste en `localStorage`, archivos ni logs.
+- El login productivo usa cookies `HttpOnly`; el navegador no recibe ni
+  persiste tokens en `localStorage`, archivos ni logs.
 - No se muestran prompts completos, conversaciones, PII, SQL ni secretos.
 - El registry muestra sólo metadata: estado, modelo, límites, allowlists,
   versión/hash de prompt y activaciones; nunca contenido de prompts ni actores.
@@ -172,11 +172,11 @@ los scopes de negocio completos.
 
 ### Conexión y actualización global
 
-El panel ofrece la acción `Conectar y actualizar todo`. Se habilita únicamente
-cuando el campo `Token de sesión (memoria)` tiene contenido. Al ejecutarla,
-primero realiza la lectura read-only de `runs` para validar la URL, el token y
-la autorización; sólo si esa lectura es exitosa solicita en paralelo registry,
-mapa de agentes, operación de tienda y feature flags.
+El panel ofrece la acción `Ingresar` y luego `Actualizar todo`. La primera
+acción crea la sesión mediante el backend; la segunda usa las cookies HttpOnly
+y sólo si la autorización es exitosa solicita en paralelo registry, mapa de
+agentes, operación de tienda y feature flags. El campo legacy de preview-token
+queda sólo para smoke tests de transición y no es autenticación productiva.
 
 La acción informa si todas las áreas se actualizaron o si el resultado fue
 parcial. Cada loader conserva su propio error y los botones individuales siguen
@@ -210,9 +210,8 @@ VITE_WCS_BACKEND_BASE_URL=https://guapajjmta.us-east-1.awsapprunner.com
 El proxy de Vite enviará todas las rutas `/internal` al backend desplegado y
 mantendrá el navegador en el mismo origen, evitando una configuración CORS
 adicional para esta prueba local. Reiniciar Vite después de crear o cambiar el
-archivo. El hostname no es un secreto; los tokens de sesión siguen siendo
-temporales, se ingresan en memoria desde el panel y no deben guardarse en este
-archivo.
+archivo. El hostname no es un secreto; el login se realiza desde el panel y
+la sesión queda en cookies `HttpOnly` administradas por la API.
 
 Si `VITE_WCS_BACKEND_BASE_URL` no existe, el comportamiento vuelve a ser el
 backend local en `http://localhost:8080`. Un `401` o `403` después del cambio
@@ -230,9 +229,10 @@ El mapa se configura con `VITE_WCS_AGENT_MAP_BASE_URL`; por defecto es
 VITE_WCS_CONTROL_PLANE_BASE_URL=http://localhost:8080/internal/agent-evaluations npm run dev
 ```
 
-El panel no habilita JWT en el backend. Para una prueba autorizada se ingresa
-un token temporal en el campo de sesión; no se agrega un token al `.env`, al
-repositorio ni al pipeline.
+El panel usa `POST /internal/auth/login` para iniciar la sesión Cognito a través
+de la API. No se agrega ningún token al `.env`, al repositorio ni al pipeline.
+El campo legacy de preview-token sólo queda disponible para pruebas read-only
+cuando está explícitamente habilitado; no representa el login productivo.
 
 ### Preview remoto read-only del backend
 

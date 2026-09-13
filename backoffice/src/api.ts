@@ -412,7 +412,7 @@ export function createControlPlaneClient(
     if (token.trim()) {
       headers.Authorization = `Bearer ${token.trim()}`;
     }
-    const response = await fetch(`${normalizedBaseUrl}${path}`, { headers });
+    const response = await fetch(`${normalizedBaseUrl}${path}`, { headers, credentials: "include" });
     if (!response.ok) {
       let code = "CONTROL_PLANE_ERROR";
       try {
@@ -616,7 +616,7 @@ export function createControlPlaneClient(
     if (token.trim()) {
       headers.Authorization = `Bearer ${token.trim()}`;
     }
-    const response = await fetch(`${root}${path}`, { ...init, headers });
+    const response = await fetch(`${root}${path}`, { ...init, headers, credentials: "include" });
     if (!response.ok && !acceptedStatuses.includes(response.status)) {
       let code = "CONTROL_PLANE_ERROR";
       try {
@@ -643,7 +643,7 @@ export function createBackofficeClient(baseUrl: string, token: string) {
     if (token.trim()) {
       headers.Authorization = `Bearer ${token.trim()}`;
     }
-    const response = await fetch(`${normalizedBaseUrl}${path}`, { headers });
+    const response = await fetch(`${normalizedBaseUrl}${path}`, { headers, credentials: "include" });
     if (!response.ok) {
       let code = "BACKOFFICE_ERROR";
       try {
@@ -732,7 +732,7 @@ export function createBackofficeClient(baseUrl: string, token: string) {
       ...(init.headers as Record<string, string> | undefined)
     };
     if (token.trim()) headers.Authorization = `Bearer ${token.trim()}`;
-    const response = await fetch(`${root}${path}`, { ...init, headers });
+    const response = await fetch(`${root}${path}`, { ...init, headers, credentials: "include" });
     if (!response.ok) {
       let code = "BACKOFFICE_ERROR";
       try {
