@@ -80,6 +80,62 @@ describe("control plane client", () => {
     );
   });
 
+  it("sends protected authoring and lifecycle commands with idempotency keys", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: "CREATED", agentId: "support", version: 2, state: "DRAFT" }), { status: 201 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: "TRANSITIONED", agentId: "support", version: 2, state: "CANDIDATE" }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = createControlPlaneClient("/internal/agent-evaluations", "session-token");
+    await client.createAgentDraft("support specialist", {
+      version: null,
+      name: "Support",
+      purpose: "Grounded support",
+      modelProvider: "bedrock",
+      modelId: "model-1",
+      temperature: 0,
+      topP: 1,
+      systemPromptVersion: "system-v1",
+      systemPromptHash: "0".repeat(64),
+      inputSchemaVersion: "input-v1",
+      outputSchemaVersion: "output-v1",
+      allowedTools: [],
+      knowledgeSources: [],
+      memoryPolicy: "none",
+      responsePolicy: "grounded-v1",
+      timeoutMs: 1000,
+      maxSteps: 1,
+      maxInputTokens: 100,
+      maxOutputTokens: 100,
+      budgetLimitUsd: 0.01,
+      evaluationSuiteVersion: "eval-v1"
+    }, "key-create");
+    await client.transitionAgentVersion("support specialist", 2, {
+      targetState: "CANDIDATE",
+      reason: "ready for evaluation"
+    }, "key-transition");
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "/internal/agent-registry/agents/support%20specialist/versions",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          Authorization: "Bearer session-token",
+          "Idempotency-Key": "key-create"
+        })
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "/internal/agent-registry/agents/support%20specialist/versions/2/lifecycle",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({ "Idempotency-Key": "key-transition" })
+      })
+    );
+  });
+
   it("keeps blocked preflight details instead of hiding the validation response", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
       status: "BLOCKED",

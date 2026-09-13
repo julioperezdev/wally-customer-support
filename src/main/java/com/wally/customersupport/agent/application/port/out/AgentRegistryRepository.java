@@ -2,6 +2,7 @@ package com.wally.customersupport.agent.application.port.out;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.Instant;
 
 import com.wally.customersupport.agent.domain.model.AgentActivation;
 import com.wally.customersupport.agent.domain.model.AgentLifecycleState;
@@ -18,6 +19,18 @@ public interface AgentRegistryRepository {
     List<AgentVersion> findAllVersions();
 
     Optional<AgentVersion> findLatestVersion(String agentId, AgentLifecycleState state);
+
+    /**
+     * Changes lifecycle metadata only. Definition content remains immutable
+     * after the original version row is created.
+     */
+    AgentVersion updateLifecycle(
+            String agentId,
+            int version,
+            AgentLifecycleState expectedState,
+            AgentLifecycleState targetState,
+            String approvedBy,
+            Instant approvedAt);
 
     AgentActivation saveActivation(AgentActivation activation);
 

@@ -96,6 +96,41 @@ export type AgentRegistryAgent = {
   activations: AgentRegistryActivation[];
 };
 
+export type AgentRegistryMutation = {
+  status: string;
+  reason: string;
+  agentId: string;
+  version: number | null;
+  state: string | null;
+  createdAt: string | null;
+  changedAt: string | null;
+};
+
+export type AgentVersionDraftInput = {
+  version?: number | null;
+  name: string;
+  purpose: string;
+  modelProvider: string;
+  modelId: string;
+  temperature: number;
+  topP: number;
+  systemPromptVersion: string;
+  systemPromptHash: string;
+  inputSchemaVersion: string;
+  outputSchemaVersion: string;
+  allowedTools: string[];
+  knowledgeSources: string[];
+  memoryPolicy: string;
+  responsePolicy: string;
+  timeoutMs: number;
+  maxSteps: number;
+  maxInputTokens: number;
+  maxOutputTokens: number;
+  budgetLimitUsd: number;
+  fallbackAgentId?: string | null;
+  evaluationSuiteVersion: string;
+};
+
 export type BackofficeAgentNode = {
   agentId: string;
   version: number;
@@ -389,6 +424,50 @@ export function createControlPlaneClient(
       if (filters.useCase?.trim()) params.set("useCase", filters.useCase.trim());
       params.set("limit", String(filters.limit ?? 50));
       return requestFrom<AgentRegistryAgent[]>(normalizedRegistryBaseUrl, `/agents?${params.toString()}`);
+    },
+    createAgentDraft(agentId: string, definition: AgentVersionDraftInput, idempotencyKey: string) {
+      return requestFrom<AgentRegistryMutation>(
+        normalizedRegistryBaseUrl,
+        `/agents/${encodeURIComponent(agentId.trim())}/versions`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Idempotency-Key": idempotencyKey
+          },
+          body: JSON.stringify(definition)
+        });
+    },
+    cloneAgentVersion(agentId: string, version: number, idempotencyKey: string) {
+      return requestFrom<AgentRegistryMutation>(
+        normalizedRegistryBaseUrl,
+        `/agents/${encodeURIComponent(agentId.trim())}/versions/${version}/clone`,
+        {
+          method: "POST",
+          headers: { "Idempotency-Key": idempotencyKey }
+        });
+    },
+    transitionAgentVersion(
+      agentId: string,
+      version: number,
+      request: {
+        targetState: "CANDIDATE" | "EVALUATED" | "APPROVED";
+        reason: string;
+        approvalReference?: string;
+        operationalApprovalReference?: string;
+      },
+      idempotencyKey: string) {
+      return requestFrom<AgentRegistryMutation>(
+        normalizedRegistryBaseUrl,
+        `/agents/${encodeURIComponent(agentId.trim())}/versions/${version}/lifecycle`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Idempotency-Key": idempotencyKey
+          },
+          body: JSON.stringify(request)
+        });
     },
     preflightActivation(request: AgentActivationRequest) {
       return requestFrom<AgentActivationPreflight>(
