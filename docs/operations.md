@@ -332,6 +332,7 @@ referencias a secretos, por ejemplo:
   "wcs.ai.input-price-usd-per-million-tokens": 0.0721,
   "wcs.ai.output-price-usd-per-million-tokens": 0.3090,
   "wcs.ai.request-timeout": "PT30S",
+  "wcs.ai.prompt.provider": "classpath",
   "wcs.ai.response.prompt-version": "conversation-response-v1",
   "wcs.ai.response.max-output-tokens": 1024,
   "wcs.ai.response.temperature": 0.2,
@@ -344,6 +345,27 @@ referencias a secretos, por ejemplo:
   "wcs.rag.knowledge-base-id": "REPLACE_ME_WCS_KNOWLEDGE_BASE_ID"
 }
 ```
+
+El proveedor `classpath` conserva el comportamiento actual y permite rollback
+sin depender de otro recurso. Para usar prompts productivos administrados por
+Bedrock Prompt Management, se cambia `wcs.ai.prompt.provider` a `bedrock` y se
+agregan en el mismo profile las cuatro referencias no secretas:
+
+```json
+{
+  "wcs.ai.prompt.provider": "bedrock",
+  "wcs.ai.prompt.management.intent-identifier": "arn:aws:bedrock:REGION:ACCOUNT:prompt/PROMPT_ID",
+  "wcs.ai.prompt.management.intent-version": "1",
+  "wcs.ai.prompt.management.response-identifier": "arn:aws:bedrock:REGION:ACCOUNT:prompt/PROMPT_ID",
+  "wcs.ai.prompt.management.response-version": "1"
+}
+```
+
+Las versiones deben ser numéricas e inmutables; no se usa `DRAFT`. El cambio
+requiere que Terraform allowliste los ARNs en `bedrock_prompt_arns`, que ambos
+prompts tengan una variante de texto y que se ejecute un smoke de clasificación
+y respuesta. El detalle del contrato y rollback está en
+[`ADR-032`](decisions/032-bedrock-prompt-management.md).
 
 El proveedor `bedrock-kb` representa la Knowledge Base documental propia de
 WCS. Su fuente inicial es S3 y su vector store objetivo es S3 Vectors con Titan

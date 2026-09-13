@@ -423,7 +423,7 @@ La aplicación tendrá una única configuración lógica y distintos proveedores
 
 | Tipo | Fuente productiva | Ejemplos |
 | --- | --- | --- |
-| No sensible | AWS AppConfig | Graph API y Telegram base URLs, Phone Number ID, WABA ID, activación/adapter de canal, timeouts, retries, provider mode, Bedrock model ID, Knowledge Base ID, prompt version, retention |
+| No sensible | AWS AppConfig | Graph API y Telegram base URLs, Phone Number ID, WABA ID, activación/adapter de canal, timeouts, retries, provider mode, Bedrock model ID, Knowledge Base ID, prompt provider/reference/version, retention |
 | Secreto | AWS Secrets Manager | Meta access token/app secret/verify token, Telegram bot token y webhook secret, credenciales de base de datos y keys de proveedores externos |
 | Local | `application.properties` + cadena estándar de credenciales AWS | Mismo runtime `prod` para validar integraciones; nunca se versionan credenciales |
 
@@ -438,6 +438,12 @@ binding de `@ConfigurationProperties` y resuelve desde Secrets Manager sólo los
 campos allow-listed de los roles `database`, `whatsapp`, `telegram` y `runtime`. El runtime
 normal usa AWS y el fail-fast evita operar con configuración parcial; los tests
 deshabilitan las fuentes externas y usan datos sintéticos.
+
+Los cuerpos de prompts productivos se administran con Bedrock Prompt Management
+cuando `wcs.ai.prompt.provider=bedrock`; AppConfig sólo contiene referencias no
+secretas a versiones inmutables. `ClasspathPromptRegistry` se conserva como
+fallback de rollback. El runtime solicita únicamente `bedrock:GetPrompt` para
+los ARNs allowlisted y registra versión/hash, nunca el contenido.
 
 ## Flujos críticos
 

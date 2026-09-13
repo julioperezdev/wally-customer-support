@@ -23,6 +23,9 @@ Flyway crea únicamente el schema lógico `wcs`.
 - Bedrock habilitado para el runtime con permiso mínimo sobre el modelo
   configurado; el modelo no se puede invocar si AppConfig mantiene el provider
   `mock`.
+- Bedrock Prompt Management opcional para prompts productivos versionados; el
+  role de App Runner sólo recibe `bedrock:GetPrompt` para los ARNs declarados
+  en `bedrock_prompt_arns`. El fallback actual permanece en el artefacto.
 
 No se crean VPC, subnets, security groups ni otra instancia RDS en este stack.
 `backend_egress_type` controla la salida de App Runner:

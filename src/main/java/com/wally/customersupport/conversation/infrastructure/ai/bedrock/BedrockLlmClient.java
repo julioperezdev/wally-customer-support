@@ -6,6 +6,7 @@ import com.wally.customersupport.conversation.application.port.out.LlmClient;
 import com.wally.customersupport.conversation.domain.model.ConversationContext;
 import com.wally.customersupport.conversation.infrastructure.ai.prompt.ClasspathPromptRegistry;
 import com.wally.customersupport.conversation.infrastructure.ai.prompt.PromptDefinition;
+import com.wally.customersupport.conversation.infrastructure.ai.prompt.PromptRegistry;
 import com.wally.customersupport.shared.infrastructure.config.AiResponseProperties;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -31,7 +32,7 @@ public class BedrockLlmClient implements LlmClient {
     public BedrockLlmClient(
             BedrockConverseClient converseClient,
             AiResponseProperties responseProperties,
-            ClasspathPromptRegistry promptRegistry) {
+            PromptRegistry promptRegistry) {
         this.converseClient = converseClient;
         this.responseProperties = responseProperties;
         this.prompt = promptRegistry.responsePrompt(responseProperties.effectivePromptVersion());

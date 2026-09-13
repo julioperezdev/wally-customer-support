@@ -188,3 +188,9 @@ variable "bedrock_model_arns" {
   description = "Bedrock model ARNs allowed to the runtime when enable_bedrock_access is true."
   default     = ["arn:aws:bedrock:us-east-1::foundation-model/openai.gpt-oss-20b-1:0"]
 }
+
+variable "bedrock_prompt_arns" {
+  type        = set(string)
+  description = "Bedrock Prompt Management ARNs allowed to the runtime when enable_bedrock_access is true."
+  default     = []
+}

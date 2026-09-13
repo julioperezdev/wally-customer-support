@@ -40,7 +40,7 @@ locals {
     "preview-token" = "REPLACE_ME_BACKOFFICE_PREVIEW_TOKEN"
   })
 
-  # This bootstrap document mirrors the currently deployed AppConfig v5
+  # This bootstrap document mirrors the currently deployed AppConfig baseline
   # non-secret baseline. Runtime changes made in AppConfig remain protected by
   # ignore_changes in the AppConfig module; this document is used when the
   # hosted configuration is created or explicitly overridden.
@@ -64,6 +64,7 @@ locals {
     "wcs.ai.input-price-usd-per-million-tokens"                = 0.0721
     "wcs.ai.output-price-usd-per-million-tokens"               = 0.3090
     "wcs.ai.request-timeout"                                   = "PT30S"
+    "wcs.ai.prompt.provider"                                   = "classpath"
     "wcs.ai.prompt.intent-version"                             = "conversation-intent-v2"
     "wcs.ai.prompt.intent-max-output-tokens"                   = 1024
     "wcs.ai.prompt.intent-temperature"                         = 0.0
@@ -223,6 +224,7 @@ module "backend_apprunner" {
   enable_bedrock_access         = var.enable_bedrock_access
   enable_appconfig_management   = var.enable_appconfig_management
   bedrock_model_arns            = var.bedrock_model_arns
+  bedrock_prompt_arns           = var.bedrock_prompt_arns
   bedrock_knowledge_base_arns   = var.enable_bedrock_access ? [module.wcs_knowledge_base.knowledge_base_arn] : []
   tags                          = local.common_tags
 }

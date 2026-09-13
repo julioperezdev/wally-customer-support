@@ -3,6 +3,11 @@
 **Estado:** Accepted  
 **Relacionado:** WCS-20, `docs/ai.md`, `WCS — AI Models & Prompt Registry`
 
+La decisión sobre almacenamiento del prompt fue ampliada por
+[`ADR-032`](032-bedrock-prompt-management.md): Bedrock Prompt Management es
+el proveedor productivo opt-in y este registry empaquetado se conserva como
+fallback y rollback compatible.
+
 ## Contexto
 
 El modelo Bedrock ya se selecciona mediante AppConfig, pero el prompt del

@@ -14,6 +14,7 @@ import com.wally.customersupport.conversation.domain.model.ConversationIntentDec
 import com.wally.customersupport.conversation.domain.model.CustomerPreference;
 import com.wally.customersupport.conversation.infrastructure.ai.prompt.ClasspathPromptRegistry;
 import com.wally.customersupport.conversation.infrastructure.ai.prompt.PromptDefinition;
+import com.wally.customersupport.conversation.infrastructure.ai.prompt.PromptRegistry;
 import com.wally.customersupport.shared.infrastructure.config.AiPromptProperties;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -46,7 +47,7 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
             BedrockConverseClient converseClient,
             ObjectMapper objectMapper,
             AiPromptProperties promptProperties,
-            ClasspathPromptRegistry promptRegistry) {
+            PromptRegistry promptRegistry) {
         this.converseClient = converseClient;
         this.objectMapper = objectMapper;
         this.promptProperties = promptProperties;

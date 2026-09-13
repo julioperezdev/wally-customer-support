@@ -14,7 +14,7 @@ Mantener una única referencia navegable para el producto sin duplicar la verdad
 | Arquitectura y decisiones | Confluence + ADR en repo | `ADR-*`, página y archivo |
 | API, migraciones, tests y CI | Repositorio | Código y workflows |
 | Schema explicado | Confluence | Migraciones ejecutables en repo |
-| Modelos y prompts | Confluence + archivos versionados | Registry y fixtures |
+| Modelos y prompts | Confluence + Bedrock Prompt Management | Identificador, versión, hash, registry y fixtures; el fallback puede vivir en el artefacto |
 | Runbooks y operación | Confluence | Scripts, queries y workflows |
 | Resultado de una tarea | Jira | PR, CI, test, smoke y logs sanitizados |
 
