@@ -68,6 +68,22 @@ output "knowledge_base_service_role_arn" {
   value = module.wcs_knowledge_base.service_role_arn
 }
 
+output "backoffice_cognito_user_pool_id" {
+  value = module.cognito_backoffice.user_pool_id
+}
+
+output "backoffice_cognito_client_id" {
+  value = module.cognito_backoffice.client_id
+}
+
+output "backoffice_cognito_issuer_uri" {
+  value = module.cognito_backoffice.issuer_uri
+}
+
+output "backoffice_cognito_hosted_ui_domain" {
+  value = module.cognito_backoffice.hosted_ui_domain
+}
+
 output "runtime_secret_arn" {
   description = "WCS Secrets Manager container ARN; values are not managed by Terraform."
   value       = module.runtime_secrets.secret_arn

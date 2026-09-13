@@ -74,3 +74,45 @@ variable "terraform_permissions_boundary_arn" {
   description = "Optional IAM permissions boundary for the test Terraform role."
   default     = null
 }
+
+variable "backoffice_cognito_enabled" {
+  type        = bool
+  description = "Enable JWT authorization for the test backoffice after Cognito smoke validation."
+  default     = false
+}
+
+variable "cognito_domain_prefix" {
+  type        = string
+  description = "Optional unique Cognito hosted UI domain prefix for test."
+  default     = null
+  nullable    = true
+}
+
+variable "cognito_callback_urls" {
+  type        = list(string)
+  description = "Allowed Cognito OAuth callback URLs for the test backoffice web client."
+  default     = ["http://localhost:5173/auth/callback"]
+}
+
+variable "cognito_logout_urls" {
+  type        = list(string)
+  description = "Allowed Cognito OAuth logout URLs for the test backoffice web client."
+  default     = ["http://localhost:5173/"]
+}
+
+variable "cognito_enable_password_auth" {
+  type        = bool
+  description = "Allow USER_PASSWORD_AUTH for controlled test CLI smoke tests."
+  default     = false
+}
+
+variable "cognito_deletion_protection" {
+  type        = string
+  description = "Cognito User Pool deletion protection mode for test."
+  default     = "ACTIVE"
+
+  validation {
+    condition     = contains(["ACTIVE", "INACTIVE"], var.cognito_deletion_protection)
+    error_message = "cognito_deletion_protection must be ACTIVE or INACTIVE."
+  }
+}

@@ -144,6 +144,12 @@ gates avanzan. Sólo después de ellos, y con credenciales, firma, migración y
 smoke verificados, se habilita Mercado Pago Sandbox; ningún pago productivo se
 habilita por el mero hecho de implementar el endpoint.
 
+WCS-127 agrega la autenticación Cognito del backoffice como un gate transversal
+antes de habilitar escrituras operativas. Su diseño y rollout están en
+[`backoffice-authentication.md`](backoffice-authentication.md). El preview token
+continúa siendo una transición read-only; no se considera autenticación
+productiva.
+
 El primer gate es aceptar la propuesta, el ADR, el modelo mínimo de agente,
 los permisos del backoffice y los criterios de evaluación. Hasta entonces el
 runtime actual y el baseline `wcs-baseline-2026-09-07` continúan siendo la

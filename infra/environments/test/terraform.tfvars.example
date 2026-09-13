@@ -8,6 +8,12 @@ appconfig_application_name  = "wally-customer-support"
 appconfig_profile_name      = "runtime"
 backend_create_service      = false
 backend_image_tag           = "bootstrap"
+backoffice_cognito_enabled   = false
+cognito_domain_prefix        = null
+cognito_callback_urls        = ["http://localhost:5173/auth/callback"]
+cognito_logout_urls          = ["http://localhost:5173/"]
+cognito_enable_password_auth = false
+cognito_deletion_protection  = "ACTIVE"
 # Set these only for the reviewed bootstrap apply that creates the isolated
 # GitHub Environment test role. They are identifiers, not secrets.
 existing_github_oidc_provider_arn = null

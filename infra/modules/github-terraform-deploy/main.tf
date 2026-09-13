@@ -34,6 +34,7 @@ locals {
   source_object_arn_pattern                   = "${local.source_bucket_arn_pattern}/documents/*"
   vector_bucket_arn_pattern                   = "arn:${local.partition}:s3vectors:${var.aws_region}:${local.account_id}:bucket/${var.project_name}-${var.environment}-kb-vectors-*"
   vector_index_arn_pattern                    = "${local.vector_bucket_arn_pattern}/index/*"
+  cognito_user_pool_arn_pattern               = "arn:${local.partition}:cognito-idp:${var.aws_region}:${local.account_id}:userpool/*"
   terraform_knowledge_base_policy_arn         = "arn:${local.partition}:iam::${local.account_id}:policy/${var.project_name}-${var.environment}-terraform-knowledge-base-access"
   service_linked_role_arn                     = "arn:${local.partition}:iam::${local.account_id}:role/aws-service-role/apprunner.amazonaws.com/AWSServiceRoleForAppRunner"
 
@@ -123,6 +124,45 @@ data "aws_iam_policy_document" "terraform" {
       "rds:DescribeDBInstances",
     ]
     resources = ["*"]
+  }
+
+  statement {
+    sid    = "CreateWcsCognitoResources"
+    effect = "Allow"
+    actions = [
+      "cognito-idp:CreateGroup",
+      "cognito-idp:CreateResourceServer",
+      "cognito-idp:CreateUserPool",
+      "cognito-idp:CreateUserPoolClient",
+      "cognito-idp:CreateUserPoolDomain",
+      "cognito-idp:ListUserPools",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "ManageWcsCognitoResources"
+    effect = "Allow"
+    actions = [
+      "cognito-idp:DeleteGroup",
+      "cognito-idp:DeleteResourceServer",
+      "cognito-idp:DeleteUserPool",
+      "cognito-idp:DeleteUserPoolClient",
+      "cognito-idp:DeleteUserPoolDomain",
+      "cognito-idp:DescribeResourceServer",
+      "cognito-idp:DescribeUserPool",
+      "cognito-idp:DescribeUserPoolClient",
+      "cognito-idp:DescribeUserPoolDomain",
+      "cognito-idp:GetGroup",
+      "cognito-idp:ListGroups",
+      "cognito-idp:UpdateGroup",
+      "cognito-idp:UpdateResourceServer",
+      "cognito-idp:UpdateUserPool",
+      "cognito-idp:UpdateUserPoolClient",
+      "cognito-idp:TagResource",
+      "cognito-idp:UntagResource",
+    ]
+    resources = [local.cognito_user_pool_arn_pattern]
   }
 
   statement {

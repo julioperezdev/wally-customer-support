@@ -96,6 +96,12 @@ locals {
     "wcs.external-config.secrets-manager.telegram-secret-id"      = module.telegram_secrets.secret_name
     "wcs.external-config.secrets-manager.observability-secret-id" = module.observability_secrets.secret_name
     "wcs.external-config.secrets-manager.mercado-pago-secret-id"  = module.mercado_pago_secrets.secret_name
+    "wcs.agent-evaluation.control-plane.security.enabled"         = var.backoffice_cognito_enabled
+    "wcs.agent-evaluation.control-plane.security.issuer-uri"      = module.cognito_backoffice.issuer_uri
+    "wcs.agent-evaluation.control-plane.security.audience"        = module.cognito_backoffice.client_id
+    "wcs.backoffice.security.provider"                            = "cognito"
+    "wcs.backoffice.enabled"                                      = var.backoffice_cognito_enabled
+    "wcs.backoffice.preview.enabled"                              = false
     "wcs.agent-runtime.activation-enabled"                        = false
     "wcs.agent-runtime.environment"                               = var.environment
     "wcs.agent-runtime.shadow-enabled"                            = false
@@ -190,6 +196,20 @@ module "mercado_pago_secrets" {
   description         = "WCS test Mercado Pago credentials. Do not use production tokens."
   initial_secret_json = local.fake_mercado_pago_secret_json
   tags                = local.common_tags
+}
+
+module "cognito_backoffice" {
+  source = "../../modules/cognito-backoffice"
+
+  project_name         = var.project_name
+  environment          = var.environment
+  aws_region           = var.aws_region
+  domain_prefix        = var.cognito_domain_prefix
+  callback_urls        = var.cognito_callback_urls
+  logout_urls          = var.cognito_logout_urls
+  enable_password_auth = var.cognito_enable_password_auth
+  deletion_protection  = var.cognito_deletion_protection
+  tags                 = local.common_tags
 }
 
 module "backend_apprunner" {

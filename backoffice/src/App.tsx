@@ -20,6 +20,13 @@ import { refreshReadOnlyPanels } from "./refresh";
 import { AgentAuthoringPanel } from "./AgentAuthoringPanel";
 import { AgentActivationPanel } from "./AgentActivationPanel";
 import { OrderPanel } from "./OrderPanel";
+import {
+  cognitoConfiguration,
+  completeCognitoLogin,
+  isCognitoConfigured,
+  logoutFromCognito,
+  startCognitoLogin
+} from "./cognito";
 
 const DEFAULT_BASE_URL = import.meta.env.VITE_WCS_CONTROL_PLANE_BASE_URL ?? "/internal/agent-evaluations";
 const DEFAULT_REGISTRY_BASE_URL = import.meta.env.VITE_WCS_AGENT_REGISTRY_BASE_URL ?? "/internal/agent-registry";
@@ -82,6 +89,8 @@ export function App() {
   const [globalRefreshBusy, setGlobalRefreshBusy] = useState(false);
   const [globalRefreshError, setGlobalRefreshError] = useState<string | null>(null);
   const [globalRefreshMessage, setGlobalRefreshMessage] = useState<string | null>(null);
+  const [authBusy, setAuthBusy] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [featureFlagsJson, setFeatureFlagsJson] = useState(`{
   "schemaVersion": "1",
   "version": "backoffice-${new Date().toISOString().slice(0, 10)}",
@@ -335,6 +344,24 @@ export function App() {
     }
   }
 
+  async function loginWithCognito() {
+    setAuthBusy(true);
+    setAuthError(null);
+    try {
+      await startCognitoLogin(cognitoConfiguration);
+    } catch (cause) {
+      setAuthError(cause instanceof Error ? cause.message : "No se pudo iniciar el login con Cognito.");
+      setAuthBusy(false);
+    }
+  }
+
+  function logout() {
+    setToken("");
+    setGlobalRefreshMessage(null);
+    setGlobalRefreshError(null);
+    logoutFromCognito(cognitoConfiguration);
+  }
+
   async function publishFeatureFlags() {
     setFeatureFlagsBusy(true);
     setFeatureFlagsError(null);
@@ -370,6 +397,32 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    let mounted = true;
+    void completeCognitoLogin(cognitoConfiguration)
+      .then((accessToken) => {
+        if (mounted && accessToken) {
+          setToken(accessToken);
+          setAuthError(null);
+        }
+      })
+      .catch((cause: unknown) => {
+        if (mounted) {
+          setAuthError(cause instanceof Error ? cause.message : "No se pudo completar el login con Cognito.");
+        }
+      })
+      .finally(() => {
+        if (mounted) setAuthBusy(false);
+      });
+    return () => { mounted = false; };
+  }, []);
+
+  useEffect(() => {
+    if (token.trim()) void refreshAll();
+    // The refresh is intentionally triggered only after a session token changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
   return (
     <main className="shell">
       <header className="hero">
@@ -395,8 +448,12 @@ export function App() {
         </div>
         <div className="button-row">
           <button className="primary" onClick={() => void refreshAll()} disabled={globalRefreshBusy || !token.trim()}>{globalRefreshBusy ? "Conectando y actualizando..." : "Conectar y actualizar todo"}</button>
+          {isCognitoConfigured(cognitoConfiguration) && !token.trim() && <button onClick={() => void loginWithCognito()} disabled={authBusy}>{authBusy ? "Abriendo Cognito..." : "Ingresar con Cognito"}</button>}
+          {isCognitoConfigured(cognitoConfiguration) && token.trim() && <button onClick={logout}>Cerrar sesión</button>}
           <span className="muted">Valida el acceso y actualiza sólo las vistas read-only.</span>
         </div>
+        {isCognitoConfigured(cognitoConfiguration) && <p className="muted">Login Cognito con Authorization Code + PKCE. El access token permanece sólo en memoria; el preview-token sigue siendo read-only.</p>}
+        {authError && <div className="alert" role="alert">Autenticación: {authError}</div>}
         {globalRefreshError && <div className="alert" role="alert">Conexión: {globalRefreshError}</div>}
         {globalRefreshMessage && <div className="success-alert" role="status" aria-live="polite">{globalRefreshMessage}</div>}
         <div className="button-row"><button onClick={() => void loadRuns()} disabled={busy || globalRefreshBusy}>Actualizar runs</button><button onClick={() => void loadRegistry()} disabled={registryBusy || globalRefreshBusy}>Actualizar registry</button></div>

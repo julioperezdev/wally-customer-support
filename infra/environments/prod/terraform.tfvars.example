@@ -90,6 +90,16 @@ backend_runtime_environment_secrets = {}
 # Keep false until wcs/prod/backoffice contains a strong preview-token.
 backoffice_preview_enabled = false
 
+# Cognito is provisioned and enabled separately. Keep authorization disabled
+# until the User Pool, groups, frontend callback and AppConfig smoke test are
+# reviewed. Set a unique prefix only when the Hosted UI is needed.
+backoffice_cognito_enabled   = false
+cognito_domain_prefix        = null
+cognito_callback_urls        = ["http://localhost:5173/auth/callback"]
+cognito_logout_urls          = ["http://localhost:5173/"]
+cognito_enable_password_auth = false
+cognito_deletion_protection  = "ACTIVE"
+
 enable_bedrock_access = true
 bedrock_model_arns    = ["arn:aws:bedrock:us-east-1::foundation-model/openai.gpt-oss-20b-1:0"]
 # Add exact immutable Prompt Management ARNs after creating and reviewing the

@@ -144,6 +144,15 @@ modo local pueda habilitarse accidentalmente en `prod`.
 
 ## Seguridad
 
+La autenticación productiva con Cognito está definida en
+[`backoffice-authentication.md`](backoffice-authentication.md) para WCS-127.
+El User Pool, el Resource Server, los grupos y el cliente PKCE se crean detrás
+de Terraform, pero `backoffice_cognito_enabled=false` mantiene el rollout
+cerrado hasta completar el smoke test. Las capacidades se derivan de grupos
+(`store-viewer`, `store-operator`, `order-operator`, `agent-operator` y
+`admin`) y el backend las valida en cada endpoint; el cliente web no recibe
+los scopes de negocio completos.
+
 - El backend sigue siendo la autoridad de autorización y mantiene el control
   plane cerrado por defecto.
 - El panel no incluye secretos en el código ni en el build.
