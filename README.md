@@ -23,6 +23,7 @@ El repositorio contiene la documentación y la base técnica del producto. La im
 - [`docs/operations.md`](docs/operations.md): CI/CD, observabilidad, seguridad y operación.
 - [`docs/observability.md`](docs/observability.md): Grafana local, CloudWatch y eventos operativos.
 - [`docs/backoffice.md`](docs/backoffice.md): backoffice interno read-only de evaluaciones y registry de agentes.
+- [`docs/orders-and-payments.md`](docs/orders-and-payments.md): pedidos idempotentes y pagos desacoplados por proveedor.
 - [`infra/README.md`](infra/README.md): base Terraform de AWS, state separado y servicios preparados.
 - [`docs/queries.md`](docs/queries.md): consultas SQL y CloudWatch sanitizadas.
 - [`scripts/smoke-agent-registry.sh`](scripts/smoke-agent-registry.sh): smoke read-only del registry sin secretos.

@@ -2,8 +2,8 @@
 
 Owner: Tech Lead  
 Status: `Proposed`  
-Last reviewed: 2026-09-06
-Related Jira: `WCS-13`, `WCS-14`, `WCS-15`, `WCS-16`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-37`, `WCS-47`, `WCS-48`, `WCS-51`, `WCS-60`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`, `WCS-70`
+Last reviewed: 2026-09-13
+Related Jira: `WCS-13`, `WCS-14`, `WCS-15`, `WCS-16`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-37`, `WCS-47`, `WCS-48`, `WCS-51`, `WCS-60`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-122`
 Related repository paths: `src/main/java/com/wally/customersupport/{conversation,catalog,support,agent}/infrastructure/repository/postgres`, `src/main/resources/db/migration`
 
 ## Aislamiento en el RDS compartido
@@ -117,6 +117,24 @@ realiza con migraciones posteriores.
 
 Los registros de V3 son explícitamente DEMO y no constituyen la política legal
 o comercial definitiva de la tienda.
+
+### `orders`, `order_items` y `payment_events` — implementadas en `V18`
+
+El backoffice persiste el intento de venta y el estado del pago dentro del
+schema `wcs`, sin mezclarlo con tablas de `tesis-dev`:
+
+* `orders` identifica el pedido, cliente de referencia, estado, moneda, total,
+  proveedor, preferencia, link, pago externo y una `idempotency_key` única;
+* `order_items` guarda el snapshot de SKU, nombre, cantidad, precio, moneda y
+  total de línea validado desde el catálogo al crear el pedido;
+* `payment_events` conserva el evento sanitizado, hash del payload, estado
+  consultado al proveedor y relación opcional con el pedido. La unicidad por
+  proveedor y evento permite deduplicar reintentos del webhook.
+
+La migración verifica stock bajo lock pesimista, pero esta versión no descuenta
+ni reserva stock temporalmente. La reserva con expiración, carrito, descuentos,
+reembolsos y compensaciones quedan para una migración posterior; no deben
+inferirse a partir de un pedido `PENDING_PAYMENT`.
 
 ### `knowledge_source` y `knowledge_document_version`
 

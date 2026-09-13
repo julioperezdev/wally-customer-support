@@ -9,10 +9,11 @@ control plane completo para crear, versionar, evaluar y activar agentes. El
 primer nivel ya está implementado; el segundo mantiene trabajo pendiente dentro
 de WCS-120.
 
-WCS-122 no es el siguiente bloque automático. Queda bloqueado hasta cerrar los
-gates definidos para el control plane de agentes y verificar el contrato de
-feature flags que éste necesita. El número de Jira no determina por sí solo el
-orden de desarrollo.
+WCS-122 comenzó como un slice vertical aislado para validar pedidos y pagos sin
+desplazar el control plane de agentes. Su proveedor queda en `mock` por defecto
+y la activación de Mercado Pago Sandbox sigue bloqueada por sus propios gates
+de credenciales, firma, migración y smoke. El número de Jira no determina por
+sí solo el orden de desarrollo.
 
 Este documento define el MVP del backoffice operativo de WCS. La entrega se
 organiza en cuatro slices grandes para reducir la fricción de múltiples PR
@@ -26,7 +27,7 @@ documentación, rollout y rollback.
 | Operación de tienda | [WCS-119](https://julioperezdev.atlassian.net/browse/WCS-119) | Catálogo, variantes, stock, media S3 y bandeja de atención humana | Se mantiene independiente del control plane |
 | Plataforma de agentes | [WCS-120](https://julioperezdev.atlassian.net/browse/WCS-120) | Registry, authoring, versiones, evaluación, fallback, ejecuciones y métricas | Panel read-only entregado; control plane completo pendiente |
 | Configuración dinámica | [WCS-121](https://julioperezdev.atlassian.net/browse/WCS-121) | Feature flags de negocio con AppConfig sin reinicio | Complementa WCS-120; las escrituras siguen protegidas por permisos |
-| Venta asistida | [WCS-122](https://julioperezdev.atlassian.net/browse/WCS-122) | Pedidos y links de pago con Mercado Pago Sandbox | Bloqueado hasta cerrar WCS-120 y verificar WCS-121 |
+| Venta asistida | [WCS-122](https://julioperezdev.atlassian.net/browse/WCS-122) | Pedidos y links de pago con Mercado Pago Sandbox | Implementación vertical en curso; provider mock por defecto |
 
 El runtime conversacional actual permanece como fallback durante toda la
 migración. El backoffice nunca será una dependencia necesaria para procesar un
@@ -41,10 +42,12 @@ del ticket:
 2. Verificar WCS-121 para selección de agente/versión, kill switch, canary y
    rollback sin reinicio, con permisos productivos explícitos.
 3. Validar trazas reales por ejecución y gates de evaluación/promoción.
-4. Recién entonces desbloquear WCS-122 para pedidos y pagos Sandbox.
+4. Mantener WCS-122 aislado y en `mock` hasta completar migración, seguridad y
+   pruebas; recién después activar Mercado Pago Sandbox.
 
-Mientras el primer gate no esté cerrado, no se debe presentar WCS-122 como el
-siguiente desarrollo ni abrir una implementación que desplace el control plane.
+WCS-122 puede desarrollarse en paralelo porque no modifica el runtime de
+agentes ni habilita pagos reales. Su entrada a producción requiere los gates
+anteriores y un smoke explícito del proveedor.
 
 ## Arquitectura
 
@@ -181,13 +184,13 @@ trazabilidad. No se capturan ni almacenan datos de tarjeta.
 - métricas de evaluación por agente y versión disponibles, identificadas como
   evidencia de evaluación mientras no exista telemetría runtime completa;
 - feature flag modificable sin restart y con rollback;
-- pago Sandbox idempotente y trazable;
+- pedido idempotente y trazable, con link mock o Sandbox según configuración;
 - pruebas automatizadas, smoke documentado y rollback verificado;
 - ausencia de secretos y PII innecesaria en UI, logs y evidencias.
 
 El cierre específico de WCS-120 exige además todos los puntos de “Estado actual
-de WCS-120”; por eso el panel read-only actual no habilita por sí solo el
-desarrollo de WCS-122.
+de WCS-120”; WCS-122 no cambia ese criterio ni habilita por sí solo pagos
+productivos.
 
 ## Rollback
 

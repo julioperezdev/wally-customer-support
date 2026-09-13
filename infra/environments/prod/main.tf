@@ -44,6 +44,11 @@ locals {
     "actor-key-secret" = "REPLACE_ME_OBSERVABILITY_ACTOR_KEY_SECRET"
   })
 
+  fake_mercado_pago_secret_json = jsonencode({
+    "access-token"   = "REPLACE_ME_MERCADO_PAGO_ACCESS_TOKEN"
+    "webhook-secret" = "REPLACE_ME_MERCADO_PAGO_WEBHOOK_SECRET"
+  })
+
   # This bootstrap document mirrors the currently deployed AppConfig baseline
   # non-secret baseline. Runtime changes made in AppConfig remain protected by
   # ignore_changes in the AppConfig module; this document is used when the
@@ -87,6 +92,11 @@ locals {
     "wcs.rag.knowledge-base-id"                                   = module.wcs_knowledge_base.knowledge_base_id
     "wcs.rag.region"                                              = var.aws_region
     "wcs.outbox.max-attempts"                                     = 3
+    "wcs.payment.provider"                                        = "mock"
+    "wcs.payment.currency"                                        = "ARS"
+    "wcs.payment.mercado-pago.base-url"                           = "https://api.mercadopago.com"
+    "wcs.payment.notification-url"                                = ""
+    "wcs.payment.webhook.signature-required"                      = true
     "wcs.conversation.preferences.enabled"                        = false
     "wcs.conversation.preferences.ttl"                            = "PT24H"
     "wcs.conversation.preferences.max-preferences"                = 5
@@ -102,6 +112,7 @@ locals {
     "wcs.external-config.secrets-manager.telegram-secret-id"      = module.telegram_secrets.secret_name
     "wcs.external-config.secrets-manager.backoffice-secret-id"    = module.backoffice_secrets.secret_name
     "wcs.external-config.secrets-manager.observability-secret-id" = module.observability_secrets.secret_name
+    "wcs.external-config.secrets-manager.mercado-pago-secret-id"  = module.mercado_pago_secrets.secret_name
     "wcs.backoffice.enabled"                                      = var.backoffice_preview_enabled
     "wcs.backoffice.preview.enabled"                              = var.backoffice_preview_enabled
   }
@@ -131,7 +142,8 @@ locals {
       module.whatsapp_secrets.secret_arn,
       module.telegram_secrets.secret_arn,
       module.backoffice_secrets.secret_arn,
-      module.observability_secrets.secret_arn
+      module.observability_secrets.secret_arn,
+      module.mercado_pago_secrets.secret_arn
     ]),
     var.shared_rds_secret_arn == null ? toset([]) : toset([var.shared_rds_secret_arn]),
     var.appconfig_secret_arns
@@ -214,6 +226,15 @@ module "observability_secrets" {
   name                = "wcs/${var.environment}/observability"
   description         = "WCS pseudonymous observability key. Replace the fake bootstrap value before using actor grouping."
   initial_secret_json = local.fake_observability_secret_json
+  tags                = local.common_tags
+}
+
+module "mercado_pago_secrets" {
+  source = "../../modules/runtime-secrets"
+
+  name                = "wcs/${var.environment}/mercado-pago"
+  description         = "WCS Mercado Pago credentials. Replace bootstrap values before enabling the provider."
+  initial_secret_json = local.fake_mercado_pago_secret_json
   tags                = local.common_tags
 }
 

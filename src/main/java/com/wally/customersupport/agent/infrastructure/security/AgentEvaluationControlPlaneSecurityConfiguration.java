@@ -110,6 +110,8 @@ public class AgentEvaluationControlPlaneSecurityConfiguration {
                         .hasAuthority(FEATURE_FLAGS_READ_AUTHORITY)
                         .requestMatchers(HttpMethod.GET, "/internal/backoffice/catalog/**")
                         .hasAuthority("SCOPE_backoffice.catalog.read")
+                        .requestMatchers(HttpMethod.GET, "/internal/backoffice/orders/**")
+                        .hasAuthority("SCOPE_backoffice.orders.read")
                         .requestMatchers(HttpMethod.GET, "/internal/backoffice/human-follow-ups/**")
                         .hasAuthority("SCOPE_backoffice.human-follow-up.read")
                         .anyRequest().denyAll());
@@ -137,6 +139,7 @@ public class AgentEvaluationControlPlaneSecurityConfiguration {
                         "/internal/backoffice/agent-map/**",
                         "/internal/backoffice/feature-flags/**",
                         "/internal/backoffice/catalog/**",
+                        "/internal/backoffice/orders/**",
                         "/internal/backoffice/human-follow-ups/**")
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(authorize -> authorize
@@ -162,6 +165,10 @@ public class AgentEvaluationControlPlaneSecurityConfiguration {
                         .hasAuthority(FEATURE_FLAGS_WRITE_AUTHORITY)
                         .requestMatchers(HttpMethod.GET, "/internal/backoffice/catalog/**")
                         .hasAuthority("SCOPE_backoffice.catalog.read")
+                        .requestMatchers(HttpMethod.GET, "/internal/backoffice/orders/**")
+                        .hasAuthority("SCOPE_backoffice.orders.read")
+                        .requestMatchers(HttpMethod.POST, "/internal/backoffice/orders")
+                        .hasAuthority("SCOPE_backoffice.orders.write")
                         .requestMatchers(HttpMethod.POST, "/internal/backoffice/catalog/variants/*/stock")
                         .hasAuthority("SCOPE_backoffice.catalog.write")
                         .requestMatchers(HttpMethod.POST, "/internal/backoffice/catalog/products/*/image/**")

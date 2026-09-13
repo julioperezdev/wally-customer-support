@@ -48,6 +48,11 @@ locals {
     "actor-key-secret" = "REPLACE_ME_TEST_OBSERVABILITY_ACTOR_KEY_SECRET"
   })
 
+  fake_mercado_pago_secret_json = jsonencode({
+    "access-token"   = "REPLACE_ME_TEST_MERCADO_PAGO_ACCESS_TOKEN"
+    "webhook-secret" = "REPLACE_ME_TEST_MERCADO_PAGO_WEBHOOK_SECRET"
+  })
+
   test_configuration = {
     "wcs.ai.provider"                                             = "mock"
     "wcs.ai.model"                                                = "llm.mock.v1"
@@ -68,6 +73,11 @@ locals {
     "wcs.rag.provider"                                            = "mock"
     "wcs.rag.max-results"                                         = 5
     "wcs.outbox.max-attempts"                                     = 3
+    "wcs.payment.provider"                                        = "mock"
+    "wcs.payment.currency"                                        = "ARS"
+    "wcs.payment.mercado-pago.base-url"                           = "https://api.mercadopago.com"
+    "wcs.payment.notification-url"                                = ""
+    "wcs.payment.webhook.signature-required"                      = false
     "wcs.conversation.retention.enabled"                          = false
     "wcs.conversation.retention.content-retention"                = "PT720H"
     "wcs.conversation.retention.metadata-retention"               = "PT2160H"
@@ -86,6 +96,7 @@ locals {
     "wcs.external-config.secrets-manager.whatsapp-secret-id"      = module.whatsapp_secrets.secret_name
     "wcs.external-config.secrets-manager.telegram-secret-id"      = module.telegram_secrets.secret_name
     "wcs.external-config.secrets-manager.observability-secret-id" = module.observability_secrets.secret_name
+    "wcs.external-config.secrets-manager.mercado-pago-secret-id"  = module.mercado_pago_secrets.secret_name
     "wcs.agent-runtime.activation-enabled"                        = false
     "wcs.agent-runtime.environment"                               = var.environment
     "wcs.agent-runtime.shadow-enabled"                            = false
@@ -173,6 +184,15 @@ module "observability_secrets" {
   tags                = local.common_tags
 }
 
+module "mercado_pago_secrets" {
+  source = "../../modules/runtime-secrets"
+
+  name                = "wcs/${var.environment}/mercado-pago"
+  description         = "WCS test Mercado Pago credentials. Do not use production tokens."
+  initial_secret_json = local.fake_mercado_pago_secret_json
+  tags                = local.common_tags
+}
+
 module "backend_apprunner" {
   source = "../../modules/backend-apprunner"
 
@@ -189,7 +209,8 @@ module "backend_apprunner" {
     module.database_secrets.secret_arn,
     module.whatsapp_secrets.secret_arn,
     module.telegram_secrets.secret_arn,
-    module.observability_secrets.secret_arn
+    module.observability_secrets.secret_arn,
+    module.mercado_pago_secrets.secret_arn
   ])
   enable_appconfig_access = true
   enable_bedrock_access   = false

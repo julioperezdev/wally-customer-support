@@ -28,13 +28,15 @@ final class SecretsManagerConfigurationLoader {
         loadSecret(properties.telegramSecretId(), "telegram", resolved);
         loadSecret(properties.backofficeSecretId(), "backoffice", resolved);
         loadSecret(properties.observabilitySecretId(), "observability", resolved);
+        loadSecret(properties.mercadoPagoSecretId(), "mercadopago", resolved);
         String runtimeSecretId = properties.runtimeSecretId();
         if (runtimeSecretId == null || runtimeSecretId.isBlank()) {
             boolean hasDedicatedReferences = isPresent(properties.databaseSecretId())
                     || isPresent(properties.whatsappSecretId())
                     || isPresent(properties.telegramSecretId())
                     || isPresent(properties.backofficeSecretId())
-                    || isPresent(properties.observabilitySecretId());
+                    || isPresent(properties.observabilitySecretId())
+                    || isPresent(properties.mercadoPagoSecretId());
             runtimeSecretId = hasDedicatedReferences ? null : properties.secretId();
         }
         loadSecret(runtimeSecretId, "runtime", resolved);
@@ -66,6 +68,7 @@ final class SecretsManagerConfigurationLoader {
                 case "telegram" -> mapTelegram(root, target);
                 case "backoffice" -> mapBackoffice(root, target);
                 case "observability" -> mapObservability(root, target);
+                case "mercadopago" -> mapMercadoPago(root, target);
                 case "runtime" -> mapRuntime(root, target);
                 default -> throw new IllegalArgumentException("Unsupported secret kind: " + kind);
             }
@@ -109,6 +112,13 @@ final class SecretsManagerConfigurationLoader {
                 "actor_key_secret", "actorKeySecret", "WCS_OBSERVABILITY_ACTOR_KEY_SECRET");
     }
 
+    private static void mapMercadoPago(JsonNode root, Map<String, Object> target) {
+        putIfPresent(root, target, "wcs.payment.mercado-pago.access-token", "access-token", "access_token",
+                "accessToken", "MERCADO_PAGO_ACCESS_TOKEN");
+        putIfPresent(root, target, "wcs.payment.webhook.secret", "webhook-secret", "webhook_secret",
+                "webhookSecret", "MERCADO_PAGO_WEBHOOK_SECRET");
+    }
+
     private static void mapRuntime(JsonNode root, Map<String, Object> target) {
         putIfPresent(root, target, "spring.datasource.url", "spring.datasource.url", "jdbc-url", "jdbc_url",
                 "DATABASE_URL");
@@ -124,6 +134,7 @@ final class SecretsManagerConfigurationLoader {
                 "META_APP_SECRET");
         mapTelegram(root, target);
         mapObservability(root, target);
+        mapMercadoPago(root, target);
     }
 
     private static void putIfPresent(JsonNode root, Map<String, Object> target, String propertyName,

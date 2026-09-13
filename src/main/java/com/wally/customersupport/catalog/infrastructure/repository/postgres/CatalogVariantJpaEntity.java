@@ -71,6 +71,10 @@ public class CatalogVariantJpaEntity {
         return sku;
     }
 
+    public String getProductName() {
+        return product == null ? "" : product.getName();
+    }
+
     public String getSizeLabel() {
         return sizeLabel;
     }
@@ -81,6 +85,10 @@ public class CatalogVariantJpaEntity {
 
     public BigDecimal getPrice() {
         return price;
+    }
+
+    public String getCurrency() {
+        return currency;
     }
 
     public int getStock() {

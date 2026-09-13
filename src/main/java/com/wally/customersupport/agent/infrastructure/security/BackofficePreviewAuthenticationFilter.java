@@ -23,6 +23,7 @@ public final class BackofficePreviewAuthenticationFilter extends OncePerRequestF
             new SimpleGrantedAuthority("SCOPE_agent-registry.read"),
             new SimpleGrantedAuthority("SCOPE_feature-flags.read"),
             new SimpleGrantedAuthority("SCOPE_backoffice.catalog.read"),
+            new SimpleGrantedAuthority("SCOPE_backoffice.orders.read"),
             new SimpleGrantedAuthority("SCOPE_backoffice.human-follow-up.read"));
 
     private final byte[] configuredToken;
