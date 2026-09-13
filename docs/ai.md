@@ -75,19 +75,23 @@ Cada modelo real debe registrar proveedor, model ID, versión, límites, timeout
 
 ## Registro ejecutable del prompt de intención
 
-El clasificador usa el `prompt_id` lógico `conversation-intent` y una versión
-aprobada empaquetada en `src/main/resources/prompts/`. La versión activa se
-selecciona con `wcs.ai.prompt.intent-version`, pero el valor sólo puede resolver
-un archivo incluido en el artefacto; no se acepta prompt arbitrario desde
-requests, AppConfig como texto libre ni el usuario final.
+El clasificador usa el `prompt_id` lógico `conversation-intent` y un
+`PromptRegistry` provider-neutral. El proveedor actual empaquetado en
+`src/main/resources/prompts/` sigue siendo el fallback compatible y default.
+Cuando `wcs.ai.prompt.provider=bedrock`, el contenido se obtiene de Bedrock
+Prompt Management mediante un identificador y una versión numérica inmutable
+configurados en AppConfig. No se acepta prompt arbitrario desde requests,
+AppConfig como texto libre ni el usuario final. La decisión completa está en
+[`ADR-032`](decisions/032-bedrock-prompt-management.md).
 
-Las versiones aprobadas incluyen `conversation-intent-v1.system.md` y
-`conversation-intent-v2.system.md`. La versión activa de esta iteración es v2. Al iniciar una
-clasificación, WCS calcula un SHA-256 del contenido y registra únicamente
+Las versiones empaquetadas incluyen `conversation-intent-v1.system.md` y
+`conversation-intent-v2.system.md`. En el proveedor administrado, la versión
+activa es la que devuelve `GetPrompt` para la referencia configurada. Al iniciar
+una clasificación, WCS calcula un SHA-256 del contenido y registra únicamente
 `promptVersion` y `promptHash` junto con el evento `AI_USAGE_RECORDED`. El
 contenido, el mensaje y la respuesta no se registran. Para publicar una nueva
-versión se agrega un archivo nuevo, se actualizan fixtures y se cambia la
-selección de AppConfig después de revisar el PR y sus resultados.
+versión se crea una versión inmutable en Bedrock, se actualizan fixtures y se
+cambia la selección de AppConfig después de revisar el PR y sus resultados.
 
 Los límites de inferencia son configuración no secreta y quedan acotados por
 el código: `intent-max-output-tokens` entre 1 y 1024,
@@ -99,10 +103,12 @@ intención por debajo del umbral sólo puede producir el fallback seguro.
 ## Prompt de respuesta y límites del proveedor
 
 La generación de respuestas de soporte usa el prompt lógico
-`conversation-response`, versionado en `src/main/resources/prompts/` y
-seleccionado mediante `wcs.ai.response.prompt-version`. El adapter Bedrock
-registra esa versión y su hash junto con `AI_USAGE_RECORDED`; nunca registra el
-prompt, el contexto, la respuesta ni credenciales.
+`conversation-response`. Por default se resuelve desde
+`src/main/resources/prompts/`; con `wcs.ai.prompt.provider=bedrock` se resuelve
+desde Bedrock Prompt Management mediante la referencia inmutable de
+`wcs.ai.prompt.management`. El adapter Bedrock registra esa versión y su hash
+junto con `AI_USAGE_RECORDED`; nunca registra el prompt, el contexto, la
+respuesta ni credenciales.
 
 AppConfig controla únicamente límites no sensibles y bounded: tokens máximos,
 temperatura, cantidad de mensajes, caracteres de entrada, conocimiento

@@ -94,6 +94,17 @@ data "aws_iam_policy_document" "apprunner_instance" {
   }
 
   dynamic "statement" {
+    for_each = var.enable_bedrock_access && length(var.bedrock_prompt_arns) > 0 ? [1] : []
+
+    content {
+      sid       = "ReadApprovedBedrockPrompts"
+      effect    = "Allow"
+      actions   = ["bedrock:GetPrompt"]
+      resources = sort(tolist(var.bedrock_prompt_arns))
+    }
+  }
+
+  dynamic "statement" {
     for_each = var.enable_bedrock_access && length(var.bedrock_knowledge_base_arns) > 0 ? [1] : []
 
     content {

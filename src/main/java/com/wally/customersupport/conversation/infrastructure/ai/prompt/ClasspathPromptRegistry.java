@@ -6,17 +6,21 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
 /** Loads only prompt versions packaged and reviewed with the application artifact. */
 @Component
-public class ClasspathPromptRegistry {
+@ConditionalOnProperty(name = "wcs.ai.prompt.provider", havingValue = "classpath", matchIfMissing = true)
+public class ClasspathPromptRegistry implements PromptRegistry {
 
+    @Override
     public PromptDefinition intentPrompt(String version) {
         return load("conversation-intent", version);
     }
 
+    @Override
     public PromptDefinition responsePrompt(String version) {
         return load("conversation-response", version);
     }

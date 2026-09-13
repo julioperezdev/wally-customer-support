@@ -6,17 +6,16 @@
 - Related Jira: `WCS-45`, `WCS-60`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-71`, `WCS-72`, `WCS-73`, `WCS-74`, `WCS-75`, `WCS-76`, `WCS-77`, `WCS-78`, `WCS-79`, `WCS-80`, `WCS-81`, `WCS-82`, `WCS-83`, `WCS-84`, `WCS-85`, `WCS-86`, `WCS-87`, `WCS-88`, `WCS-89`, `WCS-90`, `WCS-91`, `WCS-92`, `WCS-93`, `WCS-94`, `WCS-95`, `WCS-96`, `WCS-97`, `WCS-98`, `WCS-99`, `WCS-100`, `WCS-101`, `WCS-102`, `WCS-103`, `WCS-104`, `WCS-105`
 - Baseline: [`wcs-baseline-2026-09-07`](baselines/wcs-baseline-2026-09-07.md)
 - Canonical Confluence: [WCS — Agent Platform Roadmap & Architecture Proposal](https://julioperezdev.atlassian.net/wiki/spaces/SD/pages/7569410/WCS+Agent+Platform+Roadmap+Architecture+Proposal)
-- Related repository paths: `docs/roadmap.md`, `docs/ai.md`, `docs/observability.md`, `docs/decisions/`
+- Related repository paths: `docs/roadmap.md`, `docs/ai.md`, `docs/observability.md`, `docs/agent-platform-delivery-plan.md`, `docs/decisions/`
 
 ## Propósito
 
 Definir la evolución de WCS desde un chatbot con casos de uso y adapters hacia
 una plataforma trazable para crear, versionar, evaluar y operar agentes de IA.
 
-Esta fase es de análisis y diseño. No autoriza todavía cambios del runtime,
-creación de recursos AWS, exposición de PostgreSQL ni adopción de un framework
-de agentes. La implementación comenzará sólo cuando esta propuesta y sus
-decisiones pendientes estén aceptadas.
+La propuesta de dirección está aceptada. La implementación se entrega por
+incrementos grandes y reversibles; cada uno conserva el baseline y requiere sus
+propios criterios de aceptación, pruebas y revisión de infraestructura.
 
 ## Objetivos
 
@@ -338,9 +337,10 @@ Reglas propuestas:
   determinístico seguro;
 - AppConfig administra referencias de activación y límites operativos;
 - Secrets Manager conserva sólo secretos y credenciales;
-- el contenido de prompts y contratos debe tener revisión y trazabilidad. La
-  decisión entre Git como fuente de promoción, registry en PostgreSQL o ambos
-  queda abierta para la siguiente fase.
+- el contenido de prompts y contratos debe tener revisión y trazabilidad;
+- los prompts productivos se administran con Bedrock Prompt Management; PostgreSQL
+  conserva metadata, activaciones y evaluaciones. El fallback empaquetado se
+  mantiene para rollback. La decisión está formalizada en `ADR-032`.
 
 ## Evaluación
 
@@ -565,9 +565,10 @@ volver atrás.
 
 ## Gates antes de implementar
 
-- aceptar el ADR y esta propuesta en Confluence;
-- definir si el registry publicado vive en Git, PostgreSQL o en un modelo
-  híbrido;
+- mantener aceptados el ADR y esta propuesta en Confluence;
+- mantener separadas las fuentes: Prompt Management para prompts productivos,
+  PostgreSQL para metadata/activaciones/evaluaciones y el artefacto como
+  fallback;
 - definir permisos del backoffice y separación de ambientes;
 - aceptar el dataset mínimo de evaluación;
 - aceptar presupuesto de tokens, latencia y costo por caso de uso;
@@ -579,18 +580,17 @@ volver atrás.
 
 ## Decisiones abiertas
 
-1. ¿Git, PostgreSQL o ambos serán la fuente de promoción de prompts y agentes?
+1. ¿El backoffice podrá publicar directamente o requerirá aprobación adicional?
 2. ¿Qué modelo se asignará inicialmente a router, catálogo, conocimiento y
    humanizador?
-3. ¿El backoffice podrá publicar directamente o requerirá aprobación por PR?
-4. ¿Qué porcentaje de tráfico se usará para canary y durante cuánto tiempo?
-5. ¿Qué datos mínimos podrá ver un operador al investigar una ejecución?
-6. ¿Qué umbral de calidad bloquea una promoción?
-7. ¿AgentCore Memory se evaluará después de estabilizar PostgreSQL o en paralelo?
+3. ¿Qué porcentaje de tráfico se usará para canary y durante cuánto tiempo?
+4. ¿Qué datos mínimos podrá ver un operador al investigar una ejecución?
+5. ¿Qué umbral de calidad bloquea una promoción?
+6. ¿AgentCore Memory se evaluará después de estabilizar PostgreSQL o en paralelo?
 
 ## Estado
 
 Esta propuesta convierte la idea de una plataforma multiagente en un programa
-trazable. Hasta que `WCS-45` sea aceptado, el runtime actual, sus contratos,
-Knowledge Base, memoria PostgreSQL y fallback siguen siendo la referencia
-operativa.
+trazable. `WCS-45` está aceptado y el primer incremento conserva el runtime
+actual, sus contratos, Knowledge Base, memoria PostgreSQL y fallback como
+referencia operativa.

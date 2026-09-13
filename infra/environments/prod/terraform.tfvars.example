@@ -92,3 +92,6 @@ backoffice_preview_enabled = false
 
 enable_bedrock_access = true
 bedrock_model_arns    = ["arn:aws:bedrock:us-east-1::foundation-model/openai.gpt-oss-20b-1:0"]
+# Add exact immutable Prompt Management ARNs after creating and reviewing the
+# approved prompt resources in Bedrock.
+bedrock_prompt_arns   = []

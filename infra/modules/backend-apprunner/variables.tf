@@ -114,6 +114,12 @@ variable "bedrock_model_arns" {
   default     = []
 }
 
+variable "bedrock_prompt_arns" {
+  type        = set(string)
+  description = "Bedrock Prompt Management ARNs allowed by the runtime role for GetPrompt calls."
+  default     = []
+}
+
 variable "bedrock_knowledge_base_arns" {
   type        = set(string)
   description = "Bedrock Knowledge Base ARNs allowed by the runtime role for Retrieve calls."

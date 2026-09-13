@@ -4,6 +4,7 @@
 
 - [`roadmap.md`](roadmap.md)
 - [`agent-platform-roadmap.md`](agent-platform-roadmap.md): propuesta de plataforma de agentes, registry, evaluación, feature flags y backoffice.
+- [`agent-platform-delivery-plan.md`](agent-platform-delivery-plan.md): agrupación de entregas grandes para el control plane y el runtime.
 - [`functional-requirements.md`](functional-requirements.md)
 - [`specification-baseline.md`](specification-baseline.md)
 - [`baselines/wcs-baseline-2026-09-07.md`](baselines/wcs-baseline-2026-09-07.md): punto de restauración antes de la plataforma de agentes.
@@ -45,6 +46,7 @@
   - [`029-shadow-quality-scorecard-and-observability.md`](decisions/029-shadow-quality-scorecard-and-observability.md): scorecard determinístico y observabilidad de shadow sin autoridad de activación.
   - [`030-controlled-shadow-rollout.md`](decisions/030-controlled-shadow-rollout.md): allowlist de ambiente y porcentaje determinístico para rollout shadow.
   - [`031-human-follow-up-opt-out-retention.md`](decisions/031-human-follow-up-opt-out-retention.md): derivación humana, supresión y limpieza operativa.
+  - [`032-bedrock-prompt-management.md`](decisions/032-bedrock-prompt-management.md): prompts productivos versionados fuera del artefacto mediante Bedrock Prompt Management.
 
 ## Calidad y operación
 
