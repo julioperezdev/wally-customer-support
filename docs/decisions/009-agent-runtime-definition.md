@@ -4,6 +4,9 @@
 - Related Jira: `WCS-51`
 - Related ADRs: [`005-agent-registry-contract.md`](005-agent-registry-contract.md), [`006-agent-registry-persistence.md`](006-agent-registry-persistence.md), [`007-agent-activation-resolution.md`](007-agent-activation-resolution.md), [`008-agent-runtime-activation.md`](008-agent-runtime-activation.md)
 
+La ejecución de este snapshot para `GENERAL_SUPPORT` queda definida por
+[`033-versioned-agent-runtime-execution.md`](033-versioned-agent-runtime-execution.md).
+
 ## Contexto
 
 WCS ya puede resolver una activación por ambiente, canal y caso de uso. Esa
@@ -36,7 +39,8 @@ mantener el fallback determinístico mientras el control plane evoluciona.
 
 ## No decidido por este ADR
 
-- ejecución dinámica de prompts o tools;
+- ejecución dinámica de prompts o tools fuera del alcance acotado de
+  `GENERAL_SUPPORT` definido en ADR-033;
 - selección real de proveedores/modelos en el `ConversationOrchestrator`;
 - backoffice, evaluación offline, canary o MCP;
 - activación productiva de `catalog-specialist`;

@@ -4,12 +4,18 @@
 - Related Jira: `WCS-52`
 - Related ADRs: [`008-agent-runtime-activation.md`](008-agent-runtime-activation.md), [`009-agent-runtime-definition.md`](009-agent-runtime-definition.md)
 
+ADR-033 amplía esta decisión: la metadata continúa siendo sanitaria y
+observable, y el snapshot activo también puede gobernar la generación de
+`GENERAL_SUPPORT` bajo la flag de runtime. La ejecución versionada no habilita
+por sí sola catálogo dinámico, tools arbitrarias ni activación productiva.
+
 ## Contexto
 
 WCS-50 conecta la activación al orquestador y WCS-51 valida la definición
-persistida que podría ejecutarse en el futuro. Todavía no conviene permitir que
-esa definición seleccione prompts, modelos o tools, porque el control plane no
-tiene aún evaluación, backoffice ni canary.
+persistida. En el alcance inicial de este ADR sólo se observaba la definición;
+ADR-033 agrega una ejecución acotada para `GENERAL_SUPPORT`, protegida por la
+misma flag y por la validación del snapshot. El control plane todavía no
+habilita tools arbitrarias, catálogo dinámico ni canary productivo.
 
 ## Decisión
 
@@ -29,7 +35,9 @@ tiene aún evaluación, backoffice ni canary.
 
 - Se puede medir qué definición habría sido utilizada en cada flujo antes de
   habilitar ejecución dinámica.
-- La respuesta del bot no depende todavía del modelo o prompt del registry.
+- La respuesta del bot sólo depende del modelo o prompt del registry en el
+  alcance acotado de `GENERAL_SUPPORT` cuando existe una activación válida;
+  los demás casos de uso conservan su comportamiento actual.
 - La validación real del flujo requiere una activación aprobada y un entorno
   controlado; producción conserva la flag deshabilitada.
 - No se agregan migraciones ni cambios de infraestructura.

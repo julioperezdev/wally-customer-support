@@ -29,6 +29,16 @@ bootstrap. Nunca se registran prompts, respuestas ni secretos. El evento y sus
 consultas están documentados en [`docs/observability.md`](observability.md) y
 [`observability/grafana/queries/cloudwatch-logs-insights.md`](../observability/grafana/queries/cloudwatch-logs-insights.md).
 
+Cuando existe una activación válida, la llamada de generación recibe el
+snapshot de `AgentRuntimeDefinition`. En ese caso `AI_USAGE_RECORDED` agrega
+`agentId`, `agentVersion`, `inputSchemaVersion`, `outputSchemaVersion`,
+`promptVersion`, `promptHash`, límites y timeout de la versión ejecutada. El
+adapter Bedrock selecciona el `modelId`, `temperature`, `topP` y
+`maxOutputTokens` del snapshot; además exige que el hash del prompt resuelto
+coincida con el hash publicado. Un mismatch produce fallback y no cambia
+silenciosamente al prompt global. El router y el especialista de catálogo
+continúan con sus fronteras actuales hasta migrar cada step del plan.
+
 Las evaluaciones de agentes tienen un executor Bedrock opcional, separado del
 runtime conversacional. Sólo recibe hechos sintéticos y validados del dataset,
 no genera SQL ni consulta tools. `deterministic` es el default y rollback;

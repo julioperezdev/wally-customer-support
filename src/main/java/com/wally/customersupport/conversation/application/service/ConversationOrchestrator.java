@@ -169,7 +169,7 @@ public class ConversationOrchestrator {
                 case BUSINESS_HOURS -> formatBusinessHours();
                 case POLICY_QUERY -> formatPolicy(decision == null ? null : decision.policyKey());
                 case HUMAN_HANDOFF -> HUMAN_HANDOFF;
-                case GENERAL_SUPPORT -> safeGeneralSupport(context);
+                case GENERAL_SUPPORT -> safeGeneralSupport(context, definition);
                 case LOW_CONFIDENCE -> LOW_CONFIDENCE;
                 case SAFE_FALLBACK -> SAFE_FALLBACK;
             };
@@ -383,16 +383,25 @@ public class ConversationOrchestrator {
             fields.put("agentVersion", definition.definition().agentVersion());
             fields.put("modelProvider", definition.definition().modelProvider());
             fields.put("model", definition.definition().modelId());
+            fields.put("promptVersion", definition.definition().systemPromptVersion());
+            fields.put("promptHash", definition.definition().systemPromptHash());
+            fields.put("inputSchemaVersion", definition.definition().inputSchemaVersion());
+            fields.put("outputSchemaVersion", definition.definition().outputSchemaVersion());
+            fields.put("maxInputTokens", definition.definition().maxInputTokens());
+            fields.put("maxOutputTokens", definition.definition().maxOutputTokens());
+            fields.put("timeoutMs", definition.definition().timeout().toMillis());
         }
     }
 
-    private String safeGeneralSupport(ConversationContext context) {
+    private String safeGeneralSupport(
+            ConversationContext context,
+            AgentRuntimeDefinitionResolution definitionResolution) {
         try {
             List<KnowledgeChunk> knowledge = knowledgeRetriever.retrieve(new KnowledgeQuery(
                     context.latestMessage(),
                     context.conversationId(),
                     Math.max(1, ragProperties.maxResults())));
-            return llmClient.generateReply(new ConversationContext(
+            ConversationContext groundedContext = new ConversationContext(
                     context.conversationId(),
                     context.externalCustomerId(),
                     context.latestMessage(),
@@ -400,7 +409,11 @@ public class ConversationOrchestrator {
                     knowledge,
                     context.conversationSummary(),
                     context.preferences(),
-                    context.channel()));
+                    context.channel());
+            if (definitionResolution != null && definitionResolution.isActive()) {
+                return llmClient.generateReply(groundedContext, definitionResolution.definition());
+            }
+            return llmClient.generateReply(groundedContext);
         } catch (RuntimeException exception) {
             Map<String, Object> fields = new LinkedHashMap<>();
             fields.put("errorType", exception.getClass().getSimpleName());

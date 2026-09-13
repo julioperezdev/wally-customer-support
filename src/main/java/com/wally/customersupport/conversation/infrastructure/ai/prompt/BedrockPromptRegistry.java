@@ -27,19 +27,19 @@ public class BedrockPromptRegistry implements PromptRegistry {
     }
 
     @Override
-    public PromptDefinition intentPrompt(String ignoredVersion) {
+    public PromptDefinition intentPrompt(String requestedVersion) {
         return load(
                 "conversation-intent",
                 properties.effectiveIntentIdentifier(),
-                properties.effectiveIntentVersion());
+                requestedOrConfiguredVersion(requestedVersion, properties.effectiveIntentVersion()));
     }
 
     @Override
-    public PromptDefinition responsePrompt(String ignoredVersion) {
+    public PromptDefinition responsePrompt(String requestedVersion) {
         return load(
                 "conversation-response",
                 properties.effectiveResponseIdentifier(),
-                properties.effectiveResponseVersion());
+                requestedOrConfiguredVersion(requestedVersion, properties.effectiveResponseVersion()));
     }
 
     private PromptDefinition load(String logicalId, String identifier, String version) {
@@ -67,6 +67,23 @@ public class BedrockPromptRegistry implements PromptRegistry {
                     .orElseThrow(() -> new IllegalStateException("Bedrock prompt default variant was not found"));
         }
         return response.variants().getFirst();
+    }
+
+    private static String requestedOrConfiguredVersion(String requestedVersion, String configuredVersion) {
+        if (requestedVersion == null || requestedVersion.isBlank()) {
+            return configuredVersion;
+        }
+        String normalized = requestedVersion.trim();
+        if (normalized.matches("[1-9][0-9]{0,8}")) {
+            return normalized;
+        }
+        // The legacy classifier uses a logical classpath version. Keep that
+        // alias compatible with the configured Bedrock reference; published
+        // agent snapshots are checked against the resolved hash afterwards.
+        if (normalized.startsWith("conversation-")) {
+            return configuredVersion;
+        }
+        throw new IllegalStateException("agent prompt version must be an immutable numeric Bedrock version");
     }
 
     private String extractText(PromptVariant variant) {

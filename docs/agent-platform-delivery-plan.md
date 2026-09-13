@@ -42,6 +42,15 @@ Incluye:
 El runtime seguirá usando casos de uso determinísticos; el LLM no genera SQL
 ni recibe credenciales.
 
+El primer corte implementado de este PR conecta el snapshot con la generación
+grounded de `GENERAL_SUPPORT`. `LlmClient` conserva compatibilidad con los
+adapters existentes y Bedrock aplica el modelo, prompt versionado, hash,
+parámetros de inferencia, límite de salida y timeout de la definición activa.
+El catálogo sigue siendo determinístico y el router continúa usando su
+configuración global. La migración de cada step del plan a un agente
+independiente y la exposición de escrituras desde el backoffice se mantienen
+para los siguientes cortes del mismo PR ampliado.
+
 ## PR 3 — Backoffice operativo del control plane
 
 Incluye en el mismo repositorio React/TypeScript:

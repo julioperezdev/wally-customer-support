@@ -379,6 +379,52 @@ class ConversationOrchestratorTest {
     }
 
     @Test
+    void passesTheActiveAgentSnapshotToVersionedResponseGeneration() {
+        ConversationContext channelContext = new ConversationContext(
+                context.conversationId(),
+                context.externalCustomerId(),
+                "¿Dónde están ubicados?",
+                List.of("¿Dónde están ubicados?"),
+                List.of(),
+                null,
+                List.of(),
+                Channel.TELEGRAM);
+        AgentActivationKey key = new AgentActivationKey(
+                "knowledge-specialist", "prod", "telegram", "GENERAL_SUPPORT");
+        AgentRuntimeDefinition definition = knowledgeDefinition();
+        when(intentClassifier.classify(any(ConversationContext.class)))
+                .thenReturn(new ConversationIntentDecision(ConversationIntent.GENERAL_SUPPORT, 0.90, null, null));
+        when(agentActivationResolver.resolve(key))
+                .thenReturn(AgentActivationResolution.active("knowledge-specialist", 3));
+        when(agentRuntimeDefinitionResolver.resolve(key))
+                .thenReturn(AgentRuntimeDefinitionResolution.active(definition));
+        when(knowledgeRetriever.retrieve(any())).thenReturn(List.of(
+                new KnowledgeChunk("Calle Código 123", 0.95, "store-location-v1")));
+        when(llmClient.generateReply(any(ConversationContext.class), any(AgentRuntimeDefinition.class)))
+                .thenReturn("respuesta de la version activa");
+
+        ConversationOrchestrator enabledOrchestrator = new ConversationOrchestrator(
+                intentClassifier,
+                catalogConversationService,
+                supportConfigurationQueryService,
+                knowledgeRetriever,
+                llmClient,
+                new RagProperties("mock", 5, null, null),
+                new ConversationExecutionPlanFactory(),
+                agentActivationResolver,
+                agentRuntimeDefinitionResolver,
+                new AgentRuntimeProperties(true, "prod", false, Duration.ofSeconds(5), "noop", "test", 0),
+                catalogSpecialistExecutor,
+                responseHumanizer,
+                agentShadowRuntimeService,
+                new ActorKeyGenerator(new ObservabilityProperties("test-actor-key")));
+
+        assertEquals("respuesta de la version activa", enabledOrchestrator.replyFor(channelContext));
+
+        verify(llmClient).generateReply(any(ConversationContext.class), org.mockito.ArgumentMatchers.eq(definition));
+    }
+
+    @Test
     void doesNotRouteLowConfidenceIntentToAUseCase() {
         when(intentClassifier.classify(any(ConversationContext.class)))
                 .thenReturn(new ConversationIntentDecision(ConversationIntent.CATALOG_SEARCH, 0.40, null, null));
@@ -428,5 +474,31 @@ class ConversationOrchestratorTest {
                 BigDecimal.valueOf(0.05),
                 "safe-fallback",
                 "catalog-eval-v1");
+    }
+
+    private static AgentRuntimeDefinition knowledgeDefinition() {
+        return new AgentRuntimeDefinition(
+                "knowledge-specialist",
+                3,
+                "Knowledge specialist",
+                "Responder con conocimiento documental aprobado",
+                "bedrock",
+                "openai.gpt-oss-20b-1:0",
+                new AgentInferenceParameters(new BigDecimal("0.35"), new BigDecimal("0.72")),
+                "conversation-response-v1",
+                "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                "knowledge-input-v1",
+                "knowledge-output-v1",
+                Set.of("knowledge.retrieve"),
+                Set.of("wcs-knowledge-base"),
+                "conversation-summary-v1",
+                "grounded-customer-support-v1",
+                Duration.ofSeconds(8),
+                2,
+                1_000,
+                700,
+                new BigDecimal("0.01"),
+                "safe-fallback",
+                "knowledge-response-v1");
     }
 }

@@ -510,12 +510,14 @@ sus métricas se puede publicar `true` en AppConfig. Si la activación no existe
 está deshabilitada, tiene kill switch o el registry no está disponible, el
 orquestador continúa con el flujo anterior y registra únicamente la razón
 sanitizada. `WCS-51` valida además la versión exacta y sus límites antes de
-construir una definición ejecutable; `WCS-52` expone esa resolución en
-`AGENT_ROUTED` y `AGENT_EXECUTION_STARTED`, pero no cambia el modelo ni el
-prompt utilizado. Si falta la versión, hay mismatch, el estado no es publicable
-o falla el registry, se conserva el flujo anterior. Para rollback se vuelve a
-publicar la flag en `false`; no se eliminan activaciones ni se modifica la
-migración V9.
+construir una definición ejecutable; la generación grounded de soporte usa
+ese snapshot cuando la definición está activa. El adapter Bedrock aplica el
+modelo, prompt versionado, hash, parámetros, límite de salida y timeout de la
+versión; un hash incorrecto o un prompt no disponible produce fallback seguro.
+`AGENT_ROUTED`, `AGENT_EXECUTION_STARTED` y `AI_USAGE_RECORDED` exponen sólo
+metadata sanitizada del agente y del contrato. El router y el catálogo aún
+conservan sus adapters actuales. Para rollback se vuelve a publicar la flag
+en `false`; no se eliminan activaciones ni se modifica la migración V9.
 
 ### Mutaciones controladas del registry
 

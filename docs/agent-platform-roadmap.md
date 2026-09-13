@@ -210,9 +210,11 @@ exista una aprobación explícita y una activación persistida válida.
 agentVersion` en un snapshot inmutable con modelo, límites, contratos y
 allowlists validados. Si la versión falta, no coincide, no está aprobada o el
 registry falla, devuelve un fallback tipado y el runtime actual permanece sin
-cambios. `WCS-52` conecta ese resolver al `ConversationOrchestrator` sólo para
-enriquecer eventos y conservar observabilidad; el ejecutor determinístico sigue
-siendo la fuente de comportamiento.
+cambios. `WCS-52` conecta ese resolver al `ConversationOrchestrator` para
+enriquecer eventos y conservar observabilidad. El corte de ejecución versionada
+definido en ADR-033 agrega además el snapshot activo a la generación grounded
+de `GENERAL_SUPPORT`: Bedrock aplica el modelo, prompt, hash, límites y timeout
+publicados, mientras el catálogo continúa siendo una tool determinística.
 
 `WCS-53` establece el primer ejecutor concreto: `catalog-specialist` puede
 autorizar únicamente `catalog.search` y delega en PostgreSQL mediante una tool
