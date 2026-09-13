@@ -222,6 +222,22 @@ class AgentEvaluationControlPlaneSecurityConfigurationTest {
     }
 
     @Test
+    void acceptsCognitoClientIdWhenTheAccessTokenHasNoAudienceClaim() {
+        OAuth2TokenValidator<Jwt> validator = AgentEvaluationControlPlaneSecurityConfiguration.tokenValidator(
+                "https://issuer.example.test", "cognito-client-id");
+        Jwt cognitoAccessToken = Jwt.withTokenValue("cognito-access-token")
+                .header("alg", "RS256")
+                .subject(ACTOR)
+                .issuer("https://issuer.example.test")
+                .claim("client_id", "cognito-client-id")
+                .issuedAt(Instant.now().minusSeconds(30))
+                .expiresAt(Instant.now().plusSeconds(300))
+                .build();
+
+        org.assertj.core.api.Assertions.assertThat(validator.validate(cognitoAccessToken).hasErrors()).isFalse();
+    }
+
+    @Test
     void leavesWebhookRoutesOutsideTheInternalSecurityBoundary() throws Exception {
         mockMvc.perform(get("/webhook/telegram"))
                 .andExpect(status().isOk());

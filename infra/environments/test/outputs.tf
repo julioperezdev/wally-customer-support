@@ -30,6 +30,22 @@ output "telegram_secret_arn" {
   value = module.telegram_secrets.secret_arn
 }
 
+output "backoffice_cognito_user_pool_id" {
+  value = module.cognito_backoffice.user_pool_id
+}
+
+output "backoffice_cognito_client_id" {
+  value = module.cognito_backoffice.client_id
+}
+
+output "backoffice_cognito_issuer_uri" {
+  value = module.cognito_backoffice.issuer_uri
+}
+
+output "backoffice_cognito_hosted_ui_domain" {
+  value = module.cognito_backoffice.hosted_ui_domain
+}
+
 output "backend_ecr_repository_name" {
   value = module.backend_apprunner.ecr_repository_name
 }

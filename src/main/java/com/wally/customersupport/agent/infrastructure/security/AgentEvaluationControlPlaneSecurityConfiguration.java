@@ -1,7 +1,5 @@
 package com.wally.customersupport.agent.infrastructure.security;
 
-import java.util.List;
-
 import com.wally.customersupport.agent.application.port.out.AgentEvaluationControlPlaneAuthorizer;
 import com.wally.customersupport.agent.application.port.out.AgentEvaluationTriggerAuthorizer;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -10,16 +8,17 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.convert.converter.Converter;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.authentication.AbstractAuthenticationToken;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.jwt.JwtClaimNames;
-import org.springframework.security.oauth2.jwt.JwtClaimValidator;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtDecoders;
 import org.springframework.security.oauth2.jwt.JwtValidators;
@@ -76,10 +75,23 @@ public class AgentEvaluationControlPlaneSecurityConfiguration {
 
     static OAuth2TokenValidator<Jwt> tokenValidator(String issuerUri, String audience) {
         OAuth2TokenValidator<Jwt> standardValidator = JwtValidators.createDefaultWithIssuer(issuerUri);
-        OAuth2TokenValidator<Jwt> audienceValidator = new JwtClaimValidator<List<String>>(
-                JwtClaimNames.AUD,
-                claim -> claim != null && claim.contains(audience));
+        OAuth2TokenValidator<Jwt> audienceValidator = jwt -> {
+            boolean audienceMatches = (jwt.getAudience() != null && jwt.getAudience().contains(audience))
+                    || audience.equals(jwt.getClaimAsString("client_id"));
+            if (audienceMatches) {
+                return OAuth2TokenValidatorResult.success();
+            }
+            return OAuth2TokenValidatorResult.failure(new OAuth2Error(
+                    "invalid_token",
+                    "JWT audience or Cognito client_id does not match the configured WCS audience",
+                    null));
+        };
         return new DelegatingOAuth2TokenValidator<>(standardValidator, audienceValidator);
+    }
+
+    @Bean
+    Converter<Jwt, AbstractAuthenticationToken> cognitoJwtAuthenticationConverter() {
+        return new CognitoJwtAuthenticationConverter();
     }
 
     @Bean
@@ -178,7 +190,8 @@ public class AgentEvaluationControlPlaneSecurityConfiguration {
                         .requestMatchers(HttpMethod.POST, "/internal/backoffice/human-follow-ups/**")
                         .hasAuthority("SCOPE_backoffice.human-follow-up.write")
                         .anyRequest().denyAll())
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt
+                        .jwtAuthenticationConverter(cognitoJwtAuthenticationConverter())));
         return http.build();
     }
 
