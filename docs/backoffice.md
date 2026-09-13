@@ -145,10 +145,10 @@ modo local pueda habilitarse accidentalmente en `prod`.
 ## Seguridad
 
 La autenticación productiva con Cognito está definida en
-[`backoffice-authentication.md`](backoffice-authentication.md) para WCS-127.
-El User Pool, el Resource Server, los grupos y el cliente PKCE se crean detrás
-de Terraform, pero `backoffice_cognito_enabled=false` mantiene el rollout
-cerrado hasta completar el smoke test. Las capacidades se derivan de grupos
+[`backoffice-authentication.md`](backoffice-authentication.md) para WCS-128.
+El User Pool, el Resource Server, los grupos y el cliente para login server-side
+se crean detrás de Terraform, pero `backoffice_cognito_enabled=false` mantiene
+el rollout cerrado hasta completar el smoke test. Las capacidades se derivan de grupos
 (`store-viewer`, `store-operator`, `order-operator`, `agent-operator` y
 `admin`) y el backend las valida en cada endpoint; el cliente web no recibe
 los scopes de negocio completos.
@@ -156,8 +156,8 @@ los scopes de negocio completos.
 - El backend sigue siendo la autoridad de autorización y mantiene el control
   plane cerrado por defecto.
 - El panel no incluye secretos en el código ni en el build.
-- El token se ingresa sólo en memoria de la sesión del navegador para pruebas
-  internas; no se persiste en `localStorage`, archivos ni logs.
+- El login productivo usa cookies `HttpOnly`; el navegador no recibe ni
+  persiste tokens en `localStorage`, archivos ni logs.
 - No se muestran prompts completos, conversaciones, PII, SQL ni secretos.
 - El registry muestra sólo metadata: estado, modelo, límites, allowlists,
   versión/hash de prompt y activaciones; nunca contenido de prompts ni actores.
@@ -172,11 +172,11 @@ los scopes de negocio completos.
 
 ### Conexión y actualización global
 
-El panel ofrece la acción `Conectar y actualizar todo`. Se habilita únicamente
-cuando el campo `Token de sesión (memoria)` tiene contenido. Al ejecutarla,
-primero realiza la lectura read-only de `runs` para validar la URL, el token y
-la autorización; sólo si esa lectura es exitosa solicita en paralelo registry,
-mapa de agentes, operación de tienda y feature flags.
+El panel ofrece la acción `Ingresar` y luego `Actualizar todo`. La primera
+acción crea la sesión mediante el backend; la segunda usa las cookies HttpOnly
+y sólo si la autorización es exitosa solicita en paralelo registry, mapa de
+agentes, operación de tienda y feature flags. El campo legacy de preview-token
+queda sólo para smoke tests de transición y no es autenticación productiva.
 
 La acción informa si todas las áreas se actualizaron o si el resultado fue
 parcial. Cada loader conserva su propio error y los botones individuales siguen

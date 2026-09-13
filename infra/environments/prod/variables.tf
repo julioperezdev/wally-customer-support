@@ -114,7 +114,7 @@ variable "cognito_logout_urls" {
 
 variable "cognito_enable_password_auth" {
   type        = bool
-  description = "Allow USER_PASSWORD_AUTH for controlled CLI smoke tests. Keep false when PKCE is sufficient."
+  description = "Allow USER_PASSWORD_AUTH for the server-side WCS API login. The backoffice flag enables it automatically."
   default     = false
 }
 

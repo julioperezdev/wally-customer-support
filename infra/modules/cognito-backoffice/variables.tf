@@ -39,7 +39,7 @@ variable "logout_urls" {
 
 variable "enable_password_auth" {
   type        = bool
-  description = "Allow USER_PASSWORD_AUTH for controlled CLI smoke tests. PKCE remains the frontend flow."
+  description = "Allow USER_PASSWORD_AUTH for the server-side WCS API login. Keep false until the API flow is explicitly enabled."
   default     = false
 }
 

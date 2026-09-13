@@ -1,182 +1,208 @@
-# Autenticación Cognito del backoffice — WCS-127
+# Autenticación del backoffice con Cognito — WCS-128
 
-## Objetivo
+## Decisión
 
-WCS-127 reemplaza el `preview-token` del panel por autenticación de usuarios
-con Amazon Cognito y autorización por capacidades. La solución se mantiene
-deshabilitada por defecto para que el despliegue actual siga funcionando hasta
-completar el alta del User Pool, los usuarios, el smoke test y la actualización
-de AppConfig.
-
-La decisión de diseño es:
+El backoffice usa un login propio dentro de React. El navegador envía usuario
+y contraseña al backend; sólo el backend llama a Cognito con el AWS SDK. No se
+usa Hosted UI, OAuth redirect ni PKCE para este flujo.
 
 ```text
-Browser React -- Authorization Code + PKCE --> Cognito Hosted UI
-     |                                             |
-     | access token en memoria                     | grupos Cognito
-     v                                             v
-Backend Spring Resource Server -- grupos --> capacidades SCOPE_*
+React
+  │ POST /internal/auth/login (credentials: include)
+  ▼
+Spring Boot ── InitiateAuth(USER_PASSWORD_AUTH) ──► Amazon Cognito
+  │                         │
+  │ HttpOnly access/refresh cookies ◄─────────────┘
+  ▼
+GET /internal/auth/me + endpoints del backoffice
 ```
 
-El navegador no recibe secretos de cliente, no guarda el access token en
-`localStorage` y nunca accede directamente a PostgreSQL, S3, AppConfig,
-Secrets Manager ni Mercado Pago.
+Los tokens nunca se devuelven al frontend, no se guardan en `localStorage` y
+no se escriben en logs. El backend sigue siendo la autoridad de autorización:
+valida el JWT del access token y las capacidades derivadas de los grupos de
+Cognito.
 
-## Roles y capacidades
+## Contrato HTTP
 
-Los grupos Cognito representan roles humanos. El backend los convierte a las
-capacidades canónicas que ya usa la autorización de los endpoints:
+| Método | Endpoint | Resultado |
+| --- | --- | --- |
+| `POST` | `/internal/auth/login` | Valida credenciales y crea cookies de sesión |
+| `POST` | `/internal/auth/refresh` | Renueva el access token usando la cookie refresh |
+| `POST` | `/internal/auth/logout` | Revoca la sesión en Cognito y limpia cookies |
+| `GET` | `/internal/auth/me` | Devuelve identidad, grupos y capacidades, nunca tokens |
 
-| Grupo Cognito | Capacidades principales |
-| --- | --- |
-| `store-viewer` | Lectura de catálogo, pedidos, handoff, registry, evaluaciones y flags |
-| `store-operator` | Catálogo y stock, lectura de pedidos, gestión de handoff |
-| `order-operator` | Lectura de catálogo y pedidos; creación de pedidos y links de pago |
-| `agent-operator` | Lectura/ejecución de evaluaciones, authoring de agentes y flags |
-| `admin` | Todas las capacidades WCS |
+Login:
 
-Las capacidades de operación de tienda son:
-
-```text
-backoffice.catalog.read
-backoffice.catalog.write
-backoffice.catalog.media.write
-backoffice.orders.read
-backoffice.orders.write
-backoffice.human-follow-up.read
-backoffice.human-follow-up.write
+```json
+{
+  "username": "operator@example.com",
+  "password": "<secreto-no-compartir>"
+}
 ```
 
-Las capacidades del control plane de agentes son:
+Respuesta exitosa:
 
-```text
-agent-evaluation.read
-agent-evaluation.execute
-agent-registry.read
-agent-registry.write
-feature-flags.read
-feature-flags.write
+```json
+{ "status": "AUTHENTICATED" }
 ```
 
-El Resource Server también publica scopes para clientes técnicos futuros, pero
-el cliente público del navegador sólo solicita `openid`, `email` y `profile`.
-No se entregan todos los scopes de negocio al browser: las capacidades se
-derivan del grupo Cognito del usuario y se validan nuevamente en Spring
-Security.
+La sesión se transporta con dos cookies `HttpOnly`, `Secure` cuando está
+habilitada la configuración segura, `SameSite=Lax` por defecto y `Path=/`:
 
-## Infraestructura Terraform
+- `wcs_backoffice_access`: access token de corta duración.
+- `wcs_backoffice_refresh`: refresh token con duración controlada.
+
+El frontend usa `credentials: include` y sólo recibe el contrato sanitizado de
+`/me`:
+
+```json
+{
+  "subject": "cognito-subject",
+  "username": "operator@example.com",
+  "groups": ["store-viewer"],
+  "capabilities": ["backoffice.catalog.read"]
+}
+```
+
+Errores estables:
+
+| HTTP | Código | Significado |
+| ---: | --- | --- |
+| `401` | `INVALID_CREDENTIALS` | Usuario o contraseña inválidos |
+| `401` | `INVALID_SESSION` | Refresh ausente o inválido |
+| `403` | `FORBIDDEN` | Sesión válida sin capacidad para el recurso |
+| `428` | `COGNITO_CHALLENGE_REQUIRED` | Cognito exige un flujo adicional, por ejemplo cambio de contraseña |
+| `503` | `BACKOFFICE_AUTH_DISABLED` / `AUTH_PROVIDER_UNAVAILABLE` | Feature apagada o Cognito no disponible |
+
+## Componentes
+
+El contrato de aplicación está detrás de un adapter para que Cognito no
+contamine la lógica de negocio:
+
+- `BackofficeAuthenticationService`: valida el estado de la feature y
+  orquesta login, refresh y logout.
+- `BackofficeIdentityProvider`: puerto que abstrae el proveedor de identidad.
+- `CognitoBackofficeIdentityProvider`: adapter que usa
+  `CognitoIdentityProviderClient`, `USER_PASSWORD_AUTH` y
+  `REFRESH_TOKEN_AUTH`.
+- `BackofficeAuthenticationController`: cookies y contrato HTTP.
+- `BackofficeCookieBearerTokenResolver`: permite que Spring Resource Server
+  valide la cookie access, manteniendo soporte para `Authorization: Bearer`
+  en smoke tests técnicos.
+- `BackofficeCorsConfiguration`: permite sólo los orígenes configurados y
+  credenciales de navegador.
+
+El frontend ya no contiene integración con Cognito ni recibe el client secret;
+la única configuración del navegador es la URL del backend o del proxy de
+Vite.
+
+## Terraform e infraestructura
 
 El módulo [`infra/modules/cognito-backoffice/`](../infra/modules/cognito-backoffice/)
-crea:
+crea el User Pool, Resource Server, scopes y grupos. El App Client queda sin
+secret porque la autenticación ocurre entre API y Cognito. Hosted UI y dominio
+son opcionales y no forman parte de este login.
 
-- User Pool con email verificado, creación administrativa y política de
-  contraseña fuerte.
-- Resource Server `wcs-backoffice` y scopes versionados.
-- App Client público sin secret, preparado para Authorization Code + PKCE.
-- Grupos de roles y sus capacidades.
-- Hosted UI Domain sólo cuando se define `cognito_domain_prefix`.
+Cuando `backoffice_cognito_enabled=true`, el módulo habilita
+`ALLOW_USER_PASSWORD_AUTH` automáticamente. Los callbacks y el dominio pueden
+quedar vacíos si no se usa Hosted UI.
 
-Variables importantes en `infra/environments/prod` y `test`:
+El role de Terraform separa los permisos Cognito en una policy administrada
+propia (`<project>-<environment>-terraform-cognito-access`). Esto evita superar
+el límite de 10.240 bytes de una policy inline y agrega una dependencia
+explícita para que la policy esté adjunta antes de crear el User Pool. Esta
+corrección responde al fallo del workflow que combinaba `CreateUserPool` con
+una actualización inline rechazada.
 
-```hcl
-backoffice_cognito_enabled   = false
-cognito_domain_prefix        = null
-cognito_callback_urls        = ["http://localhost:5173/auth/callback"]
-cognito_logout_urls          = ["http://localhost:5173/"]
-cognito_enable_password_auth = false
-cognito_deletion_protection  = "ACTIVE"
+## AppConfig
+
+La configuración no sensible se publica por ambiente. El estado seguro inicial
+es `false`:
+
+```json
+{
+  "wcs.backoffice.auth.enabled": false,
+  "wcs.backoffice.auth.secure-cookies": false,
+  "wcs.backoffice.auth.same-site": "Lax",
+  "wcs.backoffice.auth.cognito.region": "us-east-1",
+  "wcs.backoffice.auth.cognito.client-id": "<terraform-output-client-id>",
+  "wcs.agent-evaluation.control-plane.security.enabled": false
+}
 ```
 
-`backoffice_cognito_enabled=false` es el estado seguro inicial. Terraform no
-crea usuarios ni contraseñas; esas operaciones deben hacerse con el flujo
-administrativo de Cognito y quedar registradas en el runbook de operación.
+Para habilitar el flujo, primero deben existir el User Pool, el App Client, el
+usuario administrativo y sus grupos. Luego se publica una nueva versión de
+AppConfig con ambos flags de seguridad habilitados de forma coordinada:
 
-## Rollout controlado
+```json
+{
+  "wcs.backoffice.auth.enabled": true,
+  "wcs.backoffice.auth.secure-cookies": true,
+  "wcs.backoffice.auth.same-site": "Lax",
+  "wcs.backoffice.auth.cognito.region": "us-east-1",
+  "wcs.backoffice.auth.cognito.client-id": "<terraform-output-client-id>",
+  "wcs.agent-evaluation.control-plane.security.enabled": true,
+  "wcs.agent-evaluation.control-plane.security.issuer-uri": "https://cognito-idp.us-east-1.amazonaws.com/<user-pool-id>",
+  "wcs.agent-evaluation.control-plane.security.audience": "<terraform-output-client-id>"
+}
+```
 
-1. Ejecutar `terraform plan` en `test` y revisar que sólo aparezcan recursos
-   Cognito y los permisos necesarios del role de Terraform. No aceptar ningún
-   `destroy`, reemplazo inesperado o drift de cuenta/región.
-2. Aplicar primero `test` después de aprobación explícita.
-3. Definir un `cognito_domain_prefix` único y agregar la URL pública del
-   backoffice a `cognito_callback_urls` y `cognito_logout_urls`.
-4. Crear un usuario administrativo y agregarlo inicialmente a
-   `store-viewer`; elevarlo a otro grupo sólo cuando el smoke test lo requiera.
-5. Obtener los outputs `user_pool_id`, `client_id`, `issuer_uri` y
-   `hosted_ui_domain`.
-6. Configurar el frontend con variables no sensibles:
+Para frontend y API en orígenes distintos, agregar
+`wcs.backoffice.auth.cors-allowed-origins` con una lista separada por comas y
+usar `SameSite=None` junto con HTTPS. Para desarrollo local se recomienda el
+proxy de Vite y `SameSite=Lax`.
 
-   ```dotenv
-   VITE_WCS_COGNITO_ENABLED=true
-   VITE_WCS_COGNITO_AUTHORITY=https://cognito-idp.us-east-1.amazonaws.com/<user-pool-id>
-   VITE_WCS_COGNITO_CLIENT_ID=<app-client-id>
-   VITE_WCS_COGNITO_REDIRECT_URI=http://localhost:5173/auth/callback
-   VITE_WCS_COGNITO_LOGOUT_URI=http://localhost:5173/
-   ```
+## Usuario, grupos y capacidades
 
-7. Publicar en AppConfig, por ambiente, los valores no secretos:
+Los grupos Cognito representan roles humanos. El backend deriva las
+capacidades canónicas y las valida en cada endpoint:
 
-   ```json
-   {
-     "wcs.agent-evaluation.control-plane.security.enabled": false,
-     "wcs.agent-evaluation.control-plane.security.issuer-uri": "https://cognito-idp.us-east-1.amazonaws.com/<user-pool-id>",
-     "wcs.agent-evaluation.control-plane.security.audience": "<app-client-id>",
-     "wcs.backoffice.security.provider": "cognito",
-     "wcs.backoffice.enabled": true
-   }
-   ```
+| Grupo | Capacidades principales |
+| --- | --- |
+| `store-viewer` | Lectura de catálogo, pedidos, handoff, registry, evaluaciones y flags |
+| `store-operator` | Catálogo, stock y gestión de handoff |
+| `order-operator` | Lectura y creación de pedidos/links de pago |
+| `agent-operator` | Evaluaciones, registry de agentes y feature flags |
+| `admin` | Todas las capacidades WCS |
 
-   El flag de seguridad queda `false` hasta completar el smoke test. El
-   `issuer-uri` y el `audience` pueden existir desde antes sin activar JWT.
-8. Probar el login con PKCE, lectura con `store-viewer`, y confirmar que un
-   `POST` de escritura devuelve `403` para ese grupo.
-9. Agregar temporalmente `store-operator` u `order-operator`, probar sólo las
-   acciones correspondientes y revisar los logs de autorización sin registrar
-   tokens ni PII.
-10. Habilitar
-    `wcs.agent-evaluation.control-plane.security.enabled=true` mediante una
-    versión de AppConfig aprobada y hacer smoke test de `/actuator/health`,
-    lectura, escritura autorizada y escritura denegada.
+Terraform no crea contraseñas ni usuarios. El alta inicial se hace de forma
+administrativa en Cognito y debe quedar como evidencia operativa. MFA,
+passkeys, federación y administración de usuarios desde el panel quedan fuera
+de WCS-128.
 
-El contenido de AppConfig existente tiene protección contra sobreescritura
-automática. Por eso el apply de Terraform no debe asumirse como publicación
-de una nueva versión de runtime: después del apply hay que publicar la versión
-de AppConfig explícitamente y guardar su número como evidencia.
+## Smoke test local
 
-## Frontend
+Con el backend habilitado y el usuario creado, el frontend se levanta con:
 
-La implementación está en [`backoffice/src/cognito.ts`](../backoffice/src/cognito.ts)
-y mantiene el token sólo en memoria de React. El callback valida `state`, usa
-`code_verifier` de `sessionStorage` durante el intercambio PKCE y limpia la URL.
-El ingreso manual con `preview-token` queda disponible sólo para transición y
-lecturas internas; no habilita escrituras.
+```bash
+cd backoffice
+npm install
+npm run dev
+```
 
-Archivo local ignorado recomendado: `backoffice/.env.local`. Para compartir
-la forma de configuración sin valores reales, usar
-[`backoffice/.env.example`](../backoffice/.env.example).
+El proxy de Vite debe apuntar a la API. El flujo esperado es:
 
-## Smoke test
+1. Abrir el panel y enviar el formulario de login.
+2. Confirmar que la respuesta no contiene `accessToken` ni `refreshToken`.
+3. Confirmar que `/internal/auth/me` devuelve la identidad sanitizada.
+4. Leer catálogo y pedidos con `store-viewer`.
+5. Confirmar `403` al ejecutar una operación sin capacidad.
+6. Cerrar sesión y confirmar que `/me` vuelve a `401`.
+7. Revisar logs sin contraseñas, tokens, prompts, conversaciones ni PII
+   innecesaria.
 
-Con el backend apuntando al entorno habilitado:
+Prueba directa del contrato, usando variables locales y nunca valores reales
+en shell history compartido:
 
-1. Abrir el backoffice y completar `Ingresar con Cognito`.
-2. Verificar que el callback vuelve al panel sin mostrar el `code` en la URL.
-3. Como `store-viewer`, confirmar `GET /internal/backoffice/catalog` y
-   `GET /internal/backoffice/orders` con `200`, y un ajuste de stock o creación
-   de pedido con `403`.
-4. Cambiar el usuario a `store-operator` y confirmar la operación de catálogo
-   prevista, con `Idempotency-Key` cuando corresponda.
-5. Confirmar que un token expirado produce `401` y un token válido sin la
-   capacidad produce `403`.
-6. Verificar que no aparecen access tokens, códigos OAuth, contraseñas,
-   prompts ni conversaciones en logs.
+```bash
+curl -i -c /tmp/wcs-cookies.txt \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"<usuario>","password":"<password>"}' \
+  https://<api>/internal/auth/login
 
-## Fuera de alcance de WCS-127
+curl -i -b /tmp/wcs-cookies.txt https://<api>/internal/auth/me
+```
 
-- Alta de usuarios desde Terraform o desde el panel.
-- MFA, passkeys, federación empresarial y multi-tenant avanzado.
-- Habilitación automática en producción.
-- Persistencia de tokens en el navegador.
-- Reemplazo del backend como autoridad de permisos.
-
-La ampliación de roles, MFA o gestión de usuarios debe ser un issue separado
-con revisión de seguridad y criterios de recuperación.
+No ejecutar `terraform apply` sólo por crear el PR. El apply requiere revisar
+el plan, confirmar cuenta/región y verificar que no haya `destroy` o reemplazos
+inesperados.

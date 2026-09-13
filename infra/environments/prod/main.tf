@@ -118,6 +118,11 @@ locals {
     "wcs.backoffice.security.provider"                            = "cognito"
     "wcs.backoffice.enabled"                                      = var.backoffice_preview_enabled || var.backoffice_cognito_enabled
     "wcs.backoffice.preview.enabled"                              = var.backoffice_preview_enabled
+    "wcs.backoffice.auth.enabled"                                 = var.backoffice_cognito_enabled
+    "wcs.backoffice.auth.secure-cookies"                          = var.backoffice_cognito_enabled
+    "wcs.backoffice.auth.same-site"                               = "Lax"
+    "wcs.backoffice.auth.cognito.region"                          = var.aws_region
+    "wcs.backoffice.auth.cognito.client-id"                       = module.cognito_backoffice.client_id
   }
 
   default_feature_flags_configuration = {
@@ -244,13 +249,15 @@ module "mercado_pago_secrets" {
 module "cognito_backoffice" {
   source = "../../modules/cognito-backoffice"
 
+  depends_on = [module.github_terraform_deploy]
+
   project_name         = var.project_name
   environment          = var.environment
   aws_region           = var.aws_region
   domain_prefix        = var.cognito_domain_prefix
   callback_urls        = var.cognito_callback_urls
   logout_urls          = var.cognito_logout_urls
-  enable_password_auth = var.cognito_enable_password_auth
+  enable_password_auth = var.backoffice_cognito_enabled || var.cognito_enable_password_auth
   deletion_protection  = var.cognito_deletion_protection
   tags                 = local.common_tags
 }

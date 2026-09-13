@@ -21,17 +21,19 @@ import { AgentAuthoringPanel } from "./AgentAuthoringPanel";
 import { AgentActivationPanel } from "./AgentActivationPanel";
 import { OrderPanel } from "./OrderPanel";
 import {
-  cognitoConfiguration,
-  completeCognitoLogin,
-  isCognitoConfigured,
-  logoutFromCognito,
-  startCognitoLogin
-} from "./cognito";
+  BackofficeAuthError,
+  BackofficeSession,
+  getBackofficeSession,
+  loginBackoffice,
+  logoutBackoffice,
+  refreshBackofficeSession
+} from "./auth";
 
 const DEFAULT_BASE_URL = import.meta.env.VITE_WCS_CONTROL_PLANE_BASE_URL ?? "/internal/agent-evaluations";
 const DEFAULT_REGISTRY_BASE_URL = import.meta.env.VITE_WCS_AGENT_REGISTRY_BASE_URL ?? "/internal/agent-registry";
 const DEFAULT_BACKOFFICE_BASE_URL = import.meta.env.VITE_WCS_BACKOFFICE_BASE_URL ?? "/internal/backoffice";
 const DEFAULT_AGENT_MAP_BASE_URL = import.meta.env.VITE_WCS_AGENT_MAP_BASE_URL ?? "/internal/backoffice/agent-map";
+const DEFAULT_AUTH_BASE_URL = import.meta.env.VITE_WCS_AUTH_BASE_URL ?? "/internal/auth";
 
 export function App() {
   const [baseUrl, setBaseUrl] = useState(DEFAULT_BASE_URL);
@@ -91,6 +93,9 @@ export function App() {
   const [globalRefreshMessage, setGlobalRefreshMessage] = useState<string | null>(null);
   const [authBusy, setAuthBusy] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [authSession, setAuthSession] = useState<BackofficeSession | null>(null);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [featureFlagsJson, setFeatureFlagsJson] = useState(`{
   "schemaVersion": "1",
   "version": "backoffice-${new Date().toISOString().slice(0, 10)}",
@@ -315,8 +320,9 @@ export function App() {
   }
 
   async function refreshAll() {
-    if (globalRefreshBusy || !token.trim()) {
-      if (!token.trim()) setGlobalRefreshError("Ingresá un token de sesión antes de conectar.");
+    const connected = Boolean(token.trim() || authSession);
+    if (globalRefreshBusy || !connected) {
+      if (!connected) setGlobalRefreshError("Ingresá con tu usuario o un token temporal de transición.");
       return;
     }
     setGlobalRefreshBusy(true);
@@ -344,22 +350,41 @@ export function App() {
     }
   }
 
-  async function loginWithCognito() {
+  async function loginWithApi() {
+    if (!username.trim() || !password) {
+      setAuthError("Ingresá usuario y contraseña.");
+      return;
+    }
     setAuthBusy(true);
     setAuthError(null);
     try {
-      await startCognitoLogin(cognitoConfiguration);
+      await loginBackoffice(username.trim(), password, DEFAULT_AUTH_BASE_URL);
+      const session = await getBackofficeSession(DEFAULT_AUTH_BASE_URL);
+      setAuthSession(session);
+      setPassword("");
+      setGlobalRefreshError(null);
+      setGlobalRefreshMessage("Sesión iniciada. Actualizando el backoffice...");
     } catch (cause) {
-      setAuthError(cause instanceof Error ? cause.message : "No se pudo iniciar el login con Cognito.");
+      setAuthError(authErrorMessage(cause));
+    } finally {
       setAuthBusy(false);
     }
   }
 
-  function logout() {
+  async function logout() {
+    setAuthBusy(true);
+    try {
+      await logoutBackoffice(DEFAULT_AUTH_BASE_URL);
+    } catch {
+      // Always clear local state even when the provider is unavailable.
+    } finally {
+      setAuthBusy(false);
+    }
     setToken("");
+    setAuthSession(null);
+    setPassword("");
     setGlobalRefreshMessage(null);
     setGlobalRefreshError(null);
-    logoutFromCognito(cognitoConfiguration);
   }
 
   async function publishFeatureFlags() {
@@ -388,40 +413,22 @@ export function App() {
   }
 
   useEffect(() => {
-    void loadRuns();
-    void loadRegistry();
-    void loadAgentMap();
-    void loadStore();
-    void loadFeatureFlags();
-    // The first load is intentionally tied to the initial client only.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
     let mounted = true;
-    void completeCognitoLogin(cognitoConfiguration)
-      .then((accessToken) => {
-        if (mounted && accessToken) {
-          setToken(accessToken);
-          setAuthError(null);
-        }
+    void restoreBackofficeSession()
+      .then((session) => {
+        if (mounted && session) setAuthSession(session);
       })
-      .catch((cause: unknown) => {
-        if (mounted) {
-          setAuthError(cause instanceof Error ? cause.message : "No se pudo completar el login con Cognito.");
-        }
-      })
-      .finally(() => {
-        if (mounted) setAuthBusy(false);
+      .catch(() => {
+        // An anonymous first visit is expected; the login form explains the next action.
       });
     return () => { mounted = false; };
   }, []);
 
   useEffect(() => {
-    if (token.trim()) void refreshAll();
-    // The refresh is intentionally triggered only after a session token changes.
+    if (token.trim() || authSession) void refreshAll();
+    // Refresh only after a manually entered token or an API-owned session changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [token, authSession]);
 
   return (
     <main className="shell">
@@ -438,21 +445,25 @@ export function App() {
         <div className="section-heading">
           <div>
             <h2>Conexión</h2>
-            <p>El backend requiere un token temporal de preview o un JWT autorizado; el panel nunca persiste el token.</p>
+            <p>El backend autentica contra Cognito. El navegador sólo recibe cookies HttpOnly; el preview-token queda como transición read-only.</p>
           </div>
           <span className="security-note">Sin secretos en el build</span>
         </div>
         <div className="form-grid">
           <label>API base URL<input value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} /></label>
-          <label>Token de sesión (memoria)<input type="password" value={token} onChange={(event) => { setToken(event.target.value); setGlobalRefreshError(null); setGlobalRefreshMessage(null); }} autoComplete="off" /></label>
+          {!authSession && <>
+            <label>Usuario<input value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" /></label>
+            <label>Contraseña<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" /></label>
+          </>}
+          <label>Token temporal (transición)<input type="password" value={token} onChange={(event) => { setToken(event.target.value); setGlobalRefreshError(null); setGlobalRefreshMessage(null); }} autoComplete="off" /></label>
         </div>
         <div className="button-row">
-          <button className="primary" onClick={() => void refreshAll()} disabled={globalRefreshBusy || !token.trim()}>{globalRefreshBusy ? "Conectando y actualizando..." : "Conectar y actualizar todo"}</button>
-          {isCognitoConfigured(cognitoConfiguration) && !token.trim() && <button onClick={() => void loginWithCognito()} disabled={authBusy}>{authBusy ? "Abriendo Cognito..." : "Ingresar con Cognito"}</button>}
-          {isCognitoConfigured(cognitoConfiguration) && token.trim() && <button onClick={logout}>Cerrar sesión</button>}
-          <span className="muted">Valida el acceso y actualiza sólo las vistas read-only.</span>
+          {!authSession && <button className="primary" onClick={() => void loginWithApi()} disabled={authBusy}>{authBusy ? "Autenticando..." : "Ingresar"}</button>}
+          <button onClick={() => void refreshAll()} disabled={globalRefreshBusy || !(token.trim() || authSession)}>{globalRefreshBusy ? "Actualizando..." : "Actualizar todo"}</button>
+          {authSession && <button onClick={() => void logout()} disabled={authBusy}>Cerrar sesión</button>}
+          <span className="muted">La sesión no se guarda en localStorage.</span>
         </div>
-        {isCognitoConfigured(cognitoConfiguration) && <p className="muted">Login Cognito con Authorization Code + PKCE. El access token permanece sólo en memoria; el preview-token sigue siendo read-only.</p>}
+        {authSession && <p className="success-alert" role="status">Sesión activa: {authSession.username ?? authSession.subject} · {authSession.groups.join(", ") || "sin grupo visible"}</p>}
         {authError && <div className="alert" role="alert">Autenticación: {authError}</div>}
         {globalRefreshError && <div className="alert" role="alert">Conexión: {globalRefreshError}</div>}
         {globalRefreshMessage && <div className="success-alert" role="status" aria-live="polite">{globalRefreshMessage}</div>}
@@ -717,6 +728,30 @@ function formatPanelNames(panels: Array<"registry" | "agentMap" | "store" | "fea
     featureFlags: "feature flags"
   })[panel]).join(", ");
 }
+
+async function restoreBackofficeSession(): Promise<BackofficeSession | null> {
+  try {
+    return await getBackofficeSession(DEFAULT_AUTH_BASE_URL);
+  } catch (cause) {
+    if (!(cause instanceof BackofficeAuthError) || cause.status !== 401) throw cause;
+    await refreshBackofficeSession(DEFAULT_AUTH_BASE_URL);
+    return await getBackofficeSession(DEFAULT_AUTH_BASE_URL);
+  }
+}
+
+function authErrorMessage(cause: unknown) {
+  if (!(cause instanceof BackofficeAuthError)) {
+    return "No se pudo contactar al servicio de autenticación.";
+  }
+  if (cause.code === "INVALID_CREDENTIALS") return "Usuario o contraseña inválidos.";
+  if (cause.code === "COGNITO_CHALLENGE_REQUIRED") {
+    return `Cognito requiere un paso adicional (${cause.challenge ?? "challenge"}), todavía no disponible en este panel.`;
+  }
+  if (cause.code === "BACKOFFICE_AUTH_DISABLED") return "El login del backoffice todavía está deshabilitado en AppConfig.";
+  if (cause.code === "AUTH_PROVIDER_UNAVAILABLE") return "El proveedor de autenticación no está disponible.";
+  return `Autenticación rechazada: ${cause.code}.`;
+}
+
 function toUserMessage(cause: unknown) {
   if (cause instanceof ControlPlaneError) {
     if (cause.status === 401) return "La sesión no es válida. El control plane requiere un JWT válido.";

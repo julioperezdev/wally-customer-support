@@ -144,8 +144,10 @@ gates avanzan. Sólo después de ellos, y con credenciales, firma, migración y
 smoke verificados, se habilita Mercado Pago Sandbox; ningún pago productivo se
 habilita por el mero hecho de implementar el endpoint.
 
-WCS-127 agrega la autenticación Cognito del backoffice como un gate transversal
-antes de habilitar escrituras operativas. Su diseño y rollout están en
+WCS-128 agrega la autenticación Cognito del backoffice como un gate transversal
+antes de habilitar escrituras operativas. El login propio de React llama al
+backend, el backend usa el SDK de Cognito y la sesión vuelve en cookies
+HttpOnly. Su diseño y rollout están en
 [`backoffice-authentication.md`](backoffice-authentication.md). El preview token
 continúa siendo una transición read-only; no se considera autenticación
 productiva.
