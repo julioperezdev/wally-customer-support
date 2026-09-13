@@ -27,12 +27,12 @@ public class PaymentWebhookSignatureVerifier {
         this.clock = clock;
     }
 
-    public boolean verify(String signatureHeader, String requestId, String notificationId, String dataId) {
+    public boolean verify(String signatureHeader, String requestId, String dataId) {
         PaymentProperties.Webhook webhook = properties.effectiveWebhook();
         if (!webhook.signatureRequired() && webhook.effectiveSecret().isBlank()) {
             return true;
         }
-        if (signatureHeader == null || requestId == null || notificationId == null
+        if (signatureHeader == null || requestId == null || dataId == null
                 || webhook.effectiveSecret().isBlank()) {
             return false;
         }
@@ -52,7 +52,7 @@ public class PaymentWebhookSignatureVerifier {
         if (age > MAX_TIMESTAMP_AGE_SECONDS) {
             return false;
         }
-        String manifest = "id:" + notificationId + ";request-id:" + requestId + ";ts:" + timestamp + ";";
+        String manifest = "id:" + dataId + ";request-id:" + requestId + ";ts:" + timestamp + ";";
         String expected = sign(manifest, webhook.effectiveSecret());
         return java.security.MessageDigest.isEqual(
                 expected.getBytes(StandardCharsets.US_ASCII),

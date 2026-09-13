@@ -1,128 +1,114 @@
 package com.wally.customersupport.order.infrastructure.payment;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.net.http.HttpClient;
-import java.time.Instant;
+import java.time.Duration;
 import java.time.OffsetDateTime;
-import java.time.format.DateTimeParseException;
+import java.util.List;
 
+import com.mercadopago.client.payment.PaymentClient;
+import com.mercadopago.client.preference.PreferenceClient;
+import com.mercadopago.client.preference.PreferenceItemRequest;
+import com.mercadopago.client.preference.PreferenceRequest;
+import com.mercadopago.core.MPRequestOptions;
+import com.mercadopago.exceptions.MPApiException;
+import com.mercadopago.exceptions.MPException;
+import com.mercadopago.resources.payment.Payment;
+import com.mercadopago.resources.preference.Preference;
 import com.wally.customersupport.order.application.port.out.PaymentGateway;
 import com.wally.customersupport.order.infrastructure.config.PaymentProperties;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.client.JdkClientHttpRequestFactory;
-import org.springframework.web.client.RestClient;
-import tools.jackson.databind.JsonNode;
 
-/** Mercado Pago Checkout Pro adapter. The rest of WCS only sees PaymentGateway. */
+/** Mercado Pago Checkout Pro adapter backed by the official Java SDK. */
 public class MercadoPagoPaymentGateway implements PaymentGateway {
 
-    private final RestClient restClient;
-    private final PaymentProperties properties;
+    private final PreferenceClient preferenceClient;
+    private final PaymentClient paymentClient;
+    private final MPRequestOptions requestOptions;
 
-    public MercadoPagoPaymentGateway(RestClient.Builder builder, PaymentProperties properties) {
-        this.properties = properties;
+    public MercadoPagoPaymentGateway(PaymentProperties properties) {
         String accessToken = properties.effectiveMercadoPago().accessToken();
         if (accessToken == null || accessToken.isBlank()) {
             throw new IllegalStateException("Mercado Pago access token must be configured");
         }
-        this.restClient = builder
-                .baseUrl(properties.effectiveMercadoPago().effectiveBaseUrl())
-                .requestFactory(requestFactory(properties))
-                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken.trim())
-                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+        int timeoutMillis = timeoutMillis(properties.effectiveRequestTimeout());
+        this.preferenceClient = new PreferenceClient();
+        this.paymentClient = new PaymentClient();
+        this.requestOptions = MPRequestOptions.builder()
+                .accessToken(accessToken.trim())
+                .connectionTimeout(timeoutMillis)
+                .connectionRequestTimeout(timeoutMillis)
+                .socketTimeout(timeoutMillis)
                 .build();
     }
 
     @Override
     public PaymentPreference createPreference(CreatePreferenceRequest request) {
-        List<Map<String, Object>> items = request.items().stream()
-                .map(item -> {
-                    Map<String, Object> value = new HashMap<>();
-                    value.put("id", item.sku());
-                    value.put("title", item.title());
-                    value.put("quantity", item.quantity());
-                    value.put("currency_id", item.currency());
-                    value.put("unit_price", item.unitPrice());
-                    return value;
-                })
+        List<PreferenceItemRequest> items = request.items().stream()
+                .map(item -> PreferenceItemRequest.builder()
+                        .id(item.sku())
+                        .title(item.title())
+                        .quantity(item.quantity())
+                        .currencyId(item.currency())
+                        .unitPrice(item.unitPrice())
+                        .build())
                 .toList();
-        Map<String, Object> body = new HashMap<>();
-        body.put("items", items);
-        body.put("external_reference", request.orderId().toString());
+
+        PreferenceRequest.PreferenceRequestBuilder builder = PreferenceRequest.builder()
+                .items(items)
+                .externalReference(request.orderId().toString());
         if (!request.notificationUrl().isBlank()) {
-            body.put("notification_url", request.notificationUrl());
+            builder.notificationUrl(request.notificationUrl());
         }
 
-        JsonNode response = restClient.post()
-                .uri("/checkout/preferences")
-                .body(body)
-                .retrieve()
-                .body(JsonNode.class);
-        String preferenceId = text(response, "id");
-        if (preferenceId == null || preferenceId.isBlank()) {
-            throw new IllegalStateException("Mercado Pago returned an incomplete preference");
+        try {
+            Preference preference = preferenceClient.create(builder.build(), requestOptions);
+            String preferenceId = required(preference.getId(), "preference id");
+            String checkoutUrl = preference.getSandboxInitPoint();
+            if (checkoutUrl == null || checkoutUrl.isBlank()) {
+                checkoutUrl = preference.getInitPoint();
+            }
+            return new PaymentPreference("mercadopago", preferenceId, required(checkoutUrl, "checkout URL"));
+        } catch (MPException | MPApiException exception) {
+            throw new IllegalStateException("Mercado Pago preference request failed", exception);
         }
-        String sandboxUrl = text(response, "sandbox_init_point", "sandboxInitPoint");
-        String checkoutUrl = sandboxUrl == null || sandboxUrl.isBlank()
-                ? text(response, "init_point", "initPoint")
-                : sandboxUrl;
-        if (checkoutUrl == null || checkoutUrl.isBlank()) {
-            throw new IllegalStateException("Mercado Pago returned no checkout URL");
-        }
-        return new PaymentPreference("mercadopago", preferenceId, checkoutUrl);
     }
 
     @Override
     public PaymentNotification getPayment(String providerPaymentId) {
-        JsonNode response = restClient.get()
-                .uri("/v1/payments/{id}", providerPaymentId)
-                .retrieve()
-                .body(JsonNode.class);
-        String paymentId = text(response, "id");
-        String status = text(response, "status");
-        if (paymentId == null || status == null) {
-            throw new IllegalStateException("Mercado Pago returned an incomplete payment");
+        long paymentId;
+        try {
+            paymentId = Long.parseLong(providerPaymentId);
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException("Mercado Pago payment id must be numeric", exception);
         }
-        return new PaymentNotification(
-                paymentId,
-                text(response, "external_reference", "externalReference"),
-                status,
-                text(response, "status_detail", "statusDetail"),
-                firstInstant(response, "date_approved", "dateApproved", "date_created", "dateCreated"));
+
+        try {
+            Payment payment = paymentClient.get(paymentId, requestOptions);
+            return new PaymentNotification(
+                    required(payment.getId() == null ? null : payment.getId().toString(), "payment id"),
+                    payment.getExternalReference(),
+                    payment.getStatus(),
+                    payment.getStatusDetail(),
+                    firstInstant(payment.getDateApproved(), payment.getDateCreated()));
+        } catch (MPException | MPApiException exception) {
+            throw new IllegalStateException("Mercado Pago payment lookup failed", exception);
+        }
     }
 
-    private static JdkClientHttpRequestFactory requestFactory(PaymentProperties properties) {
-        HttpClient httpClient = HttpClient.newBuilder()
-                .connectTimeout(properties.effectiveRequestTimeout())
-                .build();
-        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
-        requestFactory.setReadTimeout(properties.effectiveRequestTimeout());
-        return requestFactory;
+    private static int timeoutMillis(Duration timeout) {
+        long millis = timeout.toMillis();
+        return (int) Math.min(Integer.MAX_VALUE, Math.max(1, millis));
     }
 
-    private static String text(JsonNode node, String... fields) {
-        if (node == null || node.isNull() || node.isMissingNode()) return null;
-        for (String field : fields) {
-            JsonNode value = node.get(field);
-            if (value != null && !value.isNull() && !value.asText().isBlank()) return value.asText();
+    private static String required(String value, String field) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalStateException("Mercado Pago returned no " + field);
+        }
+        return value;
+    }
+
+    private static java.time.Instant firstInstant(OffsetDateTime... values) {
+        for (OffsetDateTime value : values) {
+            if (value != null) return value.toInstant();
         }
         return null;
-    }
-
-    private static Instant firstInstant(JsonNode node, String... fields) {
-        String value = text(node, fields);
-        if (value == null) return null;
-        try {
-            return Instant.parse(value);
-        } catch (DateTimeParseException ignored) {
-            try {
-                return OffsetDateTime.parse(value).toInstant();
-            } catch (DateTimeParseException ignoredAgain) {
-                return null;
-            }
-        }
     }
 }

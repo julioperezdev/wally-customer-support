@@ -34,20 +34,14 @@ public record PaymentProperties(
     }
 
     public MercadoPago effectiveMercadoPago() {
-        return mercadoPago == null ? new MercadoPago(null, null) : mercadoPago;
+        return mercadoPago == null ? new MercadoPago(null) : mercadoPago;
     }
 
     public Webhook effectiveWebhook() {
         return webhook == null ? new Webhook(true, null) : webhook;
     }
 
-    public record MercadoPago(String baseUrl, String accessToken) {
-
-        public String effectiveBaseUrl() {
-            return baseUrl == null || baseUrl.isBlank()
-                    ? "https://api.mercadopago.com"
-                    : baseUrl.trim().replaceAll("/+$", "");
-        }
+    public record MercadoPago(String accessToken) {
     }
 
     public record Webhook(boolean signatureRequired, String secret) {

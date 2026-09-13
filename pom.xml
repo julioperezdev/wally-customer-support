@@ -21,6 +21,7 @@
         <java.version>25</java.version>
         <maven.compiler.release>25</maven.compiler.release>
         <aws-sdk.version>2.26.27</aws-sdk.version>
+        <mercado-pago-sdk.version>2.1.7</mercado-pago-sdk.version>
         <testcontainers.version>1.21.3</testcontainers.version>
     </properties>
 
@@ -100,6 +101,11 @@
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mercadopago</groupId>
+            <artifactId>sdk-java</artifactId>
+            <version>${mercado-pago-sdk.version}</version>
         </dependency>
         <dependency>
             <groupId>org.flywaydb</groupId>

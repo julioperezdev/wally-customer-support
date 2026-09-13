@@ -75,7 +75,6 @@ locals {
     "wcs.outbox.max-attempts"                                     = 3
     "wcs.payment.provider"                                        = "mock"
     "wcs.payment.currency"                                        = "ARS"
-    "wcs.payment.mercado-pago.base-url"                           = "https://api.mercadopago.com"
     "wcs.payment.notification-url"                                = ""
     "wcs.payment.webhook.signature-required"                      = false
     "wcs.conversation.retention.enabled"                          = false

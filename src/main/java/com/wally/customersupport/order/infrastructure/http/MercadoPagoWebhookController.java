@@ -45,7 +45,7 @@ public class MercadoPagoWebhookController {
             if (!"payment".equalsIgnoreCase(type) || dataId == null || dataId.isBlank()) {
                 return ResponseEntity.accepted().body(Map.of("status", "IGNORED"));
             }
-            if (!signatureVerifier.verify(signature, requestId, notificationId, dataId)) {
+            if (!signatureVerifier.verify(signature, requestId, dataId)) {
                 StructuredEventLog.warn(log, "PAYMENT_WEBHOOK_REJECTED", Map.of(
                         "provider", "mercadopago", "result", "INVALID_SIGNATURE"));
                 return ResponseEntity.status(401).body(Map.of("code", "INVALID_WEBHOOK_SIGNATURE"));

@@ -23,35 +23,35 @@ class PaymentWebhookSignatureVerifierTest {
     @Test
     void acceptsMercadoPagoManifestWithFreshSignature() throws Exception {
         String timestamp = String.valueOf(NOW.getEpochSecond());
-        String signature = signature("id:notification-1;request-id:request-1;ts:" + timestamp + ";", "secret");
+        String signature = signature("id:payment-1;request-id:request-1;ts:" + timestamp + ";", "secret");
         var verifier = new PaymentWebhookSignatureVerifier(properties(true, "secret"), fixedClock());
 
         assertTrue(verifier.verify("ts=" + timestamp + ",v1=" + signature,
-                "request-1", "notification-1", "payment-1"));
+                "request-1", "payment-1"));
     }
 
     @Test
     void rejectsInvalidOrExpiredSignatures() throws Exception {
         String timestamp = String.valueOf(NOW.minusSeconds(901).getEpochSecond());
-        String signature = signature("id:notification-1;request-id:request-1;ts:" + timestamp + ";", "secret");
+        String signature = signature("id:payment-1;request-id:request-1;ts:" + timestamp + ";", "secret");
         var verifier = new PaymentWebhookSignatureVerifier(properties(true, "secret"), fixedClock());
 
         assertFalse(verifier.verify("ts=" + timestamp + ",v1=" + signature,
-                "request-1", "notification-1", "payment-1"));
+                "request-1", "payment-1"));
         assertFalse(verifier.verify("ts=" + NOW.getEpochSecond() + ",v1=wrong",
-                "request-1", "notification-1", "payment-1"));
+                "request-1", "payment-1"));
     }
 
     @Test
     void allowsUnsignedEventsOnlyWhenExplicitlyConfigured() {
         var verifier = new PaymentWebhookSignatureVerifier(properties(false, null), fixedClock());
 
-        assertTrue(verifier.verify(null, null, null, null));
+        assertTrue(verifier.verify(null, null, null));
     }
 
     private static PaymentProperties properties(boolean required, String secret) {
         return new PaymentProperties("mercadopago", "ARS", "", Duration.ofSeconds(5),
-                new PaymentProperties.MercadoPago("https://api.mercadopago.com", "token"),
+                new PaymentProperties.MercadoPago("token"),
                 new PaymentProperties.Webhook(required, secret));
     }
 
