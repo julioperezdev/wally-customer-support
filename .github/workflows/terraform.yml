@@ -151,12 +151,19 @@ jobs:
       - name: Terraform Plan (captured, no sensitive output)
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
+          var_files=("-var-file=$RUNNER_TEMP/wcs-terraform.tfvars")
+          if [ -f "rollout.tfvars" ]; then
+            # Versioned rollout controls intentionally override the baseline
+            # TERRAFORM_VARS value without changing the secret in GitHub.
+            var_files+=("-var-file=rollout.tfvars")
+          fi
+
           set +e
           terraform plan \
             -input=false \
             -detailed-exitcode \
             -out="$RUNNER_TEMP/wcs.tfplan" \
-            -var-file="$RUNNER_TEMP/wcs-terraform.tfvars" \
+            "${var_files[@]}" \
             -no-color > "$RUNNER_TEMP/wcs-terraform-plan.log" 2>&1
           plan_exit=$?
           set -e

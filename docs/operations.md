@@ -181,6 +181,10 @@ Para habilitar Terraform en GitHub se deben configurar en el Environment
   el repositorio real.
 - `TERRAFORM_VARS`: archivo HCL con variables revisadas y referencias de ARN,
   nunca passwords, tokens, claves privadas ni otros valores secretos.
+- Los controles de rollout no sensibles de producción se mantienen en archivos
+  Terraform versionados dentro de cada environment, como
+  `infra/environments/prod/rollout.tfvars`; el workflow los pasa después de
+  `TERRAFORM_VARS` para que tengan precedencia visible y revisable.
 - una regla de aprobación con al menos un reviewer requerido para el
   Environment `production`.
 
