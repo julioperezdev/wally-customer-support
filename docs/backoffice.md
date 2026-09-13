@@ -69,6 +69,38 @@ Si el agente activo no tiene fallback compatible, la simulación devuelve
 `HUMAN_REQUIRED`. El sistema no promueve una versión ni cambia el estado de
 ningún agente desde este panel.
 
+### Authoring y lifecycle protegido — WCS-120
+
+La siguiente entrega incorpora una superficie de escritura separada del panel
+read-only. Permite registrar metadata de una nueva versión, clonar una versión
+existente y avanzar su lifecycle de forma secuencial:
+
+`DRAFT -> CANDIDATE -> EVALUATED -> APPROVED`
+
+Los comandos requieren un `Idempotency-Key`, una identidad autenticada con la
+capacidad `agent-registry.write` y la propiedad
+`wcs.agent-registry.authoring-write-enabled=true`. Ambas condiciones deben
+cumplirse; la propiedad permanece `false` por defecto. El endpoint no acepta
+prompts, schemas ni secretos: sólo referencias de versión y hashes SHA-256 de
+artefactos externos.
+
+| Endpoint | Propósito |
+| --- | --- |
+| `POST /internal/agent-registry/agents/{agentId}/versions` | Crea una versión `DRAFT` a partir de metadata validada |
+| `POST /internal/agent-registry/agents/{agentId}/versions/{version}/clone` | Clona metadata en una nueva versión `DRAFT` |
+| `POST /internal/agent-registry/agents/{agentId}/versions/{version}/lifecycle` | Avanza a `CANDIDATE`, `EVALUATED` o `APPROVED` |
+
+La aprobación exige referencia de evaluación técnica y referencia de aprobación
+operativa. La definición persistida es inmutable; sólo se actualizan los
+campos de lifecycle y aprobación mediante una actualización optimista que
+comprueba el estado anterior. Las claves idempotentes se almacenan como hash
+en `wcs.agent_registry_command_claims` y no se guarda la clave original.
+
+La pantalla de authoring es una primera interfaz técnica protegida. No activa
+versiones en tráfico, no modifica AppConfig y no reemplaza todavía el flujo de
+activación/preflight. La promoción a `ACTIVE` continuará siendo un comando
+separado, con su propio permiso, auditoría y rollback.
+
 Para un smoke local controlado, iniciar el backend con el perfil `local` y las
 dos propiedades de backoffice habilitadas; luego ejecutar `npm run dev` dentro
 de `backoffice`. El proxy de Vite redirige `/internal` a `localhost:8080`; no

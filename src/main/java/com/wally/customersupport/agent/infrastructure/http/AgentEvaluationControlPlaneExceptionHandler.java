@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
         AgentEvaluationControlPlaneController.class,
         AgentEvaluationTriggerController.class,
         AgentRegistryController.class,
+        AgentRegistryCommandController.class,
         AgentActivationController.class
 })
 @Slf4j

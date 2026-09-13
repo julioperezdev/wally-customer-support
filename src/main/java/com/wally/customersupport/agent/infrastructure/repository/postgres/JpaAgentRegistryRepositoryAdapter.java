@@ -2,6 +2,7 @@ package com.wally.customersupport.agent.infrastructure.repository.postgres;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.Instant;
 
 import com.wally.customersupport.agent.application.port.out.AgentRegistryRepository;
 import com.wally.customersupport.agent.domain.model.AgentActivation;
@@ -55,6 +56,30 @@ public class JpaAgentRegistryRepositoryAdapter implements AgentRegistryRepositor
     public Optional<AgentVersion> findLatestVersion(String agentId, AgentLifecycleState state) {
         return versionRepository.findFirstByAgentIdAndStateOrderByAgentVersionDesc(agentId, state.name())
                 .map(AgentVersionJpaEntity::toDomain);
+    }
+
+    @Override
+    @Transactional
+    public AgentVersion updateLifecycle(
+            String agentId,
+            int version,
+            AgentLifecycleState expectedState,
+            AgentLifecycleState targetState,
+            String approvedBy,
+            Instant approvedAt) {
+        int updated = versionRepository.updateLifecycle(
+                agentId,
+                version,
+                expectedState.name(),
+                targetState.name(),
+                approvedBy,
+                approvedAt);
+        if (updated != 1) {
+            throw new IllegalStateException("agent lifecycle changed concurrently or version was not found");
+        }
+        return versionRepository.findByAgentIdAndAgentVersion(agentId, version)
+                .map(AgentVersionJpaEntity::toDomain)
+                .orElseThrow(() -> new IllegalStateException("agent version disappeared after lifecycle update"));
     }
 
     @Override

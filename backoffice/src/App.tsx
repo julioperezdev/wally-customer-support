@@ -17,6 +17,7 @@ import {
   createControlPlaneClient
 } from "./api";
 import { refreshReadOnlyPanels } from "./refresh";
+import { AgentAuthoringPanel } from "./AgentAuthoringPanel";
 
 const DEFAULT_BASE_URL = import.meta.env.VITE_WCS_CONTROL_PLANE_BASE_URL ?? "/internal/agent-evaluations";
 const DEFAULT_REGISTRY_BASE_URL = import.meta.env.VITE_WCS_AGENT_REGISTRY_BASE_URL ?? "/internal/agent-registry";
@@ -455,6 +456,8 @@ export function App() {
         </div>
         <AgentRegistryView agents={registryAgents} />
       </section>
+
+      <AgentAuthoringPanel client={client} onRegistryChanged={loadRegistry} />
 
       <section className="card">
         <div className="section-heading">

@@ -3,6 +3,7 @@ package com.wally.customersupport.agent.infrastructure.config;
 import com.wally.customersupport.agent.application.port.out.AgentEvaluationControlPlaneAuthorizer;
 import com.wally.customersupport.agent.application.service.AgentEvaluationControlPlaneAccessService;
 import com.wally.customersupport.agent.domain.model.AgentActivationPolicy;
+import com.wally.customersupport.agent.domain.model.AgentLifecyclePolicy;
 import com.wally.customersupport.agent.infrastructure.security.BackofficePreviewAgentEvaluationControlPlaneAuthorizer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -43,5 +44,10 @@ public class AgentEvaluationControlPlaneConfiguration {
     @Bean
     AgentActivationPolicy agentActivationPolicy() {
         return new AgentActivationPolicy();
+    }
+
+    @Bean
+    AgentLifecyclePolicy agentLifecyclePolicy() {
+        return new AgentLifecyclePolicy();
     }
 }

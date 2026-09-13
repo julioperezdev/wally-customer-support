@@ -10,6 +10,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Set;
 import java.util.UUID;
 
+import com.wally.customersupport.agent.application.port.out.AgentRegistryCommandGuard;
 import com.wally.customersupport.agent.application.port.out.AgentRegistryRepository;
 import com.wally.customersupport.agent.domain.model.AgentActivation;
 import com.wally.customersupport.agent.domain.model.AgentActivationPolicy;
@@ -20,6 +21,7 @@ import com.wally.customersupport.agent.domain.model.AgentVersion;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -51,6 +53,12 @@ class AgentRegistryPersistenceIntegrationTest {
 
     @Autowired
     private AgentRegistryRepository registry;
+
+    @Autowired
+    private AgentRegistryCommandGuard commandGuard;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @Test
     void persistsImmutableVersionWithJsonAllowlistsAndReadsLatestApproved() {
@@ -91,6 +99,41 @@ class AgentRegistryPersistenceIntegrationTest {
 
         assertThat(registry.findAllVersions()).contains(version);
         assertThat(registry.findAllActivations()).contains(activation);
+    }
+
+    @Test
+    void updatesLifecycleMetadataWithoutReplacingImmutableVersionContent() {
+        String agentId = "catalog-specialist-lifecycle-" + UUID.randomUUID();
+        AgentVersion version = approvedVersion(agentId, 1);
+        registry.saveVersion(version);
+
+        AgentVersion active = registry.updateLifecycle(
+                agentId,
+                1,
+                AgentLifecycleState.APPROVED,
+                AgentLifecycleState.ACTIVE,
+                "reviewer",
+                APPROVED_AT);
+
+        assertThat(active.state()).isEqualTo(AgentLifecycleState.ACTIVE);
+        assertThat(active.name()).isEqualTo(version.name());
+        assertThat(active.systemPromptHash()).isEqualTo(version.systemPromptHash());
+        assertThat(registry.findVersion(agentId, 1)).contains(active);
+    }
+
+    @Test
+    void claimsAnAuthoringCommandExactlyOnceWithoutPersistingTheRawKey() {
+        String rawKey = "authoring-secret-like-value";
+
+        assertThat(commandGuard.tryAcquire(rawKey)).isTrue();
+        assertThat(commandGuard.tryAcquire(rawKey)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from wcs.agent_registry_command_claims", Integer.class))
+                .isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject(
+                "select key_hash from wcs.agent_registry_command_claims", String.class))
+                .hasSize(64)
+                .doesNotContain(rawKey);
     }
 
     @Test

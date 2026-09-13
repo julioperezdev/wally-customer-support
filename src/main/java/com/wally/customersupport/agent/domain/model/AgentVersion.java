@@ -46,6 +46,66 @@ public record AgentVersion(
     public static final int MAX_TOKENS_PER_DIRECTION = 32_000;
     public static final Duration MAX_TIMEOUT = Duration.ofSeconds(60);
 
+    /**
+     * Creates a new immutable definition in the authoring state. Prompt and
+     * schema contents remain external artifacts; only their references and
+     * hashes belong to the registry definition.
+     */
+    public static AgentVersion draft(
+            String agentId,
+            int version,
+            String name,
+            String purpose,
+            String modelProvider,
+            String modelId,
+            AgentInferenceParameters inferenceParameters,
+            String systemPromptVersion,
+            String systemPromptHash,
+            String inputSchemaVersion,
+            String outputSchemaVersion,
+            Set<String> allowedTools,
+            Set<String> knowledgeSources,
+            String memoryPolicy,
+            String responsePolicy,
+            Duration timeout,
+            int maxSteps,
+            int maxInputTokens,
+            int maxOutputTokens,
+            BigDecimal budgetLimitUsd,
+            String fallbackAgentId,
+            String evaluationSuiteVersion,
+            String createdBy,
+            Instant createdAt) {
+        return new AgentVersion(
+                agentId,
+                version,
+                name,
+                purpose,
+                AgentLifecycleState.DRAFT,
+                modelProvider,
+                modelId,
+                inferenceParameters,
+                systemPromptVersion,
+                systemPromptHash,
+                inputSchemaVersion,
+                outputSchemaVersion,
+                allowedTools,
+                knowledgeSources,
+                memoryPolicy,
+                responsePolicy,
+                timeout,
+                maxSteps,
+                maxInputTokens,
+                maxOutputTokens,
+                budgetLimitUsd,
+                fallbackAgentId,
+                evaluationSuiteVersion,
+                createdBy,
+                createdAt,
+                null,
+                null);
+    }
+
     public AgentVersion {
         agentId = required(agentId, "agentId");
         name = required(name, "name");
