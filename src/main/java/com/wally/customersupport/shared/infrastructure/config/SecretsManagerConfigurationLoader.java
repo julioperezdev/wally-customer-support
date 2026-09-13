@@ -27,12 +27,14 @@ final class SecretsManagerConfigurationLoader {
         loadSecret(properties.whatsappSecretId(), "whatsapp", resolved);
         loadSecret(properties.telegramSecretId(), "telegram", resolved);
         loadSecret(properties.backofficeSecretId(), "backoffice", resolved);
+        loadSecret(properties.observabilitySecretId(), "observability", resolved);
         String runtimeSecretId = properties.runtimeSecretId();
         if (runtimeSecretId == null || runtimeSecretId.isBlank()) {
             boolean hasDedicatedReferences = isPresent(properties.databaseSecretId())
                     || isPresent(properties.whatsappSecretId())
                     || isPresent(properties.telegramSecretId())
-                    || isPresent(properties.backofficeSecretId());
+                    || isPresent(properties.backofficeSecretId())
+                    || isPresent(properties.observabilitySecretId());
             runtimeSecretId = hasDedicatedReferences ? null : properties.secretId();
         }
         loadSecret(runtimeSecretId, "runtime", resolved);
@@ -63,6 +65,7 @@ final class SecretsManagerConfigurationLoader {
                 case "whatsapp" -> mapWhatsApp(root, target);
                 case "telegram" -> mapTelegram(root, target);
                 case "backoffice" -> mapBackoffice(root, target);
+                case "observability" -> mapObservability(root, target);
                 case "runtime" -> mapRuntime(root, target);
                 default -> throw new IllegalArgumentException("Unsupported secret kind: " + kind);
             }
@@ -101,6 +104,11 @@ final class SecretsManagerConfigurationLoader {
                 "previewToken", "WCS_BACKOFFICE_PREVIEW_TOKEN");
     }
 
+    private static void mapObservability(JsonNode root, Map<String, Object> target) {
+        putIfPresent(root, target, "wcs.observability.actor-key-secret", "actor-key-secret",
+                "actor_key_secret", "actorKeySecret", "WCS_OBSERVABILITY_ACTOR_KEY_SECRET");
+    }
+
     private static void mapRuntime(JsonNode root, Map<String, Object> target) {
         putIfPresent(root, target, "spring.datasource.url", "spring.datasource.url", "jdbc-url", "jdbc_url",
                 "DATABASE_URL");
@@ -115,6 +123,7 @@ final class SecretsManagerConfigurationLoader {
         putIfPresent(root, target, "wcs.whatsapp.app-secret", "wcs.whatsapp.app-secret", "app-secret",
                 "META_APP_SECRET");
         mapTelegram(root, target);
+        mapObservability(root, target);
     }
 
     private static void putIfPresent(JsonNode root, Map<String, Object> target, String propertyName,

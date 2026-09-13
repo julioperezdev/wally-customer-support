@@ -46,7 +46,9 @@ import com.wally.customersupport.conversation.domain.model.ResponseHumanizationR
 import com.wally.customersupport.knowledge.domain.model.KnowledgeChunk;
 import com.wally.customersupport.support.domain.model.SupportPolicy;
 import com.wally.customersupport.shared.infrastructure.config.AgentRuntimeProperties;
+import com.wally.customersupport.shared.infrastructure.config.ObservabilityProperties;
 import com.wally.customersupport.shared.infrastructure.config.RagProperties;
+import com.wally.customersupport.shared.infrastructure.observability.ActorKeyGenerator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -95,7 +97,8 @@ class ConversationOrchestratorTest {
                 new AgentRuntimeProperties(false, "prod", false, Duration.ofSeconds(5), "noop", "test", 0),
                 catalogSpecialistExecutor,
                 responseHumanizer,
-                agentShadowRuntimeService);
+                agentShadowRuntimeService,
+                new ActorKeyGenerator(new ObservabilityProperties("test-actor-key")));
         context = new ConversationContext(
                 UUID.randomUUID(), "customer-1", "consulta", List.of("consulta"), List.of());
     }
@@ -139,7 +142,8 @@ class ConversationOrchestratorTest {
                 new AgentRuntimeProperties(true, "prod", false, Duration.ofSeconds(5), "noop", "test", 0),
                 catalogSpecialistExecutor,
                 responseHumanizer,
-                agentShadowRuntimeService);
+                agentShadowRuntimeService,
+                new ActorKeyGenerator(new ObservabilityProperties("test-actor-key")));
         when(intentClassifier.classify(any(ConversationContext.class)))
                 .thenReturn(new ConversationIntentDecision(ConversationIntent.GREETING, 0.98, null, null));
         when(agentActivationResolver.resolve(new AgentActivationKey(
@@ -177,7 +181,8 @@ class ConversationOrchestratorTest {
                 new AgentRuntimeProperties(true, "prod", false, Duration.ofSeconds(5), "noop", "test", 0),
                 catalogSpecialistExecutor,
                 responseHumanizer,
-                agentShadowRuntimeService);
+                agentShadowRuntimeService,
+                new ActorKeyGenerator(new ObservabilityProperties("test-actor-key")));
         AgentActivationKey key = new AgentActivationKey(
                 "response-humanizer", "prod", "telegram", "GREETING");
         when(intentClassifier.classify(any(ConversationContext.class)))
@@ -250,7 +255,8 @@ class ConversationOrchestratorTest {
                 new AgentRuntimeProperties(true, "prod", false, Duration.ofSeconds(5), "noop", "test", 0),
                 catalogSpecialistExecutor,
                 responseHumanizer,
-                agentShadowRuntimeService);
+                agentShadowRuntimeService,
+                new ActorKeyGenerator(new ObservabilityProperties("test-actor-key")));
         CatalogQuery query = new CatalogQuery("nullpointer", null, "M", "negro");
         AgentActivationKey key = new AgentActivationKey(
                 "catalog-specialist", "prod", "telegram", "CATALOG_SEARCH");

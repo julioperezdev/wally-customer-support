@@ -36,6 +36,7 @@ import com.wally.customersupport.knowledge.domain.model.KnowledgeQuery;
 import com.wally.customersupport.support.domain.model.SupportPolicy;
 import com.wally.customersupport.shared.infrastructure.config.AgentRuntimeProperties;
 import com.wally.customersupport.shared.infrastructure.config.RagProperties;
+import com.wally.customersupport.shared.infrastructure.observability.ActorKeyGenerator;
 import com.wally.customersupport.shared.infrastructure.observability.StructuredEventLog;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -70,6 +71,7 @@ public class ConversationOrchestrator {
     private final CatalogSpecialistExecutor catalogSpecialistExecutor;
     private final ResponseHumanizer responseHumanizer;
     private final AgentShadowRuntimeService agentShadowRuntimeService;
+    private final ActorKeyGenerator actorKeyGenerator;
 
     public String replyFor(ConversationContext context) {
         return replyForDetailed(context).response();
@@ -107,10 +109,12 @@ public class ConversationOrchestrator {
                     startedAt);
         }
         decision = normalizeDeterministicCatalogDecision(context, decision);
-        StructuredEventLog.info(log, "INTENT_CLASSIFIED", Map.of(
-                "intent", decision.intent().name(),
-                "confidence", decision.confidence(),
-                "durationMs", elapsedMillis(startedAt)));
+        Map<String, Object> classifiedFields = new LinkedHashMap<>();
+        classifiedFields.put("intent", decision.intent().name());
+        classifiedFields.put("confidence", decision.confidence());
+        classifiedFields.put("durationMs", elapsedMillis(startedAt));
+        addConversationIdentity(classifiedFields, context);
+        StructuredEventLog.info(log, "INTENT_CLASSIFIED", classifiedFields);
         return executePlan(context, executionPlanFactory.create(decision), decision, startedAt);
     }
 
@@ -136,6 +140,7 @@ public class ConversationOrchestrator {
         routeFields.put("stepCount", plan.stepCount());
         routeFields.put("maxSteps", plan.maxSteps());
         routeFields.put("fallbackAllowed", plan.fallbackAllowed());
+        addConversationIdentity(routeFields, context);
         addActivationFields(routeFields, activation);
         addDefinitionFields(routeFields, definition);
         if (decision != null) {
@@ -147,6 +152,7 @@ public class ConversationOrchestrator {
         startedFields.put("workflowVersion", plan.workflowVersion());
         startedFields.put("useCase", plan.useCase());
         startedFields.put("stepCount", plan.stepCount());
+        addConversationIdentity(startedFields, context);
         if (activation != null) {
             addActivationFields(startedFields, activation);
         }
@@ -179,6 +185,7 @@ public class ConversationOrchestrator {
             fields.put("useCase", plan.useCase());
             fields.put("errorType", exception.getClass().getSimpleName());
             fields.put("durationMs", elapsedMillis(startedAt));
+            addConversationIdentity(fields, context);
             StructuredEventLog.warn(log, "AGENT_EXECUTION_FAILED", fields);
             ConversationExecutionPlan fallback = executionPlanFactory.safeFallback("EXECUTION_FAILED");
             result = ConversationExecutionResult.fallback(fallback, SAFE_FALLBACK, "EXECUTION_FAILED");
@@ -428,7 +435,7 @@ public class ConversationOrchestrator {
             fields.put("fallbackReason", result.fallbackReason());
         }
         fields.put("durationMs", elapsedMillis(startedAt));
-        addCorrelationId(fields, context);
+        addConversationIdentity(fields, context);
         StructuredEventLog.info(log, "AGENT_EXECUTION_COMPLETED", fields);
         StructuredEventLog.info(log, "CONVERSATION_QUERY_COMPLETED", fields);
         return result;
@@ -438,6 +445,18 @@ public class ConversationOrchestrator {
         if (context != null && context.conversationId() != null) {
             fields.put("correlationId", context.conversationId());
         }
+    }
+
+    private void addConversationIdentity(Map<String, Object> fields, ConversationContext context) {
+        if (context == null) {
+            return;
+        }
+        if (context.channel() != null) {
+            fields.put("channel", context.channel().name());
+        }
+        addCorrelationId(fields, context);
+        actorKeyGenerator.generate(context.channel(), context.externalCustomerId())
+                .ifPresent(actorKey -> fields.put("actorKey", actorKey));
     }
 
     private static long elapsedMillis(long startedAt) {
