@@ -613,6 +613,11 @@ data "aws_iam_policy_document" "terraform_cognito" {
 }
 
 resource "aws_iam_policy" "terraform_cognito" {
+  # The role must first receive iam:CreatePolicy for this policy name. Without
+  # this dependency Terraform can race the inline policy update and evaluate
+  # CreatePolicy against the previous permissions document.
+  depends_on = [aws_iam_role_policy.terraform]
+
   name        = "${var.project_name}-${var.environment}-terraform-cognito-access"
   description = "Terraform access to the WCS Cognito backoffice resources."
   policy      = data.aws_iam_policy_document.terraform_cognito.json
