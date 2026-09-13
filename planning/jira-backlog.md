@@ -582,9 +582,14 @@ backend, frontend, pruebas, documentación, observabilidad, rollout y rollback.
 | Jira | Estado inicial | Slice |
 | --- | --- | --- |
 | WCS-119 | In Progress | Catálogo, stock, media S3 y bandeja humana |
-| WCS-120 | To Do | Mapa de casos de uso, agentes, fallback y trazabilidad |
+| WCS-120 | To Do | Panel read-only entregado parcialmente; falta authoring, lifecycle, promoción y trazas runtime |
 | WCS-121 | To Do | Feature flags de negocio con AppConfig sin reinicio |
-| WCS-122 | To Do | Pedidos y links de pago con Mercado Pago Sandbox |
+| WCS-122 | To Do | Pedidos y links de pago con Mercado Pago Sandbox; bloqueado hasta cerrar WCS-120 y verificar WCS-121 |
+
+Nota de secuenciación: WCS-120 no debe considerarse cerrado por la entrega del
+panel read-only. Su alcance pendiente incluye authoring, versionado, lifecycle,
+promoción protegida y trazas runtime. WCS-122 permanece bloqueado hasta que esos
+gates estén verificados y WCS-121 tenga su contrato productivo confirmado.
 
 La descripción completa, los criterios de aceptación y el modelo de seguridad
 están en [`docs/backoffice-mvp-roadmap.md`](../docs/backoffice-mvp-roadmap.md) y

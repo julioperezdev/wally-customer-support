@@ -2,7 +2,7 @@
 
 Owner: Product/Tech Lead  
 Status: `Proposed`  
-Last reviewed: 2026-09-07
+Last reviewed: 2026-09-12
 
 ## Visión
 
@@ -113,17 +113,34 @@ La página canónica es [WCS — Agent Platform Roadmap & Architecture Proposal]
 Las etapas propuestas son:
 
 1. contrato y arquitectura del orquestador;
-2. runtime acotado compatible con los casos de uso actuales;
-3. registry y versionado de agentes, prompts y modelos;
-4. agentes core y tools determinísticas;
-5. evaluación, persistencia histórica, observabilidad y costos;
-6. backoffice React/TypeScript;
-7. migración canary con feature flags y rollback;
-8. evaluación opcional de MCP read-only y AgentCore.
+2. runtime acotado compatible con los casos de uso actuales — primer corte
+   implementado para `GENERAL_SUPPORT`;
+3. registry y lectura versionada de agentes — primer corte implementado en modo
+   read-only;
+4. authoring y ciclo de vida de agentes — siguiente gate pendiente;
+5. agentes core y tools determinísticas — se amplía después del control plane;
+6. evaluación, persistencia histórica, observabilidad y costos — debe alimentar
+   el workflow de promoción;
+7. backoffice React/TypeScript de escritura protegida — completa el panel
+   actual sin eliminar sus estados read-only/preview;
+8. migración canary con feature flags y rollback;
+9. evaluación opcional de MCP read-only y AgentCore.
 
 La implementación operativa del backoffice se organiza en
 [`backoffice-mvp-roadmap.md`](backoffice-mvp-roadmap.md): catálogo y handoff,
 mapa de agentes, feature flags dinámicos y venta asistida.
+
+### Regla de secuenciación del backoffice
+
+El panel read-only de agentes no equivale a la plataforma completa de agentes.
+El primer corte de WCS-120 ya permite consultar registry, versiones,
+activaciones, mapa, simulaciones, preflight y evidencia de evaluaciones, pero
+todavía no permite crear o editar versiones ni completar su ciclo de promoción.
+
+Por lo tanto, el siguiente desarrollo obligatorio es cerrar el control plane de
+WCS-120. Luego se verifica la operación productiva de WCS-121 y sus permisos.
+Sólo después de esos gates se habilita WCS-122 (pedidos y Mercado Pago Sandbox).
+No se debe seleccionar WCS-122 únicamente porque tenga un número posterior.
 
 El primer gate es aceptar la propuesta, el ADR, el modelo mínimo de agente,
 los permisos del backoffice y los criterios de evaluación. Hasta entonces el
