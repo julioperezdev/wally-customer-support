@@ -272,7 +272,10 @@ inmutable de modelo, límites, contratos y allowlists. El snapshot no persiste
 ni contiene prompts; sólo conserva metadatos de prompt. Los fallbacks
 `VERSION_NOT_FOUND`, `VERSION_MISMATCH`, `VERSION_NOT_PUBLISHABLE`,
 `INVALID_DEFINITION` y `REGISTRY_UNAVAILABLE` no interrumpen el flujo actual.
-La definición todavía no se usa para ejecutar el caso de uso desde el runtime.
+Cuando la activación está habilitada, la generación grounded de soporte recibe
+ese snapshot y el adapter Bedrock valida el hash del prompt antes de aplicar
+el modelo y sus límites. El catálogo sigue usando su tool determinística; la
+migración del resto de steps del plan queda para una fase posterior.
 
 ### Resultados de evaluación — contrato en `WCS-60`, persistencia en `V10`/`WCS-61`
 

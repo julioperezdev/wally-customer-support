@@ -47,6 +47,7 @@
   - [`030-controlled-shadow-rollout.md`](decisions/030-controlled-shadow-rollout.md): allowlist de ambiente y porcentaje determinístico para rollout shadow.
   - [`031-human-follow-up-opt-out-retention.md`](decisions/031-human-follow-up-opt-out-retention.md): derivación humana, supresión y limpieza operativa.
   - [`032-bedrock-prompt-management.md`](decisions/032-bedrock-prompt-management.md): prompts productivos versionados fuera del artefacto mediante Bedrock Prompt Management.
+  - [`033-versioned-agent-runtime-execution.md`](decisions/033-versioned-agent-runtime-execution.md): ejecución real gobernada por el snapshot versionado del agente.
 
 ## Calidad y operación
 

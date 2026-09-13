@@ -59,6 +59,25 @@ class BedrockPromptRegistryTest {
         assertThrows(IllegalStateException.class, () -> registry.responsePrompt("conversation-response-v1"));
     }
 
+    @Test
+    void usesTheNumericVersionFromAnAgentSnapshotWhenItIsProvided() {
+        BedrockAgentClient client = mock(BedrockAgentClient.class);
+        when(client.getPrompt(any(GetPromptRequest.class))).thenReturn(GetPromptResponse.builder()
+                .version("8")
+                .variants(variant("approved", "Versioned response prompt"))
+                .build());
+        BedrockPromptRegistry registry = new BedrockPromptRegistry(
+                client,
+                new PromptManagementProperties("intent-prompt", "7", "response-prompt", "3"));
+
+        registry.responsePrompt("8");
+
+        ArgumentCaptor<GetPromptRequest> request = ArgumentCaptor.forClass(GetPromptRequest.class);
+        verify(client).getPrompt(request.capture());
+        assertEquals("response-prompt", request.getValue().promptIdentifier());
+        assertEquals("8", request.getValue().promptVersion());
+    }
+
     private static PromptVariant variant(String name, String text) {
         return PromptVariant.builder()
                 .name(name)

@@ -406,9 +406,15 @@ determinística existente no cambia cuando la flag
 `wcs.agent-runtime.activation-enabled` es falsa, falta la activación o el
 registry no está disponible. Desde `WCS-52`, con la misma flag habilitada, el
 orquestador también consulta `AgentRuntimeDefinitionResolver` y agrega al
-plan el estado, razón y metadata del modelo de la definición validada. Esta
-resolución no selecciona todavía prompts, modelos ni tools para ejecutar: un
-fallback de definición conserva exactamente el mismo caso de uso y respuesta.
+plan el estado, razón y metadata de la definición validada. La generación
+grounded de `GENERAL_SUPPORT` puede recibir ese snapshot mediante el port
+versionado de `LlmClient`: el adapter Bedrock aplica el modelo, prompt,
+temperatura, top-p, límite de salida y timeout efectivo de la versión. Antes
+de invocar al proveedor compara el hash del prompt resuelto con el hash
+publicado. Si la definición no es activa, el provider no coincide, el prompt
+no existe o el hash falla, se conserva el flujo anterior con fallback seguro.
+El catálogo continúa siendo determinístico y consulta PostgreSQL sólo a
+través de sus tools WCS.
 
 En `CATALOG_SEARCH`, el clasificador sólo extrae filtros
 `name`/`sku`/`size`/`color`. El catálogo se consulta con esos filtros y
