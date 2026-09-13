@@ -181,15 +181,39 @@ Para habilitar Terraform en GitHub se deben configurar en el Environment
   el repositorio real.
 - `TERRAFORM_VARS`: archivo HCL con variables revisadas y referencias de ARN,
   nunca passwords, tokens, claves privadas ni otros valores secretos.
+- Los controles de rollout no sensibles de producción se mantienen en archivos
+  Terraform versionados dentro de cada environment, como
+  `infra/environments/prod/rollout.tfvars`; el workflow los pasa después de
+  `TERRAFORM_VARS` para que tengan precedencia visible y revisable.
 - una regla de aprobación con al menos un reviewer requerido para el
   Environment `production`.
 
 El workflow no crea ni amplía automáticamente el rol AWS de Terraform. La
 confianza OIDC y sus permisos deben revisarse en AWS, incluyendo el acceso a
 la key de state de WCS y sólo los recursos que este stack administra. El apply
-no se dispara por un push: primero se ejecuta `plan`, se revisa su resumen y
-luego se vuelve a lanzar el workflow con `action=apply` y
-`confirm_apply=true`.
+manual `.github/workflows/terraform.yml` no se dispara por un push: primero se
+ejecuta `plan`, se revisa su resumen y luego se vuelve a lanzar el workflow con
+`action=apply` y `confirm_apply=true`. Para el flujo automático con aprobación
+final se debe usar el workflow descrito a continuación.
+
+### Plan automático con aprobación final
+
+El workflow `.github/workflows/terraform-plan-approve-apply.yml` ejecuta el
+flujo completo para cambios en `main` o mediante `workflow_dispatch`:
+
+1. valida y genera el plan;
+2. bloquea `destroy` y reemplazos;
+3. conserva el plan binario por un día como artifact privado;
+4. crea el job de Apply sólo si el plan tiene cambios;
+5. pausa en el Environment protegido `production` y aplica exactamente ese
+   plan después de `Review deployments`.
+
+Para que el plan no solicite la aprobación final antes de ejecutarse, el
+Environment `production-plan` debe existir sin reviewers y tener copiados
+`AWS_TERRAFORM_ROLE_ARN` y `TERRAFORM_VARS`. El Environment `production` debe
+mantener sus reviewers obligatorios. El plan usa las mismas credenciales de
+Terraform para refrescar el state, por lo que una mejora futura es separarlo
+con un rol IAM de sólo lectura y acceso controlado al state.
 
 La base de datos existente se configura como `shared_rds_*` y el runtime recibe
 referencias a AppConfig/Secrets Manager. La carga efectiva de esos valores en

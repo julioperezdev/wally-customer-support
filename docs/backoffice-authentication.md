@@ -107,6 +107,13 @@ Cuando `backoffice_cognito_enabled=true`, el módulo habilita
 `ALLOW_USER_PASSWORD_AUTH` automáticamente. Los callbacks y el dominio pueden
 quedar vacíos si no se usa Hosted UI.
 
+En producción, el rollout de esta capacidad está versionado en
+[`infra/environments/prod/rollout.tfvars`](../infra/environments/prod/rollout.tfvars).
+El workflow pasa ese archivo después del baseline `TERRAFORM_VARS`, por lo que
+`backoffice_cognito_enabled=true` prevalece sobre el valor histórico del
+secreto sin exponer ni reemplazar el resto de la configuración. El archivo sólo
+contiene controles no sensibles y requiere revisión por PR.
+
 El role de Terraform separa los permisos Cognito en una policy administrada
 propia (`<project>-<environment>-terraform-cognito-access`). Esto evita superar
 el límite de 10.240 bytes de una policy inline y agrega una dependencia
@@ -169,6 +176,33 @@ Terraform no crea contraseñas ni usuarios. El alta inicial se hace de forma
 administrativa en Cognito y debe quedar como evidencia operativa. MFA,
 passkeys, federación y administración de usuarios desde el panel quedan fuera
 de WCS-128.
+
+### Usuario de smoke productivo
+
+Se creó un usuario técnico de prueba en el User Pool
+`wally-customer-support-prod-backoffice`:
+
+| Dato | Valor |
+| --- | --- |
+| Username | `wcs.demo.admin@example.com` |
+| Grupo | `admin` (sólo para el smoke inicial) |
+| Credenciales | Secret Manager `wcs/prod/backoffice-cognito-bootstrap` |
+
+La contraseña no se guarda en el repositorio, Jira, Confluence ni logs. Para
+obtenerla durante una prueba controlada, con una identidad AWS autorizada:
+
+```bash
+aws secretsmanager get-secret-value \
+  --secret-id wcs/prod/backoffice-cognito-bootstrap \
+  --region us-east-1 \
+  --query SecretString \
+  --output text | jq .
+```
+
+Este usuario es sólo para validar el flujo y debe rotarse o eliminarse al
+finalizar el smoke test. Para operación normal se recomienda un usuario por
+persona y grupos con mínimo privilegio (`store-viewer`, `store-operator`,
+`order-operator` o `agent-operator`).
 
 ## Smoke test local
 
