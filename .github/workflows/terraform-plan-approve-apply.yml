@@ -1,0 +1,247 @@
+name: Terraform Plan and Apply
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "infra/**"
+      - ".github/workflows/terraform-plan-approve-apply.yml"
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: "Terraform environment to plan and optionally apply"
+        required: true
+        default: prod
+        type: choice
+        options:
+          - prod
+          - test
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terraform-plan-apply-${{ inputs.target_environment || 'prod' }}
+  cancel-in-progress: false
+
+env:
+  TF_WORKING_DIR: infra/environments/${{ inputs.target_environment || 'prod' }}
+  TF_IN_AUTOMATION: "true"
+
+jobs:
+  validate:
+    name: Terraform Validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        working_directory:
+          - infra/environments/prod
+          - infra/environments/test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.15"
+
+      - name: Terraform Init without backend
+        working-directory: ${{ matrix.working_directory }}
+        run: terraform init -backend=false -input=false
+
+      - name: Terraform Format Check
+        working-directory: ${{ matrix.working_directory }}
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Validate
+        working-directory: ${{ matrix.working_directory }}
+        run: terraform validate
+
+  plan:
+    name: Terraform Plan
+    needs: validate
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: ${{ inputs.target_environment == 'test' && 'test-plan' || 'production-plan' }}
+    outputs:
+      has_changes: ${{ steps.plan.outputs.has_changes }}
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      AWS_TERRAFORM_ROLE_ARN: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check Terraform deployment configuration
+        env:
+          TERRAFORM_VARS: ${{ secrets.TERRAFORM_VARS }}
+        run: |
+          set -euo pipefail
+          [ -n "$AWS_TERRAFORM_ROLE_ARN" ] || {
+            echo "::error::Configure AWS_TERRAFORM_ROLE_ARN in the plan environment"
+            exit 1
+          }
+          [ -n "$TERRAFORM_VARS" ] || {
+            echo "::error::Configure TERRAFORM_VARS in the plan environment"
+            exit 1
+          }
+
+      - name: Write reviewed Terraform variables
+        env:
+          TERRAFORM_VARS: ${{ secrets.TERRAFORM_VARS }}
+        run: |
+          set -euo pipefail
+          umask 077
+          printf '%s' "$TERRAFORM_VARS" > "$RUNNER_TEMP/wcs-terraform.tfvars"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_TERRAFORM_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.15"
+
+      - name: Terraform Init with reviewed backend
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init -input=false
+
+      - name: Terraform Plan (captured, no sensitive output)
+        id: plan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          var_files=("-var-file=$RUNNER_TEMP/wcs-terraform.tfvars")
+          if [ -f "rollout.tfvars" ]; then
+            # Versioned rollout controls intentionally override the baseline
+            # TERRAFORM_VARS value without changing the secret in GitHub.
+            var_files+=("-var-file=rollout.tfvars")
+          fi
+
+          set +e
+          terraform plan \
+            -input=false \
+            -detailed-exitcode \
+            -out="$RUNNER_TEMP/wcs.tfplan" \
+            "${var_files[@]}" \
+            -no-color > "$RUNNER_TEMP/wcs-terraform-plan.log" 2>&1
+          plan_exit=$?
+          set -e
+
+          case "$plan_exit" in
+            0)
+              echo "has_changes=false" >> "$GITHUB_OUTPUT"
+              ;;
+            2)
+              echo "has_changes=true" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "::error::Terraform plan failed. Check AWS identity, backend access and reviewed variables."
+              exit "$plan_exit"
+              ;;
+          esac
+
+      - name: Summarize and block destructive plan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          set -euo pipefail
+          plan_json="$RUNNER_TEMP/wcs-terraform-plan.json"
+          terraform show -json "$RUNNER_TEMP/wcs.tfplan" > "$plan_json"
+
+          create_count="$(jq '[.resource_changes[]? | select((.change.actions | index("create")) != null and (.change.actions | index("delete")) == null)] | length' "$plan_json")"
+          update_count="$(jq '[.resource_changes[]? | select((.change.actions | index("update")) != null)] | length' "$plan_json")"
+          destroy_count="$(jq '[.resource_changes[]? | select((.change.actions | index("delete")) != null)] | length' "$plan_json")"
+          replace_count="$(jq '[.resource_changes[]? | select((.change.actions | index("create")) != null and (.change.actions | index("delete")) != null)] | length' "$plan_json")"
+
+          {
+            echo "### Terraform plan summary"
+            echo "- Create: $create_count"
+            echo "- Update: $update_count"
+            echo "- Destroy: $destroy_count"
+            echo "- Replace: $replace_count"
+            echo
+            echo "Resource addresses and actions:"
+            jq -r '[.resource_changes[]? | select((.change.actions | index("no-op")) == null and (.change.actions | index("read")) == null) | "- `\(.address)`: \(.change.actions | join(","))"] | if length == 0 then "- No resource changes" else .[] end' "$plan_json"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$destroy_count" -gt 0 ]; then
+            echo "::error::Terraform plan contains destroy actions; the CI guardrail blocks apply."
+            jq -r '[.resource_changes[]? | select((.change.actions | index("delete")) != null) | "\(.address): \(.change.actions | join(","))"] | .[]' "$plan_json"
+            exit 1
+          fi
+
+          if [ "$replace_count" -gt 0 ]; then
+            echo "::error::Terraform plan contains replacement actions; the CI guardrail blocks apply."
+            jq -r '[.resource_changes[]? | select((.change.actions | index("create")) != null and (.change.actions | index("delete")) != null) | "\(.address): \(.change.actions | join(","))"] | .[]' "$plan_json"
+            exit 1
+          fi
+
+      - name: Upload reviewed plan
+        if: steps.plan.outputs.has_changes == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan-${{ github.run_id }}
+          path: ${{ runner.temp }}/wcs.tfplan
+          retention-days: 1
+
+  apply:
+    name: Terraform Apply (approved plan)
+    needs: [validate, plan]
+    if: github.ref == 'refs/heads/main' && needs.plan.result == 'success' && needs.plan.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: ${{ inputs.target_environment == 'test' && 'test' || 'production' }}
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      AWS_TERRAFORM_ROLE_ARN: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download reviewed plan
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-plan-${{ github.run_id }}
+          path: ${{ runner.temp }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_TERRAFORM_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.15"
+
+      - name: Terraform Init with reviewed backend
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init -input=false
+
+      - name: Apply reviewed plan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform apply -input=false -auto-approve "$RUNNER_TEMP/wcs.tfplan"
