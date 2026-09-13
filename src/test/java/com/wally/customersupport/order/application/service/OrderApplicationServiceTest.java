@@ -51,7 +51,7 @@ class OrderApplicationServiceTest {
     void setUp() {
         PaymentProperties properties = new PaymentProperties(
                 "mock", "ARS", "", Duration.ofSeconds(5),
-                new PaymentProperties.MercadoPago(null, null),
+                new PaymentProperties.MercadoPago(null),
                 new PaymentProperties.Webhook(false, null));
         service = new OrderApplicationService(
                 orderRepository,

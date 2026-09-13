@@ -222,6 +222,11 @@ wcs.telegram.allowed-chat-id
 wcs.telegram.connect-timeout
 wcs.telegram.read-timeout
 wcs.outbox.max-attempts
+wcs.payment.provider
+wcs.payment.currency
+wcs.payment.notification-url
+wcs.payment.request-timeout
+wcs.payment.webhook.signature-required
 wcs.inbound.poll-interval-ms
 wcs.inbound.batch-size
 wcs.inbound.max-attempts
@@ -301,6 +306,9 @@ wcs/{environment}/observability
 
 wcs/{environment}/providers
   api keys de proveedores externos, sólo si fueran necesarias
+
+wcs/{environment}/mercado-pago
+  access token y secreto de firma de Mercado Pago, cargados sólo en Secrets Manager
 ```
 
 Bedrock debe autenticarse preferentemente con IAM Role del workload; no se crea una API key para Bedrock. Los valores de Secrets Manager no se pasan a Jira, Confluence, la base de datos ni los logs.

@@ -6,7 +6,8 @@ Related migration: `V18__create_orders_and_payments.sql`
 
 Este slice agrega venta asistida al backoffice sin acoplar la lógica de WCS a
 Mercado Pago. El backend valida el catálogo vigente, persiste el pedido y
-delega la creación del checkout al puerto `PaymentGateway`. El proveedor
+delega la creación del checkout al puerto `PaymentGateway`. El adapter de
+Mercado Pago usa el SDK oficial Java (`com.mercadopago:sdk-java`) y el proveedor
 actual puede ser `mock` para pruebas y `mercadopago` para Checkout Pro Sandbox.
 
 ## Flujo
@@ -102,7 +103,6 @@ La configuración no sensible vive en el perfil `runtime` de AppConfig:
 {
   "wcs.payment.provider": "mock",
   "wcs.payment.currency": "ARS",
-  "wcs.payment.mercado-pago.base-url": "https://api.mercadopago.com",
   "wcs.payment.notification-url": "https://<backend>/webhook/mercadopago",
   "wcs.payment.webhook.signature-required": true,
   "wcs.external-config.secrets-manager.mercado-pago-secret-id": "wcs/prod/mercado-pago"
