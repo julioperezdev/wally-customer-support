@@ -65,6 +65,24 @@ describe("control plane client", () => {
     );
   });
 
+  it("loads registry filter options from the backend read model", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      agentIds: ["catalog-specialist"],
+      environments: ["prod"],
+      channels: ["telegram"],
+      useCases: ["catalog-search"],
+      assignments: [{ agentId: "catalog-specialist", environment: "prod", channel: "telegram", useCase: "catalog-search" }]
+    }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await createControlPlaneClient("/internal/agent-evaluations", "session-token").getAgentFilterOptions();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/internal/agent-registry/filter-options",
+      { credentials: "include", headers: { Accept: "application/json", Authorization: "Bearer session-token" } }
+    );
+  });
+
   it("runs a non-mutating activation preflight through the read scope", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
       status: "READY",
