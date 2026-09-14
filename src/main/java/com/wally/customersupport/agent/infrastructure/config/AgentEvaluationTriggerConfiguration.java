@@ -6,7 +6,7 @@ import com.wally.customersupport.agent.application.port.out.AgentEvaluationTrigg
 import com.wally.customersupport.agent.application.service.AgentEvaluationTriggerAuthorizationService;
 import com.wally.customersupport.agent.application.service.AgentEvaluationTriggerExecutionService;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -15,7 +15,10 @@ import org.springframework.context.annotation.Configuration;
 public class AgentEvaluationTriggerConfiguration {
 
     @Bean
-    @ConditionalOnMissingBean(AgentEvaluationTriggerAuthorizer.class)
+    @ConditionalOnProperty(
+            name = "wcs.agent-evaluation.control-plane.security.enabled",
+            havingValue = "false",
+            matchIfMissing = true)
     AgentEvaluationTriggerAuthorizer denyByDefaultAgentEvaluationTriggerAuthorizer() {
         return request -> false;
     }

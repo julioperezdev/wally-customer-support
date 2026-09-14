@@ -148,10 +148,18 @@ el push de la pipeline completa.
 Usar este flujo para cambios de AppConfig o rotación de secrets que sólo
 requieren que el bootstrap vuelva a leer la configuración. Usar
 `.github/workflows/backend.yml` para cambios de código, Dockerfile, dependencias
-o cualquier cambio que requiera una nueva imagen. Los scripts de despliegue y
-restart fallan inmediatamente si la operación devuelve `FAILED`, `ERROR` o
-cualquier estado `ROLLBACK_*`; cuando App Runner lo informa, el deploy también
-incluye el `ErrorMessage` de la operación y no declara el cambio como exitoso.
+o cualquier cambio que requiera una nueva imagen. El deploy actualiza la
+referencia al digest mediante `UpdateService`, que ya inicia la publicación de
+la nueva imagen; no encadena un `StartDeployment` redundante. Los scripts de
+despliegue y restart fallan inmediatamente si la operación devuelve `FAILED`,
+`ERROR` o cualquier estado `ROLLBACK_*`; cuando App Runner lo informa, el
+deploy también incluye el `ErrorMessage` de la operación y no declara el
+cambio como exitoso.
+
+La verificación Maven incluye un contexto de seguridad con Cognito/JWT
+habilitado y comprueba que exista un solo authorizer de triggers. Esto permite
+detectar conflictos de composición de Spring antes de publicar la imagen en
+App Runner, en lugar de descubrirlos durante el ciclo remoto de rollback.
 
 Ejecución por CLI:
 

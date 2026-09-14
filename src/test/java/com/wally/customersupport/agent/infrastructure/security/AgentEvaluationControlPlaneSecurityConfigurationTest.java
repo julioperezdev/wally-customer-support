@@ -12,13 +12,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.time.Instant;
 import java.util.List;
 
+import com.wally.customersupport.agent.application.evaluation.AgentEvaluationApplicationService;
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationHistoryPage;
 import com.wally.customersupport.agent.application.port.out.AgentEvaluationControlPlaneAuthorizer;
+import com.wally.customersupport.agent.application.port.out.AgentEvaluationTriggerAuthorizer;
+import com.wally.customersupport.agent.application.port.out.AgentEvaluationTriggerExecutionGuard;
 import com.wally.customersupport.agent.application.service.AgentEvaluationComparisonApplicationService;
 import com.wally.customersupport.agent.application.service.AgentEvaluationControlPlaneAccessService;
 import com.wally.customersupport.agent.application.service.AgentEvaluationEvidenceExportApplicationService;
 import com.wally.customersupport.agent.application.service.AgentEvaluationHistoryQueryService;
 import com.wally.customersupport.agent.infrastructure.config.AgentEvaluationControlPlaneConfiguration;
+import com.wally.customersupport.agent.infrastructure.config.AgentEvaluationTriggerConfiguration;
 import com.wally.customersupport.agent.infrastructure.http.AgentEvaluationControlPlaneController;
 import com.wally.customersupport.agent.infrastructure.http.AgentEvaluationControlPlaneExceptionHandler;
 import org.junit.jupiter.api.AfterEach;
@@ -29,13 +33,11 @@ import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
@@ -50,6 +52,7 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 @ExtendWith(SpringExtension.class)
 @ContextConfiguration(classes = AgentEvaluationControlPlaneSecurityConfigurationTest.SecurityTestConfiguration.class)
 @TestPropertySource(properties = {
+        "spring.main.allow-bean-definition-overriding=true",
         "wcs.agent-evaluation.control-plane.security.enabled=true",
         "wcs.agent-evaluation.control-plane.security.issuer-uri=https://issuer.example.test",
         "wcs.agent-evaluation.control-plane.security.audience=wcs-control-plane"
@@ -70,6 +73,9 @@ class AgentEvaluationControlPlaneSecurityConfigurationTest {
 
     @Autowired
     private List<AgentEvaluationControlPlaneAuthorizer> authorizers;
+
+    @Autowired
+    private List<AgentEvaluationTriggerAuthorizer> triggerAuthorizers;
 
     private MockMvc mockMvc;
 
@@ -103,6 +109,13 @@ class AgentEvaluationControlPlaneSecurityConfigurationTest {
         org.assertj.core.api.Assertions.assertThat(authorizers)
                 .singleElement()
                 .isInstanceOf(JwtAgentEvaluationControlPlaneAuthorizer.class);
+    }
+
+    @Test
+    void composesExactlyOneCognitoJwtTriggerAuthorizer() {
+        org.assertj.core.api.Assertions.assertThat(triggerAuthorizers)
+                .singleElement()
+                .isInstanceOf(JwtAgentEvaluationTriggerAuthorizer.class);
     }
 
     @Test
@@ -254,20 +267,12 @@ class AgentEvaluationControlPlaneSecurityConfigurationTest {
     @TestConfiguration(proxyBeanMethods = false)
     @EnableWebMvc
     @EnableWebSecurity
-    @org.springframework.context.annotation.Import(AgentEvaluationControlPlaneConfiguration.class)
+    @org.springframework.context.annotation.Import({
+            AgentEvaluationControlPlaneConfiguration.class,
+            AgentEvaluationTriggerConfiguration.class,
+            AgentEvaluationControlPlaneSecurityConfiguration.class
+    })
     static class SecurityTestConfiguration {
-
-        @Bean
-        SecurityFilterChain controlPlaneFilterChain(HttpSecurity http) throws Exception {
-            return new AgentEvaluationControlPlaneSecurityConfiguration()
-                    .agentEvaluationControlPlaneSecurityFilterChain(http);
-        }
-
-        @Bean
-        SecurityFilterChain publicEndpointsFilterChain(HttpSecurity http) throws Exception {
-            return new AgentEvaluationControlPlaneSecurityConfiguration()
-                    .publicEndpointsSecurityFilterChain(http);
-        }
 
         @Bean
         AgentEvaluationHistoryQueryService historyQueryService() {
@@ -285,6 +290,16 @@ class AgentEvaluationControlPlaneSecurityConfigurationTest {
         }
 
         @Bean
+        AgentEvaluationApplicationService evaluationService() {
+            return Mockito.mock(AgentEvaluationApplicationService.class);
+        }
+
+        @Bean
+        AgentEvaluationTriggerExecutionGuard triggerExecutionGuard() {
+            return Mockito.mock(AgentEvaluationTriggerExecutionGuard.class);
+        }
+
+        @Bean
         AgentEvaluationControlPlaneController controlPlaneController(
                 AgentEvaluationControlPlaneAccessService accessService,
                 AgentEvaluationHistoryQueryService historyQueryService,
@@ -299,7 +314,7 @@ class AgentEvaluationControlPlaneSecurityConfigurationTest {
             return new AgentEvaluationControlPlaneExceptionHandler();
         }
 
-        @Bean
+        @Bean(name = "agentEvaluationJwtDecoder")
         JwtDecoder testJwtDecoder() {
             return token -> {
                 throw new AssertionError("The MVC tests inject synthetic JWTs and must not decode a bearer token");
