@@ -276,9 +276,11 @@ oculta las anteriores sin borrar historial.
 
 La migración `V9__create_agent_registry.sql` es nueva y no modifica las
 migraciones aplicadas. `AgentRegistryRepository` expone lecturas y escrituras
-tipadas; el adapter rechaza sobrescribir una versión ya persistida. La
-persistencia todavía no está conectada al `ConversationOrchestrator`, a
-AppConfig ni al backoffice.
+tipadas; el adapter rechaza sobrescribir una versión ya persistida.
+La persistencia se consulta desde el `ConversationOrchestrator` cuando el gate
+de runtime está habilitado. La escritura de authoring y activaciones continúa
+cerrada por flags independientes y el backoffice sólo la expone después de
+pasar autenticación, scopes e idempotencia.
 
 `AgentActivationResolver` agrega una frontera de lectura sin mutar el estado:
 para una clave de agente, ambiente, canal y caso de uso devuelve la referencia
@@ -294,6 +296,18 @@ Cuando la activación está habilitada, la generación grounded de soporte recib
 ese snapshot y el adapter Bedrock valida el hash del prompt antes de aplicar
 el modelo y sus límites. El catálogo sigue usando su tool determinística; la
 migración del resto de steps del plan queda para una fase posterior.
+
+WCS-120 agrega en `V19__add_agent_audit_and_execution_traces.sql`:
+
+* `wcs.agent_registry_audit_events`: cambios de lifecycle, activaciones, kill
+  switch y rollback con actor técnico, motivo, estados y alcance;
+* `wcs.agent_execution_traces`: evidencia de cada ejecución con ruta,
+  ambiente, canal, caso de uso, agente/versión, resultado, latencia, modelo y
+  actor pseudónimo.
+
+Ambas tablas excluyen prompts, respuestas, mensajes y secretos. La traza no
+rompe la respuesta al cliente si la persistencia falla; en ese caso queda el
+evento estructurado de observabilidad y se registra el error técnico.
 
 ### Resultados de evaluación — contrato en `WCS-60`, persistencia en `V10`/`WCS-61`
 

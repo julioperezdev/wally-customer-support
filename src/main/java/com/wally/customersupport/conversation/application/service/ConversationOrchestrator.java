@@ -15,6 +15,7 @@ import com.wally.customersupport.agent.application.service.CatalogSpecialistExec
 import com.wally.customersupport.agent.application.service.AgentRuntimeDefinitionResolution;
 import com.wally.customersupport.agent.application.service.AgentRuntimeDefinitionResolver;
 import com.wally.customersupport.agent.application.service.AgentShadowRuntimeService;
+import com.wally.customersupport.agent.application.service.AgentExecutionTraceRecorder;
 import com.wally.customersupport.catalog.application.service.CatalogConversationService;
 import com.wally.customersupport.catalog.application.service.CatalogQueryParser;
 import com.wally.customersupport.catalog.domain.model.CatalogQuery;
@@ -38,12 +39,11 @@ import com.wally.customersupport.shared.infrastructure.config.AgentRuntimeProper
 import com.wally.customersupport.shared.infrastructure.config.RagProperties;
 import com.wally.customersupport.shared.infrastructure.observability.ActorKeyGenerator;
 import com.wally.customersupport.shared.infrastructure.observability.StructuredEventLog;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class ConversationOrchestrator {
 
@@ -72,6 +72,74 @@ public class ConversationOrchestrator {
     private final ResponseHumanizer responseHumanizer;
     private final AgentShadowRuntimeService agentShadowRuntimeService;
     private final ActorKeyGenerator actorKeyGenerator;
+    private final AgentExecutionTraceRecorder agentExecutionTraceRecorder;
+
+    @Autowired
+    public ConversationOrchestrator(
+            ConversationIntentClassifier intentClassifier,
+            CatalogConversationService catalogConversationService,
+            SupportConfigurationQueryService supportConfigurationQueryService,
+            KnowledgeRetriever knowledgeRetriever,
+            LlmClient llmClient,
+            RagProperties ragProperties,
+            ConversationExecutionPlanFactory executionPlanFactory,
+            AgentActivationResolver agentActivationResolver,
+            AgentRuntimeDefinitionResolver agentRuntimeDefinitionResolver,
+            AgentRuntimeProperties agentRuntimeProperties,
+            CatalogSpecialistExecutor catalogSpecialistExecutor,
+            ResponseHumanizer responseHumanizer,
+            AgentShadowRuntimeService agentShadowRuntimeService,
+            ActorKeyGenerator actorKeyGenerator,
+            AgentExecutionTraceRecorder agentExecutionTraceRecorder) {
+        this.intentClassifier = intentClassifier;
+        this.catalogConversationService = catalogConversationService;
+        this.supportConfigurationQueryService = supportConfigurationQueryService;
+        this.knowledgeRetriever = knowledgeRetriever;
+        this.llmClient = llmClient;
+        this.ragProperties = ragProperties;
+        this.executionPlanFactory = executionPlanFactory;
+        this.agentActivationResolver = agentActivationResolver;
+        this.agentRuntimeDefinitionResolver = agentRuntimeDefinitionResolver;
+        this.agentRuntimeProperties = agentRuntimeProperties;
+        this.catalogSpecialistExecutor = catalogSpecialistExecutor;
+        this.responseHumanizer = responseHumanizer;
+        this.agentShadowRuntimeService = agentShadowRuntimeService;
+        this.actorKeyGenerator = actorKeyGenerator;
+        this.agentExecutionTraceRecorder = agentExecutionTraceRecorder;
+    }
+
+    public ConversationOrchestrator(
+            ConversationIntentClassifier intentClassifier,
+            CatalogConversationService catalogConversationService,
+            SupportConfigurationQueryService supportConfigurationQueryService,
+            KnowledgeRetriever knowledgeRetriever,
+            LlmClient llmClient,
+            RagProperties ragProperties,
+            ConversationExecutionPlanFactory executionPlanFactory,
+            AgentActivationResolver agentActivationResolver,
+            AgentRuntimeDefinitionResolver agentRuntimeDefinitionResolver,
+            AgentRuntimeProperties agentRuntimeProperties,
+            CatalogSpecialistExecutor catalogSpecialistExecutor,
+            ResponseHumanizer responseHumanizer,
+            AgentShadowRuntimeService agentShadowRuntimeService,
+            ActorKeyGenerator actorKeyGenerator) {
+        this(
+                intentClassifier,
+                catalogConversationService,
+                supportConfigurationQueryService,
+                knowledgeRetriever,
+                llmClient,
+                ragProperties,
+                executionPlanFactory,
+                agentActivationResolver,
+                agentRuntimeDefinitionResolver,
+                agentRuntimeProperties,
+                catalogSpecialistExecutor,
+                responseHumanizer,
+                agentShadowRuntimeService,
+                actorKeyGenerator,
+                new AgentExecutionTraceRecorder());
+    }
 
     public String replyFor(ConversationContext context) {
         return replyForDetailed(context).response();
@@ -191,7 +259,7 @@ public class ConversationOrchestrator {
             result = ConversationExecutionResult.fallback(fallback, SAFE_FALLBACK, "EXECUTION_FAILED");
         }
         runShadowSafely(definition, context, plan.useCase(), decision, result.response());
-        return completeQuery(context, result, startedAt);
+        return completeQuery(context, result, startedAt, definition);
     }
 
     private ConversationIntentDecision normalizeDeterministicCatalogDecision(
@@ -438,6 +506,14 @@ public class ConversationOrchestrator {
             ConversationContext context,
             ConversationExecutionResult result,
             long startedAt) {
+        return completeQuery(context, result, startedAt, null);
+    }
+
+    private ConversationExecutionResult completeQuery(
+            ConversationContext context,
+            ConversationExecutionResult result,
+            long startedAt,
+            AgentRuntimeDefinitionResolution definitionResolution) {
         Map<String, Object> fields = new LinkedHashMap<>();
         fields.put("queryType", result.useCase());
         fields.put("outcome", result.outcome());
@@ -451,6 +527,13 @@ public class ConversationOrchestrator {
         addConversationIdentity(fields, context);
         StructuredEventLog.info(log, "AGENT_EXECUTION_COMPLETED", fields);
         StructuredEventLog.info(log, "CONVERSATION_QUERY_COMPLETED", fields);
+        agentExecutionTraceRecorder.record(
+                context,
+                result,
+                definitionResolution == null || !definitionResolution.isActive()
+                        ? null : definitionResolution.definition(),
+                agentRuntimeProperties.effectiveEnvironment(),
+                elapsedMillis(startedAt));
         return result;
     }
 

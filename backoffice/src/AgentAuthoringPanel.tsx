@@ -44,7 +44,7 @@ export function AgentAuthoringPanel({
   const [sourceVersion, setSourceVersion] = useState("1");
   const [lifecycleAgentId, setLifecycleAgentId] = useState("catalog-specialist");
   const [lifecycleVersion, setLifecycleVersion] = useState("1");
-  const [targetState, setTargetState] = useState<"CANDIDATE" | "EVALUATED" | "APPROVED">("CANDIDATE");
+  const [targetState, setTargetState] = useState<"CANDIDATE" | "EVALUATED" | "APPROVED" | "ACTIVE" | "RETIRED">("CANDIDATE");
   const [reason, setReason] = useState("backoffice authoring");
   const [approvalReference, setApprovalReference] = useState("");
   const [operationalApprovalReference, setOperationalApprovalReference] = useState("");
@@ -156,7 +156,7 @@ export function AgentAuthoringPanel({
           <div className="form-grid">
             <label>Agent ID<input value={lifecycleAgentId} onChange={(event) => setLifecycleAgentId(event.target.value)} /></label>
             <label>Versión<input inputMode="numeric" value={lifecycleVersion} onChange={(event) => setLifecycleVersion(event.target.value)} /></label>
-            <label>Destino<select value={targetState} onChange={(event) => setTargetState(event.target.value as typeof targetState)}><option value="CANDIDATE">CANDIDATE</option><option value="EVALUATED">EVALUATED</option><option value="APPROVED">APPROVED</option></select></label>
+            <label>Destino<select value={targetState} onChange={(event) => setTargetState(event.target.value as typeof targetState)}><option value="CANDIDATE">CANDIDATE</option><option value="EVALUATED">EVALUATED</option><option value="APPROVED">APPROVED</option><option value="ACTIVE">ACTIVE</option><option value="RETIRED">RETIRED</option></select></label>
             <label>Motivo<input value={reason} onChange={(event) => setReason(event.target.value)} /></label>
             <label>Aprobación técnica<input value={approvalReference} onChange={(event) => setApprovalReference(event.target.value)} /></label>
             <label>Aprobación operativa<input value={operationalApprovalReference} onChange={(event) => setOperationalApprovalReference(event.target.value)} /></label>

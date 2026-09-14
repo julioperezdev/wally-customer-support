@@ -11,19 +11,19 @@ import com.wally.customersupport.agent.application.activation.AgentActivationMut
 import com.wally.customersupport.agent.application.activation.AgentActivationMutationResult;
 import com.wally.customersupport.agent.application.activation.AgentActivationMutationStatus;
 import com.wally.customersupport.agent.application.port.out.AgentActivationCommandGuard;
+import com.wally.customersupport.agent.application.port.out.AgentRegistryAuditRepository;
 import com.wally.customersupport.agent.application.port.out.AgentRegistryRepository;
 import com.wally.customersupport.agent.domain.model.AgentActivation;
 import com.wally.customersupport.agent.domain.model.AgentActivationPolicy;
 import com.wally.customersupport.agent.domain.model.AgentVersion;
 import com.wally.customersupport.shared.infrastructure.observability.StructuredEventLog;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Provider-neutral write boundary for controlled registry activation actions. */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class AgentActivationCommandService {
 
@@ -31,6 +31,30 @@ public class AgentActivationCommandService {
     private final AgentRegistryRepository registryRepository;
     private final AgentActivationCommandGuard commandGuard;
     private final AgentActivationPolicy activationPolicy;
+    private final AgentRegistryAuditRepository auditRepository;
+
+    public AgentActivationCommandService(
+            AgentEvaluationControlPlaneAccessService accessService,
+            AgentRegistryRepository registryRepository,
+            AgentActivationCommandGuard commandGuard,
+            AgentActivationPolicy activationPolicy) {
+        this(accessService, registryRepository, commandGuard, activationPolicy,
+                new NoOpAgentRegistryAuditRepository());
+    }
+
+    @Autowired
+    public AgentActivationCommandService(
+            AgentEvaluationControlPlaneAccessService accessService,
+            AgentRegistryRepository registryRepository,
+            AgentActivationCommandGuard commandGuard,
+            AgentActivationPolicy activationPolicy,
+            AgentRegistryAuditRepository auditRepository) {
+        this.accessService = accessService;
+        this.registryRepository = registryRepository;
+        this.commandGuard = commandGuard;
+        this.activationPolicy = activationPolicy;
+        this.auditRepository = auditRepository;
+    }
 
     @Transactional
     public AgentActivationMutationResult activate(
@@ -64,6 +88,9 @@ public class AgentActivationCommandService {
                         AgentActivationMutationReason.IDEMPOTENCY_ALREADY_CLAIMED, command, null);
             }
             AgentActivation saved = registryRepository.saveActivation(activation);
+            auditRepository.save(new com.wally.customersupport.agent.domain.model.AgentRegistryAuditEvent(
+                    "ACTIVATION_CREATED", saved.agentId(), saved.agentVersion(), null, "ACTIVE",
+                    saved.environment(), saved.channel(), saved.useCase(), actorId, saved.reason(), saved.activatedAt()));
             return outcome(AgentActivationMutationStatus.ACTIVATED,
                     AgentActivationMutationReason.ACTIVATION_PERSISTED, command, saved);
         } catch (IllegalArgumentException | IllegalStateException exception) {
@@ -99,6 +126,9 @@ public class AgentActivationCommandService {
             }
             AgentActivation saved = registryRepository.saveActivation(
                     activationPolicy.killSwitch(current, actorId, Instant.now()));
+            auditRepository.save(new com.wally.customersupport.agent.domain.model.AgentRegistryAuditEvent(
+                    "ACTIVATION_KILL_SWITCHED", saved.agentId(), saved.agentVersion(), "ACTIVE", "RETIRED",
+                    saved.environment(), saved.channel(), saved.useCase(), actorId, saved.reason(), saved.activatedAt()));
             return actionOutcome(AgentActivationMutationStatus.KILL_SWITCHED,
                     AgentActivationMutationReason.KILL_SWITCH_PERSISTED, command, saved);
         } catch (IllegalArgumentException | IllegalStateException exception) {
@@ -144,6 +174,9 @@ public class AgentActivationCommandService {
             }
             AgentActivation saved = registryRepository.saveActivation(
                     activationPolicy.rollback(current, previous, actorId, Instant.now()));
+            auditRepository.save(new com.wally.customersupport.agent.domain.model.AgentRegistryAuditEvent(
+                    "ACTIVATION_ROLLED_BACK", saved.agentId(), saved.agentVersion(), "ACTIVE", "ACTIVE",
+                    saved.environment(), saved.channel(), saved.useCase(), actorId, saved.reason(), saved.activatedAt()));
             return actionOutcome(AgentActivationMutationStatus.ROLLED_BACK,
                     AgentActivationMutationReason.ROLLBACK_PERSISTED, command, saved);
         } catch (IllegalArgumentException | IllegalStateException exception) {

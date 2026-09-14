@@ -31,6 +31,25 @@ class AgentRegistryContractTest {
     }
 
     @Test
+    void canRetireAnActiveVersionWithoutMakingItsMetadataMutable() {
+        AgentLifecyclePolicy policy = new AgentLifecyclePolicy();
+        AgentVersion active = policy.transition(
+                policy.transition(
+                        policy.transition(
+                                version(AgentLifecycleState.DRAFT),
+                                AgentLifecycleState.CANDIDATE, "author", TRANSITION_AT),
+                        AgentLifecycleState.EVALUATED, "evaluator", TRANSITION_AT),
+                AgentLifecycleState.APPROVED, "reviewer", TRANSITION_AT);
+        active = policy.transition(active, AgentLifecycleState.ACTIVE, "publisher", TRANSITION_AT);
+
+        AgentVersion retired = policy.transition(active, AgentLifecycleState.RETIRED, "publisher", TRANSITION_AT);
+
+        assertThat(retired.state()).isEqualTo(AgentLifecycleState.RETIRED);
+        assertThat(retired.systemPromptHash()).isEqualTo(active.systemPromptHash());
+        assertThat(retired.approvedBy()).isEqualTo(active.approvedBy());
+    }
+
+    @Test
     void rejectsSkippingEvaluationAndApproval() {
         AgentLifecyclePolicy policy = new AgentLifecyclePolicy();
 
@@ -136,7 +155,8 @@ class AgentRegistryContractTest {
 
     private static AgentVersion version(AgentLifecycleState state, int version) {
         boolean approved = state == AgentLifecycleState.APPROVED
-                || state == AgentLifecycleState.ACTIVE;
+                || state == AgentLifecycleState.ACTIVE
+                || state == AgentLifecycleState.RETIRED;
         return new AgentVersion(
                 "catalog-specialist",
                 version,

@@ -48,6 +48,7 @@
   - [`031-human-follow-up-opt-out-retention.md`](decisions/031-human-follow-up-opt-out-retention.md): derivación humana, supresión y limpieza operativa.
   - [`032-bedrock-prompt-management.md`](decisions/032-bedrock-prompt-management.md): prompts productivos versionados fuera del artefacto mediante Bedrock Prompt Management.
   - [`033-versioned-agent-runtime-execution.md`](decisions/033-versioned-agent-runtime-execution.md): ejecución real gobernada por el snapshot versionado del agente.
+  - [`034-agent-platform-authoring-and-runtime-evidence.md`](decisions/034-agent-platform-authoring-and-runtime-evidence.md): authoring, publicación, auditoría y trazas productivas de WCS-120.
 
 ## Calidad y operación
 

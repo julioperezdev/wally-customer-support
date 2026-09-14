@@ -169,7 +169,7 @@ capacidades canónicas y las valida en cada endpoint:
 | `store-viewer` | Lectura de catálogo, pedidos, handoff, registry, evaluaciones y flags |
 | `store-operator` | Catálogo, stock y gestión de handoff |
 | `order-operator` | Lectura y creación de pedidos/links de pago |
-| `agent-operator` | Evaluaciones, registry de agentes y feature flags |
+| `agent-operator` | Evaluaciones, authoring/publicación del registry de agentes y feature flags |
 | `admin` | Todas las capacidades WCS |
 
 Terraform no crea contraseñas ni usuarios. El alta inicial se hace de forma

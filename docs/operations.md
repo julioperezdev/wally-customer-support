@@ -564,12 +564,15 @@ La escritura del registry tiene una flag independiente y permanece cerrada:
 
 ```properties
 wcs.agent-registry.activation-write-enabled=false
+wcs.agent-registry.authoring-write-enabled=false
 ```
 
 Cuando se habilite en un ambiente autorizado, sólo el scope
-`agent-registry.write` puede alcanzar los endpoints internos de activación.
+`agent-registry.write` puede alcanzar los endpoints internos de authoring y
+`agent-registry.publish` es necesario además para aprobar, publicar o retirar
+versiones.
 Cada request exige `Idempotency-Key`; la key se hashea con SHA-256 y se
-persiste únicamente su hash en `wcs.agent_activation_command_claims`. El actor
+persiste únicamente su hash en la tabla de claims correspondiente. El actor
 se obtiene del subject autenticado y nunca del body. Activar, kill switch y
 rollback crean nuevas filas de `wcs.agent_activations`; no se actualizan ni se
 eliminan referencias históricas.

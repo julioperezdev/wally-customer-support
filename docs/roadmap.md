@@ -132,13 +132,15 @@ mapa de agentes, feature flags dinámicos y venta asistida.
 
 ### Regla de secuenciación del backoffice
 
-El panel read-only de agentes no equivale a la plataforma completa de agentes.
-El primer corte de WCS-120 ya permite consultar registry, versiones,
-activaciones, mapa, simulaciones, preflight y evidencia de evaluaciones, pero
-todavía no permite crear o editar versiones ni completar su ciclo de promoción.
+El primer corte read-only fue ampliado en WCS-120 con authoring por clonación,
+lifecycle hasta `ACTIVE`/`RETIRED`, permiso de publicación, auditoría
+persistente almacenada y trazas productivas sanitizadas. La UI permite
+crear metadata, clonar versiones y solicitar transiciones; el backend mantiene
+la autoridad sobre permisos, idempotencia y rollout.
 
-Por lo tanto, el siguiente desarrollo obligatorio es cerrar el control plane de
-WCS-120. Luego se verifica la operación productiva de WCS-121 y sus permisos.
+El cierre operativo de WCS-120 requiere habilitar la flag de authoring sólo
+después de su smoke test autenticado y validar la migración V19. Luego se
+verifica la operación productiva de WCS-121 y sus permisos.
 WCS-122 puede implementarse de forma aislada con provider mock mientras esos
 gates avanzan. Sólo después de ellos, y con credenciales, firma, migración y
 smoke verificados, se habilita Mercado Pago Sandbox; ningún pago productivo se

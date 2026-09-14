@@ -41,6 +41,7 @@ public final class CognitoJwtAuthenticationConverter
             "agent-evaluation.execute",
             "agent-registry.read",
             "agent-registry.write",
+            "agent-registry.publish",
             "feature-flags.read",
             "feature-flags.write");
 
@@ -71,6 +72,7 @@ public final class CognitoJwtAuthenticationConverter
                     "agent-evaluation.execute",
                     "agent-registry.read",
                     "agent-registry.write",
+                    "agent-registry.publish",
                     "feature-flags.read",
                     "feature-flags.write"),
             "admin", ALL_CAPABILITIES);

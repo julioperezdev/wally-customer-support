@@ -115,6 +115,8 @@ locals {
     "wcs.agent-evaluation.control-plane.security.enabled"         = var.backoffice_cognito_enabled
     "wcs.agent-evaluation.control-plane.security.issuer-uri"      = module.cognito_backoffice.issuer_uri
     "wcs.agent-evaluation.control-plane.security.audience"        = module.cognito_backoffice.client_id
+    "wcs.agent-registry.activation-write-enabled"                 = false
+    "wcs.agent-registry.authoring-write-enabled"                  = false
     "wcs.backoffice.security.provider"                            = "cognito"
     "wcs.backoffice.enabled"                                      = var.backoffice_preview_enabled || var.backoffice_cognito_enabled
     "wcs.backoffice.preview.enabled"                              = var.backoffice_preview_enabled
