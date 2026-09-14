@@ -86,13 +86,13 @@ export function OrderPanel({ client }: { client: BackofficeClient }) {
       </div>
       {!page ? <p className="muted">La vista de pedidos no está disponible todavía.</p> : page.items.length === 0 ?
         <p className="muted">No hay pedidos para el filtro seleccionado.</p> :
-        <div className="table-wrap"><table><thead><tr><th>Pedido</th><th>Estado</th><th>Total</th><th>Pago</th><th>Creado</th></tr></thead><tbody>
+        <div className="table-wrap"><table className="responsive-table"><thead><tr><th>Pedido</th><th>Estado</th><th>Total</th><th>Pago</th><th>Creado</th></tr></thead><tbody>
           {page.items.map((order) => <tr key={order.id}>
-            <td><strong>{shortId(order.id)}</strong><small>{order.customerReference ?? "sin referencia"}</small></td>
-            <td className={order.status === "PAID" ? "positive" : order.status === "REJECTED" ? "negative" : "warning"}>{order.status}</td>
-            <td>{formatMoney(order.total, order.currency)}</td>
-            <td>{order.paymentUrl ? <a href={order.paymentUrl} target="_blank" rel="noreferrer">Abrir link</a> : "Pendiente"}<small>{order.paymentProvider}</small></td>
-            <td>{new Date(order.createdAt).toLocaleString("es-AR")}</td>
+            <td data-label="Pedido"><strong>{shortId(order.id)}</strong><small>{order.customerReference ?? "sin referencia"}</small></td>
+            <td data-label="Estado" className={order.status === "PAID" ? "positive" : order.status === "REJECTED" ? "negative" : "warning"}>{order.status}</td>
+            <td data-label="Total">{formatMoney(order.total, order.currency)}</td>
+            <td data-label="Pago">{order.paymentUrl ? <a href={order.paymentUrl} target="_blank" rel="noreferrer">Abrir link</a> : "Pendiente"}<small>{order.paymentProvider}</small></td>
+            <td data-label="Creado">{new Date(order.createdAt).toLocaleString("es-AR")}</td>
           </tr>)}
         </tbody></table></div>}
     </section>
