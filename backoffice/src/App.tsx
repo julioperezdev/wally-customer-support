@@ -38,7 +38,6 @@ const DEFAULT_AUTH_BASE_URL = import.meta.env.VITE_WCS_AUTH_BASE_URL ?? "/intern
 
 export function App() {
   const [baseUrl, setBaseUrl] = useState(DEFAULT_BASE_URL);
-  const [token, setToken] = useState("");
   const [agentId, setAgentId] = useState("");
   const [provider, setProvider] = useState("");
   const [page, setPage] = useState<RunPage | null>(null);
@@ -103,8 +102,10 @@ export function App() {
   "flags": []
 }`);
 
-  const client = useMemo(() => createControlPlaneClient(baseUrl, token, DEFAULT_REGISTRY_BASE_URL, DEFAULT_AGENT_MAP_BASE_URL), [baseUrl, token]);
-  const backofficeClient = useMemo(() => createBackofficeClient(DEFAULT_BACKOFFICE_BASE_URL, token), [token]);
+  // Authentication is owned by the API. Requests carry the HttpOnly Cognito
+  // cookie; the optional client token is intentionally not exposed by this UI.
+  const client = useMemo(() => createControlPlaneClient(baseUrl, "", DEFAULT_REGISTRY_BASE_URL, DEFAULT_AGENT_MAP_BASE_URL), [baseUrl]);
+  const backofficeClient = useMemo(() => createBackofficeClient(DEFAULT_BACKOFFICE_BASE_URL, ""), []);
 
   async function loadRuns(nextPage = 0): Promise<boolean> {
     setBusy(true);
@@ -321,9 +322,9 @@ export function App() {
   }
 
   async function refreshAll() {
-    const connected = Boolean(token.trim() || authSession);
+    const connected = Boolean(authSession);
     if (globalRefreshBusy || !connected) {
-      if (!connected) setGlobalRefreshError("Ingresá con tu usuario o un token temporal de transición.");
+      if (!connected) setGlobalRefreshError("Ingresá con tu usuario para iniciar una sesión Cognito.");
       return;
     }
     setGlobalRefreshBusy(true);
@@ -340,7 +341,7 @@ export function App() {
         }
       );
       if (!result.validated) {
-        setGlobalRefreshError("No se pudo validar la sesión. Revisá el token y la URL del backend.");
+        setGlobalRefreshError("No se pudo validar la sesión. Revisá tus credenciales y la URL del backend.");
       } else if (result.failedPanels.length > 0) {
         setGlobalRefreshMessage(`Sesión validada. Actualización parcial; revisá: ${formatPanelNames(result.failedPanels)}.`);
       } else {
@@ -381,7 +382,6 @@ export function App() {
     } finally {
       setAuthBusy(false);
     }
-    setToken("");
     setAuthSession(null);
     setPassword("");
     setGlobalRefreshMessage(null);
@@ -426,10 +426,10 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (token.trim() || authSession) void refreshAll();
-    // Refresh only after a manually entered token or an API-owned session changes.
+    if (authSession) void refreshAll();
+    // Refresh only after the API-owned Cognito session changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, authSession]);
+  }, [authSession]);
 
   return (
     <main className="shell">
@@ -446,7 +446,7 @@ export function App() {
         <div className="section-heading">
           <div>
             <h2>Conexión</h2>
-            <p>El backend autentica contra Cognito. El navegador sólo recibe cookies HttpOnly; el preview-token queda como transición read-only.</p>
+            <p>El backend autentica contra Cognito. El navegador sólo recibe cookies HttpOnly; no se aceptan tokens estáticos de preview.</p>
           </div>
           <span className="security-note">Sin secretos en el build</span>
         </div>
@@ -456,11 +456,10 @@ export function App() {
             <label>Usuario<input value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" /></label>
             <label>Contraseña<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" /></label>
           </>}
-          <label>Token temporal (transición)<input type="password" value={token} onChange={(event) => { setToken(event.target.value); setGlobalRefreshError(null); setGlobalRefreshMessage(null); }} autoComplete="off" /></label>
         </div>
         <div className="button-row">
           {!authSession && <button className="primary" onClick={() => void loginWithApi()} disabled={authBusy}>{authBusy ? "Autenticando..." : "Ingresar"}</button>}
-          <button onClick={() => void refreshAll()} disabled={globalRefreshBusy || !(token.trim() || authSession)}>{globalRefreshBusy ? "Actualizando..." : "Actualizar todo"}</button>
+          <button onClick={() => void refreshAll()} disabled={globalRefreshBusy || !authSession}>{globalRefreshBusy ? "Actualizando..." : "Actualizar todo"}</button>
           {authSession && <button onClick={() => void logout()} disabled={authBusy}>Cerrar sesión</button>}
           <span className="muted">La sesión no se guarda en localStorage.</span>
         </div>
@@ -691,7 +690,7 @@ function AgentMapView({
       <details><summary>Relaciones del flujo</summary><div className="relation-list">{useCase.edges.map((edge, index) => <span key={`${edge.source}-${edge.relation}-${edge.target}-${index}`}>{edge.source} <strong>{edge.relation}</strong> {edge.target}</span>)}</div></details>
     </article>)}
     <div className="simulation-box">
-      <div className="section-heading"><div><h3>Simular desactivación</h3><p className="muted">No escribe activaciones ni cambia feature flags.</p></div><span className="security-note">PREVIEW</span></div>
+      <div className="section-heading"><div><h3>Simular desactivación</h3><p className="muted">No escribe activaciones ni cambia feature flags.</p></div><span className="security-note">SIMULACIÓN</span></div>
       <div className="form-grid"><label>Agente<input value={simulationAgentId} onChange={(event) => onAgentChange(event.target.value)} /></label><label>Versión (opcional)<input inputMode="numeric" value={simulationVersion} onChange={(event) => onVersionChange(event.target.value)} /></label></div>
       <button className="primary" onClick={onSimulate} disabled={disabled}>Simular ruta</button>
       {simulation && <div className="simulation-result"><div className="section-heading"><strong>{simulation.outcome}</strong><span className={simulation.changed ? "warning status-label" : "positive status-label"}>{simulation.changed ? "CAMBIARÍA" : "SIN CAMBIOS"}</span></div><p>{simulation.reason}</p><div className="relation-list">{simulation.route.map((step, index) => <span key={`${step.kind}-${index}`}>{step.kind}: {step.agentId ?? "humano"}{step.version ? ` v${step.version}` : ""} · {step.reason}</span>)}</div></div>}

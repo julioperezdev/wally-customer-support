@@ -174,6 +174,13 @@ fallback deny-by-default cuando la seguridad está deshabilitada o no existe un
 authorizer explícito. La adopción de un IdP concreto y la creación de recursos
 AWS quedan fuera de este slice.
 
+WCS-128 supersede ese fallback de composición para el backoffice: la aplicación
+registra un único `JwtAgentEvaluationControlPlaneAuthorizer` y elimina la
+cadena, el filtro y las clases de preview-token. Cognito valida el JWT y sus
+scopes/capabilities; sin JWT la API responde `401` y sin la capacidad requerida
+responde `403`. El fallback deny-by-default de los servicios de aplicación se
+conserva como defensa adicional.
+
 ## Topología AWS base
 
 La primera base de infraestructura sigue la separación de `tesis-dev` sin

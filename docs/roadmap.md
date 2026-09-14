@@ -122,7 +122,7 @@ Las etapas propuestas son:
 6. evaluación, persistencia histórica, observabilidad y costos — debe alimentar
    el workflow de promoción;
 7. backoffice React/TypeScript de escritura protegida — completa el panel
-   actual sin eliminar sus estados read-only/preview;
+   actual con autenticación Cognito y sin bypass read-only/preview;
 8. migración canary con feature flags y rollback;
 9. evaluación opcional de MCP read-only y AgentCore.
 
@@ -150,9 +150,9 @@ WCS-128 agrega la autenticación Cognito del backoffice como un gate transversal
 antes de habilitar escrituras operativas. El login propio de React llama al
 backend, el backend usa el SDK de Cognito y la sesión vuelve en cookies
 HttpOnly. Su diseño y rollout están en
-[`backoffice-authentication.md`](backoffice-authentication.md). El preview token
-continúa siendo una transición read-only; no se considera autenticación
-productiva.
+[`backoffice-authentication.md`](backoffice-authentication.md). La ruta legacy
+de preview-token, su filtro y sus authorizers fueron eliminados; Cognito es el
+único flujo de acceso.
 
 El primer gate es aceptar la propuesta, el ADR, el modelo mínimo de agente,
 los permisos del backoffice y los criterios de evaluación. Hasta entonces el

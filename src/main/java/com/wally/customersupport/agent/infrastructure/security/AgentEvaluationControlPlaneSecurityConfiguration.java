@@ -1,10 +1,8 @@
 package com.wally.customersupport.agent.infrastructure.security;
 
-import com.wally.customersupport.agent.application.port.out.AgentEvaluationControlPlaneAuthorizer;
 import com.wally.customersupport.agent.application.port.out.AgentEvaluationTriggerAuthorizer;
 import com.wally.customersupport.backoffice.infrastructure.security.BackofficeCookieBearerTokenResolver;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -12,7 +10,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
@@ -26,10 +23,8 @@ import org.springframework.security.oauth2.jwt.JwtDecoders;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
-import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 
-/** Conditional JWT security limited to the internal evaluation control plane. */
+/** Conditional Cognito/JWT security for the internal control-plane surfaces. */
 @Configuration(proxyBeanMethods = false)
 public class AgentEvaluationControlPlaneSecurityConfiguration {
 
@@ -45,14 +40,6 @@ public class AgentEvaluationControlPlaneSecurityConfiguration {
     private static final String FEATURE_FLAGS_READ_AUTHORITY = "SCOPE_feature-flags.read";
     private static final String FEATURE_FLAGS_WRITE_AUTHORITY = "SCOPE_feature-flags.write";
     private static final String EXECUTE_AUTHORITY = "SCOPE_agent-evaluation.execute";
-
-    @Bean
-    @ConditionalOnProperty(
-            name = "wcs.agent-evaluation.control-plane.security.enabled",
-            havingValue = "true")
-    AgentEvaluationControlPlaneAuthorizer jwtAgentEvaluationControlPlaneAuthorizer() {
-        return new JwtAgentEvaluationControlPlaneAuthorizer();
-    }
 
     @Bean
     @ConditionalOnProperty(
@@ -94,50 +81,6 @@ public class AgentEvaluationControlPlaneSecurityConfiguration {
     @Bean
     Converter<Jwt, AbstractAuthenticationToken> cognitoJwtAuthenticationConverter() {
         return new CognitoJwtAuthenticationConverter();
-    }
-
-    @Bean
-    @Order(0)
-    @ConditionalOnExpression("'${wcs.backoffice.preview.enabled:false}' == 'true'"
-            + " && '${wcs.agent-evaluation.control-plane.security.enabled:false}' == 'false'")
-    SecurityFilterChain backofficePreviewSecurityFilterChain(
-            HttpSecurity http,
-            BackofficePreviewAuthenticationFilter previewFilter) throws Exception {
-        http
-                .securityMatcher("/internal/**")
-                .csrf(csrf -> csrf.disable())
-                .addFilterBefore(previewFilter, AnonymousAuthenticationFilter.class)
-                .exceptionHandling(exceptionHandling -> exceptionHandling
-                        .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
-                .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers(HttpMethod.GET, "/internal/agent-evaluations/**")
-                        .hasAuthority(REQUIRED_AUTHORITY)
-                        .requestMatchers(HttpMethod.GET, "/internal/agent-registry/**")
-                        .hasAuthority(REGISTRY_READ_AUTHORITY)
-                        .requestMatchers(HttpMethod.POST, "/internal/agent-registry/activations/preflight")
-                        .hasAuthority(REGISTRY_READ_AUTHORITY)
-                        .requestMatchers(HttpMethod.GET, "/internal/backoffice/agent-map/**")
-                        .hasAuthority(REGISTRY_READ_AUTHORITY)
-                        .requestMatchers(HttpMethod.POST, "/internal/backoffice/agent-map/simulations")
-                        .hasAuthority(REGISTRY_READ_AUTHORITY)
-                        .requestMatchers(HttpMethod.GET, "/internal/backoffice/feature-flags/**")
-                        .hasAuthority(FEATURE_FLAGS_READ_AUTHORITY)
-                        .requestMatchers(HttpMethod.GET, "/internal/backoffice/catalog/**")
-                        .hasAuthority("SCOPE_backoffice.catalog.read")
-                        .requestMatchers(HttpMethod.GET, "/internal/backoffice/orders/**")
-                        .hasAuthority("SCOPE_backoffice.orders.read")
-                        .requestMatchers(HttpMethod.GET, "/internal/backoffice/human-follow-ups/**")
-                        .hasAuthority("SCOPE_backoffice.human-follow-up.read")
-                        .anyRequest().denyAll());
-        return http.build();
-    }
-
-    @Bean
-    @ConditionalOnExpression("'${wcs.backoffice.preview.enabled:false}' == 'true'"
-            + " && '${wcs.agent-evaluation.control-plane.security.enabled:false}' == 'false'")
-    BackofficePreviewAuthenticationFilter backofficePreviewAuthenticationFilter(
-            @Value("${wcs.backoffice.preview.token:}") String previewToken) {
-        return new BackofficePreviewAuthenticationFilter(previewToken);
     }
 
     @Bean

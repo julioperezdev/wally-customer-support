@@ -49,6 +49,7 @@
   - [`032-bedrock-prompt-management.md`](decisions/032-bedrock-prompt-management.md): prompts productivos versionados fuera del artefacto mediante Bedrock Prompt Management.
   - [`033-versioned-agent-runtime-execution.md`](decisions/033-versioned-agent-runtime-execution.md): ejecución real gobernada por el snapshot versionado del agente.
   - [`034-agent-platform-authoring-and-runtime-evidence.md`](decisions/034-agent-platform-authoring-and-runtime-evidence.md): authoring, publicación, auditoría y trazas productivas de WCS-120.
+  - [`035-cognito-only-backoffice-security.md`](decisions/035-cognito-only-backoffice-security.md): Cognito/JWT como único acceso del backoffice y eliminación del preview-token.
 
 ## Calidad y operación
 

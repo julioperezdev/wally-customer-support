@@ -77,14 +77,8 @@ variable "runtime_secret_name" {
 
 variable "backoffice_secret_name" {
   type        = string
-  description = "Secrets Manager name for the read-only backoffice preview token."
+  description = "Deprecated Secrets Manager name retained temporarily for safe cleanup of the former preview secret."
   default     = null
-}
-
-variable "backoffice_preview_enabled" {
-  type        = bool
-  description = "Enable the temporary read-only backoffice preview. Requires a real preview-token in the dedicated secret."
-  default     = false
 }
 
 variable "backoffice_cognito_enabled" {

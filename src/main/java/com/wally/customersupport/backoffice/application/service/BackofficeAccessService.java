@@ -6,32 +6,24 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-/**
- * Keeps the first operational panel closed by default. Production access must
- * later be connected to the same JWT/role boundary as the control plane.
- */
+/** Applies the same Cognito/JWT capability boundary to all backoffice panels. */
 @Service
 public class BackofficeAccessService {
 
     private final boolean enabled;
-    private final boolean localModeEnabled;
-    private final String activeProfile;
     private final AgentEvaluationControlPlaneAccessService controlPlaneAccessService;
 
     @Autowired
     public BackofficeAccessService(
             @Value("${wcs.backoffice.enabled:false}") boolean enabled,
-            @Value("${wcs.backoffice.local-mode-enabled:false}") boolean localModeEnabled,
-            @Value("${spring.profiles.active:${spring.profiles.default:prod}}") String activeProfile,
             AgentEvaluationControlPlaneAccessService controlPlaneAccessService) {
         this.enabled = enabled;
-        this.localModeEnabled = localModeEnabled;
-        this.activeProfile = activeProfile;
         this.controlPlaneAccessService = controlPlaneAccessService;
     }
 
-    public BackofficeAccessService(boolean enabled, boolean localModeEnabled) {
-        this(enabled, localModeEnabled, "local", null);
+    public BackofficeAccessService(boolean enabled) {
+        this.enabled = enabled;
+        this.controlPlaneAccessService = null;
     }
 
     public Decision authorize(String capability) {
@@ -42,9 +34,6 @@ public class BackofficeAccessService {
         if (!enabled) {
             return new Decision(false, 404, "BACKOFFICE_DISABLED");
         }
-        if (localModeEnabled && isLocalProfile()) {
-            return new Decision(true, 200, capability);
-        }
         if (controlPlaneAccessService != null) {
             AgentEvaluationControlPlaneAccessDecision decision =
                     controlPlaneAccessService.authorizeBackoffice(actorId, capability);
@@ -53,10 +42,6 @@ public class BackofficeAccessService {
             }
         }
         return new Decision(false, 403, "BACKOFFICE_AUTHORIZATION_REQUIRED");
-    }
-
-    private boolean isLocalProfile() {
-        return "local".equalsIgnoreCase(activeProfile) || "test".equalsIgnoreCase(activeProfile);
     }
 
     public record Decision(boolean authorized, int status, String reason) {

@@ -21,7 +21,7 @@ panel técnico y sus garantías de seguridad.
 ## Operación de tienda — WCS-119
 
 La primera entrega operativa expone, cuando
-`wcs.backoffice.enabled=true` y `wcs.backoffice.local-mode-enabled=true`, los
+`wcs.backoffice.enabled=true` y existe una sesión Cognito autorizada, los
 siguientes endpoints internos:
 
 | Endpoint | Propósito |
@@ -141,11 +141,11 @@ La auditoría persistente está disponible en `GET /internal/agent-registry/audi
 y las trazas en `GET /internal/agent-registry/executions`. Ambas requieren
 `agent-registry.read`; no exponen prompts, secretos, mensajes ni PII.
 
-Para un smoke local controlado, iniciar el backend con el perfil `local` y las
-dos propiedades de backoffice habilitadas; luego ejecutar `npm run dev` dentro
-de `backoffice`. El proxy de Vite redirige `/internal` a `localhost:8080`; no
-usar secretos ni la base productiva para esta prueba. El perfil evita que el
-modo local pueda habilitarse accidentalmente en `prod`.
+Para un smoke local controlado, iniciar el backend con una base de prueba y
+Cognito configurado; luego ejecutar `npm run dev` dentro de `backoffice`. El
+proxy de Vite redirige `/internal` a `localhost:8080`; no usar secretos ni la
+base productiva para esta prueba. No existe un modo local que omita la
+autorización.
 
 ## Seguridad
 
@@ -161,8 +161,8 @@ los scopes de negocio completos.
 - El backend sigue siendo la autoridad de autorización y mantiene el control
   plane cerrado por defecto.
 - El panel no incluye secretos en el código ni en el build.
-- El login productivo usa cookies `HttpOnly`; el navegador no recibe ni
-  persiste tokens en `localStorage`, archivos ni logs.
+- El login productivo usa cookies `HttpOnly`; el navegador no persiste tokens en
+  `localStorage`, archivos ni logs.
 - No se muestran prompts completos, conversaciones, PII, SQL ni secretos.
 - El registry muestra sólo metadata: estado, modelo, límites, allowlists,
   versión/hash de prompt y activaciones; nunca contenido de prompts ni actores.
@@ -172,22 +172,24 @@ los scopes de negocio completos.
   `Idempotency-Key` y permanecen cerradas por la flag de backend. El formulario
   nunca muestra prompts, secretos, actores ni el contenido de las
   aprobaciones.
-- Un `401` o `403` es un resultado operativo esperado cuando JWT no está
-  habilitado o el scope no es suficiente.
+- No existe un token estático de preview ni una cadena de seguridad alternativa.
+  Un `401` indica que no hay una sesión JWT válida y un `403` que la sesión no
+  tiene la capacidad requerida.
 
 ### Conexión y actualización global
 
 El panel ofrece la acción `Ingresar` y luego `Actualizar todo`. La primera
 acción crea la sesión mediante el backend; la segunda usa las cookies HttpOnly
 y sólo si la autorización es exitosa solicita en paralelo registry, mapa de
-agentes, operación de tienda y feature flags. El campo legacy de preview-token
-queda sólo para smoke tests de transición y no es autenticación productiva.
+agentes, operación de tienda y feature flags. No existe un campo de token
+temporal en el panel.
 
 La acción informa si todas las áreas se actualizaron o si el resultado fue
 parcial. Cada loader conserva su propio error y los botones individuales siguen
 disponibles para reintentar una sección. Durante la actualización global se
 deshabilitan los refresh read-only individuales para evitar solicitudes
-duplicadas. El token permanece sólo en memoria, igual que antes.
+duplicadas. Los tokens permanecen únicamente en cookies `HttpOnly` administradas
+por la API y nunca en el estado del navegador.
 
 ## Ejecución local
 
@@ -236,53 +238,13 @@ VITE_WCS_CONTROL_PLANE_BASE_URL=http://localhost:8080/internal/agent-evaluations
 
 El panel usa `POST /internal/auth/login` para iniciar la sesión Cognito a través
 de la API. No se agrega ningún token al `.env`, al repositorio ni al pipeline.
-El campo legacy de preview-token sólo queda disponible para pruebas read-only
-cuando está explícitamente habilitado; no representa el login productivo.
+El frontend no ofrece un campo de token: la única sesión admitida es la creada
+por el backend mediante cookies `HttpOnly`.
 
-### Preview remoto read-only del backend
-
-El preview remoto permite consultar desde el frontend local la información ya
-implementada en WCS contra App Runner, sin habilitar todavía un IdP ni exponer
-operaciones de escritura. Terraform crea el secreto dedicado
-`wcs/prod/backoffice` con un valor placeholder; antes de activar el preview hay
-que reemplazarlo en AWS Secrets Manager por un token aleatorio fuerte con este
-formato:
-
-```json
-{
-  "preview-token": "<token-temporal-fuerte>"
-}
-```
-
-En una instalación nueva, se publica `backoffice_preview_enabled=true` en el
-`terraform.tfvars` del environment de producción y el baseline de AppConfig
-incluye estas claves:
-
-```text
-wcs.backoffice.enabled=true
-wcs.backoffice.preview.enabled=true
-wcs.external-config.secrets-manager.backoffice-secret-id=wcs/prod/backoffice
-```
-
-En el stack existente, Terraform conserva por diseño el contenido y la
-versión desplegada del profile hosted de AppConfig (`ignore_changes`). Por eso,
-además de crear el secret y sus permisos, hay que agregar las tres claves al
-profile `runtime`, publicar una nueva versión y reiniciar App Runner. No se debe
-pegar el token en AppConfig: sólo se guarda la referencia al secret.
-
-La aplicación carga el token desde Secrets Manager al arrancar. En el panel se
-ingresa el mismo token en `Token de sesión (memoria)`. El preview permite sólo
-lecturas de catálogo, bandeja de atención humana, evaluaciones, registry, mapa
-de agentes y feature flags, además de los endpoints no mutantes de preflight y
-simulación de rutas. Ajustes de stock, claims/releases/resolutions, uploads de
-imágenes y publicaciones/rollbacks de flags responden `403`, incluso con el
-token correcto.
-
-Para rollback, volver `backoffice_preview_enabled=false`, aplicar el cambio y
-reiniciar App Runner; como medida inmediata también se puede revocar o rotar el
-valor del secreto. Esta modalidad es temporal: luego se reemplazará por un
-cliente autenticado mediante IdP, sin cambiar los endpoints ni la autorización
-de aplicación.
+El recurso de Secrets Manager `wcs/{environment}/backoffice`, si todavía existe
+por compatibilidad de infraestructura, ya no es leído por la aplicación y no
+otorga acceso. Su retiro debe planificarse como una limpieza Terraform
+separada, con revisión del plan para evitar destruir recursos inesperadamente.
 
 ## Pipeline
 
