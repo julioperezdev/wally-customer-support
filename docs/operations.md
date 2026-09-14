@@ -170,15 +170,15 @@ allowlist, rollback, scopes y límites están en
 [`feature-flags.md`](feature-flags.md). No usar este mecanismo para secrets,
 URLs, credenciales o configuración bootstrap.
 
-Para habilitar Terraform en GitHub se deben configurar en el Environment
-`production`:
+Para habilitar Terraform en GitHub se deben configurar los valores siguientes:
 
-- `AWS_TERRAFORM_ROLE_ARN`: ARN de un rol preaprobado con trust OIDC para
-  `julioperezdev/wally-customer-support` y el subject del Environment
-  `production` y, para el plan automático, `production-plan`. GitHub puede usar el formato inmutable
-  `repo:owner@owner_id/repository@repository_id:environment:production`; el
-  trust policy de WCS contempla ambos formatos y ambos Environments. Los IDs
-  deben coincidir con el repositorio real.
+- `AWS_TERRAFORM_ROLE_ARN`: ARN no sensible del rol productivo, configurado
+  como variable del repositorio para el plan automático y como secret del
+  Environment `production` para el apply protegido. El trust OIDC productivo
+  acepta el subject de la rama `main` para el plan y el subject del Environment
+  `production` para el apply. GitHub puede usar también el formato inmutable
+  `repo:owner@owner_id/repository@repository_id`; los IDs deben coincidir con
+  el repositorio real.
 - `infra/environments/prod/production.tfvars`: archivo HCL versionado con
   variables revisadas y referencias de ARN. Nunca contiene passwords, tokens,
   claves privadas ni otros valores secretos.
@@ -209,13 +209,13 @@ flujo completo para cambios en `main` o mediante `workflow_dispatch`:
 5. pausa en el Environment protegido `production` y aplica exactamente ese
    plan después de `Review deployments`.
 
-Para que el plan no solicite la aprobación final antes de ejecutarse, el
-Environment `production-plan` debe existir sin reviewers y tener configurado
-`AWS_TERRAFORM_ROLE_ARN`. El plan lee la configuración no sensible desde
-`infra/environments/prod/production.tfvars`; el Environment `production` debe
-mantener sus reviewers obligatorios. El plan usa las mismas credenciales de
-Terraform para refrescar el state, por lo que una mejora futura es separarlo
-con un rol IAM de sólo lectura y acceso controlado al state.
+Para que el plan de producción no solicite la aprobación final antes de
+ejecutarse, el job no usa un Environment de GitHub: corre desde `main`, usa el
+subject OIDC de la rama ya autorizada y toma el ARN no sensible desde la
+variable de repositorio `AWS_TERRAFORM_ROLE_ARN`. El plan lee la configuración
+desde `infra/environments/prod/production.tfvars`; el Environment `production`
+debe mantener sus reviewers obligatorios para el apply. Para `test`, el job sí
+usa el Environment `test` y su rol aislado.
 
 El secret histórico `TERRAFORM_VARS` ya no es consumido por ninguno de los
 workflows de Terraform. Se conserva temporalmente sólo como respaldo operativo;
