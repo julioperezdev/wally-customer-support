@@ -47,16 +47,16 @@ export function AgentEvidencePanel({ client }: { client: ControlPlaneClient }) {
         <div>
           <h3>Auditoría de cambios</h3>
           {!audit ? <p className="muted">Sin datos cargados.</p> : audit.length === 0 ? <p className="muted">No hay eventos para el filtro.</p> : (
-            <div className="table-wrap"><table><thead><tr><th>Operación</th><th>Agente</th><th>Estado</th><th>Actor</th><th>Motivo</th><th>Hora</th></tr></thead><tbody>
-              {audit.map((event, index) => <tr key={`${event.occurredAt}-${index}`}><td>{event.operation}</td><td>{event.agentId} {event.agentVersion ? `v${event.agentVersion}` : ""}</td><td>{event.previousState ?? "—"} → {event.resultingState ?? "—"}</td><td>{event.actorId}</td><td>{event.reason}</td><td>{formatDate(event.occurredAt)}</td></tr>)}
+            <div className="table-wrap"><table className="responsive-table"><thead><tr><th>Operación</th><th>Agente</th><th>Estado</th><th>Actor</th><th>Motivo</th><th>Hora</th></tr></thead><tbody>
+              {audit.map((event, index) => <tr key={`${event.occurredAt}-${index}`}><td data-label="Operación">{event.operation}</td><td data-label="Agente">{event.agentId} {event.agentVersion ? `v${event.agentVersion}` : ""}</td><td data-label="Estado">{event.previousState ?? "—"} → {event.resultingState ?? "—"}</td><td data-label="Actor">{event.actorId}</td><td data-label="Motivo">{event.reason}</td><td data-label="Hora">{formatDate(event.occurredAt)}</td></tr>)}
             </tbody></table></div>
           )}
         </div>
         <div>
           <h3>Ejecuciones productivas</h3>
           {!executions ? <p className="muted">Sin datos cargados.</p> : executions.length === 0 ? <p className="muted">No hay trazas para el filtro.</p> : (
-            <div className="table-wrap"><table><thead><tr><th>Agente</th><th>Ruta</th><th>Resultado</th><th>Modelo</th><th>Latencia</th><th>Actor pseudónimo</th></tr></thead><tbody>
-              {executions.map((trace) => <tr key={trace.traceId}><td>{trace.agentId ?? "fallback"} {trace.agentVersion ? `v${trace.agentVersion}` : ""}</td><td>{trace.channel} · {trace.useCase}</td><td>{trace.outcome}<small>{trace.resolutionStatus}</small></td><td>{trace.provider ?? "—"}<small>{trace.modelId ?? "—"}</small></td><td>{formatMs(trace.durationMs)}<small>{trace.errorType ?? "sin error"}</small></td><td>{trace.actorKey ? `${trace.actorKey.slice(0, 16)}…` : "—"}</td></tr>)}
+            <div className="table-wrap"><table className="responsive-table"><thead><tr><th>Agente</th><th>Ruta</th><th>Resultado</th><th>Modelo</th><th>Latencia</th><th>Actor pseudónimo</th></tr></thead><tbody>
+              {executions.map((trace) => <tr key={trace.traceId}><td data-label="Agente">{trace.agentId ?? "fallback"} {trace.agentVersion ? `v${trace.agentVersion}` : ""}</td><td data-label="Ruta">{trace.channel} · {trace.useCase}</td><td data-label="Resultado">{trace.outcome}<small>{trace.resolutionStatus}</small></td><td data-label="Modelo">{trace.provider ?? "—"}<small>{trace.modelId ?? "—"}</small></td><td data-label="Latencia">{formatMs(trace.durationMs)}<small>{trace.errorType ?? "sin error"}</small></td><td data-label="Actor pseudónimo">{trace.actorKey ? `${trace.actorKey.slice(0, 16)}…` : "—"}</td></tr>)}
             </tbody></table></div>
           )}
         </div>
