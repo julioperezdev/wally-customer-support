@@ -19,6 +19,12 @@ variable "github_environment" {
   default     = "production"
 }
 
+variable "additional_github_environments" {
+  type        = set(string)
+  description = "Additional GitHub Actions Environments allowed to assume this role, such as a plan-only environment."
+  default     = []
+}
+
 variable "github_repository_owner_id" {
   type        = string
   description = "Immutable numeric GitHub owner ID used by the repository OIDC subject claim."

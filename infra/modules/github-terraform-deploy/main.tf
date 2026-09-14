@@ -39,15 +39,20 @@ locals {
   terraform_cognito_policy_arn                = "arn:${local.partition}:iam::${local.account_id}:policy/${var.project_name}-${var.environment}-terraform-cognito-access"
   service_linked_role_arn                     = "arn:${local.partition}:iam::${local.account_id}:role/aws-service-role/apprunner.amazonaws.com/AWSServiceRoleForAppRunner"
 
-  legacy_allowed_subjects = [
-    "repo:${var.github_repository}:ref:refs/heads/main",
-    "repo:${var.github_repository}:environment:${var.github_environment}",
-  ]
+  github_environments = setunion(
+    toset([var.github_environment]),
+    var.additional_github_environments
+  )
 
-  immutable_allowed_subjects = var.github_repository_owner_id == null || var.github_repository_id == null ? [] : [
-    "repo:${split("/", var.github_repository)[0]}@${var.github_repository_owner_id}/${split("/", var.github_repository)[1]}@${var.github_repository_id}:ref:refs/heads/main",
-    "repo:${split("/", var.github_repository)[0]}@${var.github_repository_owner_id}/${split("/", var.github_repository)[1]}@${var.github_repository_id}:environment:${var.github_environment}",
-  ]
+  legacy_allowed_subjects = concat(
+    ["repo:${var.github_repository}:ref:refs/heads/main"],
+    [for environment in local.github_environments : "repo:${var.github_repository}:environment:${environment}"]
+  )
+
+  immutable_allowed_subjects = var.github_repository_owner_id == null || var.github_repository_id == null ? [] : concat(
+    ["repo:${split("/", var.github_repository)[0]}@${var.github_repository_owner_id}/${split("/", var.github_repository)[1]}@${var.github_repository_id}:ref:refs/heads/main"],
+    [for environment in local.github_environments : "repo:${split("/", var.github_repository)[0]}@${var.github_repository_owner_id}/${split("/", var.github_repository)[1]}@${var.github_repository_id}:environment:${environment}"]
+  )
 
   allowed_subjects = concat(local.legacy_allowed_subjects, local.immutable_allowed_subjects)
 }
