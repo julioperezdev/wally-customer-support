@@ -46,11 +46,10 @@ terraform -chdir=infra/bootstrap/test output terraform_role_arn
 ```
 
 Configurar el ARN obtenido como secret `AWS_TERRAFORM_ROLE_ARN` del GitHub
-Environment `test`. El Environment también debe tener:
+Environment `test`. La configuración no sensible ya está versionada en
+`infra/environments/test/test.tfvars`. El Environment también debe tener:
 
 * variable `AWS_REGION=us-east-1`;
-* secret `TERRAFORM_VARS` con las variables HCL revisadas de
-  `infra/environments/test`, sin passwords, tokens ni valores de secretos.
 
 El state del bootstrap es local y debe conservarse de forma segura hasta que
 la propiedad de los recursos IAM quede definida. No se debe subir

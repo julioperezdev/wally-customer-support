@@ -109,26 +109,30 @@ jobs:
           }
 
       - name: Check Terraform deployment configuration
-        env:
-          TERRAFORM_VARS: ${{ secrets.TERRAFORM_VARS }}
         run: |
           set -euo pipefail
           [ -n "$AWS_TERRAFORM_ROLE_ARN" ] || {
             echo "::error::Configure AWS_TERRAFORM_ROLE_ARN in the production environment"
             exit 1
           }
-          [ -n "$TERRAFORM_VARS" ] || {
-            echo "::error::Configure TERRAFORM_VARS with reviewed non-secret Terraform variables"
-            exit 1
-          }
 
-      - name: Write reviewed Terraform variables
+      - name: Select versioned Terraform variables
         env:
-          TERRAFORM_VARS: ${{ secrets.TERRAFORM_VARS }}
+          TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
         run: |
           set -euo pipefail
-          umask 077
-          printf '%s' "$TERRAFORM_VARS" > "$RUNNER_TEMP/wcs-terraform.tfvars"
+          case "$TARGET_ENVIRONMENT" in
+            prod) variables_file="production.tfvars" ;;
+            test) variables_file="test.tfvars" ;;
+            *) echo "::error::Unsupported Terraform environment: $TARGET_ENVIRONMENT"; exit 1 ;;
+          esac
+
+          variables_path="$GITHUB_WORKSPACE/$TF_WORKING_DIR/$variables_file"
+          [ -f "$variables_path" ] || {
+            echo "::error::Missing versioned Terraform variables: $variables_path"
+            exit 1
+          }
+          echo "TF_VARS_FILE=$variables_path" >> "$GITHUB_ENV"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -151,10 +155,10 @@ jobs:
       - name: Terraform Plan (captured, no sensitive output)
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
-          var_files=("-var-file=$RUNNER_TEMP/wcs-terraform.tfvars")
+          var_files=("-var-file=$TF_VARS_FILE")
           if [ -f "rollout.tfvars" ]; then
             # Versioned rollout controls intentionally override the baseline
-            # TERRAFORM_VARS value without changing the secret in GitHub.
+            # production/test variables with a visible, reviewed value.
             var_files+=("-var-file=rollout.tfvars")
           fi
 

@@ -119,8 +119,8 @@ data "aws_iam_policy_document" "apprunner_instance" {
     for_each = var.enable_appconfig_access ? [1] : []
 
     content {
-      sid       = "ReadAppConfig"
-      effect    = "Allow"
+      sid    = "ReadAppConfig"
+      effect = "Allow"
       # AppConfig Data API uses the appconfig IAM namespace for these actions.
       actions   = ["appconfig:StartConfigurationSession", "appconfig:GetLatestConfiguration"]
       resources = ["*"]
@@ -159,6 +159,13 @@ resource "aws_apprunner_service" "backend" {
   tags         = var.tags
 
   lifecycle {
+    # The backend workflow deploys immutable image digests independently of
+    # Terraform. Do not let an infrastructure plan roll App Runner back to
+    # the bootstrap tag after a normal application deployment.
+    ignore_changes = [
+      source_configuration[0].image_repository[0].image_identifier
+    ]
+
     precondition {
       condition     = var.egress_type == "DEFAULT" || var.vpc_connector_arn != null
       error_message = "vpc_connector_arn is required when App Runner egress_type is VPC."
@@ -191,11 +198,11 @@ resource "aws_apprunner_service" "backend" {
   }
 
   health_check_configuration {
-    protocol            = "HTTP"
-    path                = var.health_check_path
-    interval            = 10
-    timeout             = 5
-    healthy_threshold   = 1
+    protocol          = "HTTP"
+    path              = var.health_check_path
+    interval          = 10
+    timeout           = 5
+    healthy_threshold = 1
     # Spring Boot initializes JPA, Flyway and external AWS configuration
     # before it can answer the health endpoint on the smallest App Runner
     # instance size. Allow up to 100 seconds for the first deployment.
@@ -204,7 +211,7 @@ resource "aws_apprunner_service" "backend" {
 
   network_configuration {
     egress_configuration {
-      egress_type = var.egress_type
+      egress_type       = var.egress_type
       vpc_connector_arn = var.egress_type == "VPC" ? var.vpc_connector_arn : null
     }
   }

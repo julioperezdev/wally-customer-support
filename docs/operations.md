@@ -3,7 +3,7 @@
 Owner: Tech Lead  
 Status: `Accepted`
 Last reviewed: 2026-09-08
-Related Jira: `WCS-13`, `WCS-21`, `WCS-22`, `WCS-30`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-38`, `WCS-39`, `WCS-40`, `WCS-41`, `WCS-42`, `WCS-76`, `WCS-77`, `WCS-78`, `WCS-85`, `WCS-86`, `WCS-87`, `WCS-88`, `WCS-89`, `WCS-90`, `WCS-91`, `WCS-92`, `WCS-93`, `WCS-94`, `WCS-95`, `WCS-96`, `WCS-103`, `WCS-104`, `WCS-105`, `WCS-109`, `WCS-110`, `WCS-111`, `WCS-112`, `WCS-113`, `WCS-114`, `WCS-115`, `WCS-116`, `WCS-120`, `WCS-121`
+Related Jira: `WCS-13`, `WCS-21`, `WCS-22`, `WCS-30`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-38`, `WCS-39`, `WCS-40`, `WCS-41`, `WCS-42`, `WCS-76`, `WCS-77`, `WCS-78`, `WCS-85`, `WCS-86`, `WCS-87`, `WCS-88`, `WCS-89`, `WCS-90`, `WCS-91`, `WCS-92`, `WCS-93`, `WCS-94`, `WCS-95`, `WCS-96`, `WCS-103`, `WCS-104`, `WCS-105`, `WCS-109`, `WCS-110`, `WCS-111`, `WCS-112`, `WCS-113`, `WCS-114`, `WCS-115`, `WCS-116`, `WCS-120`, `WCS-121`, `WCS-128`
 Related repository paths: `src/main/resources`, `backoffice/`, `.github/workflows`, `infra/`
 
 ## Ambientes
@@ -179,12 +179,13 @@ Para habilitar Terraform en GitHub se deben configurar en el Environment
   `repo:owner@owner_id/repository@repository_id:environment:production`; el
   trust policy de WCS contempla ambos formatos y los IDs deben coincidir con
   el repositorio real.
-- `TERRAFORM_VARS`: archivo HCL con variables revisadas y referencias de ARN,
-  nunca passwords, tokens, claves privadas ni otros valores secretos.
+- `infra/environments/prod/production.tfvars`: archivo HCL versionado con
+  variables revisadas y referencias de ARN. Nunca contiene passwords, tokens,
+  claves privadas ni otros valores secretos.
 - Los controles de rollout no sensibles de producción se mantienen en archivos
   Terraform versionados dentro de cada environment, como
-  `infra/environments/prod/rollout.tfvars`; el workflow los pasa después de
-  `TERRAFORM_VARS` para que tengan precedencia visible y revisable.
+  `infra/environments/prod/rollout.tfvars`; el workflow los pasa después del
+  baseline versionado para que tengan precedencia visible y revisable.
 - una regla de aprobación con al menos un reviewer requerido para el
   Environment `production`.
 
@@ -209,11 +210,17 @@ flujo completo para cambios en `main` o mediante `workflow_dispatch`:
    plan después de `Review deployments`.
 
 Para que el plan no solicite la aprobación final antes de ejecutarse, el
-Environment `production-plan` debe existir sin reviewers y tener copiados
-`AWS_TERRAFORM_ROLE_ARN` y `TERRAFORM_VARS`. El Environment `production` debe
+Environment `production-plan` debe existir sin reviewers y tener configurado
+`AWS_TERRAFORM_ROLE_ARN`. El plan lee la configuración no sensible desde
+`infra/environments/prod/production.tfvars`; el Environment `production` debe
 mantener sus reviewers obligatorios. El plan usa las mismas credenciales de
 Terraform para refrescar el state, por lo que una mejora futura es separarlo
 con un rol IAM de sólo lectura y acceso controlado al state.
+
+El secret histórico `TERRAFORM_VARS` ya no es consumido por ninguno de los
+workflows de Terraform. Se conserva temporalmente sólo como respaldo operativo;
+después de verificar un plan y apply exitosos con la configuración versionada,
+puede eliminarse de los Environments de GitHub.
 
 La base de datos existente se configura como `shared_rds_*` y el runtime recibe
 referencias a AppConfig/Secrets Manager. La carga efectiva de esos valores en
