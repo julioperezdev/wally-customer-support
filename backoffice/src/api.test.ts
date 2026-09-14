@@ -29,6 +29,26 @@ describe("control plane client", () => {
     );
   });
 
+  it("refreshes the HttpOnly session once and retries a protected request after 401", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ code: "AUTHENTICATION_REQUIRED" }), { status: 401 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ items: [] }), { status: 200 }));
+    const refreshSession = vi.fn().mockResolvedValue({ status: "REFRESHED" });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(createControlPlaneClient(
+      "/internal/agent-evaluations",
+      "",
+      "/internal/agent-registry",
+      "/internal/backoffice/agent-map",
+      "/internal/backoffice/feature-flags",
+      refreshSession
+    ).searchRuns({})).resolves.toEqual({ items: [] });
+
+    expect(refreshSession).toHaveBeenCalledOnce();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("queries the registry through its own read-only endpoint", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify([]), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);

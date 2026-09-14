@@ -36,10 +36,12 @@ const INITIAL_DRAFT: ActivationDraft = {
 
 export function AgentActivationPanel({
   client,
-  onRegistryChanged
+  onRegistryChanged,
+  canWrite
 }: {
   client: ControlPlaneClient;
   onRegistryChanged: () => Promise<boolean>;
+  canWrite: boolean;
 }) {
   const [draft, setDraft] = useState<ActivationDraft>(INITIAL_DRAFT);
   const [preflight, setPreflight] = useState<AgentActivationPreflight | null>(null);
@@ -189,6 +191,7 @@ export function AgentActivationPanel({
     <div className="warning-alert" role="note">
       Las acciones escriben en el registry sólo si el backend está habilitado, el JWT tiene <code>agent-registry.write</code> y existen ambas aprobaciones. La pantalla no muestra prompts, secretos ni el contenido de las aprobaciones.
     </div>
+    {!canWrite && <div className="warning-alert">Tu usuario no tiene <code>agent-registry.write</code>; las mutaciones están bloqueadas.</div>}
     <div className="form-grid">
       <label>Agente<input value={draft.agentId} onChange={(event) => updateDraft("agentId", event.target.value)} /></label>
       <label>Versión<input inputMode="numeric" value={draft.version} onChange={(event) => updateDraft("version", event.target.value)} /></label>
@@ -202,9 +205,9 @@ export function AgentActivationPanel({
     </div>
     <div className="button-row">
       <button onClick={() => void runPreflight()} disabled={preflightBusy || mutationBusy}>{preflightBusy ? "Validando..." : "Ejecutar preflight"}</button>
-      <button className="primary" onClick={() => void activate()} disabled={preflightBusy || mutationBusy || !activationReady}>Activar versión</button>
-      <button onClick={() => void rollback()} disabled={preflightBusy || mutationBusy}>Rollback</button>
-      <button className="negative-button" onClick={() => void killSwitch()} disabled={preflightBusy || mutationBusy}>Kill switch</button>
+      <button className="primary" onClick={() => void activate()} disabled={preflightBusy || mutationBusy || !activationReady || !canWrite}>Activar versión</button>
+      <button onClick={() => void rollback()} disabled={preflightBusy || mutationBusy || !canWrite}>Rollback</button>
+      <button className="negative-button" onClick={() => void killSwitch()} disabled={preflightBusy || mutationBusy || !canWrite}>Kill switch</button>
     </div>
     {!preflightIsCurrent && <p className="muted">La activación queda bloqueada hasta ejecutar un preflight con estos mismos datos.</p>}
     {error && <div className="alert" role="alert">Activaciones: {error}</div>}

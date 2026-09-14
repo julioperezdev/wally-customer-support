@@ -11,6 +11,18 @@ public final class BackofficeCookieBearerTokenResolver implements BearerTokenRes
     public static final String ACCESS_COOKIE_NAME = "wcs_backoffice_access";
 
     private final BearerTokenResolver headerResolver = new DefaultBearerTokenResolver();
+    private final String accessCookieName;
+
+    public BackofficeCookieBearerTokenResolver() {
+        this(ACCESS_COOKIE_NAME);
+    }
+
+    public BackofficeCookieBearerTokenResolver(String accessCookieName) {
+        if (accessCookieName == null || accessCookieName.isBlank()) {
+            throw new IllegalArgumentException("accessCookieName must not be blank");
+        }
+        this.accessCookieName = accessCookieName;
+    }
 
     @Override
     public String resolve(HttpServletRequest request) {
@@ -23,7 +35,7 @@ public final class BackofficeCookieBearerTokenResolver implements BearerTokenRes
             return null;
         }
         for (Cookie cookie : cookies) {
-            if (ACCESS_COOKIE_NAME.equals(cookie.getName())
+            if (accessCookieName.equals(cookie.getName())
                     && cookie.getValue() != null
                     && !cookie.getValue().isBlank()) {
                 return cookie.getValue();

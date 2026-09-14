@@ -3,7 +3,7 @@ import { AgentExecutionTrace, AgentRegistryAuditEvent, createControlPlaneClient 
 
 type ControlPlaneClient = ReturnType<typeof createControlPlaneClient>;
 
-export function AgentEvidencePanel({ client }: { client: ControlPlaneClient }) {
+export function AgentEvidencePanel({ client, canRead }: { client: ControlPlaneClient; canRead: boolean }) {
   const [agentId, setAgentId] = useState("");
   const [useCase, setUseCase] = useState("");
   const [audit, setAudit] = useState<AgentRegistryAuditEvent[] | null>(null);
@@ -40,8 +40,9 @@ export function AgentEvidencePanel({ client }: { client: ControlPlaneClient }) {
       <div className="filters registry-filters">
         <input aria-label="Filtrar evidencia por agente" placeholder="agentId opcional" value={agentId} onChange={(event) => setAgentId(event.target.value)} />
         <input aria-label="Filtrar trazas por caso de uso" placeholder="useCase opcional" value={useCase} onChange={(event) => setUseCase(event.target.value)} />
-        <button onClick={() => void loadEvidence()} disabled={busy}>{busy ? "Cargando…" : "Actualizar evidencia"}</button>
+        <button onClick={() => void loadEvidence()} disabled={busy || !canRead}>{busy ? "Cargando…" : "Actualizar evidencia"}</button>
       </div>
+      {!canRead && <div className="warning-alert">Tu usuario no tiene <code>agent-registry.read</code>; la evidencia está restringida.</div>}
       {error && <div className="alert" role="alert">Evidencia: {error}</div>}
       <div className="evidence-grid">
         <div>

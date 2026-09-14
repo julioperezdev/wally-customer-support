@@ -25,8 +25,8 @@ documentación, rollout y rollback.
 | Slice | Jira | Alcance | Estado de planificación |
 | --- | --- | --- | --- |
 | Operación de tienda | [WCS-119](https://julioperezdev.atlassian.net/browse/WCS-119) | Catálogo, variantes, stock, media S3 y bandeja de atención humana | Se mantiene independiente del control plane |
-| Plataforma de agentes | [WCS-120](https://julioperezdev.atlassian.net/browse/WCS-120) | Registry, authoring, versiones, evaluación, fallback, ejecuciones y métricas | Panel read-only entregado; control plane completo pendiente |
-| Configuración dinámica | [WCS-121](https://julioperezdev.atlassian.net/browse/WCS-121) | Feature flags de negocio con AppConfig sin reinicio | Complementa WCS-120; las escrituras siguen protegidas por permisos |
+| Plataforma de agentes | [WCS-120](https://julioperezdev.atlassian.net/browse/WCS-120) | Registry, authoring, versiones, evaluación, fallback, ejecuciones y métricas | Control plane y UI protegida implementados; falta smoke operativo post-merge |
+| Configuración dinámica | [WCS-121](https://julioperezdev.atlassian.net/browse/WCS-121) | Feature flags de negocio con AppConfig sin reinicio | Runtime, publicación, rollback y UI protegida implementados; falta validar AppConfig desplegado |
 | Venta asistida | [WCS-122](https://julioperezdev.atlassian.net/browse/WCS-122) | Pedidos y links de pago con Mercado Pago Sandbox | Implementación vertical en curso; provider mock por defecto |
 
 El runtime conversacional actual permanece como fallback durante toda la
@@ -38,7 +38,9 @@ mensaje entrante.
 La cola de desarrollo se decide por el primer gate incompleto, no por el número
 del ticket:
 
-1. Cerrar WCS-120 con authoring, versionado y ciclo de vida de agentes.
+1. Ejecutar el smoke operativo de WCS-128, WCS-120 y WCS-121 después del
+   despliegue: login/refresh/logout, casos `401/403`, authoring/lifecycle,
+   activación protegida y publicación/rollback de flags.
 2. Verificar WCS-121 para selección de agente/versión, kill switch, canary y
    rollback sin reinicio, con permisos productivos explícitos.
 3. Validar trazas reales por ejecución y gates de evaluación/promoción.

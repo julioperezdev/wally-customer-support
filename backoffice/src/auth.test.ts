@@ -4,7 +4,8 @@ import {
   getBackofficeSession,
   loginBackoffice,
   logoutBackoffice,
-  refreshBackofficeSession
+  refreshBackofficeSession,
+  createSessionRefresher
 } from "./auth";
 
 describe("backoffice API authentication", () => {
@@ -60,5 +61,23 @@ describe("backoffice API authentication", () => {
         code: "COGNITO_CHALLENGE_REQUIRED",
         challenge: "NEW_PASSWORD_REQUIRED"
       }));
+  });
+
+  it("shares a concurrent refresh request between expired panels", async () => {
+    let resolveRefresh: ((value: Response) => void) | undefined;
+    const refreshResponse = new Promise<Response>((resolve) => { resolveRefresh = resolve; });
+    const fetchMock = vi.fn().mockReturnValue(refreshResponse);
+    vi.stubGlobal("fetch", fetchMock);
+    const refresh = createSessionRefresher("/internal/auth");
+
+    const first = refresh();
+    const second = refresh();
+    resolveRefresh?.(new Response(JSON.stringify({ status: "REFRESHED" }), { status: 200 }));
+
+    await expect(Promise.all([first, second])).resolves.toEqual([
+      { status: "REFRESHED" },
+      { status: "REFRESHED" }
+    ]);
+    expect(fetchMock).toHaveBeenCalledOnce();
   });
 });

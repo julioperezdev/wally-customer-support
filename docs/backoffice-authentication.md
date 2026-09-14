@@ -96,6 +96,17 @@ El frontend ya no contiene integración con Cognito ni recibe el client secret;
 la única configuración del navegador es la URL del backend o del proxy de
 Vite.
 
+Cuando una llamada protegida devuelve `401`, el frontend intenta una sola
+renovación mediante `/internal/auth/refresh` y repite la llamada original. Si
+varios paneles reciben un `401` al mismo tiempo, comparten la misma promesa de
+refresh para no generar una tormenta de renovaciones. Si el refresh falla, se
+conserva el `401` original y la interfaz vuelve a pedir autenticación.
+
+La interfaz usa las capacidades devueltas por `/me` para evitar llamadas
+previsiblemente prohibidas: las lecturas se deshabilitan sin la capacidad
+`*.read` y las acciones de escritura sin `*.write`. Esto mejora la
+experiencia, pero no reemplaza la autorización del backend.
+
 ## Terraform e infraestructura
 
 El módulo [`infra/modules/cognito-backoffice/`](../infra/modules/cognito-backoffice/)

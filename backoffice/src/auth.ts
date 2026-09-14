@@ -5,7 +5,7 @@ export type BackofficeSession = {
   capabilities: string[];
 };
 
-type SessionEnvelope = {
+export type SessionEnvelope = {
   status?: string;
 };
 
@@ -30,6 +30,19 @@ export async function loginBackoffice(
 
 export async function refreshBackofficeSession(baseUrl = DEFAULT_AUTH_BASE_URL): Promise<SessionEnvelope> {
   return request<SessionEnvelope>(baseUrl, "/refresh", { method: "POST" });
+}
+
+/** Shares one refresh request when several panels receive 401 at the same time. */
+export function createSessionRefresher(baseUrl = DEFAULT_AUTH_BASE_URL): () => Promise<SessionEnvelope> {
+  let inFlight: Promise<SessionEnvelope> | null = null;
+  return () => {
+    if (!inFlight) {
+      inFlight = refreshBackofficeSession(baseUrl).finally(() => {
+        inFlight = null;
+      });
+    }
+    return inFlight;
+  };
 }
 
 export async function getBackofficeSession(baseUrl = DEFAULT_AUTH_BASE_URL): Promise<BackofficeSession> {

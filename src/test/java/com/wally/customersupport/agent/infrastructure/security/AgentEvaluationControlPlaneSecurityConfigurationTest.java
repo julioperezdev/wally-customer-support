@@ -25,6 +25,7 @@ import com.wally.customersupport.agent.infrastructure.config.AgentEvaluationCont
 import com.wally.customersupport.agent.infrastructure.config.AgentEvaluationTriggerConfiguration;
 import com.wally.customersupport.agent.infrastructure.http.AgentEvaluationControlPlaneController;
 import com.wally.customersupport.agent.infrastructure.http.AgentEvaluationControlPlaneExceptionHandler;
+import com.wally.customersupport.backoffice.infrastructure.config.BackofficeAuthenticationProperties;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -122,6 +123,22 @@ class AgentEvaluationControlPlaneSecurityConfigurationTest {
     void rejectsMissingJwtWithUnauthorized() throws Exception {
         mockMvc.perform(get("/internal/agent-evaluations/runs"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void protectsBackofficeRoutesWithJwtAndTheRequiredCapability() throws Exception {
+        mockMvc.perform(get("/internal/backoffice/catalog"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get("/internal/backoffice/catalog")
+                        .with(jwt().jwt(token -> token.subject(ACTOR))))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/internal/backoffice/catalog")
+                        .with(jwt()
+                                .jwt(token -> token.subject(ACTOR).audience(List.of("wcs-control-plane")))
+                                .authorities(new SimpleGrantedAuthority("SCOPE_backoffice.catalog.read"))))
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -273,6 +290,19 @@ class AgentEvaluationControlPlaneSecurityConfigurationTest {
             AgentEvaluationControlPlaneSecurityConfiguration.class
     })
     static class SecurityTestConfiguration {
+
+        @Bean
+        BackofficeAuthenticationProperties backofficeAuthenticationProperties() {
+            return new BackofficeAuthenticationProperties(
+                    true,
+                    true,
+                    "None",
+                    "custom_access",
+                    "custom_refresh",
+                    3600,
+                    "http://localhost:5173",
+                    new BackofficeAuthenticationProperties.Cognito("us-east-1", "client-id"));
+        }
 
         @Bean
         AgentEvaluationHistoryQueryService historyQueryService() {

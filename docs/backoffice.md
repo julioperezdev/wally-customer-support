@@ -200,6 +200,21 @@ deshabilitan los refresh read-only individuales para evitar solicitudes
 duplicadas. Los tokens permanecen únicamente en cookies `HttpOnly` administradas
 por la API y nunca en el estado del navegador.
 
+La UI calcula sus acciones a partir de las capabilities de
+`/internal/auth/me`. Por ejemplo, `agent-registry.read` permite consultar
+registry, mapa, preflight y evidencia; `agent-registry.write` habilita
+authoring, lifecycle, activación, rollback y kill switch;
+`feature-flags.read` habilita el snapshot y `feature-flags.write` habilita
+publicación y rollback. Catálogo, handoff y pedidos siguen el mismo patrón
+con sus capabilities específicas. Sin la capability, la acción queda
+deshabilitada y el backend continúa siendo la última autoridad, devolviendo
+`401` o `403` según corresponda.
+
+Si una respuesta protegida expira durante la operación, el cliente intenta
+renovar la sesión una vez y repite la solicitud. Las renovaciones concurrentes
+se consolidan en una única llamada de refresh; no se guardan tokens en el
+navegador.
+
 ## Ejecución local
 
 ```bash
