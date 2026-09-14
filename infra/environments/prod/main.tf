@@ -109,7 +109,6 @@ locals {
     "wcs.external-config.secrets-manager.database-secret-id"      = module.database_secrets.secret_name
     "wcs.external-config.secrets-manager.whatsapp-secret-id"      = module.whatsapp_secrets.secret_name
     "wcs.external-config.secrets-manager.telegram-secret-id"      = module.telegram_secrets.secret_name
-    "wcs.external-config.secrets-manager.backoffice-secret-id"    = module.backoffice_secrets.secret_name
     "wcs.external-config.secrets-manager.observability-secret-id" = module.observability_secrets.secret_name
     "wcs.external-config.secrets-manager.mercado-pago-secret-id"  = module.mercado_pago_secrets.secret_name
     "wcs.agent-evaluation.control-plane.security.enabled"         = var.backoffice_cognito_enabled
@@ -118,8 +117,8 @@ locals {
     "wcs.agent-registry.activation-write-enabled"                 = false
     "wcs.agent-registry.authoring-write-enabled"                  = false
     "wcs.backoffice.security.provider"                            = "cognito"
-    "wcs.backoffice.enabled"                                      = var.backoffice_preview_enabled || var.backoffice_cognito_enabled
-    "wcs.backoffice.preview.enabled"                              = var.backoffice_preview_enabled
+    "wcs.backoffice.enabled"                                      = var.backoffice_cognito_enabled
+    "wcs.backoffice.preview.enabled"                              = false
     "wcs.backoffice.auth.enabled"                                 = var.backoffice_cognito_enabled
     "wcs.backoffice.auth.secure-cookies"                          = var.backoffice_cognito_enabled
     "wcs.backoffice.auth.same-site"                               = "Lax"
@@ -151,7 +150,6 @@ locals {
       module.database_secrets.secret_arn,
       module.whatsapp_secrets.secret_arn,
       module.telegram_secrets.secret_arn,
-      module.backoffice_secrets.secret_arn,
       module.observability_secrets.secret_arn,
       module.mercado_pago_secrets.secret_arn
     ]),
@@ -225,7 +223,7 @@ module "backoffice_secrets" {
   source = "../../modules/runtime-secrets"
 
   name                = coalesce(var.backoffice_secret_name, "wcs/${var.environment}/backoffice")
-  description         = "WCS backoffice preview token. Replace the fake bootstrap JSON before enabling the preview."
+  description         = "Deprecated WCS backoffice secret retained temporarily for safe Terraform cleanup. The application no longer reads it."
   initial_secret_json = local.fake_backoffice_secret_json
   tags                = local.common_tags
 }

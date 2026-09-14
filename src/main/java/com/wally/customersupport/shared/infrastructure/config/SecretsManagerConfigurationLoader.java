@@ -26,7 +26,6 @@ final class SecretsManagerConfigurationLoader {
         loadSecret(properties.databaseSecretId(), "database", resolved);
         loadSecret(properties.whatsappSecretId(), "whatsapp", resolved);
         loadSecret(properties.telegramSecretId(), "telegram", resolved);
-        loadSecret(properties.backofficeSecretId(), "backoffice", resolved);
         loadSecret(properties.observabilitySecretId(), "observability", resolved);
         loadSecret(properties.mercadoPagoSecretId(), "mercadopago", resolved);
         String runtimeSecretId = properties.runtimeSecretId();
@@ -34,7 +33,6 @@ final class SecretsManagerConfigurationLoader {
             boolean hasDedicatedReferences = isPresent(properties.databaseSecretId())
                     || isPresent(properties.whatsappSecretId())
                     || isPresent(properties.telegramSecretId())
-                    || isPresent(properties.backofficeSecretId())
                     || isPresent(properties.observabilitySecretId())
                     || isPresent(properties.mercadoPagoSecretId());
             runtimeSecretId = hasDedicatedReferences ? null : properties.secretId();
@@ -66,7 +64,6 @@ final class SecretsManagerConfigurationLoader {
                 case "database" -> mapDatabase(root, target);
                 case "whatsapp" -> mapWhatsApp(root, target);
                 case "telegram" -> mapTelegram(root, target);
-                case "backoffice" -> mapBackoffice(root, target);
                 case "observability" -> mapObservability(root, target);
                 case "mercadopago" -> mapMercadoPago(root, target);
                 case "runtime" -> mapRuntime(root, target);
@@ -100,11 +97,6 @@ final class SecretsManagerConfigurationLoader {
                 "token", "TELEGRAM_BOT_TOKEN");
         putIfPresent(root, target, "wcs.telegram.webhook-secret-token", "webhook-secret-token",
                 "webhook_secret_token", "webhookSecretToken", "secret-token", "TELEGRAM_WEBHOOK_SECRET_TOKEN");
-    }
-
-    private static void mapBackoffice(JsonNode root, Map<String, Object> target) {
-        putIfPresent(root, target, "wcs.backoffice.preview.token", "preview-token", "preview_token",
-                "previewToken", "WCS_BACKOFFICE_PREVIEW_TOKEN");
     }
 
     private static void mapObservability(JsonNode root, Map<String, Object> target) {

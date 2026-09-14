@@ -87,9 +87,6 @@ backend_runtime_environment_variables = {}
 # App Runner secret mappings are explicitly approved.
 backend_runtime_environment_secrets = {}
 
-# Keep false until the Cognito user, groups and API smoke test are ready.
-backoffice_preview_enabled = false
-
 # The production Cognito rollout gate is versioned in rollout.tfvars so the
 # activation is visible in the repository and reviewed through a pull request.
 # It is intentionally kept in rollout.tfvars instead of the baseline file.

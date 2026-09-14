@@ -67,13 +67,14 @@ comprobar que la key se guarda sólo como digest SHA-256, que el reintento es
 rechazado y que dos claims concurrentes de la misma key producen exactamente
 un éxito.
 
-WCS-76–WCS-78 agregan la prueba de la cadena JWT sólo para el control plane:
-un JWT sintético con subject, audience y scope correctos obtiene `200`; la
-ausencia de bearer token obtiene `401`; el scope ausente obtiene `403`; y los
-tokens expirados o con audience incorrecta fallan la validación. Una ruta de
-webhook sintética se verifica en paralelo para demostrar que permanece fuera
-de esta frontera. Las pruebas inyectan un `JwtDecoder` sintético y nunca
-contactan un IdP real.
+WCS-76–WCS-78 y WCS-128 cubren la seguridad JWT/Cognito del backoffice y
+control plane: el contexto debe contener exactamente un authorizer JWT; un JWT
+sintético con subject, audience y scope correctos obtiene `200`; la ausencia
+de JWT obtiene `401`; el scope ausente obtiene `403`; y los tokens expirados o
+con audience incorrecta fallan la validación. Una ruta de webhook sintética se
+verifica en paralelo para demostrar que permanece fuera de esta frontera. Las
+pruebas inyectan un `JwtDecoder` sintético y nunca contactan un IdP real. No se
+mantiene una cadena de preview-token ni un bypass local.
 
 ## Matriz funcional mínima
 

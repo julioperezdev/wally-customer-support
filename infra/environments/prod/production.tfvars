@@ -27,7 +27,6 @@ backend_runtime_environment_variables = {
 }
 backend_runtime_environment_secrets = {}
 
-backoffice_preview_enabled  = false
 enable_appconfig_management = false
 
 enable_bedrock_access = true

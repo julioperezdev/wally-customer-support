@@ -12,14 +12,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.time.Instant;
 import java.util.List;
 
-import com.wally.customersupport.agent.application.evaluation.AgentEvaluationControlPlaneAccessDecision;
-import com.wally.customersupport.agent.application.evaluation.AgentEvaluationControlPlaneAccessReason;
-import com.wally.customersupport.agent.application.evaluation.AgentEvaluationControlPlaneAccessStatus;
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationHistoryPage;
+import com.wally.customersupport.agent.application.port.out.AgentEvaluationControlPlaneAuthorizer;
 import com.wally.customersupport.agent.application.service.AgentEvaluationComparisonApplicationService;
 import com.wally.customersupport.agent.application.service.AgentEvaluationControlPlaneAccessService;
 import com.wally.customersupport.agent.application.service.AgentEvaluationEvidenceExportApplicationService;
 import com.wally.customersupport.agent.application.service.AgentEvaluationHistoryQueryService;
+import com.wally.customersupport.agent.infrastructure.config.AgentEvaluationControlPlaneConfiguration;
 import com.wally.customersupport.agent.infrastructure.http.AgentEvaluationControlPlaneController;
 import com.wally.customersupport.agent.infrastructure.http.AgentEvaluationControlPlaneExceptionHandler;
 import org.junit.jupiter.api.AfterEach;
@@ -69,6 +68,9 @@ class AgentEvaluationControlPlaneSecurityConfigurationTest {
     @Autowired
     private AgentEvaluationHistoryQueryService historyQueryService;
 
+    @Autowired
+    private List<AgentEvaluationControlPlaneAuthorizer> authorizers;
+
     private MockMvc mockMvc;
 
     @BeforeEach
@@ -80,12 +82,11 @@ class AgentEvaluationControlPlaneSecurityConfigurationTest {
 
     @AfterEach
     void resetMocks() {
-        reset(accessService, historyQueryService);
+        reset(historyQueryService);
     }
 
     @Test
     void acceptsAValidJwtWithTheRequiredScope() throws Exception {
-        when(accessService.authorize(ACTOR)).thenReturn(authorized());
         when(historyQueryService.search(any(), any())).thenReturn(
                 new AgentEvaluationHistoryPage(List.of(), 0, 20, 0, 0));
 
@@ -95,6 +96,13 @@ class AgentEvaluationControlPlaneSecurityConfigurationTest {
                                 .authorities(new SimpleGrantedAuthority(
                                         "SCOPE_agent-evaluation.read"))))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void composesExactlyOneCognitoJwtAuthorizer() {
+        org.assertj.core.api.Assertions.assertThat(authorizers)
+                .singleElement()
+                .isInstanceOf(JwtAgentEvaluationControlPlaneAuthorizer.class);
     }
 
     @Test
@@ -243,18 +251,10 @@ class AgentEvaluationControlPlaneSecurityConfigurationTest {
                 .andExpect(status().isOk());
     }
 
-    private static AgentEvaluationControlPlaneAccessDecision authorized() {
-        return new AgentEvaluationControlPlaneAccessDecision(
-                AgentEvaluationControlPlaneAccessStatus.AUTHORIZED,
-                ACTOR,
-                "prod",
-                AgentEvaluationControlPlaneAccessService.EVALUATION_READ_CAPABILITY,
-                AgentEvaluationControlPlaneAccessReason.AUTHORIZED);
-    }
-
     @TestConfiguration(proxyBeanMethods = false)
     @EnableWebMvc
     @EnableWebSecurity
+    @org.springframework.context.annotation.Import(AgentEvaluationControlPlaneConfiguration.class)
     static class SecurityTestConfiguration {
 
         @Bean
@@ -267,11 +267,6 @@ class AgentEvaluationControlPlaneSecurityConfigurationTest {
         SecurityFilterChain publicEndpointsFilterChain(HttpSecurity http) throws Exception {
             return new AgentEvaluationControlPlaneSecurityConfiguration()
                     .publicEndpointsSecurityFilterChain(http);
-        }
-
-        @Bean
-        AgentEvaluationControlPlaneAccessService accessService() {
-            return Mockito.mock(AgentEvaluationControlPlaneAccessService.class);
         }
 
         @Bean

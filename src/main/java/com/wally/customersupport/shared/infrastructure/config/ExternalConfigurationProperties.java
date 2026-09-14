@@ -21,7 +21,6 @@ public record ExternalConfigurationProperties(
             String databaseSecretId,
             String whatsappSecretId,
             String telegramSecretId,
-            String backofficeSecretId,
             String observabilitySecretId,
             String mercadoPagoSecretId,
             boolean enabled,

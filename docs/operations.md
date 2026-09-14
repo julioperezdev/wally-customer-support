@@ -116,11 +116,10 @@ cambian sus archivos; no tiene permisos AWS y no publica el artefacto.
 
 ### Backoffice operativo WCS-119
 
-El módulo operativo permanece `404` por defecto. Para un smoke local controlado
-se habilita sólo en el proceso local con `spring.profiles.active=local`,
-`wcs.backoffice.enabled=true` y `wcs.backoffice.local-mode-enabled=true`; ese modo no es una frontera de
-autorización para producción. El acceso productivo requerirá el JWT/roles de
-los slices WCS-120/WCS-121.
+El módulo operativo permanece `404` por defecto. Cuando está habilitado, tanto
+la cadena HTTP como los servicios de aplicación requieren una sesión Cognito
+con el scope/capability correspondiente. No existe un modo local que omita la
+autorización; un smoke local debe usar un User Pool de prueba.
 
 La carga de imágenes usa URLs prefirmadas de S3 y nunca entrega credenciales al
 navegador. Antes de activar `wcs.backoffice.media.enabled` se debe configurar
@@ -306,7 +305,6 @@ wcs.rag.provider
 wcs.rag.max-results
 wcs.rag.knowledge-base-id (cuando el adapter Bedrock KB esté habilitado)
 wcs.backoffice.enabled
-wcs.backoffice.preview.enabled
 wcs.agent-evaluation.control-plane.security.enabled
 wcs.agent-evaluation.control-plane.security.issuer-uri
 wcs.agent-evaluation.control-plane.security.audience
@@ -328,9 +326,6 @@ wcs/{environment}/database
   username
   password
   jdbc-url (si no lo provee el runtime)
-
-wcs/{environment}/backoffice
-  preview-token (sólo para el preview temporal read-only; nunca en AppConfig)
 
 wcs/{environment}/observability
   actor-key-secret (clave HMAC para actorKey; nunca se publica en AppConfig)
@@ -427,7 +422,6 @@ Las referencias admitidas actualmente son:
 | `database-secret-id` | `jdbc-url`/`jdbc_url`/`url`, `username`/`user`, `password` | `spring.datasource.url`, `spring.datasource.username`, `spring.datasource.password` |
 | `whatsapp-secret-id` | `access-token`, `verify-token`, `app-secret` y variantes snake/camel | `wcs.whatsapp.access-token`, `wcs.whatsapp.verify-token`, `wcs.whatsapp.app-secret` |
 | `telegram-secret-id` | `bot-token`, `webhook-secret-token` y variantes snake/camel | `wcs.telegram.bot-token`, `wcs.telegram.webhook-secret-token` |
-| `backoffice-secret-id` | `preview-token` y variantes snake/camel | `wcs.backoffice.preview.token` |
 | `observability-secret-id` | `actor-key-secret` y variantes snake/camel | `wcs.observability.actor-key-secret` |
 | `runtime-secret-id` | combinación explícita de los campos anteriores | propiedades correspondientes |
 
@@ -584,9 +578,9 @@ evaluar una activación controlada. El rollback operativo es deshabilitar la
 flag de escritura y mantener el runtime en `false`; no se ejecuta `destroy` ni
 se modifican migraciones aplicadas.
 
-### Seguridad del control plane de evaluaciones
+### Seguridad Cognito/JWT del backoffice y control plane
 
-El endpoint read-only `/internal/agent-evaluations/**` se protege de forma
+El control plane y las rutas internas del backoffice se protegen de forma
 condicional con Spring Security Resource Server. La configuración estable es:
 
 ```properties
@@ -596,18 +590,24 @@ wcs.agent-evaluation.control-plane.security.audience=
 ```
 
 Al habilitarla, el runtime descubre las claves públicas del `issuer-uri`,
-valida firma, issuer, expiración, audience y exige el scope exacto
-`agent-evaluation.read`. El `sub` del JWT se usa como actor para la frontera
-provider-neutral; no se acepta un actor libre en un header. La seguridad se
-mantiene deshabilitada por defecto porque todavía no se provisionó un IdP ni
-se aprobó un cliente del backoffice.
+valida firma, issuer, expiración, audience y traduce los grupos/scopes de
+Cognito a capabilities WCS. El `sub` del JWT se usa como actor para la
+frontera provider-neutral; no se acepta un actor libre en un header. Cognito es
+el único flujo de login y la sesión llega mediante cookies `HttpOnly`.
 
-La cadena protegida sólo hace match con `/internal/agent-evaluations/**`.
-Webhooks de Telegram/WhatsApp, actuator y demás rutas públicas conservan su
-comportamiento existente. Una solicitud sin token devuelve `401`; un token
-válido sin el scope devuelve `403`; un token válido con subject y scope
-correctos llega al servicio de aplicación, que conserva su propia autorización
-deny-by-default y sus logs sanitizados.
+La cadena protegida hace match con `/internal/auth/**`,
+`/internal/agent-evaluations/**`, registry, mapa, feature flags y panel
+operativo. Webhooks de Telegram/WhatsApp, actuator y demás rutas públicas
+conservan su comportamiento existente. Una solicitud sin JWT devuelve `401`; un
+JWT válido sin el scope/capability requerido devuelve `403`; un JWT válido con
+subject y scope correctos llega al servicio de aplicación, que conserva su
+propia autorización deny-by-default y sus logs sanitizados.
+
+La implementación mantiene exactamente un `AgentEvaluationControlPlaneAuthorizer`,
+`JwtAgentEvaluationControlPlaneAuthorizer`. La cadena de preview-token, su
+filtro y sus clases fueron eliminados. Si el secreto histórico
+`wcs/{environment}/backoffice` todavía existe por compatibilidad del estado
+Terraform, no es leído ni puede autenticar solicitudes.
 
 Para el rollout, primero provisionar el IdP y verificar issuer, audience y
 scopes en un ambiente no productivo. Luego publicar las tres propiedades en
