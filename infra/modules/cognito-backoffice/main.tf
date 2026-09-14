@@ -13,6 +13,7 @@ locals {
     "agent-evaluation.execute" = "Execute an evaluation run"
     "agent-registry.read"      = "Read agent registry and activations"
     "agent-registry.write"     = "Author and activate agent versions"
+    "agent-registry.publish"   = "Approve, publish and retire agent versions"
     "feature-flags.read"       = "Read business feature flags"
     "feature-flags.write"      = "Publish or rollback business feature flags"
   }
@@ -47,6 +48,7 @@ locals {
       "agent-evaluation.execute",
       "agent-registry.read",
       "agent-registry.write",
+      "agent-registry.publish",
       "feature-flags.read",
       "feature-flags.write",
     ]

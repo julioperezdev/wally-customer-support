@@ -106,6 +106,41 @@ export type AgentRegistryMutation = {
   changedAt: string | null;
 };
 
+export type AgentRegistryAuditEvent = {
+  operation: string;
+  agentId: string;
+  agentVersion: number | null;
+  previousState: string | null;
+  resultingState: string | null;
+  environment: string | null;
+  channel: string | null;
+  useCase: string | null;
+  actorId: string;
+  reason: string;
+  occurredAt: string;
+};
+
+export type AgentExecutionTrace = {
+  traceId: string;
+  correlationId: string | null;
+  actorKey: string | null;
+  agentId: string | null;
+  agentVersion: number | null;
+  environment: string;
+  channel: string;
+  useCase: string;
+  outcome: string;
+  resolutionStatus: string;
+  provider: string | null;
+  modelId: string | null;
+  durationMs: number;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  estimatedCostUsd: number | null;
+  errorType: string | null;
+  executedAt: string;
+};
+
 export type AgentVersionDraftInput = {
   version?: number | null;
   name: string;
@@ -482,7 +517,7 @@ export function createControlPlaneClient(
       agentId: string,
       version: number,
       request: {
-        targetState: "CANDIDATE" | "EVALUATED" | "APPROVED";
+        targetState: "CANDIDATE" | "EVALUATED" | "APPROVED" | "ACTIVE" | "RETIRED";
         reason: string;
         approvalReference?: string;
         operationalApprovalReference?: string;
@@ -499,6 +534,21 @@ export function createControlPlaneClient(
           },
           body: JSON.stringify(request)
         });
+    },
+    listAgentAudit(agentId = "", limit = 50) {
+      const params = new URLSearchParams({ limit: String(limit) });
+      if (agentId.trim()) params.set("agentId", agentId.trim());
+      return requestFrom<AgentRegistryAuditEvent[]>(
+        normalizedRegistryBaseUrl,
+        `/audit?${params.toString()}`);
+    },
+    listAgentExecutions(agentId = "", useCase = "", limit = 100) {
+      const params = new URLSearchParams({ limit: String(limit) });
+      if (agentId.trim()) params.set("agentId", agentId.trim());
+      if (useCase.trim()) params.set("useCase", useCase.trim());
+      return requestFrom<AgentExecutionTrace[]>(
+        normalizedRegistryBaseUrl,
+        `/executions?${params.toString()}`);
     },
     preflightActivation(request: AgentActivationRequest) {
       return requestFrom<AgentActivationPreflight>(

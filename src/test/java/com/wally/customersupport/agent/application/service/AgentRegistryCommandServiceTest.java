@@ -113,8 +113,6 @@ class AgentRegistryCommandServiceTest {
 
     @Test
     void requiresTwoApprovalReferencesBeforeApproving() {
-        when(accessService.authorizeRegistryWrite(ACTOR)).thenReturn(authorized());
-
         var result = service.transition(
                 new AgentLifecycleTransitionCommand(
                         "support-specialist", 1, AgentLifecycleState.APPROVED,

@@ -13,7 +13,11 @@ public final class AgentLifecyclePolicy {
             AgentLifecycleState.CANDIDATE, Set.of(AgentLifecycleState.EVALUATED),
             AgentLifecycleState.EVALUATED, Set.of(AgentLifecycleState.APPROVED),
             AgentLifecycleState.APPROVED, Set.of(AgentLifecycleState.ACTIVE),
-            AgentLifecycleState.ACTIVE, EnumSet.of(AgentLifecycleState.DEPRECATED, AgentLifecycleState.ROLLED_BACK),
+            AgentLifecycleState.ACTIVE, EnumSet.of(
+                    AgentLifecycleState.RETIRED,
+                    AgentLifecycleState.DEPRECATED,
+                    AgentLifecycleState.ROLLED_BACK),
+            AgentLifecycleState.RETIRED, Set.of(AgentLifecycleState.ROLLED_BACK),
             AgentLifecycleState.DEPRECATED, Set.of(AgentLifecycleState.ROLLED_BACK),
             AgentLifecycleState.ROLLED_BACK, Set.of());
 

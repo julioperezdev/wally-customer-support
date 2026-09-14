@@ -106,11 +106,11 @@ gate operativo independiente (`wcs.agent-runtime.activation-enabled`).
 
 ### Authoring y lifecycle protegido — WCS-120
 
-La siguiente entrega incorpora una superficie de escritura separada del panel
-read-only. Permite registrar metadata de una nueva versión, clonar una versión
-existente y avanzar su lifecycle de forma secuencial:
+La superficie de escritura separada del panel read-only permite registrar
+metadata de una nueva versión, clonar una versión existente y avanzar su
+lifecycle de forma secuencial:
 
-`DRAFT -> CANDIDATE -> EVALUATED -> APPROVED`
+`DRAFT -> CANDIDATE -> EVALUATED -> APPROVED -> ACTIVE -> RETIRED`
 
 Los comandos requieren un `Idempotency-Key`, una identidad autenticada con la
 capacidad `agent-registry.write` y la propiedad
@@ -123,18 +123,23 @@ artefactos externos.
 | --- | --- |
 | `POST /internal/agent-registry/agents/{agentId}/versions` | Crea una versión `DRAFT` a partir de metadata validada |
 | `POST /internal/agent-registry/agents/{agentId}/versions/{version}/clone` | Clona metadata en una nueva versión `DRAFT` |
-| `POST /internal/agent-registry/agents/{agentId}/versions/{version}/lifecycle` | Avanza a `CANDIDATE`, `EVALUATED` o `APPROVED` |
+| `POST /internal/agent-registry/agents/{agentId}/versions/{version}/lifecycle` | Avanza a `CANDIDATE`, `EVALUATED`, `APPROVED`, `ACTIVE` o `RETIRED` |
 
 La aprobación exige referencia de evaluación técnica y referencia de aprobación
-operativa. La definición persistida es inmutable; sólo se actualizan los
+operativa. La publicación (`APPROVED`, `ACTIVE`, `RETIRED`) además requiere el
+scope `agent-registry.publish`. La definición persistida es inmutable; sólo se actualizan los
 campos de lifecycle y aprobación mediante una actualización optimista que
 comprueba el estado anterior. Las claves idempotentes se almacenan como hash
 en `wcs.agent_registry_command_claims` y no se guarda la clave original.
 
-La pantalla de authoring es una primera interfaz técnica protegida. No activa
-versiones en tráfico, no modifica AppConfig y no reemplaza todavía el flujo de
-activación/preflight. La promoción a `ACTIVE` continuará siendo un comando
-separado, con su propio permiso, auditoría y rollback.
+La pantalla de authoring es una interfaz técnica protegida. La consola también
+expone la auditoría de cambios y las trazas productivas sanitizadas. La
+activación por tráfico continúa separada y conserva preflight, rollout, kill
+switch y rollback.
+
+La auditoría persistente está disponible en `GET /internal/agent-registry/audit`
+y las trazas en `GET /internal/agent-registry/executions`. Ambas requieren
+`agent-registry.read`; no exponen prompts, secretos, mensajes ni PII.
 
 Para un smoke local controlado, iniciar el backend con el perfil `local` y las
 dos propiedades de backoffice habilitadas; luego ejecutar `npm run dev` dentro

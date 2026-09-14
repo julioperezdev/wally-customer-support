@@ -150,6 +150,7 @@ public record AgentVersion(
         }
         boolean approvedLifecycle = state == AgentLifecycleState.APPROVED
                 || state == AgentLifecycleState.ACTIVE
+                || state == AgentLifecycleState.RETIRED
                 || state == AgentLifecycleState.DEPRECATED
                 || state == AgentLifecycleState.ROLLED_BACK;
         if (approvedLifecycle && (approvedBy == null || approvedAt == null)) {
@@ -169,6 +170,7 @@ public record AgentVersion(
         Instant normalizedTransitionAt = Objects.requireNonNull(transitionAt, "transitionAt");
         boolean approved = target == AgentLifecycleState.APPROVED
                 || target == AgentLifecycleState.ACTIVE
+                || target == AgentLifecycleState.RETIRED
                 || target == AgentLifecycleState.DEPRECATED
                 || target == AgentLifecycleState.ROLLED_BACK;
         return new AgentVersion(
@@ -206,7 +208,7 @@ public record AgentVersion(
     }
 
     public boolean canBeActivated() {
-        return state == AgentLifecycleState.APPROVED;
+        return state == AgentLifecycleState.APPROVED || state == AgentLifecycleState.ACTIVE;
     }
 
     private static void validateTokenLimit(int value, String field) {

@@ -14,6 +14,7 @@ public class AgentEvaluationControlPlaneAccessService {
     public static final String EVALUATION_READ_CAPABILITY = "agent-evaluation.read";
     public static final String REGISTRY_READ_CAPABILITY = "agent-registry.read";
     public static final String REGISTRY_WRITE_CAPABILITY = "agent-registry.write";
+    public static final String REGISTRY_PUBLISH_CAPABILITY = "agent-registry.publish";
     public static final String FEATURE_FLAGS_READ_CAPABILITY = "feature-flags.read";
     public static final String FEATURE_FLAGS_WRITE_CAPABILITY = "feature-flags.write";
     public static final String BACKOFFICE_CATALOG_READ_CAPABILITY = "backoffice.catalog.read";
@@ -77,6 +78,18 @@ public class AgentEvaluationControlPlaneAccessService {
                 REGISTRY_WRITE_CAPABILITY));
     }
 
+    public AgentEvaluationControlPlaneAccessDecision authorizeRegistryPublish(String actorId) {
+        return authorize(new AgentEvaluationControlPlaneAccessRequest(
+                actorId, allowedEnvironment, REGISTRY_PUBLISH_CAPABILITY));
+    }
+
+    public AgentEvaluationControlPlaneAccessDecision authorizeRegistryPublish(
+            String actorId,
+            String requestedEnvironment) {
+        return authorize(new AgentEvaluationControlPlaneAccessRequest(
+                actorId, requestedEnvironment, REGISTRY_PUBLISH_CAPABILITY));
+    }
+
     public AgentEvaluationControlPlaneAccessDecision authorizeFeatureFlags(String actorId) {
         return authorize(new AgentEvaluationControlPlaneAccessRequest(
                 actorId, allowedEnvironment, FEATURE_FLAGS_READ_CAPABILITY));
@@ -109,6 +122,7 @@ public class AgentEvaluationControlPlaneAccessService {
         if (!EVALUATION_READ_CAPABILITY.equals(accessRequest.capability())
                 && !REGISTRY_READ_CAPABILITY.equals(accessRequest.capability())
                 && !REGISTRY_WRITE_CAPABILITY.equals(accessRequest.capability())
+                && !REGISTRY_PUBLISH_CAPABILITY.equals(accessRequest.capability())
                 && !FEATURE_FLAGS_READ_CAPABILITY.equals(accessRequest.capability())
                 && !FEATURE_FLAGS_WRITE_CAPABILITY.equals(accessRequest.capability())
                 && !BACKOFFICE_CATALOG_READ_CAPABILITY.equals(accessRequest.capability())

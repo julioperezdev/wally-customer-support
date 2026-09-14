@@ -19,6 +19,7 @@ import {
 import { refreshReadOnlyPanels } from "./refresh";
 import { AgentAuthoringPanel } from "./AgentAuthoringPanel";
 import { AgentActivationPanel } from "./AgentActivationPanel";
+import { AgentEvidencePanel } from "./AgentEvidencePanel";
 import { OrderPanel } from "./OrderPanel";
 import {
   BackofficeAuthError,
@@ -530,6 +531,7 @@ export function App() {
       </section>
 
       <AgentAuthoringPanel client={client} onRegistryChanged={loadRegistry} />
+      <AgentEvidencePanel client={client} />
 
       <section className="card">
         <div className="section-heading">

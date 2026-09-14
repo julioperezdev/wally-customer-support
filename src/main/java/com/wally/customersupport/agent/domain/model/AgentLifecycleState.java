@@ -6,6 +6,7 @@ public enum AgentLifecycleState {
     EVALUATED,
     APPROVED,
     ACTIVE,
+    RETIRED,
     DEPRECATED,
     ROLLED_BACK
 }
