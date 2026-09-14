@@ -89,9 +89,9 @@ state ni los recursos del ambiente `test`.
 
 El workflow de Terraform valida ambos roots. Para un plan o apply manual se
 selecciona `target_environment=test`; el Environment `test` de GitHub debe
-tener sus propios `AWS_TERRAFORM_ROLE_ARN` y `TERRAFORM_VARS` antes de ejecutar
-un plan real. No se deben reutilizar secretos ni el ARN del servicio de
-producción. El workflow de backend acepta el mismo target, pero no debe
+tener su propio `AWS_TERRAFORM_ROLE_ARN` antes de ejecutar un plan real. La
+configuración no sensible del stack está versionada en `test.tfvars`. No se
+deben reutilizar secretos ni el ARN del servicio de producción. El workflow de backend acepta el mismo target, pero no debe
 ejecutarse para test hasta que exista un App Runner de test y su configuración
 operativa.
 
@@ -196,13 +196,11 @@ terraform -chdir=infra/environments/prod fmt -check -recursive
 terraform -chdir=infra/environments/prod validate
 ```
 
-Para un plan real hay que completar un `terraform.tfvars` local con el
-identificador del RDS, ARN del secret del RDS, ARN del proveedor OIDC y, si se
-selecciona `backend_egress_type = "VPC"`, el VPC connector. En CI, ese mismo contenido se configura
-como el secret `TERRAFORM_VARS` del Environment `production`, mientras que
+Para un plan real, la configuración no sensible se mantiene en
+`production.tfvars` o `test.tfvars`, según el entorno. En CI,
 `AWS_TERRAFORM_ROLE_ARN` apunta a un rol AWS preaprobado con OIDC. Los valores
-sensibles permanecen en Secrets Manager; nunca se escriben en
-`terraform.tfvars`, `TERRAFORM_VARS`, Jira, Confluence o logs.
+sensibles permanecen en Secrets Manager; nunca se escriben en los archivos
+versionados, Jira, Confluence o logs.
 
 El workflow `.github/workflows/terraform.yml` se ejecuta desde GitHub Actions
 con `action=plan` o `action=apply`. `apply` requiere ejecutarse desde `main`,

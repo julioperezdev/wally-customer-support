@@ -109,10 +109,10 @@ quedar vacíos si no se usa Hosted UI.
 
 En producción, el rollout de esta capacidad está versionado en
 [`infra/environments/prod/rollout.tfvars`](../infra/environments/prod/rollout.tfvars).
-El workflow pasa ese archivo después del baseline `TERRAFORM_VARS`, por lo que
-`backoffice_cognito_enabled=true` prevalece sobre el valor histórico del
-secreto sin exponer ni reemplazar el resto de la configuración. El archivo sólo
-contiene controles no sensibles y requiere revisión por PR.
+El workflow pasa ese archivo después del baseline versionado
+[`production.tfvars`](../infra/environments/prod/production.tfvars), por lo que
+`backoffice_cognito_enabled=true` prevalece sobre la configuración base. Ambos
+archivos sólo contienen controles no sensibles y requieren revisión por PR.
 
 El role de Terraform separa los permisos Cognito en una policy administrada
 propia (`<project>-<environment>-terraform-cognito-access`). Esto evita superar

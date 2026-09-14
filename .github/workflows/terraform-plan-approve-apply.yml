@@ -67,7 +67,7 @@ jobs:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    environment: ${{ inputs.target_environment == 'test' && 'test-plan' || 'production-plan' }}
+    environment: ${{ inputs.target_environment == 'test' && 'test' || 'production-plan' }}
     outputs:
       has_changes: ${{ steps.plan.outputs.has_changes }}
     env:
@@ -82,27 +82,31 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Check Terraform deployment configuration
+      - name: Select versioned Terraform variables
         env:
-          TERRAFORM_VARS: ${{ secrets.TERRAFORM_VARS }}
+          TARGET_ENVIRONMENT: ${{ inputs.target_environment || 'prod' }}
+        run: |
+          set -euo pipefail
+          case "$TARGET_ENVIRONMENT" in
+            prod) variables_file="production.tfvars" ;;
+            test) variables_file="test.tfvars" ;;
+            *) echo "::error::Unsupported Terraform environment: $TARGET_ENVIRONMENT"; exit 1 ;;
+          esac
+
+          variables_path="$GITHUB_WORKSPACE/$TF_WORKING_DIR/$variables_file"
+          [ -f "$variables_path" ] || {
+            echo "::error::Missing versioned Terraform variables: $variables_path"
+            exit 1
+          }
+          echo "TF_VARS_FILE=$variables_path" >> "$GITHUB_ENV"
+
+      - name: Check Terraform deployment configuration
         run: |
           set -euo pipefail
           [ -n "$AWS_TERRAFORM_ROLE_ARN" ] || {
             echo "::error::Configure AWS_TERRAFORM_ROLE_ARN in the plan environment"
             exit 1
           }
-          [ -n "$TERRAFORM_VARS" ] || {
-            echo "::error::Configure TERRAFORM_VARS in the plan environment"
-            exit 1
-          }
-
-      - name: Write reviewed Terraform variables
-        env:
-          TERRAFORM_VARS: ${{ secrets.TERRAFORM_VARS }}
-        run: |
-          set -euo pipefail
-          umask 077
-          printf '%s' "$TERRAFORM_VARS" > "$RUNNER_TEMP/wcs-terraform.tfvars"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -126,10 +130,10 @@ jobs:
         id: plan
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
-          var_files=("-var-file=$RUNNER_TEMP/wcs-terraform.tfvars")
+          var_files=("-var-file=$TF_VARS_FILE")
           if [ -f "rollout.tfvars" ]; then
             # Versioned rollout controls intentionally override the baseline
-            # TERRAFORM_VARS value without changing the secret in GitHub.
+            # production variables with a visible, reviewed value.
             var_files+=("-var-file=rollout.tfvars")
           fi
 
