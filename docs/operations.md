@@ -175,10 +175,10 @@ Para habilitar Terraform en GitHub se deben configurar en el Environment
 
 - `AWS_TERRAFORM_ROLE_ARN`: ARN de un rol preaprobado con trust OIDC para
   `julioperezdev/wally-customer-support` y el subject del Environment
-  `production`. GitHub puede usar el formato inmutable
+  `production` y, para el plan automático, `production-plan`. GitHub puede usar el formato inmutable
   `repo:owner@owner_id/repository@repository_id:environment:production`; el
-  trust policy de WCS contempla ambos formatos y los IDs deben coincidir con
-  el repositorio real.
+  trust policy de WCS contempla ambos formatos y ambos Environments. Los IDs
+  deben coincidir con el repositorio real.
 - `infra/environments/prod/production.tfvars`: archivo HCL versionado con
   variables revisadas y referencias de ARN. Nunca contiene passwords, tokens,
   claves privadas ni otros valores secretos.
