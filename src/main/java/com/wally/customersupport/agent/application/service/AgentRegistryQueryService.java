@@ -10,6 +10,7 @@ import java.util.Objects;
 import com.wally.customersupport.agent.application.port.out.AgentRegistryRepository;
 import com.wally.customersupport.agent.application.registry.AgentRegistryActivationView;
 import com.wally.customersupport.agent.application.registry.AgentRegistryAgentView;
+import com.wally.customersupport.agent.application.registry.AgentRegistryFilterOptions;
 import com.wally.customersupport.agent.application.registry.AgentRegistryQuery;
 import com.wally.customersupport.agent.application.registry.AgentRegistryVersionView;
 import com.wally.customersupport.agent.domain.model.AgentActivation;
@@ -61,6 +62,30 @@ public class AgentRegistryQueryService {
                                 .map(AgentRegistryQueryService::toActivationView)
                                 .toList()))
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public AgentRegistryFilterOptions filterOptions() {
+        List<AgentActivation> activations = registryRepository.findAllActivations();
+        List<AgentRegistryFilterOptions.Assignment> assignments = activations.stream()
+                .map(activation -> new AgentRegistryFilterOptions.Assignment(
+                        activation.agentId(), activation.environment(), activation.channel(), activation.useCase()))
+                .distinct()
+                .sorted(Comparator.comparing(AgentRegistryFilterOptions.Assignment::environment)
+                        .thenComparing(AgentRegistryFilterOptions.Assignment::channel)
+                        .thenComparing(AgentRegistryFilterOptions.Assignment::useCase)
+                        .thenComparing(AgentRegistryFilterOptions.Assignment::agentId))
+                .toList();
+        return new AgentRegistryFilterOptions(
+                registryRepository.findAllVersions().stream()
+                        .map(AgentVersion::agentId)
+                        .distinct()
+                        .sorted()
+                        .toList(),
+                assignments.stream().map(AgentRegistryFilterOptions.Assignment::environment).distinct().sorted().toList(),
+                assignments.stream().map(AgentRegistryFilterOptions.Assignment::channel).distinct().sorted().toList(),
+                assignments.stream().map(AgentRegistryFilterOptions.Assignment::useCase).distinct().sorted().toList(),
+                assignments);
     }
 
     private static boolean hasActivationFilters(AgentRegistryQuery query) {

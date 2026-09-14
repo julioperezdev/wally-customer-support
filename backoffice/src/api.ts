@@ -96,6 +96,21 @@ export type AgentRegistryAgent = {
   activations: AgentRegistryActivation[];
 };
 
+export type AgentFilterAssignment = {
+  agentId: string;
+  environment: string;
+  channel: string;
+  useCase: string;
+};
+
+export type AgentFilterOptions = {
+  agentIds: string[];
+  environments: string[];
+  channels: string[];
+  useCases: string[];
+  assignments: AgentFilterAssignment[];
+};
+
 export type AgentRegistryMutation = {
   status: string;
   reason: string;
@@ -512,6 +527,9 @@ export function createControlPlaneClient(
       if (filters.useCase?.trim()) params.set("useCase", filters.useCase.trim());
       params.set("limit", String(filters.limit ?? 50));
       return requestFrom<AgentRegistryAgent[]>(normalizedRegistryBaseUrl, `/agents?${params.toString()}`);
+    },
+    getAgentFilterOptions() {
+      return requestFrom<AgentFilterOptions>(normalizedRegistryBaseUrl, "/filter-options");
     },
     createAgentDraft(agentId: string, definition: AgentVersionDraftInput, idempotencyKey: string) {
       return requestFrom<AgentRegistryMutation>(

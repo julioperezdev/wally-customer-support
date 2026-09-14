@@ -7,6 +7,7 @@ import {
   BackofficeCatalogProduct,
   BackofficeCatalogPage,
   BackofficeHumanFollowUp,
+  AgentFilterOptions,
   FeatureFlagSnapshot,
   Comparison,
   ControlPlaneError,
@@ -21,6 +22,7 @@ import { AgentAuthoringPanel } from "./AgentAuthoringPanel";
 import { AgentActivationPanel } from "./AgentActivationPanel";
 import { AgentEvidencePanel } from "./AgentEvidencePanel";
 import { OrderPanel } from "./OrderPanel";
+import { deriveAgentFilterOptions, filterValuesFor } from "./agent-filters";
 import {
   BackofficeAuthError,
   BackofficeSession,
@@ -47,6 +49,7 @@ export function App() {
   const [baselineId, setBaselineId] = useState("");
   const [candidateId, setCandidateId] = useState("");
   const [registryAgents, setRegistryAgents] = useState<AgentRegistryAgent[] | null>(null);
+  const [agentFilterOptions, setAgentFilterOptions] = useState<AgentFilterOptions | null>(null);
   const [registryAgentId, setRegistryAgentId] = useState("");
   const [registryEnvironment, setRegistryEnvironment] = useState("");
   const [registryChannel, setRegistryChannel] = useState("");
@@ -116,6 +119,59 @@ export function App() {
   const canFollowUpWrite = hasCapability("backoffice.human-follow-up.write");
   const canOrdersRead = hasCapability("backoffice.orders.read");
   const canOrdersWrite = hasCapability("backoffice.orders.write");
+  const effectiveAgentFilterOptions = agentFilterOptions ?? deriveAgentFilterOptions(registryAgents);
+  const registryFilterValues = {
+    agentId: filterValuesFor(effectiveAgentFilterOptions, {
+      agentId: registryAgentId,
+      environment: registryEnvironment,
+      channel: registryChannel,
+      useCase: registryUseCase
+    }, "agentId"),
+    environment: filterValuesFor(effectiveAgentFilterOptions, {
+      agentId: registryAgentId,
+      environment: registryEnvironment,
+      channel: registryChannel,
+      useCase: registryUseCase
+    }, "environment"),
+    channel: filterValuesFor(effectiveAgentFilterOptions, {
+      agentId: registryAgentId,
+      environment: registryEnvironment,
+      channel: registryChannel,
+      useCase: registryUseCase
+    }, "channel"),
+    useCase: filterValuesFor(effectiveAgentFilterOptions, {
+      agentId: registryAgentId,
+      environment: registryEnvironment,
+      channel: registryChannel,
+      useCase: registryUseCase
+    }, "useCase")
+  };
+  const mapFilterValues = {
+    agentId: filterValuesFor(effectiveAgentFilterOptions, {
+      agentId: mapAgentId,
+      environment: mapEnvironment,
+      channel: mapChannel,
+      useCase: mapUseCase
+    }, "agentId"),
+    environment: filterValuesFor(effectiveAgentFilterOptions, {
+      agentId: mapAgentId,
+      environment: mapEnvironment,
+      channel: mapChannel,
+      useCase: mapUseCase
+    }, "environment"),
+    channel: filterValuesFor(effectiveAgentFilterOptions, {
+      agentId: mapAgentId,
+      environment: mapEnvironment,
+      channel: mapChannel,
+      useCase: mapUseCase
+    }, "channel"),
+    useCase: filterValuesFor(effectiveAgentFilterOptions, {
+      agentId: mapAgentId,
+      environment: mapEnvironment,
+      channel: mapChannel,
+      useCase: mapUseCase
+    }, "useCase")
+  };
 
   // Authentication is owned by the API. Requests carry the HttpOnly Cognito
   // cookie; the optional client token is intentionally not exposed by this UI.
@@ -187,13 +243,18 @@ export function App() {
     setRegistryBusy(true);
     setRegistryError(null);
     try {
-      setRegistryAgents(await client.listAgents({
-        agentId: registryAgentId,
-        environment: registryEnvironment,
-        channel: registryChannel,
-        useCase: registryUseCase,
-        limit: 50
-      }));
+      const [agents, options] = await Promise.all([
+        client.listAgents({
+          agentId: registryAgentId,
+          environment: registryEnvironment,
+          channel: registryChannel,
+          useCase: registryUseCase,
+          limit: 50
+        }),
+        client.getAgentFilterOptions()
+      ]);
+      setRegistryAgents(agents);
+      setAgentFilterOptions(options);
       return true;
     } catch (cause) {
       setRegistryError(toUserMessage(cause));
@@ -564,17 +625,17 @@ export function App() {
           <span className="security-note">READ ONLY</span>
         </div>
         <div className="filters registry-filters">
-          <input aria-label="Filtrar registry por agente" placeholder="agentId" value={registryAgentId} onChange={(event) => setRegistryAgentId(event.target.value)} />
-          <input aria-label="Filtrar registry por ambiente" placeholder="environment" value={registryEnvironment} onChange={(event) => setRegistryEnvironment(event.target.value)} />
-          <input aria-label="Filtrar registry por canal" placeholder="channel" value={registryChannel} onChange={(event) => setRegistryChannel(event.target.value)} />
-          <input aria-label="Filtrar registry por caso de uso" placeholder="useCase" value={registryUseCase} onChange={(event) => setRegistryUseCase(event.target.value)} />
+          <FilterSelect label="Agente" ariaLabel="Filtrar registry por agente" value={registryAgentId} options={registryFilterValues.agentId} onChange={setRegistryAgentId} />
+          <FilterSelect label="Ambiente" ariaLabel="Filtrar registry por ambiente" value={registryEnvironment} options={registryFilterValues.environment} onChange={setRegistryEnvironment} />
+          <FilterSelect label="Canal" ariaLabel="Filtrar registry por canal" value={registryChannel} options={registryFilterValues.channel} onChange={setRegistryChannel} />
+          <FilterSelect label="Caso de uso" ariaLabel="Filtrar registry por caso de uso" value={registryUseCase} options={registryFilterValues.useCase} onChange={setRegistryUseCase} />
           <button onClick={() => void loadRegistry()} disabled={registryBusy || globalRefreshBusy || !canRegistryRead}>Filtrar</button>
         </div>
         <AgentRegistryView agents={registryAgents} />
       </section>
 
       <AgentAuthoringPanel client={client} onRegistryChanged={loadRegistry} canWrite={canRegistryWrite} />
-      <AgentEvidencePanel client={client} canRead={canRegistryRead} />
+      <AgentEvidencePanel client={client} canRead={canRegistryRead} filterOptions={effectiveAgentFilterOptions} />
 
       <section className="card">
         <div className="section-heading">
@@ -582,10 +643,10 @@ export function App() {
           <span className="security-note">SIN MUTACIÓN</span>
         </div>
         <div className="filters registry-filters">
-          <input aria-label="Ambiente del mapa" placeholder="environment" value={mapEnvironment} onChange={(event) => setMapEnvironment(event.target.value)} />
-          <input aria-label="Canal del mapa" placeholder="channel" value={mapChannel} onChange={(event) => setMapChannel(event.target.value)} />
-          <input aria-label="Caso de uso del mapa" placeholder="useCase (opcional)" value={mapUseCase} onChange={(event) => setMapUseCase(event.target.value)} />
-          <input aria-label="Agente del mapa" placeholder="agentId (opcional)" value={mapAgentId} onChange={(event) => setMapAgentId(event.target.value)} />
+          <FilterSelect label="Ambiente" ariaLabel="Ambiente del mapa" value={mapEnvironment} options={mapFilterValues.environment} onChange={setMapEnvironment} required />
+          <FilterSelect label="Canal" ariaLabel="Canal del mapa" value={mapChannel} options={mapFilterValues.channel} onChange={setMapChannel} />
+          <FilterSelect label="Caso de uso" ariaLabel="Caso de uso del mapa" value={mapUseCase} options={mapFilterValues.useCase} onChange={setMapUseCase} />
+          <FilterSelect label="Agente" ariaLabel="Agente del mapa" value={mapAgentId} options={mapFilterValues.agentId} onChange={setMapAgentId} />
           <button onClick={() => void loadAgentMap()} disabled={agentMapBusy || globalRefreshBusy || !canRegistryRead}>Actualizar mapa</button>
         </div>
         {agentMapError && <div className="alert" role="alert">Mapa: {agentMapError}</div>}
@@ -619,7 +680,7 @@ export function App() {
         <div className="section-heading">
           <div><h2>Runs</h2><p>{page ? `${page.totalElements} resultados sanitizados` : "Sin datos cargados"}</p></div>
           <div className="filters">
-            <input aria-label="Filtrar por agente" placeholder="agentId" value={agentId} onChange={(event) => setAgentId(event.target.value)} />
+            <FilterSelect label="Agente" ariaLabel="Filtrar por agente" value={agentId} options={effectiveAgentFilterOptions.agentIds} onChange={setAgentId} />
             <input aria-label="Filtrar por proveedor" placeholder="provider" value={provider} onChange={(event) => setProvider(event.target.value)} />
             <button onClick={() => void loadRuns()} disabled={busy || !canEvaluationRead}>Filtrar</button>
           </div>
@@ -645,6 +706,29 @@ export function App() {
       </section>
     </main>
   );
+}
+
+function FilterSelect({
+  label,
+  ariaLabel,
+  value,
+  options,
+  onChange,
+  required = false
+}: {
+  label: string;
+  ariaLabel: string;
+  value: string;
+  options: string[];
+  onChange: (value: string) => void;
+  required?: boolean;
+}) {
+  const visibleOptions = value && !options.includes(value) ? [value, ...options] : options;
+  return <label>{label}<select aria-label={ariaLabel} value={value} required={required} onChange={(event) => onChange(event.target.value)}>
+    {!required && <option value="">Todos</option>}
+    {required && !value && <option value="">Seleccionar</option>}
+    {visibleOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+  </select></label>;
 }
 
 function RunTable({ page, onOpen }: { page: RunPage | null; onOpen: (id: string) => void }) {

@@ -69,8 +69,14 @@ simulación de desactivación. Los endpoints están protegidos por la capacidad
 | --- | --- |
 | `GET /internal/backoffice/agent-map` | Casos de uso, agentes, versiones, tools, Knowledge Bases, fallback y métricas agregadas |
 | `POST /internal/backoffice/agent-map/simulations` | Simula desactivar un agente y devuelve fallback compatible, handoff humano o ausencia de cambio |
+| `GET /internal/agent-registry/filter-options` | Opciones válidas de agente, ambiente, canal, caso de uso y sus asignaciones |
 
-Los filtros son `environment`, `channel`, `useCase` y `agentId`. La respuesta
+Los filtros son `environment`, `channel`, `useCase` y `agentId`. La pantalla
+obtiene sus opciones desde el registry mediante
+`GET /internal/agent-registry/filter-options`; no mantiene listas hardcodeadas
+ni exige recordar valores. La respuesta incluye las asignaciones válidas
+agente/ambiente/canal/caso de uso para que los selects puedan restringirse en
+cascada. La respuesta del mapa
 agrupa cada caso de uso y expone relaciones `ROUTES_TO`, `USES_TOOL`,
 `USES_KNOWLEDGE_SOURCE`, `FALLBACK_TO` y `HANDOFF_TO_HUMAN`. La simulación es
 explícita y no equivale a un kill switch real.

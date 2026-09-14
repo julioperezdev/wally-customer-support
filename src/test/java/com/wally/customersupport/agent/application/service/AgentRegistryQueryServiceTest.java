@@ -57,6 +57,24 @@ class AgentRegistryQueryServiceTest {
         assertThat(result).extracting("agentId").containsExactly("a");
     }
 
+    @Test
+    void buildsFilterOptionsFromRegisteredVersionsAndAssignments() {
+        AgentRegistryRepository repository = mock(AgentRegistryRepository.class);
+        when(repository.findAllVersions()).thenReturn(List.of(version("catalog-specialist", 1), version("support", 1)));
+        when(repository.findAllActivations()).thenReturn(List.of(
+                new AgentActivation("catalog-specialist", 1, "prod", "telegram", "catalog-search", "rollout", 100, true, false, null, NOW, "operator"),
+                new AgentActivation("support", 1, "prod", "whatsapp", "general-support", "rollout", 100, true, false, null, NOW, "operator"),
+                new AgentActivation("support", 1, "prod", "whatsapp", "general-support", "rollout", 100, true, false, null, NOW, "operator")));
+
+        var result = new AgentRegistryQueryService(repository).filterOptions();
+
+        assertThat(result.agentIds()).containsExactly("catalog-specialist", "support");
+        assertThat(result.environments()).containsExactly("prod");
+        assertThat(result.channels()).containsExactly("telegram", "whatsapp");
+        assertThat(result.useCases()).containsExactly("catalog-search", "general-support");
+        assertThat(result.assignments()).hasSize(2);
+    }
+
     private static AgentVersion version(String agentId, int version) {
         return new AgentVersion(
                 agentId, version, "Catalog specialist", "Searches the catalog", AgentLifecycleState.APPROVED,

@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { AgentExecutionTrace, AgentRegistryAuditEvent, createControlPlaneClient } from "./api";
+import { AgentExecutionTrace, AgentFilterOptions, AgentRegistryAuditEvent, createControlPlaneClient } from "./api";
 
 type ControlPlaneClient = ReturnType<typeof createControlPlaneClient>;
 
-export function AgentEvidencePanel({ client, canRead }: { client: ControlPlaneClient; canRead: boolean }) {
+export function AgentEvidencePanel({ client, canRead, filterOptions }: { client: ControlPlaneClient; canRead: boolean; filterOptions: AgentFilterOptions }) {
   const [agentId, setAgentId] = useState("");
   const [useCase, setUseCase] = useState("");
   const [audit, setAudit] = useState<AgentRegistryAuditEvent[] | null>(null);
@@ -38,8 +38,8 @@ export function AgentEvidencePanel({ client, canRead }: { client: ControlPlaneCl
         <span className="security-note">READ ONLY</span>
       </div>
       <div className="filters registry-filters">
-        <input aria-label="Filtrar evidencia por agente" placeholder="agentId opcional" value={agentId} onChange={(event) => setAgentId(event.target.value)} />
-        <input aria-label="Filtrar trazas por caso de uso" placeholder="useCase opcional" value={useCase} onChange={(event) => setUseCase(event.target.value)} />
+        <label>Agente<select aria-label="Filtrar evidencia por agente" value={agentId} onChange={(event) => setAgentId(event.target.value)}><option value="">Todos</option>{filterOptions.agentIds.map((option) => <option key={option} value={option}>{option}</option>)}</select></label>
+        <label>Caso de uso<select aria-label="Filtrar trazas por caso de uso" value={useCase} onChange={(event) => setUseCase(event.target.value)}><option value="">Todos</option>{filterOptions.useCases.map((option) => <option key={option} value={option}>{option}</option>)}</select></label>
         <button onClick={() => void loadEvidence()} disabled={busy || !canRead}>{busy ? "Cargando…" : "Actualizar evidencia"}</button>
       </div>
       {!canRead && <div className="warning-alert">Tu usuario no tiene <code>agent-registry.read</code>; la evidencia está restringida.</div>}

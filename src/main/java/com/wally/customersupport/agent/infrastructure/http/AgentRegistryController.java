@@ -6,6 +6,7 @@ import java.util.Map;
 
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationControlPlaneAccessDecision;
 import com.wally.customersupport.agent.application.registry.AgentRegistryAgentView;
+import com.wally.customersupport.agent.application.registry.AgentRegistryFilterOptions;
 import com.wally.customersupport.agent.application.registry.AgentRegistryQuery;
 import com.wally.customersupport.agent.application.service.AgentEvaluationControlPlaneAccessService;
 import com.wally.customersupport.agent.application.service.AgentRegistryQueryService;
@@ -54,6 +55,21 @@ public class AgentRegistryController {
         List<AgentRegistryAgentView> agents = queryService.search(query);
         StructuredEventLog.info(log, "AGENT_REGISTRY_ACCESS_GRANTED", fields);
         return ResponseEntity.ok(agents);
+    }
+
+    @GetMapping("/filter-options")
+    public ResponseEntity<?> filterOptions(Principal principal) {
+        AgentEvaluationControlPlaneAccessDecision decision = accessService.authorizeRegistry(actorId(principal));
+        if (!decision.authorized()) {
+            StructuredEventLog.warn(log, "AGENT_REGISTRY_FILTER_OPTIONS_ACCESS_DENIED", Map.of(
+                    "operation", "list_filter_options",
+                    "capability", AgentEvaluationControlPlaneAccessService.REGISTRY_READ_CAPABILITY,
+                    "result", decision.status().name(),
+                    "reason", decision.reason().name()));
+            return forbidden();
+        }
+        AgentRegistryFilterOptions options = queryService.filterOptions();
+        return ResponseEntity.ok(options);
     }
 
     private static String actorId(Principal principal) {

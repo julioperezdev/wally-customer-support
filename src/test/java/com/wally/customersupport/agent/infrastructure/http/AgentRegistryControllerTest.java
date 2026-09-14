@@ -14,6 +14,7 @@ import com.wally.customersupport.agent.application.evaluation.AgentEvaluationCon
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationControlPlaneAccessStatus;
 import com.wally.customersupport.agent.application.service.AgentEvaluationControlPlaneAccessService;
 import com.wally.customersupport.agent.application.service.AgentRegistryQueryService;
+import com.wally.customersupport.agent.application.registry.AgentRegistryFilterOptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -67,6 +68,34 @@ class AgentRegistryControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$").isEmpty());
+    }
+
+    @Test
+    void returnsBackendOwnedFilterOptionsAfterAuthorization() throws Exception {
+        when(accessService.authorizeRegistry(ACTOR)).thenReturn(authorized());
+        when(queryService.filterOptions()).thenReturn(new AgentRegistryFilterOptions(
+                List.of("catalog-specialist"),
+                List.of("prod"),
+                List.of("telegram"),
+                List.of("catalog-search"),
+                List.of(new AgentRegistryFilterOptions.Assignment(
+                        "catalog-specialist", "prod", "telegram", "catalog-search"))));
+
+        mockMvc.perform(get("/internal/agent-registry/filter-options").principal(() -> ACTOR))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.agentIds[0]").value("catalog-specialist"))
+                .andExpect(jsonPath("$.assignments[0].useCase").value("catalog-search"));
+    }
+
+    @Test
+    void deniesFilterOptionsWithoutRegistryReadCapability() throws Exception {
+        when(accessService.authorizeRegistry(ACTOR)).thenReturn(denied());
+
+        mockMvc.perform(get("/internal/agent-registry/filter-options").principal(() -> ACTOR))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+
+        verifyNoInteractions(queryService);
     }
 
     private static AgentEvaluationControlPlaneAccessDecision authorized() {
