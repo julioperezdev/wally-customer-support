@@ -25,6 +25,16 @@ describe_service_status() {
     --output text
 }
 
+describe_operation_error() {
+  local operation_id="$1"
+
+  aws apprunner describe-operation \
+    --service-arn "$SERVICE_ARN" \
+    --operation-id "$operation_id" \
+    --query 'Operation.ErrorMessage' \
+    --output text 2>/dev/null || true
+}
+
 wait_for_operation() {
   local operation_id="$1"
   local description="$2"
@@ -42,8 +52,16 @@ wait_for_operation() {
       SUCCEEDED)
         return 0
         ;;
-      FAILED|ERROR|ROLLBACK_FAILED)
+      FAILED|ERROR|ROLLBACK_IN_PROGRESS|ROLLBACK_SUCCEEDED|ROLLBACK_FAILED)
+        local error_message
+        error_message="$(describe_operation_error "$operation_id")"
+        if [[ -n "$error_message" && "$error_message" != "None" ]]; then
+          fail "$description failed: operation=$operation_id status=$status error=$error_message"
+        fi
         fail "$description failed: operation=$operation_id status=$status"
+        ;;
+      ""|None)
+        fail "$description operation was not found: operation=$operation_id"
         ;;
     esac
 

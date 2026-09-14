@@ -148,9 +148,10 @@ el push de la pipeline completa.
 Usar este flujo para cambios de AppConfig o rotación de secrets que sólo
 requieren que el bootstrap vuelva a leer la configuración. Usar
 `.github/workflows/backend.yml` para cambios de código, Dockerfile, dependencias
-o cualquier cambio que requiera una nueva imagen. Si la operación devuelve
-`FAILED`, `ERROR` o cualquier estado `ROLLBACK_*`, el workflow falla de forma
-explícita y no declara el restart como exitoso.
+o cualquier cambio que requiera una nueva imagen. Los scripts de despliegue y
+restart fallan inmediatamente si la operación devuelve `FAILED`, `ERROR` o
+cualquier estado `ROLLBACK_*`; cuando App Runner lo informa, el deploy también
+incluye el `ErrorMessage` de la operación y no declara el cambio como exitoso.
 
 Ejecución por CLI:
 
