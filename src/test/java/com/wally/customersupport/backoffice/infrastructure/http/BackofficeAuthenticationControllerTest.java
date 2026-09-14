@@ -13,6 +13,7 @@ import java.util.List;
 
 import com.wally.customersupport.backoffice.application.port.out.BackofficeIdentityProvider;
 import com.wally.customersupport.backoffice.application.service.BackofficeAuthenticationService;
+import com.wally.customersupport.backoffice.application.service.BackofficeAuthenticationException;
 import com.wally.customersupport.backoffice.infrastructure.config.BackofficeAuthenticationProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -85,5 +86,31 @@ class BackofficeAuthenticationControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").doesNotExist())
                 .andExpect(jsonPath("$.refreshToken").doesNotExist());
+    }
+
+    @Test
+    void clearsBothSessionCookiesOnLogout() throws Exception {
+        mockMvc.perform(post("/internal/auth/logout")
+                        .cookie(new jakarta.servlet.http.Cookie("wcs_access", "access-token")))
+                .andExpect(status().isNoContent())
+                .andExpect(header().stringValues("Set-Cookie",
+                        org.hamcrest.Matchers.hasItems(
+                                org.hamcrest.Matchers.containsString("wcs_access=;"),
+                                org.hamcrest.Matchers.containsString("wcs_refresh=;"))));
+
+        verify(authenticationService).logout("access-token");
+    }
+
+    @Test
+    void mapsInvalidCredentialsToUnauthorizedWithoutLeakingProviderDetails() throws Exception {
+        when(authenticationService.login("operator", "bad-password"))
+                .thenThrow(BackofficeAuthenticationException.invalidCredentials());
+
+        mockMvc.perform(post("/internal/auth/login")
+                        .contentType("application/json")
+                        .content("{\"username\":\"operator\",\"password\":\"bad-password\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"))
+                .andExpect(jsonPath("$.message").doesNotExist());
     }
 }

@@ -1,6 +1,7 @@
 package com.wally.customersupport.agent.infrastructure.security;
 
 import com.wally.customersupport.agent.application.port.out.AgentEvaluationTriggerAuthorizer;
+import com.wally.customersupport.backoffice.infrastructure.config.BackofficeAuthenticationProperties;
 import com.wally.customersupport.backoffice.infrastructure.security.BackofficeCookieBearerTokenResolver;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -88,7 +89,9 @@ public class AgentEvaluationControlPlaneSecurityConfiguration {
     @ConditionalOnProperty(
             name = "wcs.agent-evaluation.control-plane.security.enabled",
             havingValue = "true")
-    SecurityFilterChain agentEvaluationControlPlaneSecurityFilterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain agentEvaluationControlPlaneSecurityFilterChain(
+            HttpSecurity http,
+            BackofficeAuthenticationProperties backofficeAuthenticationProperties) throws Exception {
         http
                 .securityMatcher(
                         "/internal/auth/**",
@@ -143,7 +146,8 @@ public class AgentEvaluationControlPlaneSecurityConfiguration {
                         .anyRequest().denyAll())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt
                         .jwtAuthenticationConverter(cognitoJwtAuthenticationConverter()))
-                        .bearerTokenResolver(new BackofficeCookieBearerTokenResolver()));
+                        .bearerTokenResolver(new BackofficeCookieBearerTokenResolver(
+                                backofficeAuthenticationProperties.accessCookieName())));
         return http.build();
     }
 

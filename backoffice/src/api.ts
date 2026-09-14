@@ -430,12 +430,31 @@ export class ControlPlaneError extends Error {
   }
 }
 
+export type SessionRefreshHandler = () => Promise<unknown>;
+
+async function fetchWithSessionRefresh(
+  url: string,
+  init: RequestInit,
+  refreshSession?: SessionRefreshHandler
+): Promise<Response> {
+  let response = await fetch(url, init);
+  if (response.status !== 401 || !refreshSession) return response;
+  try {
+    await refreshSession();
+    response = await fetch(url, init);
+  } catch {
+    // Preserve the original 401 contract when refresh is unavailable or expired.
+  }
+  return response;
+}
+
 export function createControlPlaneClient(
   baseUrl: string,
   token: string,
   registryBaseUrl = "/internal/agent-registry",
   agentMapBaseUrl = "/internal/backoffice/agent-map",
-  featureFlagsBaseUrl = "/internal/backoffice/feature-flags"
+  featureFlagsBaseUrl = "/internal/backoffice/feature-flags",
+  refreshSession?: SessionRefreshHandler
 ) {
   const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
   const normalizedRegistryBaseUrl = registryBaseUrl.replace(/\/+$/, "");
@@ -447,7 +466,10 @@ export function createControlPlaneClient(
     if (token.trim()) {
       headers.Authorization = `Bearer ${token.trim()}`;
     }
-    const response = await fetch(`${normalizedBaseUrl}${path}`, { headers, credentials: "include" });
+    const response = await fetchWithSessionRefresh(
+      `${normalizedBaseUrl}${path}`,
+      { headers, credentials: "include" },
+      refreshSession);
     if (!response.ok) {
       let code = "CONTROL_PLANE_ERROR";
       try {
@@ -666,7 +688,10 @@ export function createControlPlaneClient(
     if (token.trim()) {
       headers.Authorization = `Bearer ${token.trim()}`;
     }
-    const response = await fetch(`${root}${path}`, { ...init, headers, credentials: "include" });
+    const response = await fetchWithSessionRefresh(
+      `${root}${path}`,
+      { ...init, headers, credentials: "include" },
+      refreshSession);
     if (!response.ok && !acceptedStatuses.includes(response.status)) {
       let code = "CONTROL_PLANE_ERROR";
       try {
@@ -685,7 +710,11 @@ const HttpStatus = {
   UNPROCESSABLE_ENTITY: 422
 } as const;
 
-export function createBackofficeClient(baseUrl: string, token: string) {
+export function createBackofficeClient(
+  baseUrl: string,
+  token: string,
+  refreshSession?: SessionRefreshHandler
+) {
   const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
 
   async function request<T>(path: string): Promise<T> {
@@ -693,7 +722,10 @@ export function createBackofficeClient(baseUrl: string, token: string) {
     if (token.trim()) {
       headers.Authorization = `Bearer ${token.trim()}`;
     }
-    const response = await fetch(`${normalizedBaseUrl}${path}`, { headers, credentials: "include" });
+    const response = await fetchWithSessionRefresh(
+      `${normalizedBaseUrl}${path}`,
+      { headers, credentials: "include" },
+      refreshSession);
     if (!response.ok) {
       let code = "BACKOFFICE_ERROR";
       try {
@@ -782,7 +814,10 @@ export function createBackofficeClient(baseUrl: string, token: string) {
       ...(init.headers as Record<string, string> | undefined)
     };
     if (token.trim()) headers.Authorization = `Bearer ${token.trim()}`;
-    const response = await fetch(`${root}${path}`, { ...init, headers, credentials: "include" });
+    const response = await fetchWithSessionRefresh(
+      `${root}${path}`,
+      { ...init, headers, credentials: "include" },
+      refreshSession);
     if (!response.ok) {
       let code = "BACKOFFICE_ERROR";
       try {

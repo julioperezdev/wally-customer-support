@@ -3,7 +3,15 @@ import { BackofficeOrder, BackofficeOrderPage, createBackofficeClient } from "./
 
 type BackofficeClient = ReturnType<typeof createBackofficeClient>;
 
-export function OrderPanel({ client }: { client: BackofficeClient }) {
+export function OrderPanel({
+  client,
+  canRead,
+  canWrite
+}: {
+  client: BackofficeClient;
+  canRead: boolean;
+  canWrite: boolean;
+}) {
   const [page, setPage] = useState<BackofficeOrderPage | null>(null);
   const [status, setStatus] = useState("");
   const [sku, setSku] = useState("RP-REM-NP-NEG-M");
@@ -14,6 +22,7 @@ export function OrderPanel({ client }: { client: BackofficeClient }) {
   const [error, setError] = useState<string | null>(null);
 
   async function loadOrders() {
+    if (!canRead) return;
     setBusy(true);
     setError(null);
     try {
@@ -26,6 +35,7 @@ export function OrderPanel({ client }: { client: BackofficeClient }) {
   }
 
   async function createOrder() {
+    if (!canWrite) return;
     const parsedQuantity = Number.parseInt(quantity, 10);
     if (!sku.trim() || !Number.isInteger(parsedQuantity) || parsedQuantity < 1) {
       setError("Indicá un SKU y una cantidad válida.");
@@ -51,7 +61,7 @@ export function OrderPanel({ client }: { client: BackofficeClient }) {
     void loadOrders();
     // The client is stable for the current token; a manual refresh is explicit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [client]);
+  }, [client, canRead]);
 
   return (
     <section className="card">
@@ -62,14 +72,15 @@ export function OrderPanel({ client }: { client: BackofficeClient }) {
         </div>
         <span className="security-note">SANDBOX / MOCK</span>
       </div>
+      {!canRead && <div className="warning-alert">Tu usuario no tiene <code>backoffice.orders.read</code>.</div>}
       {error && <div className="alert" role="alert">Pedidos: {error}</div>}
       <div className="order-create-grid">
         <label>SKU<input value={sku} onChange={(event) => setSku(event.target.value)} /></label>
         <label>Cantidad<input inputMode="numeric" value={quantity} onChange={(event) => setQuantity(event.target.value)} /></label>
         <label>Referencia del cliente<input value={customerReference} onChange={(event) => setCustomerReference(event.target.value)} /></label>
         <div className="button-row order-actions">
-          <button className="primary" onClick={() => void createOrder()} disabled={busy}>Crear pedido y link</button>
-          <button onClick={() => void loadOrders()} disabled={busy}>Actualizar pedidos</button>
+          <button className="primary" onClick={() => void createOrder()} disabled={busy || !canWrite}>Crear pedido y link</button>
+          <button onClick={() => void loadOrders()} disabled={busy || !canRead}>Actualizar pedidos</button>
         </div>
       </div>
       {createdOrder && <OrderResult order={createdOrder} />}
@@ -84,7 +95,7 @@ export function OrderPanel({ client }: { client: BackofficeClient }) {
           <option value="EXPIRED">Expirado</option>
         </select>
       </div>
-      {!page ? <p className="muted">La vista de pedidos no está disponible todavía.</p> : page.items.length === 0 ?
+      {!canRead ? <p className="muted">La vista de pedidos está restringida por capability.</p> : !page ? <p className="muted">La vista de pedidos no está disponible todavía.</p> : page.items.length === 0 ?
         <p className="muted">No hay pedidos para el filtro seleccionado.</p> :
         <div className="table-wrap"><table className="responsive-table"><thead><tr><th>Pedido</th><th>Estado</th><th>Total</th><th>Pago</th><th>Creado</th></tr></thead><tbody>
           {page.items.map((order) => <tr key={order.id}>

@@ -1,6 +1,9 @@
 package com.wally.customersupport.featureflag.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Optional;
@@ -52,6 +55,47 @@ class FeatureFlagRuntimeServiceTest {
         assertThat(service.view().audit()).anyMatch(entry -> "REJECTED".equals(entry.result()));
     }
 
+    @Test
+    void publishesAValidatedVersionAndMakesItEffectiveImmediately() {
+        FeatureFlagConfigurationPublisher publisher = mock(FeatureFlagConfigurationPublisher.class);
+        when(publisher.publish("{\"schemaVersion\":\"1\",\"version\":\"v2\",\"flags\":[]}",
+                "WCS feature flags published by operator"))
+                .thenReturn(new FeatureFlagConfigurationPublisher.Publication("v2", "deployment-2"));
+        FeatureFlagRuntimeService service = service(new MutableSource(), publisher, true);
+
+        service.publish(new FeatureFlagDocument("1", "v2", List.of()), "operator");
+
+        assertThat(service.view().effectiveVersion()).isEqualTo("v2");
+        assertThat(service.view().audit()).anyMatch(entry ->
+                "publish".equals(entry.operation()) && "operator".equals(entry.actor()));
+        verify(publisher).publish("{\"schemaVersion\":\"1\",\"version\":\"v2\",\"flags\":[]}",
+                "WCS feature flags published by operator");
+    }
+
+    @Test
+    void rollsBackToThePreviousEffectiveVersionAndAuditsTheOperation() {
+        FeatureFlagConfigurationPublisher publisher = mock(FeatureFlagConfigurationPublisher.class);
+        when(publisher.publish("{\"schemaVersion\":\"1\",\"version\":\"v2\",\"flags\":[]}",
+                "WCS feature flags published by operator"))
+                .thenReturn(new FeatureFlagConfigurationPublisher.Publication("v2", "deployment-2"));
+        when(publisher.publish("{\"schemaVersion\":\"1\",\"version\":\"v1\",\"flags\":[]}",
+                "WCS feature flags rollback by operator"))
+                .thenReturn(new FeatureFlagConfigurationPublisher.Publication("v3", "deployment-3"));
+        MutableSource source = new MutableSource();
+        source.next.set("{\"schemaVersion\":\"1\",\"version\":\"v1\",\"flags\":[]}".getBytes());
+        FeatureFlagRuntimeService service = service(source, publisher, true);
+        service.refresh();
+
+        service.publish(new FeatureFlagDocument("1", "v2", List.of()), "operator");
+        service.rollback("operator");
+
+        assertThat(service.view().effectiveVersion()).isEqualTo("v1");
+        assertThat(service.view().audit()).anyMatch(entry ->
+                "rollback".equals(entry.operation()) && "operator".equals(entry.actor()));
+        verify(publisher).publish("{\"schemaVersion\":\"1\",\"version\":\"v1\",\"flags\":[]}",
+                "WCS feature flags rollback by operator");
+    }
+
     private static FeatureFlagRuntimeService service(String payload) {
         MutableSource source = new MutableSource();
         source.next.set(payload.getBytes(java.nio.charset.StandardCharsets.UTF_8));
@@ -59,16 +103,23 @@ class FeatureFlagRuntimeServiceTest {
     }
 
     private static FeatureFlagRuntimeService service(FeatureFlagConfigurationSource source) {
+        return service(source, (content, description) -> new FeatureFlagConfigurationPublisher.Publication("published", "1"), false);
+    }
+
+    private static FeatureFlagRuntimeService service(
+            FeatureFlagConfigurationSource source,
+            FeatureFlagConfigurationPublisher publisher,
+            boolean publisherEnabled) {
         FeatureFlagProperties properties = new FeatureFlagProperties(
                 true,
                 true,
                 30_000,
                 300_000,
                 new FeatureFlagProperties.AppConfig("wally-customer-support", "prod", "feature-flags"),
-                new FeatureFlagProperties.Publisher(false, "all-at-once"));
+                new FeatureFlagProperties.Publisher(publisherEnabled, "all-at-once"));
         return new FeatureFlagRuntimeService(
                 source,
-                (content, description) -> new FeatureFlagConfigurationPublisher.Publication("published", "1"),
+                publisher,
                 new FeatureFlagValidator(new ObjectMapper()),
                 properties,
                 new ObjectMapper());

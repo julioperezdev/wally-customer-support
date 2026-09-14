@@ -34,10 +34,12 @@ const DEFAULT_DEFINITION = `{
 
 export function AgentAuthoringPanel({
   client,
-  onRegistryChanged
+  onRegistryChanged,
+  canWrite
 }: {
   client: ControlPlaneClient;
   onRegistryChanged: () => Promise<boolean>;
+  canWrite: boolean;
 }) {
   const [agentId, setAgentId] = useState("catalog-specialist");
   const [definitionJson, setDefinitionJson] = useState(DEFAULT_DEFINITION);
@@ -131,6 +133,7 @@ export function AgentAuthoringPanel({
       <div className="success-alert">
         El panel nunca recibe prompts completos, secretos ni conversaciones. Usá referencias y SHA-256 de los artefactos externos.
       </div>
+      {!canWrite && <div className="warning-alert">Tu usuario no tiene <code>agent-registry.write</code>; el authoring está en modo lectura.</div>}
       <div className="authoring-grid">
         <div>
           <h3>Crear draft</h3>
@@ -140,7 +143,7 @@ export function AgentAuthoringPanel({
           </div>
           <label>Definición metadata JSON<textarea rows={19} value={definitionJson} onChange={(event) => setDefinitionJson(event.target.value)} /></label>
           <div className="button-row">
-            <button className="primary" onClick={() => void createDraft()} disabled={busy}>Crear versión DRAFT</button>
+            <button className="primary" onClick={() => void createDraft()} disabled={busy || !canWrite}>Crear versión DRAFT</button>
           </div>
         </div>
         <div>
@@ -150,7 +153,7 @@ export function AgentAuthoringPanel({
             <label>Agent ID<input value={agentId} onChange={(event) => setAgentId(event.target.value)} /></label>
             <label>Versión origen<input inputMode="numeric" value={sourceVersion} onChange={(event) => setSourceVersion(event.target.value)} /></label>
           </div>
-          <button onClick={() => void cloneVersion()} disabled={busy}>Clonar como DRAFT</button>
+          <button onClick={() => void cloneVersion()} disabled={busy || !canWrite}>Clonar como DRAFT</button>
 
           <h3 className="authoring-subheading">Transicionar lifecycle</h3>
           <div className="form-grid">
@@ -161,7 +164,7 @@ export function AgentAuthoringPanel({
             <label>Aprobación técnica<input value={approvalReference} onChange={(event) => setApprovalReference(event.target.value)} /></label>
             <label>Aprobación operativa<input value={operationalApprovalReference} onChange={(event) => setOperationalApprovalReference(event.target.value)} /></label>
           </div>
-          <button onClick={() => void transitionLifecycle()} disabled={busy}>Aplicar transición</button>
+          <button onClick={() => void transitionLifecycle()} disabled={busy || !canWrite}>Aplicar transición</button>
         </div>
       </div>
       {error && <div className="alert" role="alert">Authoring: {error}</div>}

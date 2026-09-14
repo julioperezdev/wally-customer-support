@@ -24,6 +24,7 @@ import { OrderPanel } from "./OrderPanel";
 import {
   BackofficeAuthError,
   BackofficeSession,
+  createSessionRefresher,
   getBackofficeSession,
   loginBackoffice,
   logoutBackoffice,
@@ -102,12 +103,38 @@ export function App() {
   "flags": []
 }`);
 
+  const refreshSession = useMemo(() => createSessionRefresher(DEFAULT_AUTH_BASE_URL), []);
+  const hasCapability = (capability: string) => authSession?.capabilities.includes(capability) ?? false;
+  const canRegistryRead = hasCapability("agent-registry.read");
+  const canRegistryWrite = hasCapability("agent-registry.write");
+  const canEvaluationRead = hasCapability("agent-evaluation.read");
+  const canFeatureFlagsRead = hasCapability("feature-flags.read");
+  const canFeatureFlagsWrite = hasCapability("feature-flags.write");
+  const canCatalogRead = hasCapability("backoffice.catalog.read");
+  const canCatalogWrite = hasCapability("backoffice.catalog.write");
+  const canFollowUpRead = hasCapability("backoffice.human-follow-up.read");
+  const canFollowUpWrite = hasCapability("backoffice.human-follow-up.write");
+  const canOrdersRead = hasCapability("backoffice.orders.read");
+  const canOrdersWrite = hasCapability("backoffice.orders.write");
+
   // Authentication is owned by the API. Requests carry the HttpOnly Cognito
   // cookie; the optional client token is intentionally not exposed by this UI.
-  const client = useMemo(() => createControlPlaneClient(baseUrl, "", DEFAULT_REGISTRY_BASE_URL, DEFAULT_AGENT_MAP_BASE_URL), [baseUrl]);
-  const backofficeClient = useMemo(() => createBackofficeClient(DEFAULT_BACKOFFICE_BASE_URL, ""), []);
+  const client = useMemo(() => createControlPlaneClient(
+    baseUrl,
+    "",
+    DEFAULT_REGISTRY_BASE_URL,
+    DEFAULT_AGENT_MAP_BASE_URL,
+    "/internal/backoffice/feature-flags",
+    refreshSession), [baseUrl, refreshSession]);
+  const backofficeClient = useMemo(
+    () => createBackofficeClient(DEFAULT_BACKOFFICE_BASE_URL, "", refreshSession),
+    [refreshSession]);
 
   async function loadRuns(nextPage = 0): Promise<boolean> {
+    if (!canEvaluationRead) {
+      setPage(null);
+      return true;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -153,6 +180,10 @@ export function App() {
   }
 
   async function loadRegistry(): Promise<boolean> {
+    if (!canRegistryRead) {
+      setRegistryAgents(null);
+      return true;
+    }
     setRegistryBusy(true);
     setRegistryError(null);
     try {
@@ -202,6 +233,10 @@ export function App() {
   }
 
   async function loadAgentMap(): Promise<boolean> {
+    if (!canRegistryRead) {
+      setAgentMap(null);
+      return true;
+    }
     setAgentMapBusy(true);
     setAgentMapError(null);
     try {
@@ -256,25 +291,29 @@ export function App() {
     setCatalogError(null);
     setFollowUpError(null);
     const [catalogResult, followUpsResult] = await Promise.allSettled([
-      backofficeClient.searchCatalog({
+      canCatalogRead ? backofficeClient.searchCatalog({
           name: catalogName,
           productType: catalogType,
           color: catalogColor,
           page: 0,
           limit: 20
-      }),
-      backofficeClient.listHumanFollowUps(50)
+      }) : Promise.resolve(null),
+      canFollowUpRead ? backofficeClient.listHumanFollowUps(50) : Promise.resolve(null)
     ]);
     let succeeded = true;
-    if (catalogResult.status === "fulfilled") {
+    if (catalogResult.status === "fulfilled" && catalogResult.value) {
       setCatalogPage(catalogResult.value);
-    } else {
+    } else if (catalogResult.status === "fulfilled") {
+      setCatalogPage(null);
+    } else if (catalogResult.status === "rejected") {
       setCatalogError(toUserMessage(catalogResult.reason));
       succeeded = false;
     }
-    if (followUpsResult.status === "fulfilled") {
+    if (followUpsResult.status === "fulfilled" && followUpsResult.value) {
       setFollowUps(followUpsResult.value);
-    } else {
+    } else if (followUpsResult.status === "fulfilled") {
+      setFollowUps(null);
+    } else if (followUpsResult.status === "rejected") {
       setFollowUpError(toUserMessage(followUpsResult.reason));
       succeeded = false;
     }
@@ -308,6 +347,10 @@ export function App() {
   }
 
   async function loadFeatureFlags(): Promise<boolean> {
+    if (!canFeatureFlagsRead) {
+      setFeatureFlags(null);
+      return true;
+    }
     setFeatureFlagsBusy(true);
     setFeatureFlagsError(null);
     try {
@@ -467,7 +510,7 @@ export function App() {
         {authError && <div className="alert" role="alert">Autenticación: {authError}</div>}
         {globalRefreshError && <div className="alert" role="alert">Conexión: {globalRefreshError}</div>}
         {globalRefreshMessage && <div className="success-alert" role="status" aria-live="polite">{globalRefreshMessage}</div>}
-        <div className="button-row"><button onClick={() => void loadRuns()} disabled={busy || globalRefreshBusy}>Actualizar runs</button><button onClick={() => void loadRegistry()} disabled={registryBusy || globalRefreshBusy}>Actualizar registry</button></div>
+        <div className="button-row"><button onClick={() => void loadRuns()} disabled={busy || globalRefreshBusy || !canEvaluationRead}>Actualizar runs</button><button onClick={() => void loadRegistry()} disabled={registryBusy || globalRefreshBusy || !canRegistryRead}>Actualizar registry</button></div>
       </section>
 
       <section className="card">
@@ -476,10 +519,11 @@ export function App() {
           <span className={featureFlags?.stale ? "negative status-label" : "security-note"}>{featureFlags?.stale ? "STALE" : "HOT RELOAD"}</span>
         </div>
         {featureFlagsError && <div className="alert" role="alert">Feature flags: {featureFlagsError}</div>}
-        <div className="button-row"><button onClick={() => void loadFeatureFlags()} disabled={featureFlagsBusy || globalRefreshBusy}>Actualizar snapshot</button><button onClick={() => void rollbackFeatureFlags()} disabled={featureFlagsBusy}>Rollback última versión</button></div>
+        {!canFeatureFlagsRead && <div className="warning-alert">Tu usuario no tiene <code>feature-flags.read</code>.</div>}
+        <div className="button-row"><button onClick={() => void loadFeatureFlags()} disabled={featureFlagsBusy || globalRefreshBusy || !canFeatureFlagsRead}>Actualizar snapshot</button><button onClick={() => void rollbackFeatureFlags()} disabled={featureFlagsBusy || !canFeatureFlagsWrite}>Rollback última versión</button></div>
         {featureFlags && <div className="metric-row"><Metric label="Versión efectiva" value={featureFlags.effectiveVersion} /><Metric label="Flags" value={String(featureFlags.flags.length)} /><Metric label="Auditoría" value={String(featureFlags.audit.length)} /></div>}
-        <label>Documento de publicación (sin secretos)<textarea rows={9} value={featureFlagsJson} onChange={(event) => setFeatureFlagsJson(event.target.value)} /></label>
-        <button className="primary" onClick={() => void publishFeatureFlags()} disabled={featureFlagsBusy}>Publicar nueva versión</button>
+        <label>Documento de publicación (sin secretos)<textarea rows={9} value={featureFlagsJson} onChange={(event) => setFeatureFlagsJson(event.target.value)} disabled={!canFeatureFlagsWrite} /></label>
+        <button className="primary" onClick={() => void publishFeatureFlags()} disabled={featureFlagsBusy || !canFeatureFlagsWrite}>Publicar nueva versión</button>
         {featureFlags && <FeatureFlagView snapshot={featureFlags} />}
       </section>
 
@@ -493,23 +537,23 @@ export function App() {
           <input aria-label="Filtrar catálogo por tipo" placeholder="Tipo: remera, buzo..." value={catalogType} onChange={(event) => setCatalogType(event.target.value)} />
           <input aria-label="Filtrar catálogo por color" placeholder="Color" value={catalogColor} onChange={(event) => setCatalogColor(event.target.value)} />
           <input aria-label="Actor de operación" placeholder="Actor" value={storeActor} onChange={(event) => setStoreActor(event.target.value)} />
-          <button className="primary" onClick={() => void loadStore()} disabled={storeBusy || globalRefreshBusy}>Actualizar tienda</button>
+          <button className="primary" onClick={() => void loadStore()} disabled={storeBusy || globalRefreshBusy || (!canCatalogRead && !canFollowUpRead)}>Actualizar tienda</button>
         </div>
         {catalogError && <div className="alert" role="alert">Catálogo: {catalogError}</div>}
         {followUpError && !catalogError && <div className="alert" role="alert">Atención humana: {followUpError}</div>}
         <div className="store-grid">
           <div>
             <h3>Catálogo</h3>
-          <CatalogView page={catalogPage} onAdjustStock={adjustStock} disabled={storeBusy} />
+          <CatalogView page={catalogPage} onAdjustStock={adjustStock} disabled={storeBusy || !canCatalogWrite} />
           </div>
           <div>
             <h3>Solicitudes humanas</h3>
-            <HumanFollowUpView followUps={followUps} onAction={changeFollowUp} disabled={storeBusy} />
+            <HumanFollowUpView followUps={followUps} onAction={changeFollowUp} disabled={storeBusy || !canFollowUpWrite} />
           </div>
         </div>
       </section>
 
-      <OrderPanel client={backofficeClient} />
+      <OrderPanel client={backofficeClient} canRead={canOrdersRead} canWrite={canOrdersWrite} />
 
       {error && <div className="alert" role="alert">{error}</div>}
       {registryError && <div className="alert" role="alert">Registry: {registryError}</div>}
@@ -524,13 +568,13 @@ export function App() {
           <input aria-label="Filtrar registry por ambiente" placeholder="environment" value={registryEnvironment} onChange={(event) => setRegistryEnvironment(event.target.value)} />
           <input aria-label="Filtrar registry por canal" placeholder="channel" value={registryChannel} onChange={(event) => setRegistryChannel(event.target.value)} />
           <input aria-label="Filtrar registry por caso de uso" placeholder="useCase" value={registryUseCase} onChange={(event) => setRegistryUseCase(event.target.value)} />
-          <button onClick={() => void loadRegistry()} disabled={registryBusy || globalRefreshBusy}>Filtrar</button>
+          <button onClick={() => void loadRegistry()} disabled={registryBusy || globalRefreshBusy || !canRegistryRead}>Filtrar</button>
         </div>
         <AgentRegistryView agents={registryAgents} />
       </section>
 
-      <AgentAuthoringPanel client={client} onRegistryChanged={loadRegistry} />
-      <AgentEvidencePanel client={client} />
+      <AgentAuthoringPanel client={client} onRegistryChanged={loadRegistry} canWrite={canRegistryWrite} />
+      <AgentEvidencePanel client={client} canRead={canRegistryRead} />
 
       <section className="card">
         <div className="section-heading">
@@ -542,10 +586,10 @@ export function App() {
           <input aria-label="Canal del mapa" placeholder="channel" value={mapChannel} onChange={(event) => setMapChannel(event.target.value)} />
           <input aria-label="Caso de uso del mapa" placeholder="useCase (opcional)" value={mapUseCase} onChange={(event) => setMapUseCase(event.target.value)} />
           <input aria-label="Agente del mapa" placeholder="agentId (opcional)" value={mapAgentId} onChange={(event) => setMapAgentId(event.target.value)} />
-          <button onClick={() => void loadAgentMap()} disabled={agentMapBusy || globalRefreshBusy}>Actualizar mapa</button>
+          <button onClick={() => void loadAgentMap()} disabled={agentMapBusy || globalRefreshBusy || !canRegistryRead}>Actualizar mapa</button>
         </div>
         {agentMapError && <div className="alert" role="alert">Mapa: {agentMapError}</div>}
-        <AgentMapView map={agentMap} simulation={simulation} simulationAgentId={simulationAgentId} simulationVersion={simulationVersion} onAgentChange={setSimulationAgentId} onVersionChange={setSimulationVersion} onSimulate={() => void simulateAgentMap()} disabled={agentMapBusy} />
+        <AgentMapView map={agentMap} simulation={simulation} simulationAgentId={simulationAgentId} simulationVersion={simulationVersion} onAgentChange={setSimulationAgentId} onVersionChange={setSimulationVersion} onSimulate={() => void simulateAgentMap()} disabled={agentMapBusy || !canRegistryRead} />
       </section>
 
       <section className="card">
@@ -564,12 +608,12 @@ export function App() {
           <label>Aprobación técnica<input value={preflightApproval} onChange={(event) => setPreflightApproval(event.target.value)} /></label>
           <label>Aprobación operativa<input value={preflightOperationalApproval} onChange={(event) => setPreflightOperationalApproval(event.target.value)} /></label>
         </div>
-        <button className="primary" onClick={() => void runPreflight()} disabled={preflightBusy}>Ejecutar preflight</button>
+        <button className="primary" onClick={() => void runPreflight()} disabled={preflightBusy || !canRegistryRead}>Ejecutar preflight</button>
         {preflightError && <div className="alert" role="alert">Preflight: {preflightError}</div>}
         {preflight && <PreflightView result={preflight} />}
       </section>
 
-      <AgentActivationPanel client={client} onRegistryChanged={loadRegistry} />
+      <AgentActivationPanel client={client} onRegistryChanged={loadRegistry} canWrite={canRegistryWrite} />
 
       <section className="card">
         <div className="section-heading">
@@ -577,7 +621,7 @@ export function App() {
           <div className="filters">
             <input aria-label="Filtrar por agente" placeholder="agentId" value={agentId} onChange={(event) => setAgentId(event.target.value)} />
             <input aria-label="Filtrar por proveedor" placeholder="provider" value={provider} onChange={(event) => setProvider(event.target.value)} />
-            <button onClick={() => void loadRuns()} disabled={busy}>Filtrar</button>
+            <button onClick={() => void loadRuns()} disabled={busy || !canEvaluationRead}>Filtrar</button>
           </div>
         </div>
         <RunTable page={page} onOpen={openRun} />

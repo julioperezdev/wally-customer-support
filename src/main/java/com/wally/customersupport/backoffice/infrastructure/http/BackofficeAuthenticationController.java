@@ -65,7 +65,7 @@ public class BackofficeAuthenticationController {
 
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) {
-        String accessToken = new BackofficeCookieBearerTokenResolver().resolve(request);
+        String accessToken = new BackofficeCookieBearerTokenResolver(properties.accessCookieName()).resolve(request);
         authenticationService.logout(accessToken);
         clearSessionCookies(response);
         return ResponseEntity.noContent().build();

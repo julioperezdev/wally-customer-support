@@ -3,6 +3,7 @@ package com.wally.customersupport.backoffice.infrastructure.http;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -71,5 +72,46 @@ class BackofficeFeatureFlagControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.effectiveVersion").value("v1"))
                 .andExpect(jsonPath("$.flags").isArray());
+    }
+
+    @Test
+    void deniesFeatureFlagPublicationWithoutWriteCapability() throws Exception {
+        when(accessService.authorizeFeatureFlagsWrite("operator")).thenReturn(new AgentEvaluationControlPlaneAccessDecision(
+                AgentEvaluationControlPlaneAccessStatus.DENIED,
+                "operator",
+                "prod",
+                AgentEvaluationControlPlaneAccessService.FEATURE_FLAGS_WRITE_CAPABILITY,
+                AgentEvaluationControlPlaneAccessReason.AUTHORIZER_DENIED));
+
+        mockMvc.perform(post("/internal/backoffice/feature-flags/publish")
+                        .principal(() -> "operator")
+                        .contentType("application/json")
+                        .content("{\"schemaVersion\":\"1\",\"version\":\"v2\",\"flags\":[]}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+
+        verifyNoInteractions(runtime);
+    }
+
+    @Test
+    void publishesFeatureFlagsOnlyAfterWriteAuthorization() throws Exception {
+        when(accessService.authorizeFeatureFlagsWrite("operator")).thenReturn(new AgentEvaluationControlPlaneAccessDecision(
+                AgentEvaluationControlPlaneAccessStatus.AUTHORIZED,
+                "operator",
+                "prod",
+                AgentEvaluationControlPlaneAccessService.FEATURE_FLAGS_WRITE_CAPABILITY,
+                AgentEvaluationControlPlaneAccessReason.AUTHORIZED));
+        FeatureFlagSnapshotView snapshot = new FeatureFlagSnapshotView(
+                "prod", "v2", Instant.parse("2026-09-09T12:00:00Z"),
+                Instant.parse("2026-09-09T12:00:00Z"), false, List.of(), List.of());
+        when(runtime.publish(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq("operator")))
+                .thenReturn(snapshot);
+
+        mockMvc.perform(post("/internal/backoffice/feature-flags/publish")
+                        .principal(() -> "operator")
+                        .contentType("application/json")
+                        .content("{\"schemaVersion\":\"1\",\"version\":\"v2\",\"flags\":[]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.effectiveVersion").value("v2"));
     }
 }
