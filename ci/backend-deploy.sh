@@ -128,14 +128,7 @@ update_operation="$(aws apprunner update-service \
   --source-configuration "$updated_source_configuration" \
   --query 'OperationId' \
   --output text)"
-wait_for_operation "$update_operation" "Pin image"
-wait_for_running_service
-
-deployment_operation="$(aws apprunner start-deployment \
-  --service-arn "$SERVICE_ARN" \
-  --query 'OperationId' \
-  --output text)"
-wait_for_operation "$deployment_operation" "Deploy image"
+wait_for_operation "$update_operation" "Update image and deploy"
 wait_for_running_service
 
 service_url="$(aws apprunner describe-service \
