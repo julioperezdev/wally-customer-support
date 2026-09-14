@@ -18,6 +18,15 @@ La evolución hacia el backoffice operativo de tienda está definida en
 slices `WCS-119` a `WCS-122`. Este documento conserva el contrato del primer
 panel técnico y sus garantías de seguridad.
 
+## Uso desde dispositivos móviles
+
+El backoffice mantiene una única interfaz responsive para escritorio, tablet y
+teléfono. En anchos reducidos los formularios y acciones se apilan, los
+indicadores se reorganizan en tarjetas y las tablas conservan desplazamiento
+horizontal controlado para no ocultar columnas operativas. La autenticación,
+los permisos y los contratos de API son los mismos; este ajuste sólo cambia la
+presentación del cliente web.
+
 ## Operación de tienda — WCS-119
 
 La primera entrega operativa expone, cuando
