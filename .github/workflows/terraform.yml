@@ -215,6 +215,9 @@ jobs:
             exit 1
           fi
 
+      - name: Validate Terraform plan safety
+        run: bash scripts/validate-terraform-plan.sh "$RUNNER_TEMP/wcs-terraform-plan.json"
+
       - name: Apply reviewed plan
         if: inputs.action == 'apply'
         working-directory: ${{ env.TF_WORKING_DIR }}

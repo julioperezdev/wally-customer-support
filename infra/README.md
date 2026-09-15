@@ -68,6 +68,12 @@ guardar el recurso en el state remoto. El root de producción conserva un bloque
 configuración (CORS, cifrado, versionado, lifecycle y controles de acceso) sí
 quedan reconciliados por Terraform.
 
+Los workflows ejecutan además una validación rápida del plan antes de cualquier
+apply. Esta validación bloquea policies IAM por encima de los límites de AWS y
+detecta un `aws_s3_bucket` que Terraform intenta crear aunque ya exista en la
+cuenta. De esta forma los errores de tamaño de policy o de adopción de recursos
+se detectan durante el plan, no después de un apply prolongado.
+
 El módulo `appconfig` usa una aplicación estable (`wally-customer-support`) y
 un environment por despliegue (`dev`, `test` o `prod`). Recibe por defecto un
 JSON hosted falso con las claves Spring y referencias a esos tres secrets, y
