@@ -1,12 +1,15 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   AgentActivationActionRequest,
   AgentActivationMutation,
   AgentActivationPreflight,
   AgentActivationRequest,
+  AgentFilterOptions,
+  AgentRegistryAgent,
   ControlPlaneError,
   createControlPlaneClient
 } from "./api";
+import { assignmentValuesFor, versionsForAgent } from "./agent-registry";
 
 type ControlPlaneClient = ReturnType<typeof createControlPlaneClient>;
 
@@ -27,7 +30,7 @@ const INITIAL_DRAFT: ActivationDraft = {
   version: "1",
   environment: "prod",
   channel: "telegram",
-  useCase: "catalog-search",
+  useCase: "CATALOG_SEARCH",
   reason: "controlled activation",
   rollout: "100",
   approvalReference: "",
@@ -37,11 +40,15 @@ const INITIAL_DRAFT: ActivationDraft = {
 export function AgentActivationPanel({
   client,
   onRegistryChanged,
-  canWrite
+  canWrite,
+  agents,
+  filterOptions
 }: {
   client: ControlPlaneClient;
   onRegistryChanged: () => Promise<boolean>;
   canWrite: boolean;
+  agents: AgentRegistryAgent[] | null;
+  filterOptions: AgentFilterOptions;
 }) {
   const [draft, setDraft] = useState<ActivationDraft>(INITIAL_DRAFT);
   const [preflight, setPreflight] = useState<AgentActivationPreflight | null>(null);
@@ -51,6 +58,17 @@ export function AgentActivationPanel({
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [mutation, setMutation] = useState<AgentActivationMutation | null>(null);
+
+  const assignmentSelection = useMemo(() => ({
+    agentId: draft.agentId,
+    environment: draft.environment,
+    channel: draft.channel,
+    useCase: draft.useCase
+  }), [draft]);
+  const environmentOptions = assignmentValuesFor(filterOptions, assignmentSelection, "environment");
+  const channelOptions = assignmentValuesFor(filterOptions, assignmentSelection, "channel");
+  const useCaseOptions = assignmentValuesFor(filterOptions, assignmentSelection, "useCase");
+  const availableVersions = versionsForAgent(agents, draft.agentId);
 
   function updateDraft(field: keyof ActivationDraft, value: string) {
     setDraft((current) => ({ ...current, [field]: value }));
@@ -193,11 +211,11 @@ export function AgentActivationPanel({
     </div>
     {!canWrite && <div className="warning-alert">Tu usuario no tiene <code>agent-registry.write</code>; las mutaciones están bloqueadas.</div>}
     <div className="form-grid">
-      <label>Agente<input value={draft.agentId} onChange={(event) => updateDraft("agentId", event.target.value)} /></label>
-      <label>Versión<input inputMode="numeric" value={draft.version} onChange={(event) => updateDraft("version", event.target.value)} /></label>
-      <label>Ambiente<input value={draft.environment} onChange={(event) => updateDraft("environment", event.target.value)} /></label>
-      <label>Canal<input value={draft.channel} onChange={(event) => updateDraft("channel", event.target.value)} /></label>
-      <label>Caso de uso<input value={draft.useCase} onChange={(event) => updateDraft("useCase", event.target.value)} /></label>
+      <RegistrySelect label="Agente" value={draft.agentId} options={filterOptions.agentIds} onChange={(value) => updateDraft("agentId", value)} />
+      <RegistrySelect label="Versión" value={draft.version} options={availableVersions.map((version) => String(version.version))} onChange={(value) => updateDraft("version", value)} numeric />
+      <RegistrySelect label="Ambiente" value={draft.environment} options={environmentOptions} onChange={(value) => updateDraft("environment", value)} />
+      <RegistrySelect label="Canal" value={draft.channel} options={channelOptions} onChange={(value) => updateDraft("channel", value)} />
+      <RegistrySelect label="Caso de uso" value={draft.useCase} options={useCaseOptions} onChange={(value) => updateDraft("useCase", value)} />
       <label>Rollout %<input inputMode="numeric" value={draft.rollout} onChange={(event) => updateDraft("rollout", event.target.value)} /></label>
       <label>Motivo<input value={draft.reason} onChange={(event) => updateDraft("reason", event.target.value)} /></label>
       <label>Aprobación técnica<input value={draft.approvalReference} onChange={(event) => updateDraft("approvalReference", event.target.value)} autoComplete="off" /></label>
@@ -260,4 +278,24 @@ function toActivationMessage(cause: unknown) {
     return `El control plane respondió ${cause.code}.`;
   }
   return "No se pudo ejecutar la acción de activación. Revisá la URL y el estado del backend.";
+}
+
+function RegistrySelect({
+  label,
+  value,
+  options,
+  onChange,
+  numeric = false
+}: {
+  label: string;
+  value: string;
+  options: string[];
+  onChange: (value: string) => void;
+  numeric?: boolean;
+}) {
+  const visibleOptions = value && !options.includes(value) ? [value, ...options] : options;
+  return <label>{label}<select value={value} inputMode={numeric ? "numeric" : undefined} onChange={(event) => onChange(event.target.value)}>
+    {!value && <option value="">Seleccionar</option>}
+    {visibleOptions.map((option) => <option key={option} value={option}>{numeric ? `v${option}` : option}</option>)}
+  </select></label>;
 }

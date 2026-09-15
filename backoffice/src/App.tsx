@@ -685,7 +685,13 @@ export function App() {
         <AgentRegistryView agents={registryAgents} />
       </section>
 
-      <AgentAuthoringPanel client={client} onRegistryChanged={loadRegistry} canWrite={canRegistryWrite} />
+      <AgentAuthoringPanel
+        client={client}
+        onRegistryChanged={loadRegistry}
+        canWrite={canRegistryWrite}
+        agents={registryAgents}
+        filterOptions={effectiveAgentFilterOptions}
+      />
       <AgentEvidencePanel client={client} canRead={canRegistryRead} filterOptions={effectiveAgentFilterOptions} />
 
       <section className="card">
@@ -710,11 +716,11 @@ export function App() {
           <span className="security-note">SIN MUTACIÓN</span>
         </div>
         <div className="form-grid">
-          <label>Agente<input value={preflightAgentId} onChange={(event) => setPreflightAgentId(event.target.value)} /></label>
-          <label>Versión<input inputMode="numeric" value={preflightVersion} onChange={(event) => setPreflightVersion(event.target.value)} /></label>
-          <label>Ambiente<input value={preflightEnvironment} onChange={(event) => setPreflightEnvironment(event.target.value)} /></label>
-          <label>Canal<input value={preflightChannel} onChange={(event) => setPreflightChannel(event.target.value)} /></label>
-          <label>Caso de uso<input value={preflightUseCase} onChange={(event) => setPreflightUseCase(event.target.value)} /></label>
+          <FilterSelect label="Agente" ariaLabel="Agente del preflight" value={preflightAgentId} options={effectiveAgentFilterOptions.agentIds} onChange={setPreflightAgentId} />
+          <FilterSelect label="Versión" ariaLabel="Versión del preflight" value={preflightVersion} options={registryAgents?.find((agent) => agent.agentId === preflightAgentId)?.versions.map((version) => String(version.version)) ?? []} onChange={setPreflightVersion} />
+          <FilterSelect label="Ambiente" ariaLabel="Ambiente del preflight" value={preflightEnvironment} options={filterValuesFor(effectiveAgentFilterOptions, { agentId: preflightAgentId, environment: preflightEnvironment, channel: preflightChannel, useCase: preflightUseCase }, "environment")} onChange={setPreflightEnvironment} />
+          <FilterSelect label="Canal" ariaLabel="Canal del preflight" value={preflightChannel} options={filterValuesFor(effectiveAgentFilterOptions, { agentId: preflightAgentId, environment: preflightEnvironment, channel: preflightChannel, useCase: preflightUseCase }, "channel")} onChange={setPreflightChannel} />
+          <FilterSelect label="Caso de uso" ariaLabel="Caso de uso del preflight" value={preflightUseCase} options={filterValuesFor(effectiveAgentFilterOptions, { agentId: preflightAgentId, environment: preflightEnvironment, channel: preflightChannel, useCase: preflightUseCase }, "useCase")} onChange={setPreflightUseCase} />
           <label>Rollout %<input inputMode="numeric" value={preflightRollout} onChange={(event) => setPreflightRollout(event.target.value)} /></label>
           <label>Motivo<input value={preflightReason} onChange={(event) => setPreflightReason(event.target.value)} /></label>
           <label>Aprobación técnica<input value={preflightApproval} onChange={(event) => setPreflightApproval(event.target.value)} /></label>
@@ -725,7 +731,13 @@ export function App() {
         {preflight && <PreflightView result={preflight} />}
       </section>
 
-      <AgentActivationPanel client={client} onRegistryChanged={loadRegistry} canWrite={canRegistryWrite} />
+      <AgentActivationPanel
+        client={client}
+        onRegistryChanged={loadRegistry}
+        canWrite={canRegistryWrite}
+        agents={registryAgents}
+        filterOptions={effectiveAgentFilterOptions}
+      />
 
       <section className="card">
         <div className="section-heading">

@@ -117,12 +117,12 @@ Las etapas propuestas son:
    implementado para `GENERAL_SUPPORT`;
 3. registry y lectura versionada de agentes — primer corte implementado en modo
    read-only;
-4. authoring y ciclo de vida de agentes — siguiente gate pendiente;
+4. authoring y ciclo de vida de agentes — implementado; pendiente smoke y rollout;
 5. agentes core y tools determinísticas — se amplía después del control plane;
 6. evaluación, persistencia histórica, observabilidad y costos — debe alimentar
    el workflow de promoción;
-7. backoffice React/TypeScript de escritura protegida — completa el panel
-   actual con autenticación Cognito y sin bypass read-only/preview;
+7. backoffice React/TypeScript de escritura protegida — implementado con
+   autenticación Cognito y sin bypass read-only/preview;
 8. migración canary con feature flags y rollback;
 9. evaluación opcional de MCP read-only y AgentCore.
 
@@ -133,10 +133,11 @@ mapa de agentes, feature flags dinámicos y venta asistida.
 ### Regla de secuenciación del backoffice
 
 El primer corte read-only fue ampliado en WCS-120 con authoring por clonación,
-lifecycle hasta `ACTIVE`/`RETIRED`, permiso de publicación, auditoría
-persistente almacenada y trazas productivas sanitizadas. La UI permite
-crear metadata, clonar versiones y solicitar transiciones; el backend mantiene
-la autoridad sobre permisos, idempotencia y rollout.
+edición como nueva DRAFT inmutable, lifecycle hasta `ACTIVE`/`RETIRED`,
+permiso de publicación, auditoría persistente almacenada y trazas productivas
+sanitizadas. La UI permite seleccionar agentes, versiones y asignaciones reales
+del registry; el backend mantiene la autoridad sobre permisos, idempotencia y
+rollout.
 
 El cierre operativo de WCS-120 requiere habilitar la flag de authoring sólo
 después de su smoke test autenticado y validar la migración V19. Luego se

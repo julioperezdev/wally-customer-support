@@ -4,10 +4,10 @@ Estado: `Accepted / In progress`
 Épica: [WCS-118](https://julioperezdev.atlassian.net/browse/WCS-118)
 
 La entrega de la plataforma de agentes está dividida en dos niveles que no
-deben confundirse: un panel read-only/preview para observar el sistema y un
-control plane completo para crear, versionar, evaluar y activar agentes. El
-primer nivel ya está implementado; el segundo mantiene trabajo pendiente dentro
-de WCS-120.
+deben confundirse: un panel read-only para observar el sistema y un control
+plane protegido para crear, versionar, evaluar y activar agentes. Ambos niveles
+están implementados en el código; el cierre de WCS-120 queda sujeto al smoke
+autenticado y a la habilitación controlada de sus flags.
 
 WCS-122 comenzó como un slice vertical aislado para validar pedidos y pagos sin
 desplazar el control plane de agentes. Su proveedor queda en `mock` por defecto
@@ -25,7 +25,7 @@ documentación, rollout y rollback.
 | Slice | Jira | Alcance | Estado de planificación |
 | --- | --- | --- | --- |
 | Operación de tienda | [WCS-119](https://julioperezdev.atlassian.net/browse/WCS-119) | Catálogo, variantes, stock, media S3 y bandeja de atención humana | Implementación backend/frontend/IaC; pendiente smoke de bucket y UI |
-| Plataforma de agentes | [WCS-120](https://julioperezdev.atlassian.net/browse/WCS-120) | Registry, authoring, versiones, evaluación, fallback, ejecuciones y métricas | Control plane y UI protegida implementados; falta smoke operativo post-merge |
+| Plataforma de agentes | [WCS-120](https://julioperezdev.atlassian.net/browse/WCS-120) | Registry, authoring, versiones, evaluación, fallback, ejecuciones y métricas | Implementado; falta smoke operativo post-merge y habilitación controlada |
 | Configuración dinámica | [WCS-121](https://julioperezdev.atlassian.net/browse/WCS-121) | Feature flags de negocio con AppConfig sin reinicio | Runtime, publicación, rollback y UI protegida implementados; falta validar AppConfig desplegado |
 | Venta asistida | [WCS-122](https://julioperezdev.atlassian.net/browse/WCS-122) | Pedidos y links de pago con Mercado Pago Sandbox | Implementación vertical en curso; provider mock por defecto |
 
@@ -110,7 +110,7 @@ desactivación debe mostrar la ruta alternativa antes de modificar nada.
 
 ### Estado actual de WCS-120
 
-El corte implementado de WCS-120 entrega el panel read-only/preview con:
+El corte implementado de WCS-120 entrega:
 
 - registry de agentes, versiones, estados y activaciones sanitizadas;
 - mapa de casos de uso y relaciones de fallback;
@@ -119,21 +119,24 @@ El corte implementado de WCS-120 entrega el panel read-only/preview con:
   latencia y resultados;
 - preflight de activación sin persistencia.
 
-Hasta que exista un store de trazas de runtime, las ejecuciones mostradas son
-runs de evaluación y la UI lo identifica explícitamente. La simulación produce
-`FALLBACK_AGENT`, `HUMAN_REQUIRED` o `NO_CHANGE` y no persiste cambios.
+Además, el authoring permite seleccionar una versión registrada, cargar su
+metadata sanitizada, editarla y guardar una nueva `DRAFT`. La versión anterior
+permanece inmutable. Los selectores de activación y preflight se alimentan de
+las asignaciones reales del registry (`agentId`, ambiente, canal, caso de uso y
+versión), evitando activar rutas con valores escritos de memoria.
 
-Este corte no cierra WCS-120. Para considerarlo completo todavía deben
-implementarse, en un incremento amplio y coherente:
+Las ejecuciones productivas se persisten en `agent_execution_traces`, mientras
+que los runs de evaluación se mantienen como evidencia separada. La simulación
+produce `FALLBACK_AGENT`, `HUMAN_REQUIRED` o `NO_CHANGE` y no persiste cambios.
 
-- creación, clonación y edición de definiciones/versiones de agentes;
-- metadata de prompts, modelo, parámetros, variables, schemas, tools y fuentes
-  con permisos adecuados;
-- workflow auditable `DRAFT -> EVALUATED -> APPROVED -> ACTIVE`, con activación,
-  desactivación y rollback reales e idempotentes;
-- persistencia de trazas de ejecución productiva por agente, versión, caso de
-  uso, canal y resultado;
-- evaluación y gates de promoción conectados al ciclo de vida del agente.
+El cierre operativo de WCS-120 requiere validar en el ambiente objetivo:
+
+- login Cognito y permisos `agent-registry.read`, `agent-registry.write` y
+  `agent-registry.publish`;
+- creación/edición por nueva versión, lifecycle, activación, kill switch y
+  rollback con evidencia de auditoría;
+- trazas runtime y evaluación de la ruta afectada;
+- rollback de flags y runtime sin destruir historial ni migraciones.
 
 El panel debe mostrar explícitamente si una operación es `READ_ONLY`, `PREVIEW`,
 `DISABLED` o `AVAILABLE`; una simulación o un preflight nunca equivale a una
