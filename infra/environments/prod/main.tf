@@ -171,6 +171,14 @@ locals {
   )
 }
 
+# The first WCS-119 apply created this bucket before Terraform could persist
+# its state. Keep the existing production bucket under Terraform management
+# instead of attempting to create it again.
+import {
+  to = module.backoffice_media.aws_s3_bucket.this
+  id = local.backoffice_media_bucket_name
+}
+
 module "database_secrets" {
   source = "../../modules/runtime-secrets"
 

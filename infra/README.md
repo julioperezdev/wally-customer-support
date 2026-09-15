@@ -55,10 +55,18 @@ consola de Secrets Manager sin que el siguiente `terraform apply` los restaure.
 No se debe habilitar App Runner mientras sigan presentes.
 
 El rol OIDC que ejecuta Terraform recibe permisos S3 acotados al bucket privado
-de medios del backoffice. El nombre y ARN se calculan de forma determinística
-en el root de producción y el módulo de medios espera a que la policy del rol
-esté actualizada antes de configurar el bucket. Esto evita que un bucket ya
-existente sea interpretado como ausente por CI por falta de permisos de lectura.
+de medios del backoffice mediante una policy administrada separada. El nombre y
+ARN se calculan de forma determinística en el root de producción y el módulo de
+medios espera a que la policy del rol esté actualizada antes de configurar el
+bucket. Esto evita superar el límite de 10.240 bytes de la policy inline y que
+un bucket existente sea interpretado como ausente por CI por falta de permisos
+de lectura.
+
+El bucket de producción se creó durante un intento anterior que falló antes de
+guardar el recurso en el state remoto. El root de producción conserva un bloque
+`import` declarativo para adoptar ese bucket existente; los recursos de
+configuración (CORS, cifrado, versionado, lifecycle y controles de acceso) sí
+quedan reconciliados por Terraform.
 
 El módulo `appconfig` usa una aplicación estable (`wally-customer-support`) y
 un environment por despliegue (`dev`, `test` o `prod`). Recibe por defecto un
