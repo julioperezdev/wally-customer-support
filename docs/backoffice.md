@@ -81,6 +81,21 @@ agrupa cada caso de uso y expone relaciones `ROUTES_TO`, `USES_TOOL`,
 `USES_KNOWLEDGE_SOURCE`, `FALLBACK_TO` y `HANDOFF_TO_HUMAN`. La simulación es
 explícita y no equivale a un kill switch real.
 
+El baseline actual registra los owners que ya aparecen en
+`ConversationExecutionPlan`: `catalog-specialist`, `knowledge-specialist`,
+`support-safety` y `response-humanizer`. Sus asignaciones declaradas cubren
+`prod` para los adapters `telegram` y `whatsapp`, y reflejan los casos de uso
+que cada owner ejecuta en el plan. Las filas de baseline se crean con
+`enabled=false` y rollout `0`; sirven para que el panel muestre el mapa y sus
+filtros, pero no habilitan el runtime de activaciones. La flag
+`wcs.agent-runtime.activation-enabled` continúa siendo el gate independiente.
+
+`conversation-router` no figura como agente del registry porque actualmente es
+la responsabilidad del clasificador y `ConversationExecutionPlanFactory`; no
+es un owner de un paso ejecutable. Si en el futuro adquiere una definición,
+herramientas, lifecycle y trazas propias, se incorporará mediante una nueva
+migración.
+
 En esta primera versión, `executionCount`, latencia, tokens, costo y tasa de
 éxito se calculan sobre los runs de evaluación sanitizados persistidos por
 WCS-61. La respuesta declara `metricsSource=EVALUATION_RUNS` y el contador de
