@@ -581,7 +581,7 @@ backend, frontend, pruebas, documentación, observabilidad, rollout y rollback.
 
 | Jira | Estado inicial | Slice |
 | --- | --- | --- |
-| WCS-119 | In Progress | Catálogo, stock, media S3 y bandeja humana |
+| WCS-119 | In Progress | Catálogo, stock, media S3 privada con URLs prefirmadas y bandeja humana filtrable; falta smoke AWS |
 | WCS-120 | To Do | Panel read-only entregado parcialmente; falta authoring, lifecycle, promoción y trazas runtime |
 | WCS-121 | To Do | Feature flags de negocio con AppConfig sin reinicio |
 | WCS-122 | In Progress | Pedidos y links de pago con Mercado Pago Sandbox; provider mock por defecto y activación Sandbox sujeta a gates |

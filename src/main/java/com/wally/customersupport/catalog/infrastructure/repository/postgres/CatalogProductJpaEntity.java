@@ -75,6 +75,14 @@ public class CatalogProductJpaEntity {
         return name;
     }
 
+    public UUID getId() {
+        return id;
+    }
+
+    public String getImageObjectKey() {
+        return imageObjectKey;
+    }
+
     public void setImageObjectKey(String imageObjectKey, Instant now) {
         this.imageObjectKey = imageObjectKey;
         this.updatedAt = now;

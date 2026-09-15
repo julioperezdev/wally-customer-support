@@ -357,6 +357,20 @@ export type BackofficeCatalogPage = {
   hasNext: boolean;
 };
 
+export type BackofficeImageView = {
+  productId: string;
+  objectKey: string;
+  viewUrl: string;
+  expiresAt: string;
+};
+
+export type BackofficeImageUpload = {
+  productId: string;
+  objectKey: string;
+  uploadUrl: string;
+  expiresAt: string;
+};
+
 export type BackofficeHumanFollowUp = {
   id: string;
   conversationId: string;
@@ -772,8 +786,53 @@ export function createBackofficeClient(
       }
       return request<BackofficeCatalogPage>(`/catalog?${params.toString()}`);
     },
-    listHumanFollowUps(limit = 50) {
-      return request<BackofficeHumanFollowUp[]>(`/human-follow-ups?limit=${encodeURIComponent(String(limit))}`);
+    listHumanFollowUps(limit = 50, status = "", priority = "") {
+      const params = new URLSearchParams({ limit: String(limit) });
+      if (status.trim()) params.set("status", status.trim());
+      if (priority.trim()) params.set("priority", priority.trim());
+      return request<BackofficeHumanFollowUp[]>(`/human-follow-ups?${params.toString()}`);
+    },
+    requestProductImageView(productId: string) {
+      return request<BackofficeImageView>(
+        `/catalog/products/${encodeURIComponent(productId)}/image/view-url`);
+    },
+    async uploadProductImage(productId: string, file: File) {
+      if (file.size <= 0 || file.size > 5_000_000) {
+        throw new ControlPlaneError(400, "INVALID_IMAGE_REQUEST");
+      }
+      if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+        throw new ControlPlaneError(400, "INVALID_IMAGE_REQUEST");
+      }
+      const upload = await requestFrom<BackofficeImageUpload>(
+        normalizedBaseUrl,
+        `/catalog/products/${encodeURIComponent(productId)}/image/upload-url`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fileName: file.name,
+            contentType: file.type,
+            contentLength: file.size
+          })
+        });
+      const uploadResponse = await fetch(upload.uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": file.type },
+        body: file
+      });
+      if (!uploadResponse.ok) {
+        throw new ControlPlaneError(uploadResponse.status, "IMAGE_UPLOAD_FAILED");
+      }
+      await requestFrom<{ status: string }>(
+        normalizedBaseUrl,
+        `/catalog/products/${encodeURIComponent(productId)}/image/confirm`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ objectKey: upload.objectKey })
+        });
+      return request<BackofficeImageView>(
+        `/catalog/products/${encodeURIComponent(productId)}/image/view-url`);
     },
     changeHumanFollowUp(id: string, operation: "claim" | "release" | "resolve", actor: string) {
       return requestFrom<BackofficeHumanFollowUp>(

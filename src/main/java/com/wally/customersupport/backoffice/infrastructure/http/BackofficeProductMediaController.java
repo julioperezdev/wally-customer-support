@@ -5,12 +5,14 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.wally.customersupport.backoffice.application.model.BackofficeImageUpload;
+import com.wally.customersupport.backoffice.application.model.BackofficeImageView;
 import com.wally.customersupport.backoffice.application.service.BackofficeAccessService;
 import com.wally.customersupport.backoffice.application.service.BackofficeProductMediaService;
 import com.wally.customersupport.shared.infrastructure.observability.StructuredEventLog;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -25,6 +27,28 @@ public class BackofficeProductMediaController {
 
     private final BackofficeAccessService accessService;
     private final BackofficeProductMediaService mediaService;
+
+    @GetMapping("/view-url")
+    public ResponseEntity<?> requestView(
+            Principal principal,
+            @PathVariable UUID productId) {
+        BackofficeAccessService.Decision decision = accessService.authorize(
+                "backoffice.catalog.read", actorId(principal));
+        if (!decision.authorized()) {
+            return ResponseEntity.status(decision.status()).body(Map.of("code", decision.reason()));
+        }
+        try {
+            BackofficeImageView result = mediaService.requestView(productId);
+            StructuredEventLog.info(log, "BACKOFFICE_CATALOG_MEDIA_VIEW_REQUESTED", Map.of(
+                    "operation", "catalog.image.view",
+                    "productId", productId.toString()));
+            return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity.status(404).body(Map.of("code", "IMAGE_NOT_FOUND"));
+        } catch (IllegalStateException exception) {
+            return ResponseEntity.status(409).body(Map.of("code", "MEDIA_NOT_AVAILABLE"));
+        }
+    }
 
     @PostMapping("/upload-url")
     public ResponseEntity<?> requestUpload(

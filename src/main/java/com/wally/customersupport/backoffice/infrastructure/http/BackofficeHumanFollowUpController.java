@@ -33,7 +33,9 @@ public class BackofficeHumanFollowUpController {
     @GetMapping
     public ResponseEntity<?> findOpen(
             Principal principal,
-            @RequestParam(defaultValue = "50") int limit) {
+            @RequestParam(defaultValue = "50") int limit,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String priority) {
         BackofficeAccessService.Decision decision = accessService.authorize(
                 "backoffice.human-follow-up.read", actorId(principal));
         if (!decision.authorized()) {
@@ -42,11 +44,15 @@ public class BackofficeHumanFollowUpController {
                     "reason", decision.reason()));
             return ResponseEntity.status(decision.status()).body(Map.of("code", decision.reason()));
         }
-        var result = queryService.findOpen(limit);
-        StructuredEventLog.info(log, "BACKOFFICE_HUMAN_FOLLOW_UP_VIEWED", Map.of(
-                "operation", "human_follow_up.list",
-                "resultCount", result.size()));
-        return ResponseEntity.ok(result);
+        try {
+            var result = queryService.find(limit, status, priority);
+            StructuredEventLog.info(log, "BACKOFFICE_HUMAN_FOLLOW_UP_VIEWED", Map.of(
+                    "operation", "human_follow_up.list",
+                    "resultCount", result.size()));
+            return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity.badRequest().body(Map.of("code", "INVALID_FOLLOW_UP_FILTER"));
+        }
     }
 
     @PostMapping("/{id}/claim")

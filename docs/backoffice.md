@@ -37,12 +37,13 @@ siguientes endpoints internos:
 | --- | --- |
 | `GET /internal/backoffice/catalog` | Consulta paginada de productos y variantes |
 | `POST /internal/backoffice/catalog/variants/{sku}/stock` | Ajuste atómico de stock con `Idempotency-Key` y auditoría |
-| `GET /internal/backoffice/human-follow-ups` | Bandeja con contexto mínimo sanitizado |
+| `GET /internal/backoffice/human-follow-ups?status=&priority=` | Bandeja con contexto mínimo sanitizado y filtros operativos |
 | `POST /internal/backoffice/human-follow-ups/{id}/claim` | Toma exclusiva por `X-WCS-Actor-Key` |
 | `POST /internal/backoffice/human-follow-ups/{id}/release` | Devuelve la tarea a la cola |
 | `POST /internal/backoffice/human-follow-ups/{id}/resolve` | Marca la tarea como resuelta |
 | `POST /internal/backoffice/catalog/products/{id}/image/upload-url` | Solicita URL prefirmada de S3 |
 | `POST /internal/backoffice/catalog/products/{id}/image/confirm` | Persiste la key después del upload |
+| `GET /internal/backoffice/catalog/products/{id}/image/view-url` | Solicita URL prefirmada de lectura de la imagen privada |
 | `POST /internal/backoffice/orders` | Valida catálogo y crea un pedido idempotente con link de checkout |
 | `GET /internal/backoffice/orders` | Lista pedidos por estado para operación |
 | `GET /internal/backoffice/orders/{id}` | Consulta el detalle de un pedido |
@@ -56,8 +57,17 @@ El ajuste de stock usa lock pesimista, rechaza resultados negativos y guarda
 actor, motivo, delta y clave idempotente en
 `wcs.catalog_stock_adjustments`. Las acciones de atención humana sólo permiten
 la transición válida del owner. Las imágenes admitidas son JPEG, PNG y WebP,
-con máximo de 5 MB y URL válida durante 10 minutos. S3 permanece deshabilitado
-hasta configurar bucket y rol.
+con máximo de 5 MB y URL válida durante 10 minutos. El navegador solicita la
+URL de carga al backend, sube directamente al bucket privado y confirma la key;
+las credenciales AWS nunca llegan al cliente. La URL de lectura también es
+temporal y sólo se entrega a una sesión con `backoffice.catalog.read`. S3
+permanece deshabilitado hasta configurar el bucket, su CORS y el rol de App
+Runner.
+
+La bandeja humana muestra `OPEN` e `IN_PROGRESS` por defecto. Se puede pedir un
+estado concreto (`OPEN`, `IN_PROGRESS`, `DONE`, `CANCELLED`) y una prioridad
+(`HIGH`, `NORMAL`, `LOW`). La paginación del MVP está acotada a 100 elementos;
+las acciones de ownership mantienen sus transiciones y permisos actuales.
 
 ## Mapa de agentes — WCS-120
 

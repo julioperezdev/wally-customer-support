@@ -7,6 +7,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import com.wally.customersupport.conversation.domain.model.HumanFollowUpStatus;
+import com.wally.customersupport.conversation.domain.model.HumanFollowUpPriority;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -18,6 +20,15 @@ public interface SpringDataHumanFollowUpTaskRepository
     Optional<HumanFollowUpTaskJpaEntity> findBySourceMessageIdAndReason(UUID sourceMessageId, String reason);
 
     List<HumanFollowUpTaskJpaEntity> findByStatusInOrderByDueAtAsc(Collection<HumanFollowUpStatus> statuses);
+
+    List<HumanFollowUpTaskJpaEntity> findByStatusInAndPriorityOrderByDueAtAsc(
+            Collection<HumanFollowUpStatus> statuses,
+            HumanFollowUpPriority priority,
+            Pageable pageable);
+
+    List<HumanFollowUpTaskJpaEntity> findByStatusInOrderByDueAtAsc(
+            Collection<HumanFollowUpStatus> statuses,
+            Pageable pageable);
 
     long countByStatusIn(Collection<HumanFollowUpStatus> statuses);
 

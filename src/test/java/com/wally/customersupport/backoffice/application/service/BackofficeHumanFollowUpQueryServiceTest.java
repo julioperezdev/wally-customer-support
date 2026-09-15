@@ -3,6 +3,7 @@ package com.wally.customersupport.backoffice.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 import java.time.Instant;
 import java.util.List;
@@ -53,5 +54,32 @@ class BackofficeHumanFollowUpQueryServiceTest {
             assertThat(view.contextPreview()).singleElement()
                     .isEqualTo("Escribime a [CONTACT_REDACTED] o a [EMAIL_REDACTED] por favor");
         });
+    }
+
+    @Test
+    void appliesNormalizedStatusAndPriorityFilters() {
+        UUID conversationId = UUID.randomUUID();
+        Instant now = Instant.parse("2026-09-09T00:00:00Z");
+        HumanFollowUpTask task = new HumanFollowUpTask(
+                UUID.randomUUID(), conversationId, UUID.randomUUID(), "LOW_CONFIDENCE",
+                HumanFollowUpPriority.HIGH, HumanFollowUpStatus.IN_PROGRESS,
+                now.plusSeconds(3600), now, now, null);
+        ConversationRepository conversations = mock(ConversationRepository.class);
+        HumanFollowUpTaskRepository followUps = mock(HumanFollowUpTaskRepository.class);
+        MessageRepository messages = mock(MessageRepository.class);
+        when(followUps.findOpen(10, HumanFollowUpStatus.IN_PROGRESS, HumanFollowUpPriority.HIGH))
+                .thenReturn(List.of(task));
+        when(conversations.findById(conversationId)).thenReturn(java.util.Optional.of(new Conversation(
+                conversationId, Channel.TELEGRAM, "conversation", "customer", ConversationStatus.OPEN, now, now)));
+        when(messages.findRecentBodies(conversationId, 3)).thenReturn(List.of());
+
+        var result = new BackofficeHumanFollowUpQueryService(followUps, conversations, messages)
+                .find(10, " in_progress ", " high ");
+
+        assertThat(result).singleElement().satisfies(view -> {
+            assertThat(view.status()).isEqualTo("IN_PROGRESS");
+            assertThat(view.priority()).isEqualTo("HIGH");
+        });
+        verify(followUps).findOpen(10, HumanFollowUpStatus.IN_PROGRESS, HumanFollowUpPriority.HIGH);
     }
 }

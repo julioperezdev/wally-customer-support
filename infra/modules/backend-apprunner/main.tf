@@ -137,6 +137,17 @@ data "aws_iam_policy_document" "apprunner_instance" {
       resources = ["*"]
     }
   }
+
+  dynamic "statement" {
+    for_each = var.media_object_arn == null ? [] : [1]
+
+    content {
+      sid       = "ManagePrivateBackofficeMedia"
+      effect    = "Allow"
+      actions   = ["s3:GetObject", "s3:PutObject"]
+      resources = [var.media_object_arn]
+    }
+  }
 }
 
 resource "aws_iam_role_policy" "apprunner_instance" {
