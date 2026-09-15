@@ -82,6 +82,25 @@ Después de ese bootstrap, el workflow puede leer el bucket, ejecutar el import
 declarativo y continuar con el apply normal. El workflow verifica esta condición
 antes de inicializar Terraform y falla rápidamente si el acceso todavía falta.
 
+El bootstrap dirigido se revisa y ejecuta desde la raíz del repositorio con el
+perfil AWS autorizado para IAM:
+
+```bash
+terraform -chdir=infra/environments/prod plan -input=false \
+  -target='module.github_terraform_deploy[0].aws_iam_role_policy.terraform' \
+  -target='module.github_terraform_deploy[0].aws_iam_policy.terraform_backoffice_media[0]' \
+  -target='module.github_terraform_deploy[0].aws_iam_role_policy_attachment.terraform_backoffice_media[0]' \
+  -var-file=production.tfvars -var-file=rollout.tfvars \
+  -out=/tmp/wcs-terraform-bootstrap.tfplan
+
+terraform -chdir=infra/environments/prod apply -input=false \
+  /tmp/wcs-terraform-bootstrap.tfplan
+```
+
+No se debe aplicar si el plan dirigido no coincide con `2 to add, 1 to change,
+0 to destroy`. Este es el único paso manual; luego el workflow normal recupera
+el bucket mediante el bloque `import` y administra toda su configuración.
+
 El módulo `appconfig` usa una aplicación estable (`wally-customer-support`) y
 un environment por despliegue (`dev`, `test` o `prod`). Recibe por defecto un
 JSON hosted falso con las claves Spring y referencias a esos tres secrets, y
