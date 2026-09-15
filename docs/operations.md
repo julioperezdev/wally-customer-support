@@ -128,6 +128,33 @@ necesaria para el servicio. El tamaño máximo actual es 5 MB y la expiración
 10 minutos. Si S3 no está configurado, el endpoint responde de forma explícita
 que media no está disponible y no cambia PostgreSQL.
 
+Terraform crea el bucket privado `${project}-${environment}-backoffice-media`
+con cifrado SSE-S3, versionado, bloqueo de acceso público, limpieza de uploads
+incompletos y CORS limitado a los orígenes configurados. El rol de la instancia
+de App Runner sólo recibe `s3:GetObject` y `s3:PutObject` sobre los objetos de
+ese bucket. La configuración versionada mantiene
+`backoffice_media_enabled=false` hasta verificar el bucket y el origen del
+frontend; luego se publica `wcs.backoffice.media.enabled=true` en AppConfig y
+se ejecuta el restart controlado del backend.
+
+Smoke de media:
+
+1. iniciar sesión con una cuenta que tenga `backoffice.catalog.read` y
+   `backoffice.catalog.media.write`;
+2. solicitar una carga para un producto y confirmar que la respuesta contiene
+   una URL temporal firmada, sin claves AWS de larga duración;
+3. cargar un JPEG/PNG/WebP menor a 5 MB desde el panel y confirmar la key;
+4. recargar el catálogo y comprobar que la vista usa una URL de lectura
+   temporal;
+5. verificar que una extensión/tamaño inválido y una sesión sin capability son
+   rechazados;
+6. revisar CloudTrail/S3 sólo con metadata agregada, sin adjuntar URLs firmadas
+   ni nombres de archivos que contengan PII.
+
+El bucket no es público y no debe usarse como fuente de Knowledge Base. Si se
+requiere un dominio productivo adicional, se agrega explícitamente a
+`backoffice_media_cors_allowed_origins` mediante PR antes del apply.
+
 ### Recargar AppConfig sin recompilar
 
 WCS carga AppConfig una vez durante el arranque del proceso. Cuando sólo cambia

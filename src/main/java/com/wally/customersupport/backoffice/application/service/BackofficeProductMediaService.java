@@ -7,14 +7,17 @@ import java.util.Locale;
 import java.util.UUID;
 
 import com.wally.customersupport.backoffice.application.model.BackofficeImageUpload;
+import com.wally.customersupport.backoffice.application.model.BackofficeImageView;
 import com.wally.customersupport.catalog.infrastructure.repository.postgres.SpringDataCatalogProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
 @Service
@@ -59,7 +62,6 @@ public class BackofficeProductMediaService {
                     .bucket(requiredBucket())
                     .key(objectKey)
                     .contentType(normalizedContentType)
-                    .contentLength(contentLength)
                     .build();
             PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
                     .signatureDuration(URL_DURATION)
@@ -70,10 +72,37 @@ public class BackofficeProductMediaService {
         }
     }
 
+    @Transactional(readOnly = true)
+    public BackofficeImageView requestView(UUID productId) {
+        ensureEnabled();
+        var product = productRepository.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("product not found"));
+        String objectKey = product.getImageObjectKey();
+        if (objectKey == null || objectKey.isBlank()) {
+            throw new IllegalArgumentException("product image not found");
+        }
+        if (!objectKey.startsWith(requiredPrefix() + "/")) {
+            throw new IllegalStateException("product image is outside the configured prefix");
+        }
+        Instant expiresAt = Instant.now(clock).plus(URL_DURATION);
+        try (S3Presigner presigner = S3Presigner.builder().region(Region.of(region)).build()) {
+            GetObjectRequest getObject = GetObjectRequest.builder()
+                    .bucket(requiredBucket())
+                    .key(objectKey)
+                    .build();
+            GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
+                    .signatureDuration(URL_DURATION)
+                    .getObjectRequest(getObject)
+                    .build();
+            String viewUrl = presigner.presignGetObject(presignRequest).url().toExternalForm();
+            return new BackofficeImageView(productId, objectKey, viewUrl, expiresAt);
+        }
+    }
+
     @Transactional
     public void confirmUpload(UUID productId, String objectKey) {
         ensureEnabled();
-        if (objectKey == null || !objectKey.startsWith(prefix + "/" + productId + "/")) {
+        if (objectKey == null || !objectKey.startsWith(requiredPrefix() + "/" + productId + "/")) {
             throw new IllegalArgumentException("object key is outside the product prefix");
         }
         var product = productRepository.findById(productId)
@@ -95,6 +124,14 @@ public class BackofficeProductMediaService {
         return bucket;
     }
 
+    private String requiredPrefix() {
+        String normalized = prefix == null ? "" : prefix.replaceAll("^/+", "").replaceAll("/+$", "");
+        if (normalized.isBlank()) {
+            throw new IllegalStateException("backoffice media prefix is not configured");
+        }
+        return normalized;
+    }
+
     private String objectKey(UUID productId, String fileName, String contentType) {
         String extension = switch (contentType) {
             case "image/jpeg" -> ".jpg";
@@ -105,7 +142,7 @@ public class BackofficeProductMediaService {
         if (safeName.length() > 80) {
             safeName = safeName.substring(safeName.length() - 80);
         }
-        return prefix.replaceAll("/+$", "") + "/" + productId + "/" + UUID.randomUUID() + "-" + safeName + extension;
+        return requiredPrefix() + "/" + productId + "/" + UUID.randomUUID() + "-" + safeName + extension;
     }
 
     private static String normalizeContentType(String contentType) {

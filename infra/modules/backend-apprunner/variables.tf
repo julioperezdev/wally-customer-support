@@ -126,6 +126,13 @@ variable "bedrock_knowledge_base_arns" {
   default     = []
 }
 
+variable "media_object_arn" {
+  type        = string
+  description = "Private S3 object ARN pattern used for backoffice catalog media."
+  default     = null
+  nullable    = true
+}
+
 variable "enable_appconfig_access" {
   type        = bool
   description = "Whether to grant runtime AppConfig data-plane permissions."

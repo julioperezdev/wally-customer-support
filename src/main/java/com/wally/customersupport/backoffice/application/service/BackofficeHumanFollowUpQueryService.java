@@ -1,11 +1,14 @@
 package com.wally.customersupport.backoffice.application.service;
 
 import java.util.List;
+import java.util.Locale;
 
 import com.wally.customersupport.backoffice.application.model.BackofficeHumanFollowUp;
 import com.wally.customersupport.conversation.application.port.out.ConversationRepository;
 import com.wally.customersupport.conversation.application.port.out.HumanFollowUpTaskRepository;
 import com.wally.customersupport.conversation.application.port.out.MessageRepository;
+import com.wally.customersupport.conversation.domain.model.HumanFollowUpPriority;
+import com.wally.customersupport.conversation.domain.model.HumanFollowUpStatus;
 import com.wally.customersupport.conversation.domain.model.HumanFollowUpTask;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -27,6 +30,37 @@ public class BackofficeHumanFollowUpQueryService {
         return followUpTaskRepository.findOpen(Math.min(100, Math.max(1, limit))).stream()
                 .map(this::toView)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<BackofficeHumanFollowUp> find(int limit, String status, String priority) {
+        int boundedLimit = Math.min(100, Math.max(1, limit));
+        List<HumanFollowUpStatus> statuses = statuses(status);
+        HumanFollowUpPriority parsedPriority = priority == null || priority.isBlank()
+                ? null
+                : parsePriority(priority);
+        return followUpTaskRepository.findOpen(boundedLimit, statuses.size() == 1 ? statuses.get(0) : null, parsedPriority).stream()
+                .map(this::toView)
+                .toList();
+    }
+
+    private static List<HumanFollowUpStatus> statuses(String status) {
+        if (status == null || status.isBlank()) {
+            return List.of(HumanFollowUpStatus.OPEN, HumanFollowUpStatus.IN_PROGRESS);
+        }
+        try {
+            return List.of(HumanFollowUpStatus.valueOf(status.strip().toUpperCase(Locale.ROOT)));
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("status is invalid", exception);
+        }
+    }
+
+    private static HumanFollowUpPriority parsePriority(String priority) {
+        try {
+            return HumanFollowUpPriority.valueOf(priority.strip().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("priority is invalid", exception);
+        }
     }
 
     private BackofficeHumanFollowUp toView(HumanFollowUpTask task) {

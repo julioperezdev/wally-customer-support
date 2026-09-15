@@ -87,6 +87,8 @@ export function App() {
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [followUps, setFollowUps] = useState<BackofficeHumanFollowUp[] | null>(null);
   const [followUpError, setFollowUpError] = useState<string | null>(null);
+  const [followUpStatus, setFollowUpStatus] = useState("");
+  const [followUpPriority, setFollowUpPriority] = useState("");
   const [storeBusy, setStoreBusy] = useState(false);
   const [storeActor, setStoreActor] = useState("local-operator");
   const [featureFlags, setFeatureFlags] = useState<FeatureFlagSnapshot | null>(null);
@@ -115,6 +117,7 @@ export function App() {
   const canFeatureFlagsWrite = hasCapability("feature-flags.write");
   const canCatalogRead = hasCapability("backoffice.catalog.read");
   const canCatalogWrite = hasCapability("backoffice.catalog.write");
+  const canCatalogMediaWrite = hasCapability("backoffice.catalog.media.write");
   const canFollowUpRead = hasCapability("backoffice.human-follow-up.read");
   const canFollowUpWrite = hasCapability("backoffice.human-follow-up.write");
   const canOrdersRead = hasCapability("backoffice.orders.read");
@@ -359,7 +362,7 @@ export function App() {
           page: 0,
           limit: 20
       }) : Promise.resolve(null),
-      canFollowUpRead ? backofficeClient.listHumanFollowUps(50) : Promise.resolve(null)
+      canFollowUpRead ? backofficeClient.listHumanFollowUps(50, followUpStatus, followUpPriority) : Promise.resolve(null)
     ]);
     let succeeded = true;
     if (catalogResult.status === "fulfilled" && catalogResult.value) {
@@ -387,6 +390,29 @@ export function App() {
     setStoreBusy(true);
     try {
       await backofficeClient.adjustStock(sku, delta, "backoffice MVP", storeActor);
+      await loadStore();
+    } catch (cause) {
+      setCatalogError(toUserMessage(cause));
+    } finally {
+      setStoreBusy(false);
+    }
+  }
+
+  async function loadProductImage(productId: string): Promise<string | null> {
+    try {
+      return (await backofficeClient.requestProductImageView(productId)).viewUrl;
+    } catch (cause) {
+      if (cause instanceof ControlPlaneError && cause.status === 404) return null;
+      throw cause;
+    }
+  }
+
+  async function uploadProductImage(productId: string, file: File) {
+    if (!canCatalogMediaWrite) return;
+    setStoreBusy(true);
+    setCatalogError(null);
+    try {
+      await backofficeClient.uploadProductImage(productId, file);
       await loadStore();
     } catch (cause) {
       setCatalogError(toUserMessage(cause));
@@ -605,10 +631,35 @@ export function App() {
         <div className="store-grid">
           <div>
             <h3>Catálogo</h3>
-          <CatalogView page={catalogPage} onAdjustStock={adjustStock} disabled={storeBusy || !canCatalogWrite} />
+          <CatalogView
+            page={catalogPage}
+            onAdjustStock={adjustStock}
+            onLoadImage={loadProductImage}
+            onUploadImage={uploadProductImage}
+            stockDisabled={storeBusy || !canCatalogWrite}
+            mediaDisabled={storeBusy || !canCatalogMediaWrite}
+          />
           </div>
           <div>
-            <h3>Solicitudes humanas</h3>
+            <div className="section-heading follow-up-heading">
+              <h3>Solicitudes humanas</h3>
+              <div className="follow-up-filters">
+                <select aria-label="Filtrar solicitudes por estado" value={followUpStatus} onChange={(event) => setFollowUpStatus(event.target.value)}>
+                  <option value="">Abiertas</option>
+                  <option value="OPEN">Abiertas</option>
+                  <option value="IN_PROGRESS">En progreso</option>
+                  <option value="DONE">Resueltas</option>
+                  <option value="CANCELLED">Canceladas</option>
+                </select>
+                <select aria-label="Filtrar solicitudes por prioridad" value={followUpPriority} onChange={(event) => setFollowUpPriority(event.target.value)}>
+                  <option value="">Toda prioridad</option>
+                  <option value="HIGH">Alta</option>
+                  <option value="NORMAL">Normal</option>
+                  <option value="LOW">Baja</option>
+                </select>
+                <button onClick={() => void loadStore()} disabled={storeBusy || globalRefreshBusy || !canFollowUpRead}>Filtrar</button>
+              </div>
+            </div>
             <HumanFollowUpView followUps={followUps} onAction={changeFollowUp} disabled={storeBusy || !canFollowUpWrite} />
           </div>
         </div>
@@ -737,13 +788,81 @@ function RunTable({ page, onOpen }: { page: RunPage | null; onOpen: (id: string)
   return <div className="table-wrap"><table className="responsive-table"><thead><tr><th>Agente</th><th>Modelo</th><th>Resultado</th><th>Latencia</th><th>Tokens</th><th>Costo USD</th><th /></tr></thead><tbody>{page.items.map((run) => <tr key={run.runId}><td data-label="Agente"><strong>{run.agentId}</strong><small>{run.agentVersion} · {run.datasetVersion}</small></td><td data-label="Modelo">{run.provider}<small>{run.modelId}</small></td><td data-label="Resultado"><span className={run.failedScenarios ? "negative" : "positive"}>{formatPercent(run.passRate)}</span><small>{run.passedScenarios}/{run.totalScenarios} escenarios</small></td><td data-label="Latencia">{formatMs(run.durationMs)}<small>provider: {formatMs(run.providerLatencyMs)}</small></td><td data-label="Tokens">{run.totalTokens ?? "—"}</td><td data-label="Costo USD">{run.estimatedCostUsd == null ? "—" : run.estimatedCostUsd.toFixed(6)}</td><td data-label="Acción"><button className="link-button" onClick={() => void onOpen(run.runId)}>Ver</button></td></tr>)}</tbody></table></div>;
 }
 
-function CatalogView({ page, onAdjustStock, disabled }: { page: BackofficeCatalogPage | null; onAdjustStock: (sku: string, delta: number) => Promise<void>; disabled: boolean }) {
+function CatalogView({ page, onAdjustStock, onLoadImage, onUploadImage, stockDisabled, mediaDisabled }: {
+  page: BackofficeCatalogPage | null;
+  onAdjustStock: (sku: string, delta: number) => Promise<void>;
+  onLoadImage: (productId: string) => Promise<string | null>;
+  onUploadImage: (productId: string, file: File) => Promise<void>;
+  stockDisabled: boolean;
+  mediaDisabled: boolean;
+}) {
   if (!page) return <p className="muted">El backoffice operativo no está disponible todavía.</p>;
   if (page.items.length === 0) return <p className="muted">No hay productos para los filtros seleccionados.</p>;
-  return <div className="store-list">{page.items.map((product) => <article className="store-item" key={product.id}>
+  return <div className="store-list">{page.items.map((product) => <CatalogProductCard
+    key={product.id}
+    product={product}
+    onAdjustStock={onAdjustStock}
+    onLoadImage={onLoadImage}
+    onUploadImage={onUploadImage}
+    stockDisabled={stockDisabled}
+    mediaDisabled={mediaDisabled}
+  />)}</div>;
+}
+
+function CatalogProductCard({ product, onAdjustStock, onLoadImage, onUploadImage, stockDisabled, mediaDisabled }: {
+  product: BackofficeCatalogProduct;
+  onAdjustStock: (sku: string, delta: number) => Promise<void>;
+  onLoadImage: (productId: string) => Promise<string | null>;
+  onUploadImage: (productId: string, file: File) => Promise<void>;
+  stockDisabled: boolean;
+  mediaDisabled: boolean;
+}) {
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageBusy, setImageBusy] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setImageError(null);
+    if (!product.imageObjectKey) {
+      setImageUrl(null);
+      return () => { cancelled = true; };
+    }
+    void onLoadImage(product.id)
+      .then((url) => { if (!cancelled) setImageUrl(url); })
+      .catch((cause) => { if (!cancelled) setImageError(toUserMessage(cause)); });
+    return () => { cancelled = true; };
+  }, [product.id, product.imageObjectKey]);
+
+  async function upload() {
+    if (!selectedFile) return;
+    setImageBusy(true);
+    setImageError(null);
+    try {
+      await onUploadImage(product.id, selectedFile);
+      setSelectedFile(null);
+      setImageUrl(await onLoadImage(product.id));
+    } catch (cause) {
+      setImageError(toUserMessage(cause));
+    } finally {
+      setImageBusy(false);
+    }
+  }
+
+  return <article className="store-item">
     <div className="section-heading"><div><h4>{product.name}</h4><p className="muted">{product.productType ?? "producto"} · {product.active ? "activo" : "inactivo"}</p></div><span className="security-note">{product.variants.length} variantes</span></div>
-    <div className="table-wrap"><table className="responsive-table"><thead><tr><th>SKU</th><th>Variante</th><th>Precio</th><th>Stock</th><th>Operar</th></tr></thead><tbody>{product.variants.map((variant) => <CatalogVariantRow key={variant.id} variant={variant} onAdjustStock={onAdjustStock} disabled={disabled} />)}</tbody></table></div>
-  </article>)}</div>;
+    <div className="product-media">
+      {imageUrl ? <img src={imageUrl} alt={`Imagen de ${product.name}`} loading="lazy" /> : <div className="image-placeholder">{product.imageObjectKey ? "Imagen no disponible" : "Sin imagen"}</div>}
+      <div className="media-controls">
+        <label>Imagen del producto<input type="file" accept="image/jpeg,image/png,image/webp" disabled={mediaDisabled || imageBusy} onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)} /></label>
+        <button onClick={() => void upload()} disabled={mediaDisabled || imageBusy || !selectedFile}>{imageBusy ? "Subiendo..." : "Subir imagen"}</button>
+        <small className="muted">JPEG, PNG o WebP · máximo 5 MB</small>
+        {imageError && <span className="negative" role="alert">{imageError}</span>}
+      </div>
+    </div>
+    <div className="table-wrap"><table className="responsive-table"><thead><tr><th>SKU</th><th>Variante</th><th>Precio</th><th>Stock</th><th>Operar</th></tr></thead><tbody>{product.variants.map((variant) => <CatalogVariantRow key={variant.id} variant={variant} onAdjustStock={onAdjustStock} disabled={stockDisabled} />)}</tbody></table></div>
+  </article>;
 }
 
 function CatalogVariantRow({ variant, onAdjustStock, disabled }: { variant: BackofficeCatalogProduct["variants"][number]; onAdjustStock: (sku: string, delta: number) => Promise<void>; disabled: boolean }) {

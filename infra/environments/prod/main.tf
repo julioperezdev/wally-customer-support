@@ -124,6 +124,10 @@ locals {
     "wcs.backoffice.auth.same-site"                               = "Lax"
     "wcs.backoffice.auth.cognito.region"                          = var.aws_region
     "wcs.backoffice.auth.cognito.client-id"                       = module.cognito_backoffice.client_id
+    "wcs.backoffice.media.enabled"                                = var.backoffice_media_enabled
+    "wcs.backoffice.media.bucket"                                 = module.backoffice_media.bucket_name
+    "wcs.backoffice.media.prefix"                                 = "wcs/catalog"
+    "wcs.backoffice.media.region"                                 = var.aws_region
   }
 
   default_feature_flags_configuration = {
@@ -246,6 +250,16 @@ module "mercado_pago_secrets" {
   tags                = local.common_tags
 }
 
+module "backoffice_media" {
+  source = "../../modules/backoffice-media"
+
+  project_name         = var.project_name
+  environment          = var.environment
+  bucket_name          = var.backoffice_media_bucket_name
+  cors_allowed_origins = var.backoffice_media_cors_allowed_origins
+  tags                 = local.common_tags
+}
+
 module "cognito_backoffice" {
   source = "../../modules/cognito-backoffice"
 
@@ -286,6 +300,7 @@ module "backend_apprunner" {
   bedrock_model_arns            = var.bedrock_model_arns
   bedrock_prompt_arns           = var.bedrock_prompt_arns
   bedrock_knowledge_base_arns   = var.enable_bedrock_access ? [module.wcs_knowledge_base.knowledge_base_arn] : []
+  media_object_arn              = module.backoffice_media.object_arn
   tags                          = local.common_tags
 }
 

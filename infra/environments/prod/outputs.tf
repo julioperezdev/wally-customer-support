@@ -64,6 +64,14 @@ output "knowledge_base_data_source_id" {
   value = module.wcs_knowledge_base.data_source_id
 }
 
+output "backoffice_media_bucket_name" {
+  value = module.backoffice_media.bucket_name
+}
+
+output "backoffice_media_bucket_arn" {
+  value = module.backoffice_media.bucket_arn
+}
+
 output "knowledge_base_service_role_arn" {
   value = module.wcs_knowledge_base.service_role_arn
 }

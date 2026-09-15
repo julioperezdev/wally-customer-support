@@ -357,6 +357,62 @@ describe("backoffice client", () => {
     );
   });
 
+  it("uploads a product image through S3 and confirms the object without exposing credentials", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        productId: "product-1",
+        objectKey: "wcs/catalog/product-1/image.png",
+        uploadUrl: "https://s3.example/upload",
+        expiresAt: "2026-09-14T15:00:00Z"
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: "CONFIRMED" }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        productId: "product-1",
+        objectKey: "wcs/catalog/product-1/image.png",
+        viewUrl: "https://s3.example/view",
+        expiresAt: "2026-09-14T15:00:00Z"
+      }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await createBackofficeClient("/internal/backoffice", "session-token")
+      .uploadProductImage("product-1", new File(["image"], "shirt.png", { type: "image/png" }));
+
+    expect(result.viewUrl).toBe("https://s3.example/view");
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "/internal/backoffice/catalog/products/product-1/image/upload-url",
+      expect.objectContaining({
+        method: "POST",
+        credentials: "include",
+        headers: expect.objectContaining({ Authorization: "Bearer session-token" })
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "https://s3.example/upload",
+      expect.objectContaining({ method: "PUT", headers: { "Content-Type": "image/png" } })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      "/internal/backoffice/catalog/products/product-1/image/confirm",
+      expect.objectContaining({ method: "POST" })
+    );
+  });
+
+  it("filters the human follow-up queue by status and priority", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify([]), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await createBackofficeClient("/internal/backoffice", "session-token")
+      .listHumanFollowUps(20, "IN_PROGRESS", "HIGH");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/internal/backoffice/human-follow-ups?limit=20&status=IN_PROGRESS&priority=HIGH",
+      expect.objectContaining({ credentials: "include" })
+    );
+  });
+
   it("lists orders and sends an idempotency key for assisted sales", async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ items: [], page: 1, size: 10, hasNext: false }), { status: 200 }))

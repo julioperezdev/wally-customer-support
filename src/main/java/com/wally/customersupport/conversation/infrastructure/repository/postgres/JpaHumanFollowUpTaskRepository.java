@@ -5,6 +5,7 @@ import java.util.List;
 import com.wally.customersupport.conversation.application.port.out.HumanFollowUpTaskRepository;
 import com.wally.customersupport.conversation.application.port.out.HumanFollowUpTaskOperator;
 import com.wally.customersupport.conversation.domain.model.HumanFollowUpStatus;
+import com.wally.customersupport.conversation.domain.model.HumanFollowUpPriority;
 import com.wally.customersupport.conversation.domain.model.HumanFollowUpTask;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -42,6 +43,26 @@ public class JpaHumanFollowUpTaskRepository implements HumanFollowUpTaskReposito
                         List.of(HumanFollowUpStatus.OPEN, HumanFollowUpStatus.IN_PROGRESS))
                 .stream()
                 .limit(Math.max(1, limit))
+                .map(HumanFollowUpTaskJpaEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<HumanFollowUpTask> findOpen(int limit, HumanFollowUpStatus status, HumanFollowUpPriority priority) {
+        List<HumanFollowUpStatus> statuses = status == null
+                ? List.of(HumanFollowUpStatus.OPEN, HumanFollowUpStatus.IN_PROGRESS)
+                : List.of(status);
+        int boundedLimit = Math.max(1, Math.min(100, limit));
+        if (priority == null) {
+            return repository.findByStatusInOrderByDueAtAsc(statuses, org.springframework.data.domain.PageRequest.of(0, boundedLimit))
+                    .stream()
+                    .map(HumanFollowUpTaskJpaEntity::toDomain)
+                    .toList();
+        }
+        return repository.findByStatusInAndPriorityOrderByDueAtAsc(statuses, priority,
+                        org.springframework.data.domain.PageRequest.of(0, boundedLimit))
+                .stream()
                 .map(HumanFollowUpTaskJpaEntity::toDomain)
                 .toList();
     }

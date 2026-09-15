@@ -99,6 +99,9 @@ mantiene una cadena de preview-token ni un bypass local.
 | `TC-012A` | P0 | Ajuste de stock autorizado | Aplica un delta no negativo, registra auditoría y repite idempotentemente | Testcontainers |
 | `TC-012B` | P0 | Ownership de seguimiento | Sólo el operador que tomó una tarea puede devolverla o resolverla | Testcontainers + MockMvc |
 | `TC-012C` | P1 | URL prefirmada de imagen | Rechaza tipo/tamaño inválido y limita la URL a 10 minutos | Unit + contract |
+| `TC-012D` | P1 | URL de lectura de imagen | Entrega sólo una URL temporal para un objeto bajo el prefijo del producto y exige `catalog.read` | Unit + MockMvc |
+| `TC-012E` | P1 | Carga desde backoffice | El frontend sube con URL prefirmada, confirma la key y nunca envía credenciales AWS | Vitest + contract |
+| `TC-012F` | P1 | Filtros de bandeja humana | Estado y prioridad se validan y acotan el resultado sin exponer contexto completo | JUnit + MockMvc |
 | `TC-039` | P0 | Seed demo de catálogo | Carga productos, variantes, SKU únicos y stock no negativo | Spring Boot + Flyway |
 | `TC-040` | P0 | Configuración demo de atención | Carga siete días y políticas versionadas; domingo permanece cerrado | Spring Boot + Flyway |
 

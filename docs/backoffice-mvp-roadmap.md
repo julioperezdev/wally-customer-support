@@ -24,7 +24,7 @@ documentación, rollout y rollback.
 
 | Slice | Jira | Alcance | Estado de planificación |
 | --- | --- | --- | --- |
-| Operación de tienda | [WCS-119](https://julioperezdev.atlassian.net/browse/WCS-119) | Catálogo, variantes, stock, media S3 y bandeja de atención humana | Se mantiene independiente del control plane |
+| Operación de tienda | [WCS-119](https://julioperezdev.atlassian.net/browse/WCS-119) | Catálogo, variantes, stock, media S3 y bandeja de atención humana | Implementación backend/frontend/IaC; pendiente smoke de bucket y UI |
 | Plataforma de agentes | [WCS-120](https://julioperezdev.atlassian.net/browse/WCS-120) | Registry, authoring, versiones, evaluación, fallback, ejecuciones y métricas | Control plane y UI protegida implementados; falta smoke operativo post-merge |
 | Configuración dinámica | [WCS-121](https://julioperezdev.atlassian.net/browse/WCS-121) | Feature flags de negocio con AppConfig sin reinicio | Runtime, publicación, rollback y UI protegida implementados; falta validar AppConfig desplegado |
 | Venta asistida | [WCS-122](https://julioperezdev.atlassian.net/browse/WCS-122) | Pedidos y links de pago con Mercado Pago Sandbox | Implementación vertical en curso; provider mock por defecto |

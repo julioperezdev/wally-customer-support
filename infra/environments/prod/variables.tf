@@ -87,6 +87,25 @@ variable "backoffice_cognito_enabled" {
   default     = false
 }
 
+variable "backoffice_media_enabled" {
+  type        = bool
+  description = "Enable presigned catalog media operations after the private bucket and CORS are verified."
+  default     = false
+}
+
+variable "backoffice_media_bucket_name" {
+  type        = string
+  description = "Optional stable globally unique bucket name for private backoffice catalog media."
+  default     = null
+  nullable    = true
+}
+
+variable "backoffice_media_cors_allowed_origins" {
+  type        = list(string)
+  description = "Browser origins allowed to upload catalog media using S3 presigned URLs."
+  default     = ["http://localhost:5173"]
+}
+
 variable "cognito_domain_prefix" {
   type        = string
   description = "Optional unique Cognito hosted UI domain prefix. Null provisions no hosted UI domain."
