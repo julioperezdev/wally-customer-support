@@ -143,6 +143,16 @@ jobs:
       - name: Verify AWS identity
         run: aws sts get-caller-identity
 
+      - name: Verify production media bucket bootstrap access
+        if: inputs.target_environment == 'prod'
+        env:
+          TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
+        run: |
+          account_id="$(aws sts get-caller-identity --query Account --output text)"
+          bash scripts/check-terraform-bucket-access.sh \
+            "wally-customer-support-${TARGET_ENVIRONMENT}-backoffice-media-${account_id}" \
+            "$AWS_REGION"
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:

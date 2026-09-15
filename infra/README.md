@@ -74,6 +74,14 @@ detecta un `aws_s3_bucket` que Terraform intenta crear aunque ya exista en la
 cuenta. De esta forma los errores de tamaño de policy o de adopción de recursos
 se detectan durante el plan, no después de un apply prolongado.
 
+El primer bootstrap requiere un apply dirigido con un principal autorizado para
+IAM, porque el rol OIDC todavía no puede leer el bucket que debe administrar.
+El plan dirigido esperado es `2 to add, 1 to change, 0 to destroy` y sólo crea la
+policy administrada multimedia, su attachment y actualiza la policy inline.
+Después de ese bootstrap, el workflow puede leer el bucket, ejecutar el import
+declarativo y continuar con el apply normal. El workflow verifica esta condición
+antes de inicializar Terraform y falla rápidamente si el acceso todavía falta.
+
 El módulo `appconfig` usa una aplicación estable (`wally-customer-support`) y
 un environment por despliegue (`dev`, `test` o `prod`). Recibe por defecto un
 JSON hosted falso con las claves Spring y referencias a esos tres secrets, y
