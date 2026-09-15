@@ -17,6 +17,8 @@ Flyway crea únicamente el schema lógico `wcs`.
   secret existente del RDS compartido.
 - Un secret separado `wcs/{environment}/telegram` para el bot de Telegram y el
   secret de validación del webhook.
+- Un bucket S3 privado y versionado para imágenes del catálogo del backoffice,
+  con CORS acotado al origen configurado.
 - Una Knowledge Base propia de WCS: bucket S3 versionado para Markdown, S3
   Vectors, Titan Text Embeddings V2 y un service role exclusivo.
 - RDS PostgreSQL existente de `tesis-dev`, consumido como dependencia externa.
@@ -51,6 +53,12 @@ explícitamente falsos para bootstrap.
 Esos valores tienen `ignore_changes` para que puedas reemplazarlos en la
 consola de Secrets Manager sin que el siguiente `terraform apply` los restaure.
 No se debe habilitar App Runner mientras sigan presentes.
+
+El rol OIDC que ejecuta Terraform recibe permisos S3 acotados al bucket privado
+de medios del backoffice. El nombre y ARN se calculan de forma determinística
+en el root de producción y el módulo de medios espera a que la policy del rol
+esté actualizada antes de configurar el bucket. Esto evita que un bucket ya
+existente sea interpretado como ausente por CI por falta de permisos de lectura.
 
 El módulo `appconfig` usa una aplicación estable (`wally-customer-support`) y
 un environment por despliegue (`dev`, `test` o `prod`). Recibe por defecto un

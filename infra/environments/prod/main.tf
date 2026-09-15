@@ -1,5 +1,7 @@
 data "aws_caller_identity" "current" {}
 
+data "aws_partition" "current" {}
+
 data "aws_db_instance" "shared" {
   count = var.shared_rds_instance_identifier == null ? 0 : 1
 
@@ -18,6 +20,13 @@ locals {
     Environment = var.environment
     ManagedBy   = "terraform"
   }
+
+  backoffice_media_bucket_name = coalesce(
+    var.backoffice_media_bucket_name,
+    "${var.project_name}-${var.environment}-backoffice-media-${data.aws_caller_identity.current.account_id}"
+  )
+
+  backoffice_media_bucket_arn = "arn:${data.aws_partition.current.partition}:s3:::${local.backoffice_media_bucket_name}"
 
   fake_database_secret_json = jsonencode({
     jdbc_url = "jdbc:postgresql://REPLACE_ME:5432/wcs"
@@ -253,9 +262,13 @@ module "mercado_pago_secrets" {
 module "backoffice_media" {
   source = "../../modules/backoffice-media"
 
+  # The Terraform OIDC role must receive bucket permissions before Terraform
+  # refreshes or configures this existing bucket during the bootstrap apply.
+  depends_on = [module.github_terraform_deploy]
+
   project_name         = var.project_name
   environment          = var.environment
-  bucket_name          = var.backoffice_media_bucket_name
+  bucket_name          = local.backoffice_media_bucket_name
   cors_allowed_origins = var.backoffice_media_cors_allowed_origins
   tags                 = local.common_tags
 }
@@ -336,6 +349,7 @@ module "github_terraform_deploy" {
   state_key                      = "wally-customer-support/environments/prod/terraform.tfstate"
   secret_name_prefix             = "wcs/${var.environment}/"
   shared_rds_secret_arn          = var.shared_rds_secret_arn
+  backoffice_media_bucket_arn    = local.backoffice_media_bucket_arn
   permissions_boundary_arn       = var.terraform_permissions_boundary_arn
   tags                           = local.common_tags
 }
