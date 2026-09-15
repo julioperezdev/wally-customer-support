@@ -132,6 +132,53 @@ data "aws_iam_policy_document" "terraform" {
     resources = ["*"]
   }
 
+  dynamic "statement" {
+    for_each = var.backoffice_media_bucket_arn == null ? [] : [var.backoffice_media_bucket_arn]
+
+    content {
+      sid       = "CreateWcsBackofficeMediaBucket"
+      effect    = "Allow"
+      actions   = ["s3:CreateBucket"]
+      resources = ["*"]
+    }
+  }
+
+  dynamic "statement" {
+    for_each = var.backoffice_media_bucket_arn == null ? [] : [var.backoffice_media_bucket_arn]
+
+    content {
+      sid    = "ReadWcsBackofficeMediaBucket"
+      effect = "Allow"
+      actions = [
+        "s3:Get*",
+        "s3:ListBucket",
+        "s3:ListTagsForResource",
+      ]
+      resources = [statement.value, "${statement.value}/*"]
+    }
+  }
+
+  dynamic "statement" {
+    for_each = var.backoffice_media_bucket_arn == null ? [] : [var.backoffice_media_bucket_arn]
+
+    content {
+      sid    = "ManageWcsBackofficeMediaBucket"
+      effect = "Allow"
+      actions = [
+        "s3:PutBucketCORS",
+        "s3:PutBucketLifecycleConfiguration",
+        "s3:PutBucketOwnershipControls",
+        "s3:PutBucketPublicAccessBlock",
+        "s3:PutBucketTagging",
+        "s3:PutBucketVersioning",
+        "s3:PutEncryptionConfiguration",
+        "s3:TagResource",
+        "s3:UntagResource",
+      ]
+      resources = [statement.value, "${statement.value}/*"]
+    }
+  }
+
   statement {
     sid    = "CreateWcsKnowledgeVectorResources"
     effect = "Allow"

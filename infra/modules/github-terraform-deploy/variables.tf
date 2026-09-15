@@ -68,6 +68,13 @@ variable "shared_rds_secret_arn" {
   default     = null
 }
 
+variable "backoffice_media_bucket_arn" {
+  type        = string
+  description = "Optional private S3 bucket ARN used by the WCS backoffice media module."
+  default     = null
+  nullable    = true
+}
+
 variable "permissions_boundary_arn" {
   type        = string
   description = "Optional permissions boundary for the Terraform role."
