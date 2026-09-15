@@ -35,8 +35,7 @@ locals {
   vector_bucket_arn_pattern                   = "arn:${local.partition}:s3vectors:${var.aws_region}:${local.account_id}:bucket/${var.project_name}-${var.environment}-kb-vectors-*"
   vector_index_arn_pattern                    = "${local.vector_bucket_arn_pattern}/index/*"
   cognito_user_pool_arn_pattern               = "arn:${local.partition}:cognito-idp:${var.aws_region}:${local.account_id}:userpool/*"
-  terraform_knowledge_base_policy_arn         = "arn:${local.partition}:iam::${local.account_id}:policy/${var.project_name}-${var.environment}-terraform-knowledge-base-access"
-  terraform_cognito_policy_arn                = "arn:${local.partition}:iam::${local.account_id}:policy/${var.project_name}-${var.environment}-terraform-cognito-access"
+  terraform_managed_policy_arn_pattern        = "arn:${local.partition}:iam::${local.account_id}:policy/${var.project_name}-${var.environment}-terraform-*-access"
   service_linked_role_arn                     = "arn:${local.partition}:iam::${local.account_id}:role/aws-service-role/apprunner.amazonaws.com/AWSServiceRoleForAppRunner"
 
   github_environments = setunion(
@@ -130,53 +129,6 @@ data "aws_iam_policy_document" "terraform" {
       "rds:DescribeDBInstances",
     ]
     resources = ["*"]
-  }
-
-  dynamic "statement" {
-    for_each = var.backoffice_media_bucket_arn == null ? [] : [var.backoffice_media_bucket_arn]
-
-    content {
-      sid       = "CreateWcsBackofficeMediaBucket"
-      effect    = "Allow"
-      actions   = ["s3:CreateBucket"]
-      resources = ["*"]
-    }
-  }
-
-  dynamic "statement" {
-    for_each = var.backoffice_media_bucket_arn == null ? [] : [var.backoffice_media_bucket_arn]
-
-    content {
-      sid    = "ReadWcsBackofficeMediaBucket"
-      effect = "Allow"
-      actions = [
-        "s3:Get*",
-        "s3:ListBucket",
-        "s3:ListTagsForResource",
-      ]
-      resources = [statement.value, "${statement.value}/*"]
-    }
-  }
-
-  dynamic "statement" {
-    for_each = var.backoffice_media_bucket_arn == null ? [] : [var.backoffice_media_bucket_arn]
-
-    content {
-      sid    = "ManageWcsBackofficeMediaBucket"
-      effect = "Allow"
-      actions = [
-        "s3:PutBucketCORS",
-        "s3:PutBucketLifecycleConfiguration",
-        "s3:PutBucketOwnershipControls",
-        "s3:PutBucketPublicAccessBlock",
-        "s3:PutBucketTagging",
-        "s3:PutBucketVersioning",
-        "s3:PutEncryptionConfiguration",
-        "s3:TagResource",
-        "s3:UntagResource",
-      ]
-      resources = [statement.value, "${statement.value}/*"]
-    }
   }
 
   statement {
@@ -467,12 +419,9 @@ data "aws_iam_policy_document" "terraform" {
     resources = ["*"]
 
     condition {
-      test     = "StringEquals"
+      test     = "StringLike"
       variable = "iam:PolicyName"
-      values = [
-        "${var.project_name}-${var.environment}-terraform-knowledge-base-access",
-        "${var.project_name}-${var.environment}-terraform-cognito-access",
-      ]
+      values   = ["${var.project_name}-${var.environment}-terraform-*-access"]
     }
   }
 
@@ -488,10 +437,7 @@ data "aws_iam_policy_document" "terraform" {
       "iam:TagPolicy",
       "iam:UntagPolicy",
     ]
-    resources = [
-      local.terraform_knowledge_base_policy_arn,
-      local.terraform_cognito_policy_arn,
-    ]
+    resources = [local.terraform_managed_policy_arn_pattern]
   }
 
   statement {
@@ -621,6 +567,65 @@ resource "aws_iam_role_policy" "terraform" {
   name   = "terraform-wcs-scoped-access"
   role   = aws_iam_role.terraform.id
   policy = data.aws_iam_policy_document.terraform.json
+}
+
+data "aws_iam_policy_document" "terraform_backoffice_media" {
+  count = var.backoffice_media_bucket_arn == null ? 0 : 1
+
+  statement {
+    sid       = "CreateWcsBackofficeMediaBucket"
+    effect    = "Allow"
+    actions   = ["s3:CreateBucket"]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "ReadWcsBackofficeMediaBucket"
+    effect = "Allow"
+    actions = [
+      "s3:Get*",
+      "s3:ListBucket",
+    ]
+    resources = [
+      var.backoffice_media_bucket_arn,
+      "${var.backoffice_media_bucket_arn}/*",
+    ]
+  }
+
+  statement {
+    sid    = "ManageWcsBackofficeMediaBucket"
+    effect = "Allow"
+    actions = [
+      "s3:PutBucketCORS",
+      "s3:PutBucketLifecycleConfiguration",
+      "s3:PutBucketOwnershipControls",
+      "s3:PutBucketPublicAccessBlock",
+      "s3:PutBucketTagging",
+      "s3:PutBucketVersioning",
+      "s3:PutEncryptionConfiguration",
+    ]
+    resources = [var.backoffice_media_bucket_arn]
+  }
+}
+
+resource "aws_iam_policy" "terraform_backoffice_media" {
+  count = var.backoffice_media_bucket_arn == null ? 0 : 1
+
+  # Keep bucket permissions in their own managed policy. The Terraform role's
+  # existing inline policy is close to IAM's 10,240-byte policy limit.
+  depends_on = [aws_iam_role_policy.terraform]
+
+  name        = "${var.project_name}-${var.environment}-terraform-backoffice-media-access"
+  description = "Terraform access to the WCS backoffice media bucket."
+  policy      = data.aws_iam_policy_document.terraform_backoffice_media[count.index].json
+  tags        = var.tags
+}
+
+resource "aws_iam_role_policy_attachment" "terraform_backoffice_media" {
+  count = var.backoffice_media_bucket_arn == null ? 0 : 1
+
+  role       = aws_iam_role.terraform.name
+  policy_arn = aws_iam_policy.terraform_backoffice_media[count.index].arn
 }
 
 data "aws_iam_policy_document" "terraform_cognito" {

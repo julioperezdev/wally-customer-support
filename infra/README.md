@@ -55,10 +55,51 @@ consola de Secrets Manager sin que el siguiente `terraform apply` los restaure.
 No se debe habilitar App Runner mientras sigan presentes.
 
 El rol OIDC que ejecuta Terraform recibe permisos S3 acotados al bucket privado
-de medios del backoffice. El nombre y ARN se calculan de forma determinística
-en el root de producción y el módulo de medios espera a que la policy del rol
-esté actualizada antes de configurar el bucket. Esto evita que un bucket ya
-existente sea interpretado como ausente por CI por falta de permisos de lectura.
+de medios del backoffice mediante una policy administrada separada. El nombre y
+ARN se calculan de forma determinística en el root de producción y el módulo de
+medios espera a que la policy del rol esté actualizada antes de configurar el
+bucket. Esto evita superar el límite de 10.240 bytes de la policy inline y que
+un bucket existente sea interpretado como ausente por CI por falta de permisos
+de lectura.
+
+El bucket de producción se creó durante un intento anterior que falló antes de
+guardar el recurso en el state remoto. El root de producción conserva un bloque
+`import` declarativo para adoptar ese bucket existente; los recursos de
+configuración (CORS, cifrado, versionado, lifecycle y controles de acceso) sí
+quedan reconciliados por Terraform.
+
+Los workflows ejecutan además una validación rápida del plan antes de cualquier
+apply. Esta validación bloquea policies IAM por encima de los límites de AWS y
+detecta un `aws_s3_bucket` que Terraform intenta crear aunque ya exista en la
+cuenta. De esta forma los errores de tamaño de policy o de adopción de recursos
+se detectan durante el plan, no después de un apply prolongado.
+
+El primer bootstrap requiere un apply dirigido con un principal autorizado para
+IAM, porque el rol OIDC todavía no puede leer el bucket que debe administrar.
+El plan dirigido esperado es `2 to add, 1 to change, 0 to destroy` y sólo crea la
+policy administrada multimedia, su attachment y actualiza la policy inline.
+Después de ese bootstrap, el workflow puede leer el bucket, ejecutar el import
+declarativo y continuar con el apply normal. El workflow verifica esta condición
+antes de inicializar Terraform y falla rápidamente si el acceso todavía falta.
+
+El bootstrap dirigido se revisa y ejecuta desde la raíz del repositorio con el
+perfil AWS autorizado para IAM:
+
+```bash
+terraform -chdir=infra/environments/prod plan -input=false \
+  -target='module.github_terraform_deploy[0].aws_iam_role_policy.terraform' \
+  -target='module.github_terraform_deploy[0].aws_iam_policy.terraform_backoffice_media[0]' \
+  -target='module.github_terraform_deploy[0].aws_iam_role_policy_attachment.terraform_backoffice_media[0]' \
+  -var-file=production.tfvars -var-file=rollout.tfvars \
+  -out=/tmp/wcs-terraform-bootstrap.tfplan
+
+terraform -chdir=infra/environments/prod apply -input=false \
+  /tmp/wcs-terraform-bootstrap.tfplan
+```
+
+No se debe aplicar si el plan dirigido no coincide con `2 to add, 1 to change,
+0 to destroy`. Este es el único paso manual; luego el workflow normal recupera
+el bucket mediante el bloque `import` y administra toda su configuración.
 
 El módulo `appconfig` usa una aplicación estable (`wally-customer-support`) y
 un environment por despliegue (`dev`, `test` o `prod`). Recibe por defecto un
