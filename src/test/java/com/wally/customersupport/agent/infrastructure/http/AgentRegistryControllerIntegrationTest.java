@@ -66,7 +66,34 @@ class AgentRegistryControllerIntegrationTest {
                 .andExpect(jsonPath("$[0].versions[0].prompt").doesNotExist())
                 .andExpect(jsonPath("$[0].versions[0].createdBy").doesNotExist())
                 .andExpect(jsonPath("$[0].activations").isArray())
-                .andExpect(jsonPath("$[0].activations").isEmpty());
+                .andExpect(jsonPath("$[0].activations").value(org.hamcrest.Matchers.hasSize(2)))
+                .andExpect(jsonPath("$[0].activations[0].environment").value("prod"))
+                .andExpect(jsonPath("$[0].activations[0].enabled").value(false))
+                .andExpect(jsonPath("$[0].activations[0].rolloutPercentage").value(0));
+    }
+
+    @Test
+    void exposesAllCoreAgentsAndTheirAssignmentDimensions() throws Exception {
+        mockMvc.perform(get("/internal/agent-registry/filter-options")
+                        .principal(() -> "synthetic-operator"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.agentIds").value(org.hamcrest.Matchers.contains(
+                        "catalog-specialist",
+                        "knowledge-specialist",
+                        "response-humanizer",
+                        "support-safety")))
+                .andExpect(jsonPath("$.environments").value(org.hamcrest.Matchers.contains("prod")))
+                .andExpect(jsonPath("$.channels").value(org.hamcrest.Matchers.contains("telegram", "whatsapp")))
+                .andExpect(jsonPath("$.useCases").value(org.hamcrest.Matchers.contains(
+                        "BUSINESS_HOURS",
+                        "CATALOG_SEARCH",
+                        "GENERAL_SUPPORT",
+                        "GREETING",
+                        "HUMAN_HANDOFF",
+                        "LOW_CONFIDENCE",
+                        "POLICY_QUERY",
+                        "SAFE_FALLBACK")))
+                .andExpect(jsonPath("$.assignments").value(org.hamcrest.Matchers.hasSize(18)));
     }
 
     @TestConfiguration(proxyBeanMethods = false)

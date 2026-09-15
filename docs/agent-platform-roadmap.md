@@ -96,7 +96,9 @@ acceso directo a la base.
 
 ## Agentes core del primer diseño
 
-Los siguientes son roles de diseño, no implementaciones aprobadas todavía:
+El runtime actual ya tiene cuatro owners de ejecución registrados en el
+baseline del registry. `conversation-router` permanece como responsabilidad
+del clasificador y del planificador, no como agente ejecutable persistido.
 
 | Agente | Responsabilidad | Fuente autorizada | Salida |
 | --- | --- | --- | --- |
