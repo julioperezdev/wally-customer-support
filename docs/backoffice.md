@@ -172,10 +172,17 @@ campos de lifecycle y aprobación mediante una actualización optimista que
 comprueba el estado anterior. Las claves idempotentes se almacenan como hash
 en `wcs.agent_registry_command_claims` y no se guarda la clave original.
 
-La pantalla de authoring es una interfaz técnica protegida. La consola también
-expone la auditoría de cambios y las trazas productivas sanitizadas. La
-activación por tráfico continúa separada y conserva preflight, rollout, kill
-switch y rollback.
+La pantalla de authoring es una interfaz técnica protegida. Permite seleccionar
+un agente y una versión del registry, cargar su metadata sanitizada, editarla y
+guardar la siguiente versión como `DRAFT`; la definición original no se
+modifica. También conserva la opción de clonar sin cambios. Los formularios de
+activación y preflight usan los agentes, versiones y combinaciones de ambiente,
+canal y caso de uso disponibles en `filter-options`, para evitar asignaciones
+escritas manualmente que no existan en el registry.
+
+La consola también expone la auditoría de cambios y las trazas productivas
+sanitizadas. La activación por tráfico continúa separada y conserva preflight,
+rollout, kill switch y rollback.
 
 La auditoría persistente está disponible en `GET /internal/agent-registry/audit`
 y las trazas en `GET /internal/agent-registry/executions`. Ambas requieren

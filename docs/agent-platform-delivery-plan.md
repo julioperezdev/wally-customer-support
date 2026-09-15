@@ -14,16 +14,15 @@ coherente para reducir el costo operativo de revisión, merge y deploy.
 
 ## Estado de implementación y regla de avance
 
-El panel actual es el primer corte de observabilidad del control plane, no el
-backoffice completo de agentes. Permite consultar evidencia sanitizada,
-registry, mapa, simulaciones y preflight, pero no crear ni editar definiciones
-ni promover versiones desde la interfaz.
+El control plane actual permite consultar evidencia sanitizada, registry, mapa,
+simulaciones y preflight, además de crear DRAFTs, editar una definición como
+nueva versión inmutable, promover lifecycle y activar rutas por contexto. Este
+PR completa la parte de authoring guiado de la UI: los agentes, versiones y
+asignaciones se seleccionan desde el registry, reduciendo errores manuales.
 
-El próximo incremento debe completar WCS-120 con authoring, ciclo de vida,
-permisos y trazas runtime. WCS-122 (pedidos y Mercado Pago Sandbox) queda fuera
-de la cola hasta que ese incremento cumpla sus gates. Esta regla evita
-interpretar la entrega read-only como cierre de la plataforma sólo porque ya
-exista una vista visual.
+WCS-122 (pedidos y Mercado Pago Sandbox) queda fuera de este slice. Su
+implementación puede avanzar aislada, pero no habilita pagos por sí sola ni
+reemplaza los smoke tests de WCS-120 y WCS-121.
 
 ## PR 1 — Runtime de prompts y foundation del control plane
 
@@ -61,10 +60,10 @@ adapters existentes y Bedrock aplica el modelo, prompt versionado, hash,
 parámetros de inferencia, límite de salida y timeout de la definición activa.
 El catálogo sigue siendo determinístico y el router continúa usando su
 configuración global. La migración de cada step del plan a un agente
-independiente y la exposición de escrituras desde el backoffice se mantienen
-para los siguientes cortes del mismo PR ampliado.
+independiente queda como evolución posterior; el control plane y su escritura
+protegida ya están cubiertos por WCS-120.
 
-## PR 3 — Backoffice operativo del control plane (parcialmente entregado)
+## PR 3 — Backoffice operativo del control plane
 
 Incluye en el mismo repositorio React/TypeScript:
 
@@ -80,21 +79,15 @@ Incluye en el mismo repositorio React/TypeScript:
 La API será contract-first y no expondrá secretos, conversaciones completas ni
 PII. La versión estable siempre se mostrará separada de una candidata.
 
-El corte ya entregado cubre el listado, el mapa, la simulación, el preflight y
-la consulta de evaluaciones. El siguiente PR amplio de esta misma línea debe
-agregar:
+El corte cubre el listado, mapa, simulación, preflight, authoring, clonación,
+edición por nueva DRAFT, lifecycle, activación protegida, kill switch, rollback,
+auditoría y trazas runtime persistidas. La pantalla distingue controles
+read-only de mutaciones protegidas y conserva la autoridad en el backend.
 
-- creación, clonación y edición de versiones;
-- referencias versionadas a prompts, modelos, parámetros, variables, schemas,
-  tools y Knowledge Bases;
-- transición auditable del lifecycle y publicación protegida;
-- activación, desactivación y rollback reales desde el panel, con autorización e
-  idempotencia;
-- trazas runtime persistidas para que las métricas de ejecución no dependan
-  solamente de `EVALUATION_RUNS`.
-
-Hasta completar ese incremento, cualquier control no disponible debe continuar
-rotulado como `READ_ONLY`, `PREVIEW` o `DISABLED`.
+La siguiente evidencia necesaria es operativa: smoke autenticado en el
+ambiente objetivo, validación de las migraciones V19/V20 y habilitación gradual
+de `wcs.agent-registry.authoring-write-enabled` y
+`wcs.agent-registry.activation-write-enabled`.
 
 ## PR 4 — Evaluación, observabilidad y decisión de calidad
 

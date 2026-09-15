@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
+  AgentFilterOptions,
+  AgentRegistryAgent,
   AgentRegistryMutation,
   AgentVersionDraftInput,
   createControlPlaneClient
 } from "./api";
+import { draftFromVersion, versionsForAgent } from "./agent-registry";
 
 type ControlPlaneClient = ReturnType<typeof createControlPlaneClient>;
 
@@ -35,15 +38,20 @@ const DEFAULT_DEFINITION = `{
 export function AgentAuthoringPanel({
   client,
   onRegistryChanged,
-  canWrite
+  canWrite,
+  agents,
+  filterOptions
 }: {
   client: ControlPlaneClient;
   onRegistryChanged: () => Promise<boolean>;
   canWrite: boolean;
+  agents: AgentRegistryAgent[] | null;
+  filterOptions: AgentFilterOptions;
 }) {
   const [agentId, setAgentId] = useState("catalog-specialist");
   const [definitionJson, setDefinitionJson] = useState(DEFAULT_DEFINITION);
   const [sourceVersion, setSourceVersion] = useState("1");
+  const [editingVersion, setEditingVersion] = useState<number | null>(null);
   const [lifecycleAgentId, setLifecycleAgentId] = useState("catalog-specialist");
   const [lifecycleVersion, setLifecycleVersion] = useState("1");
   const [targetState, setTargetState] = useState<"CANDIDATE" | "EVALUATED" | "APPROVED" | "ACTIVE" | "RETIRED">("CANDIDATE");
@@ -54,14 +62,47 @@ export function AgentAuthoringPanel({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const availableVersions = useMemo(
+    () => versionsForAgent(agents, agentId),
+    [agents, agentId]);
+
+  function selectAgent(value: string) {
+    setAgentId(value);
+    setLifecycleAgentId(value);
+    setEditingVersion(null);
+    const firstVersion = versionsForAgent(agents, value)[0];
+    setSourceVersion(firstVersion ? String(firstVersion.version) : "");
+    setLifecycleVersion(firstVersion ? String(firstVersion.version) : "");
+    setError(null);
+  }
+
+  function loadVersionForEditing() {
+    const versionNumber = Number.parseInt(sourceVersion, 10);
+    const version = availableVersions.find((candidate) => candidate.version === versionNumber);
+    if (!version) {
+      setError("Seleccioná una versión existente para cargarla como nueva DRAFT.");
+      return;
+    }
+    setDefinitionJson(JSON.stringify(draftFromVersion(version), null, 2));
+    setEditingVersion(version.version);
+    setLifecycleAgentId(version.agentId);
+    setLifecycleVersion("");
+    setMutation(null);
+    setError(null);
+  }
+
   async function createDraft() {
     setBusy(true);
     setError(null);
     setMutation(null);
     try {
       const definition = JSON.parse(definitionJson) as AgentVersionDraftInput;
-      const result = await client.createAgentDraft(agentId, definition, idempotencyKey());
+      const result = await client.createAgentDraft(agentId, {
+        ...definition,
+        version: null
+      }, idempotencyKey());
       setMutation(result);
+      setEditingVersion(null);
       if (result.version) setLifecycleVersion(String(result.version));
       await onRegistryChanged();
     } catch (cause) {
@@ -83,6 +124,7 @@ export function AgentAuthoringPanel({
     try {
       const result = await client.cloneAgentVersion(agentId, version, idempotencyKey());
       setMutation(result);
+      setEditingVersion(null);
       if (result.version) setLifecycleVersion(String(result.version));
       await onRegistryChanged();
     } catch (cause) {
@@ -126,70 +168,59 @@ export function AgentAuthoringPanel({
       <div className="section-heading">
         <div>
           <h2>Authoring y lifecycle de agentes</h2>
-          <p>Versiones inmutables: se crea una nueva definición y sólo se modifica su estado controlado.</p>
+          <p>Creá una nueva versión inmutable, editá su metadata y promovela con un workflow auditable.</p>
         </div>
         <span className="security-note">PROTEGIDO</span>
       </div>
       <div className="success-alert">
-        El panel nunca recibe prompts completos, secretos ni conversaciones. Usá referencias y SHA-256 de los artefactos externos.
+        Los prompts, schemas y secretos son artefactos externos: el registry sólo guarda referencias, versiones y hashes SHA-256.
       </div>
       {!canWrite && <div className="warning-alert">Tu usuario no tiene <code>agent-registry.write</code>; el authoring está en modo lectura.</div>}
       <div className="authoring-grid">
         <div>
-          <h3>Crear draft</h3>
+          <h3>Crear o editar como nueva DRAFT</h3>
+          <p className="muted">Para editar una versión publicada, cargala abajo, cambiá la metadata y guardá una nueva versión. La original nunca se modifica.</p>
+          {editingVersion !== null && <div className="info-alert">Editando una copia de <strong>{agentId} v{editingVersion}</strong>. Guardar creará la siguiente versión DRAFT.</div>}
           <div className="form-grid">
-            <label>Agent ID<input value={agentId} onChange={(event) => setAgentId(event.target.value)} /></label>
-            <label>Versión (opcional)<input placeholder="siguiente automática" value={readVersion(definitionJson)} onChange={(event) => setDefinitionVersion(event.target.value, definitionJson, setDefinitionJson)} /></label>
+            <label>Agent ID<input list="agent-authoring-agent-ids" value={agentId} onChange={(event) => selectAgent(event.target.value)} /></label>
+            <label>Versión nueva<input value="automática" readOnly /></label>
           </div>
+          <datalist id="agent-authoring-agent-ids">{filterOptions.agentIds.map((option) => <option key={option} value={option} />)}</datalist>
           <label>Definición metadata JSON<textarea rows={19} value={definitionJson} onChange={(event) => setDefinitionJson(event.target.value)} /></label>
           <div className="button-row">
-            <button className="primary" onClick={() => void createDraft()} disabled={busy || !canWrite}>Crear versión DRAFT</button>
+            <button className="primary" onClick={() => void createDraft()} disabled={busy || !canWrite}>Guardar nueva DRAFT</button>
           </div>
         </div>
         <div>
-          <h3>Clonar versión</h3>
-          <p className="muted">Copia metadata de una versión existente y asigna la siguiente versión como DRAFT.</p>
+          <h3>Cargar una versión para editar</h3>
+          <p className="muted">La carga sólo copia metadata sanitizada al editor. No trae prompts completos ni conversaciones.</p>
           <div className="form-grid">
-            <label>Agent ID<input value={agentId} onChange={(event) => setAgentId(event.target.value)} /></label>
-            <label>Versión origen<input inputMode="numeric" value={sourceVersion} onChange={(event) => setSourceVersion(event.target.value)} /></label>
+            <label>Agente<select value={agentId} onChange={(event) => selectAgent(event.target.value)}><option value="">Seleccionar</option>{filterOptions.agentIds.map((option) => <option key={option} value={option}>{option}</option>)}</select></label>
+            <label>Versión origen<select value={sourceVersion} onChange={(event) => setSourceVersion(event.target.value)}><option value="">Seleccionar</option>{availableVersions.map((version) => <option key={version.version} value={version.version}>v{version.version} · {version.state}</option>)}</select></label>
           </div>
-          <button onClick={() => void cloneVersion()} disabled={busy || !canWrite}>Clonar como DRAFT</button>
+          <div className="button-row">
+            <button onClick={loadVersionForEditing} disabled={busy || !agentId || !sourceVersion}>Cargar para editar</button>
+            <button onClick={() => void cloneVersion()} disabled={busy || !canWrite || !agentId || !sourceVersion}>Clonar sin cambios</button>
+          </div>
 
           <h3 className="authoring-subheading">Transicionar lifecycle</h3>
           <div className="form-grid">
-            <label>Agent ID<input value={lifecycleAgentId} onChange={(event) => setLifecycleAgentId(event.target.value)} /></label>
-            <label>Versión<input inputMode="numeric" value={lifecycleVersion} onChange={(event) => setLifecycleVersion(event.target.value)} /></label>
+            <label>Agent ID<input list="agent-lifecycle-agent-ids" value={lifecycleAgentId} onChange={(event) => setLifecycleAgentId(event.target.value)} /></label>
+            <label>Versión<input inputMode="numeric" value={lifecycleVersion} onChange={(event) => setLifecycleVersion(event.target.value)} placeholder="versión creada" /></label>
             <label>Destino<select value={targetState} onChange={(event) => setTargetState(event.target.value as typeof targetState)}><option value="CANDIDATE">CANDIDATE</option><option value="EVALUATED">EVALUATED</option><option value="APPROVED">APPROVED</option><option value="ACTIVE">ACTIVE</option><option value="RETIRED">RETIRED</option></select></label>
             <label>Motivo<input value={reason} onChange={(event) => setReason(event.target.value)} /></label>
             <label>Aprobación técnica<input value={approvalReference} onChange={(event) => setApprovalReference(event.target.value)} /></label>
             <label>Aprobación operativa<input value={operationalApprovalReference} onChange={(event) => setOperationalApprovalReference(event.target.value)} /></label>
           </div>
+          <datalist id="agent-lifecycle-agent-ids">{filterOptions.agentIds.map((option) => <option key={option} value={option} />)}</datalist>
           <button onClick={() => void transitionLifecycle()} disabled={busy || !canWrite}>Aplicar transición</button>
+          <p className="muted">Las transiciones de publicación requieren autorización y referencias de aprobación cuando corresponda.</p>
         </div>
       </div>
       {error && <div className="alert" role="alert">Authoring: {error}</div>}
       {mutation && <div className="success-alert" role="status">{mutation.status}: {mutation.agentId} v{mutation.version ?? "—"}{mutation.state ? ` · ${mutation.state}` : ""} · {mutation.reason}</div>}
     </section>
   );
-}
-
-function readVersion(json: string): string {
-  try {
-    const value = (JSON.parse(json) as { version?: number | null }).version;
-    return value == null ? "" : String(value);
-  } catch {
-    return "";
-  }
-}
-
-function setDefinitionVersion(value: string, json: string, setJson: (value: string) => void) {
-  try {
-    const definition = JSON.parse(json) as Record<string, unknown>;
-    definition.version = value.trim() ? Number.parseInt(value, 10) : null;
-    setJson(JSON.stringify(definition, null, 2));
-  } catch {
-    // The JSON editor remains the source of truth when it is temporarily malformed.
-  }
 }
 
 function idempotencyKey(): string {

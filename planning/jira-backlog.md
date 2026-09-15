@@ -582,13 +582,14 @@ backend, frontend, pruebas, documentación, observabilidad, rollout y rollback.
 | Jira | Estado inicial | Slice |
 | --- | --- | --- |
 | WCS-119 | In Progress | Catálogo, stock, media S3 privada con URLs prefirmadas y bandeja humana filtrable; falta smoke AWS |
-| WCS-120 | To Do | Panel read-only entregado parcialmente; falta authoring, lifecycle, promoción y trazas runtime |
-| WCS-121 | To Do | Feature flags de negocio con AppConfig sin reinicio |
+| WCS-120 | In Progress | Registry, authoring guiado, lifecycle, activación, auditoría y trazas implementados; falta smoke autenticado y habilitación controlada |
+| WCS-121 | In Progress | Runtime, publicación, rollback y UI de feature flags implementados; falta smoke productivo sin reinicio |
 | WCS-122 | In Progress | Pedidos y links de pago con Mercado Pago Sandbox; provider mock por defecto y activación Sandbox sujeta a gates |
 
-Nota de secuenciación: WCS-120 no debe considerarse cerrado por la entrega del
-panel read-only. Su alcance pendiente incluye authoring, versionado, lifecycle,
-promoción protegida y trazas runtime. WCS-122 se implementa de forma aislada
+Nota de secuenciación: WCS-120 no debe considerarse cerrado sólo por la entrega
+del panel visual. El código cubre authoring, versionado, lifecycle, promoción
+protegida y trazas runtime; el cierre requiere evidencia de smoke y rollout.
+WCS-122 se implementa de forma aislada
 con provider mock; la activación de Mercado Pago Sandbox permanece sujeta a
 credenciales, firma, migración y smoke verificados.
 
