@@ -64,6 +64,28 @@ class CatalogQueryParserTest {
     }
 
     @Test
+    void understandsTallaAsASizeRefinement() {
+        CatalogQuery query = CatalogQueryParser.parseConversation(
+                List.of("Busco una remera negra"),
+                "Quiero la talla M").orElseThrow();
+
+        assertEquals("remera", query.productType());
+        assertEquals("negro", query.color());
+        assertEquals("m", query.size());
+    }
+
+    @Test
+    void preservesActiveSelectionForThisProductContinuation() {
+        CatalogQuery query = CatalogQueryParser.parseConversation(
+                List.of("Busco una remera negra talle M"),
+                "Este producto").orElseThrow();
+
+        assertEquals("remera", query.productType());
+        assertEquals("negro", query.color());
+        assertEquals("m", query.size());
+    }
+
+    @Test
     void extractsMaximumPriceWithoutPollutingTheProductName() {
         CatalogQuery query = CatalogQueryParser.parse(
                 "Busco una remera negra talle M que cueste menos de 20.000 pesos").orElseThrow();
@@ -125,6 +147,17 @@ class CatalogQueryParserTest {
     void reconstructsTheLastUniqueSelectionForAnExplicitPurchaseRequest() {
         CatalogQuery query = CatalogQueryParser.parsePurchaseConversation(
                 List.of("Busco una remera negra talle M"), "Quiero comprarla").orElseThrow();
+
+        assertEquals("remera", query.productType());
+        assertEquals("negro", query.color());
+        assertEquals("m", query.size());
+    }
+
+    @Test
+    void reconstructsRefinedSelectionForAnExplicitPurchaseRequest() {
+        CatalogQuery query = CatalogQueryParser.parsePurchaseConversation(
+                List.of("Este producto", "Quiero la talla M", "Busco una remera negra"),
+                "Quiero comprar ahora").orElseThrow();
 
         assertEquals("remera", query.productType());
         assertEquals("negro", query.color());
