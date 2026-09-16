@@ -10,13 +10,25 @@ Permitir que una tienda atienda consultas frecuentes por WhatsApp con respuestas
 
 ## Resultado del primer piloto
 
-Un cliente puede enviar un mensaje de texto y recibir una respuesta del bot por WhatsApp; el sistema conserva el historial mínimo, evita duplicados, registra el resultado y permite operar primero con adaptadores mock y luego con Meta y un LLM real.
+Un cliente puede enviar un mensaje y recibir una respuesta del bot por un canal
+habilitado. En una coincidencia única del catálogo también puede recibir la
+imagen del producto; el sistema conserva el historial mínimo, evita duplicados,
+registra el resultado y permite operar primero con adaptadores mock y luego con
+los proveedores reales.
 
 ## Alcance inicial
 
-Incluye webhook de Meta, verificación, HMAC, mensajes de texto, conversación básica, LLM desacoplado, respuesta por WhatsApp, modo mock, idempotencia, reintentos acotados, logs estructurados, PostgreSQL, tests de contrato/integración y entorno local reproducible.
+Incluye webhook de Meta, verificación, HMAC, mensajes de texto, imagen
+opcional de una coincidencia única de catálogo, conversación básica, LLM
+desacoplado, respuesta por WhatsApp, modo mock, idempotencia, reintentos
+acotados, logs estructurados, PostgreSQL, tests de contrato/integración y
+entorno local reproducible.
 
-Fuera de alcance inicial: audio, imágenes, stickers, ubicación, grupos, pagos, WhatsApp Flows, panel web y configuración automática de Meta. El conocimiento documental queda detrás de `KnowledgeRetriever`; la implementación inicial será una Knowledge Base propia de WCS y pgvector permanece como alternativa futura.
+Fuera de alcance inicial: audio, galerías de imágenes, stickers, ubicación,
+grupos, captura de tarjetas, pagos productivos, WhatsApp Flows, panel web y configuración automática de Meta. El
+conocimiento documental queda detrás de `KnowledgeRetriever`; la
+implementación inicial será una Knowledge Base propia de WCS y pgvector
+permanece como alternativa futura.
 
 ## Decisión de conocimiento y datos
 
@@ -53,7 +65,8 @@ dependencias del backend.
 RDS compartido, puertos y adapters, catálogo demo determinístico, horarios y
 políticas versionadas, referencias de imágenes para S3, configuración
 local/producción con AppConfig y Secrets Manager, persistencia, deduplicación,
-outbox/dispatcher durable, adapters de WhatsApp y Telegram, Mock LLM, Mock
+outbox/dispatcher durable, entrega opcional de media por adapters de WhatsApp y
+Telegram, Mock LLM, Mock
 Knowledge Retriever, endpoint interno, tests e infraestructura base con ECR,
 AppConfig, Secrets Manager, OIDC y App Runner opcional.
 
@@ -88,7 +101,9 @@ sí misma la activación productiva.
 
 ### Fase 7 — Piloto y evolución
 
-**Salida:** métricas de resolución, derivación, latencia, costo y satisfacción; backlog para FAQ/RAG, herramientas, media y multi-tenant sólo si la evidencia lo justifica.
+**Salida:** métricas de resolución, derivación, latencia, costo y satisfacción;
+backlog para galerías, herramientas avanzadas y multi-tenant sólo si la
+evidencia lo justifica.
 
 La ejecución controlada de esta fase está definida en
 [`pilot-runbook.md`](pilot-runbook.md), con su reporte en
@@ -143,9 +158,12 @@ El cierre operativo de WCS-120 requiere habilitar la flag de authoring sólo
 después de su smoke test autenticado y validar la migración V19. Luego se
 verifica la operación productiva de WCS-121 y sus permisos.
 WCS-122 puede implementarse de forma aislada con provider mock mientras esos
-gates avanzan. Sólo después de ellos, y con credenciales, firma, migración y
-smoke verificados, se habilita Mercado Pago Sandbox; ningún pago productivo se
-habilita por el mero hecho de implementar el endpoint.
+gates avanzan. El flujo conversacional puede generar un pedido pendiente y un
+link mediante el adapter de pagos sólo ante una intención explícita y una
+variante única validada. Sólo después de contar con credenciales, firma,
+migración y smoke verificados se habilita Mercado Pago Sandbox; ningún pago
+productivo se habilita por el mero hecho de implementar el endpoint. El detalle
+está en [`conversational-checkout.md`](conversational-checkout.md).
 
 WCS-128 agrega la autenticación Cognito del backoffice como un gate transversal
 antes de habilitar escrituras operativas. El login propio de React llama al

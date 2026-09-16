@@ -2,6 +2,7 @@ package com.wally.customersupport.catalog.application.service;
 
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
@@ -112,5 +113,28 @@ class CatalogQueryParserTest {
         assertEquals("buzo", query.productType());
         assertNull(query.name());
         assertTrue(CatalogQueryParser.isShippingQuestion("¿Cuánto cuesta y cómo se hace el envío?"));
+    }
+
+    @Test
+    void reconstructsTheLastUniqueSelectionForAnExplicitPurchaseRequest() {
+        CatalogQuery query = CatalogQueryParser.parsePurchaseConversation(
+                List.of("Busco una remera negra talle M"), "Quiero comprarla").orElseThrow();
+
+        assertEquals("remera", query.productType());
+        assertEquals("negro", query.color());
+        assertEquals("m", query.size());
+    }
+
+    @Test
+    void recognizesExplicitPurchaseAndQuantityWithoutTreatingInterestAsCheckout() {
+        assertTrue(CatalogQueryParser.isPurchaseRequest("Pasame el link de pago para esa remera"));
+        assertTrue(CatalogQueryParser.isPurchaseRequest("Me la llevo"));
+        assertTrue(CatalogQueryParser.isPurchaseRequest("Me llevo la remera negra"));
+        assertEquals(2, CatalogQueryParser.purchaseQuantity("Quiero comprar 2 remeras negras"));
+        assertEquals(1, CatalogQueryParser.purchaseQuantity("Me interesa esa remera"));
+        assertFalse(CatalogQueryParser.isPurchaseRequest("Quiero esa remera"));
+        assertFalse(CatalogQueryParser.isPurchaseRequest("No quiero comprarla todavía"));
+        assertFalse(CatalogQueryParser.isPurchaseRequest("No quiero pagar todavía"));
+        assertFalse(CatalogQueryParser.isPurchaseRequest("No comprar todavía"));
     }
 }

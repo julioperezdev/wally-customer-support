@@ -42,6 +42,23 @@ public final class CatalogQueryParser {
                     + "anterior|anteriores|eso|esa|esas|asi|algo asi)\\b");
     private static final Pattern SHIPPING_MARKER = Pattern.compile(
             "\\b(envio|envios|entrega|despacho)\\b");
+    private static final Pattern PURCHASE_MARKER = Pattern.compile(
+            "\\b(comprar|comprarla|comprarlo|comprame|compro|adquirir|llevarme|pagar|pagarla|"
+                    + "pasame\\s+(?:el\\s+)?(?:link|enlace)|"
+                    + "generame\\s+(?:el\\s+)?(?:link|enlace)|"
+                    + "(?:link|enlace)\\s+de\\s+pago|"
+                    + "me\\s+(?:(?:la|lo)\\s+)?llevo)\\b");
+    private static final Pattern NEGATIVE_PURCHASE_MARKER = Pattern.compile(
+            "\\bno\\s+(?:quiero|necesito|voy\\s+a)\\s+(?:comprar|comprarla|comprarlo|pagar|llevar|llevarme)\\b|"
+                    + "\\btodavia\\s+no\\s+(?:quiero\\s+)?(?:comprar|pagar|llevar)\\b|"
+                    + "\\bno\\s+(?:la|lo)\\s+(?:compro|llevo)\\b|"
+                    + "\\bno\\s+(?:comprar|comprarla|comprarlo|pagar|pagarla|llevar|llevarme|adquirir)\\b");
+    private static final Pattern PURCHASE_QUANTITY_AFTER_VERB = Pattern.compile(
+            "\\b(?:quiero|necesito|comprar|llevar|llevarme)\\s+([1-9][0-9]?)\\b");
+    private static final Pattern PURCHASE_QUANTITY_WITH_UNIT = Pattern.compile(
+            "\\b([1-9][0-9]?)\\s*(?:unidades?|u)\\b");
+    private static final Pattern PURCHASE_QUANTITY_X = Pattern.compile(
+            "\\bx\\s*([1-9][0-9]?)\\b");
     private static final Pattern UNSUPPORTED_CATALOG_CATEGORY = Pattern.compile(
             "\\b(gorra|gorras|zapatilla|zapatillas|zapato|zapatos|pantalon|pantalones|"
                     + "camisa|camisas|short|shorts|accesorio|accesorios|bufanda|bufandas|"
@@ -70,7 +87,8 @@ public final class CatalogQueryParser {
                     + "cuesta|cueste|menos|mas|barato|barata|caro|cara|hasta|debajo|encima|entre|"
                     + "opcion|opciones|alternativa|alternativas|mostrame|muestrame|mostrar|anterior|"
                     + "anteriores|eso|esa|esas|asi|algo|y|como|hace|hacen|se|envio|envios|entrega|"
-                    + "despacho|pesos?|ars)\\b");
+                    + "despacho|pesos?|ars|comprar|comprarla|comprarlo|comprame|compro|adquirir|llevarme|"
+                    + "llevar|llevarme|llevo|pasame|generame|link|enlace|pago|pagar|pagarla|compra|unidades?|u)\\b");
 
     private CatalogQueryParser() {
     }
@@ -165,6 +183,63 @@ public final class CatalogQueryParser {
         return SHIPPING_MARKER.matcher(normalize(message)).find();
     }
 
+    /**
+     * Detects an explicit customer request to start checkout. Informational
+     * interest such as "me gusta" is intentionally not enough to create an
+     * order or payment link.
+     */
+    public static boolean isPurchaseRequest(String message) {
+        if (message == null || message.isBlank()) {
+            return false;
+        }
+        String normalized = normalize(message);
+        return !NEGATIVE_PURCHASE_MARKER.matcher(normalized).find()
+                && PURCHASE_MARKER.matcher(normalized).find();
+    }
+
+    /**
+     * Reconstructs the most recent bounded catalog selection for an explicit
+     * purchase request. The current turn can refine the previous selection,
+     * but a purchase request without one unambiguous selection remains empty.
+     */
+    public static Optional<CatalogQuery> parsePurchaseConversation(
+            List<String> recentMessages,
+            String latestMessage) {
+        if (!isPurchaseRequest(latestMessage)) {
+            return Optional.empty();
+        }
+
+        CatalogQuery latestQuery = parsePurchaseMessage(latestMessage).orElse(CatalogQuery.empty());
+        CatalogQuery previousQuery = latestCatalogQuery(recentMessages, latestMessage);
+        if (previousQuery == null || previousQuery.isEmpty()) {
+            return latestQuery.isEmpty() ? Optional.empty() : Optional.of(latestQuery);
+        }
+        return Optional.of(previousQuery.merge(latestQuery));
+    }
+
+    /** Returns the requested quantity, defaulting to one for checkout. */
+    public static int purchaseQuantity(String message) {
+        if (message == null || message.isBlank()) {
+            return 1;
+        }
+        String normalized = normalize(message);
+        Matcher matcher = PURCHASE_QUANTITY_AFTER_VERB.matcher(normalized);
+        if (!matcher.find()) {
+            matcher = PURCHASE_QUANTITY_WITH_UNIT.matcher(normalized);
+            if (!matcher.find()) {
+                matcher = PURCHASE_QUANTITY_X.matcher(normalized);
+                if (!matcher.find()) {
+                    return 1;
+                }
+            }
+        }
+        try {
+            return Integer.parseInt(matcher.group(1));
+        } catch (NumberFormatException exception) {
+            return 1;
+        }
+    }
+
     public static boolean isUnsupportedCatalogCategory(String message) {
         if (message == null || message.isBlank()) {
             return false;
@@ -215,6 +290,32 @@ public final class CatalogQueryParser {
                 productType,
                 priceRange.minPrice(),
                 priceRange.maxPrice()));
+    }
+
+    private static Optional<CatalogQuery> parsePurchaseMessage(String message) {
+        String normalized = normalize(message);
+        normalized = PURCHASE_QUANTITY_AFTER_VERB.matcher(normalized).replaceAll(" ");
+        normalized = PURCHASE_QUANTITY_WITH_UNIT.matcher(normalized).replaceAll(" ");
+        normalized = PURCHASE_QUANTITY_X.matcher(normalized).replaceAll(" ");
+        return parse(normalized);
+    }
+
+    private static CatalogQuery latestCatalogQuery(List<String> recentMessages, String latestMessage) {
+        if (recentMessages == null) {
+            return null;
+        }
+        boolean skippedLatest = false;
+        for (String message : recentMessages) {
+            if (!skippedLatest && java.util.Objects.equals(message, latestMessage)) {
+                skippedLatest = true;
+                continue;
+            }
+            Optional<CatalogQuery> query = parse(message).filter(parsed -> !parsed.isEmpty());
+            if (query.isPresent()) {
+                return query.get();
+            }
+        }
+        return null;
     }
 
     private static boolean looksLikeCatalogTurn(String message) {

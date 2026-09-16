@@ -28,9 +28,11 @@ import com.wally.customersupport.agent.application.service.AgentRuntimeDefinitio
 import com.wally.customersupport.agent.application.service.AgentShadowRuntimeService;
 import com.wally.customersupport.agent.application.service.CatalogSpecialistExecutionResult;
 import com.wally.customersupport.conversation.application.port.out.ConversationIntentClassifier;
+import com.wally.customersupport.conversation.application.port.out.PurchaseLinkCreator;
 import com.wally.customersupport.conversation.application.port.out.ResponseHumanizer;
 import com.wally.customersupport.catalog.application.service.CatalogFact;
 import com.wally.customersupport.catalog.application.service.CatalogConversationService;
+import com.wally.customersupport.catalog.application.service.CatalogImage;
 import com.wally.customersupport.catalog.application.service.CatalogSearchResult;
 import com.wally.customersupport.support.application.service.SupportConfigurationQueryService;
 import com.wally.customersupport.knowledge.application.port.out.KnowledgeRetriever;
@@ -40,6 +42,7 @@ import com.wally.customersupport.catalog.domain.model.CatalogQuery;
 import com.wally.customersupport.agent.domain.model.AgentInferenceParameters;
 import com.wally.customersupport.conversation.domain.model.ConversationContext;
 import com.wally.customersupport.conversation.domain.model.Channel;
+import com.wally.customersupport.conversation.domain.model.ConversationExecutionResult;
 import com.wally.customersupport.conversation.domain.model.ConversationIntent;
 import com.wally.customersupport.conversation.domain.model.ConversationIntentDecision;
 import com.wally.customersupport.conversation.domain.model.ResponseHumanizationResult;
@@ -78,6 +81,8 @@ class ConversationOrchestratorTest {
     private ResponseHumanizer responseHumanizer;
     @Mock
     private AgentShadowRuntimeService agentShadowRuntimeService;
+    @Mock
+    private PurchaseLinkCreator purchaseLinkCreator;
 
     private ConversationOrchestrator orchestrator;
     private ConversationContext context;
@@ -221,14 +226,116 @@ class ConversationOrchestratorTest {
         CatalogQuery query = new CatalogQuery("camiseta", null, "M", "negro");
         when(intentClassifier.classify(any(ConversationContext.class)))
                 .thenReturn(new ConversationIntentDecision(ConversationIntent.CATALOG_SEARCH, 0.95, query, null));
-        when(catalogConversationService.replyFor(query, context.recentMessages(), context.latestMessage()))
-                .thenReturn(Optional.of("resultado del catálogo"));
+        when(catalogConversationService.search(query, context.recentMessages(), context.latestMessage()))
+                .thenReturn(Optional.of(new CatalogSearchResult(
+                        CatalogSearchResult.Status.MATCHED,
+                        List.of(new CatalogFact(
+                                "Resultado del catálogo", "SKU-1", "M", "Negro",
+                                new BigDecimal("100.00"), "ARS", 1)),
+                        null,
+                        CatalogSearchResult.FollowUpKind.NONE,
+                        "MATCHED")));
 
-        assertEquals("resultado del catálogo", orchestrator.replyFor(context));
+        assertTrue(orchestrator.replyFor(context).contains("Resultado del catálogo"));
 
-        verify(catalogConversationService).replyFor(query, context.recentMessages(), context.latestMessage());
+        verify(catalogConversationService).search(query, context.recentMessages(), context.latestMessage());
         verify(knowledgeRetriever, never()).retrieve(any());
         verify(llmClient, never()).generateReply(any());
+    }
+
+    @Test
+    void createsAnIdempotentPaymentLinkOnlyForOneAvailableVariant() {
+        ConversationContext purchaseContext = new ConversationContext(
+                context.conversationId(),
+                context.externalCustomerId(),
+                "Quiero comprarla",
+                List.of("Quiero comprarla", "Busco una remera negra talle M"),
+                List.of(),
+                null,
+                List.of(),
+                Channel.TELEGRAM);
+        ConversationOrchestrator checkoutOrchestrator = new ConversationOrchestrator(
+                intentClassifier,
+                catalogConversationService,
+                supportConfigurationQueryService,
+                knowledgeRetriever,
+                llmClient,
+                new RagProperties("mock", 5, null, null),
+                new ConversationExecutionPlanFactory(),
+                agentActivationResolver,
+                agentRuntimeDefinitionResolver,
+                new AgentRuntimeProperties(false, "prod", false, Duration.ofSeconds(5), "noop", "test", 0),
+                catalogSpecialistExecutor,
+                responseHumanizer,
+                agentShadowRuntimeService,
+                new ActorKeyGenerator(new ObservabilityProperties("test-actor-key")),
+                purchaseLinkCreator);
+        when(intentClassifier.classify(any(ConversationContext.class)))
+                .thenReturn(new ConversationIntentDecision(ConversationIntent.GENERAL_SUPPORT, 0.90, null, null));
+        when(catalogConversationService.search(any(CatalogQuery.class), any(), any()))
+                .thenReturn(Optional.of(new CatalogSearchResult(
+                        CatalogSearchResult.Status.MATCHED,
+                        List.of(new CatalogFact(
+                                "Remera NullPointer", "RP-REM-NP-NEG-M", "M", "Negro",
+                                new BigDecimal("18900.00"), "ARS", 12)),
+                        null,
+                        CatalogSearchResult.FollowUpKind.NONE,
+                        "MATCHED")));
+        when(purchaseLinkCreator.create(any())).thenReturn(Optional.of(new PurchaseLinkCreator.PurchaseLink(
+                UUID.randomUUID(),
+                "Remera NullPointer",
+                "RP-REM-NP-NEG-M",
+                1,
+                new BigDecimal("18900.00"),
+                "ARS",
+                "mock",
+                "https://sandbox.example.invalid/pay/order-1")));
+
+        ConversationExecutionResult result = checkoutOrchestrator.replyForDetailed(purchaseContext);
+
+        assertEquals("PURCHASE_LINK", result.useCase());
+        assertTrue(result.response().contains("https://sandbox.example.invalid/pay/order-1"));
+        org.mockito.ArgumentCaptor<PurchaseLinkCreator.CreatePurchaseLinkRequest> request =
+                org.mockito.ArgumentCaptor.forClass(PurchaseLinkCreator.CreatePurchaseLinkRequest.class);
+        verify(purchaseLinkCreator).create(request.capture());
+        assertEquals("RP-REM-NP-NEG-M", request.getValue().sku());
+        assertEquals(1, request.getValue().quantity());
+        assertTrue(request.getValue().idempotencyKey().startsWith("purchase-"));
+    }
+
+    @Test
+    void doesNotCreateAPaymentLinkWhenTheSelectionIsAmbiguous() {
+        ConversationContext purchaseContext = new ConversationContext(
+                context.conversationId(), context.externalCustomerId(), "Quiero comprarla",
+                List.of("Quiero comprarla", "¿Qué remeras tienen?"), List.of(), null, List.of(), Channel.TELEGRAM);
+        ConversationOrchestrator checkoutOrchestrator = new ConversationOrchestrator(
+                intentClassifier,
+                catalogConversationService,
+                supportConfigurationQueryService,
+                knowledgeRetriever,
+                llmClient,
+                new RagProperties("mock", 5, null, null),
+                new ConversationExecutionPlanFactory(),
+                agentActivationResolver,
+                agentRuntimeDefinitionResolver,
+                new AgentRuntimeProperties(false, "prod", false, Duration.ofSeconds(5), "noop", "test", 0),
+                catalogSpecialistExecutor,
+                responseHumanizer,
+                agentShadowRuntimeService,
+                new ActorKeyGenerator(new ObservabilityProperties("test-actor-key")),
+                purchaseLinkCreator);
+        when(intentClassifier.classify(any(ConversationContext.class)))
+                .thenReturn(new ConversationIntentDecision(ConversationIntent.GENERAL_SUPPORT, 0.90, null, null));
+        when(catalogConversationService.search(any(CatalogQuery.class), any(), any()))
+                .thenReturn(Optional.of(new CatalogSearchResult(
+                        CatalogSearchResult.Status.AMBIGUOUS, List.of(), null,
+                        CatalogSearchResult.FollowUpKind.NONE, "MULTIPLE_VARIANTS")));
+
+        ConversationExecutionResult result = checkoutOrchestrator.replyForDetailed(purchaseContext);
+
+        assertEquals("PURCHASE_LINK", result.useCase());
+        assertTrue(result.response().contains("una única variante"));
+        verify(purchaseLinkCreator, never()).create(any());
     }
 
     @Test
@@ -282,7 +389,10 @@ class ConversationOrchestratorTest {
                                         12)),
                                 null,
                                 CatalogSearchResult.FollowUpKind.NONE,
-                                "MATCHED"),
+                                "MATCHED",
+                                List.of(new CatalogImage(
+                                        "RP-REM-NP-NEG-M",
+                                        "wcs/catalog/product/remera.jpg"))),
                         1));
         when(responseHumanizer.humanize(any()))
                 .thenReturn(ResponseHumanizationResult.applied(
@@ -292,9 +402,11 @@ class ConversationOrchestratorTest {
                         "deterministic-response-humanizer",
                         "v1"));
 
+        ConversationExecutionResult detailedResult = enabledOrchestrator.replyForDetailed(channelContext);
         assertEquals("Encontré estos productos:\n"
                 + "- Remera NullPointer — Negro, talle M — 18.900,00 ARS — stock disponible: 12 "
-                + "(SKU: RP-REM-NP-NEG-M)", enabledOrchestrator.replyFor(channelContext));
+                + "(SKU: RP-REM-NP-NEG-M)", detailedResult.response());
+        assertEquals("wcs/catalog/product/remera.jpg", detailedResult.mediaReference());
 
         verify(catalogSpecialistExecutor).execute(any());
         verify(catalogConversationService, never()).replyFor(
@@ -442,7 +554,7 @@ class ConversationOrchestratorTest {
         CatalogQuery query = new CatalogQuery("camiseta", null, "M", "negro");
         when(intentClassifier.classify(any(ConversationContext.class)))
                 .thenReturn(new ConversationIntentDecision(ConversationIntent.CATALOG_SEARCH, 0.95, query, null));
-        when(catalogConversationService.replyFor(query, context.recentMessages(), context.latestMessage()))
+        when(catalogConversationService.search(query, context.recentMessages(), context.latestMessage()))
                 .thenThrow(new IllegalStateException("catalog unavailable"));
 
         String reply = orchestrator.replyFor(context);

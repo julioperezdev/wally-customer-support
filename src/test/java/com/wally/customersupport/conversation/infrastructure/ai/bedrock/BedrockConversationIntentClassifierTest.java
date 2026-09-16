@@ -95,4 +95,22 @@ class BedrockConversationIntentClassifierTest {
         assertEquals(ConversationIntent.GENERAL_SUPPORT, decision.intent());
         assertEquals(0.70, decision.confidence());
     }
+
+    @Test
+    void parsesPurchaseIntentAndCatalogSelection() {
+        BedrockConverseClient converseClient = mock(BedrockConverseClient.class);
+        when(converseClient.complete(
+                anyString(), anyString(), anyString(), anyString(), anyInt(), anyFloat(), anyString(), anyString()))
+                .thenReturn("{\"intent\":\"PURCHASE_LINK\",\"confidence\":0.98,"
+                        + "\"catalogQuery\":{\"name\":\"nullpointer\",\"sku\":null,\"size\":\"M\","
+                        + "\"color\":\"negro\",\"productType\":\"remera\",\"minPrice\":null,\"maxPrice\":null},"
+                        + "\"policyKey\":null}");
+
+        var decision = new BedrockConversationIntentClassifier(converseClient, new ObjectMapper())
+                .classify("Quiero comprar la remera NullPointer negra talle M");
+
+        assertEquals(ConversationIntent.PURCHASE_LINK, decision.intent());
+        assertEquals("nullpointer", decision.catalogQuery().name());
+        assertEquals("M", decision.catalogQuery().size());
+    }
 }

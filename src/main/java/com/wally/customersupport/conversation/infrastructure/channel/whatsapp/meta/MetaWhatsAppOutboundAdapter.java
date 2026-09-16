@@ -5,10 +5,14 @@ import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
+import com.wally.customersupport.conversation.application.port.out.OutboundMediaUrlResolver;
 import com.wally.customersupport.conversation.application.port.out.OutboundMessagePort;
 import com.wally.customersupport.conversation.domain.model.Channel;
+import com.wally.customersupport.conversation.domain.model.DeliveryType;
 import com.wally.customersupport.conversation.domain.model.OutboundMessage;
+import com.wally.customersupport.conversation.infrastructure.media.NoOpOutboundMediaUrlResolver;
 import com.wally.customersupport.shared.infrastructure.config.WhatsAppProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,25 +22,40 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
+import lombok.extern.slf4j.Slf4j;
 
 @Component
 @ConditionalOnProperty(name = "wcs.whatsapp.adapter", havingValue = "meta")
+@Slf4j
 public class MetaWhatsAppOutboundAdapter implements OutboundMessagePort {
 
     private static final Duration DEFAULT_CONNECT_TIMEOUT = Duration.ofSeconds(2);
     private static final Duration DEFAULT_READ_TIMEOUT = Duration.ofSeconds(5);
+    private static final int MAX_CAPTION_CHARACTERS = 1024;
 
     private final RestClient restClient;
     private final WhatsAppProperties properties;
+    private final OutboundMediaUrlResolver mediaUrlResolver;
 
     @Autowired
-    public MetaWhatsAppOutboundAdapter(RestClient.Builder restClientBuilder, WhatsAppProperties properties) {
-        this(buildRestClient(restClientBuilder, properties), properties);
+    public MetaWhatsAppOutboundAdapter(
+            RestClient.Builder restClientBuilder,
+            WhatsAppProperties properties,
+            OutboundMediaUrlResolver mediaUrlResolver) {
+        this(buildRestClient(restClientBuilder, properties), properties, mediaUrlResolver);
     }
 
     MetaWhatsAppOutboundAdapter(RestClient restClient, WhatsAppProperties properties) {
+        this(restClient, properties, new NoOpOutboundMediaUrlResolver());
+    }
+
+    MetaWhatsAppOutboundAdapter(
+            RestClient restClient,
+            WhatsAppProperties properties,
+            OutboundMediaUrlResolver mediaUrlResolver) {
         this.restClient = restClient;
         this.properties = properties;
+        this.mediaUrlResolver = mediaUrlResolver;
     }
 
     @Override
@@ -47,9 +66,11 @@ public class MetaWhatsAppOutboundAdapter implements OutboundMessagePort {
     @Override
     public void send(OutboundMessage message) {
         validateConfiguration(message);
-        Map<String, Object> payload = message.deliveryType() == com.wally.customersupport.conversation.domain.model.DeliveryType.TEMPLATE
-                ? templatePayload(message)
-                : textPayload(message);
+        Map<String, Object> payload = switch (message.deliveryType()) {
+            case TEMPLATE -> templatePayload(message);
+            case IMAGE -> imageOrTextPayload(message);
+            case TEXT -> textPayload(message);
+        };
         postMessage(payload);
     }
 
@@ -59,6 +80,26 @@ public class MetaWhatsAppOutboundAdapter implements OutboundMessagePort {
                 "to", message.recipientId(),
                 "type", "text",
                 "text", Map.of("body", message.body()));
+    }
+
+    private Map<String, Object> imageOrTextPayload(OutboundMessage message) {
+        if (message.body().length() > MAX_CAPTION_CHARACTERS) {
+            log.info("OUTBOUND_MEDIA_FALLBACK channel=WHATSAPP deliveryType=IMAGE reason=CAPTION_TOO_LONG");
+            return textPayload(message);
+        }
+        Optional<String> mediaUrl = resolveMediaUrl(message.mediaReference());
+        if (mediaUrl.isEmpty()) {
+            log.info("OUTBOUND_MEDIA_FALLBACK channel=WHATSAPP deliveryType=IMAGE reason=MEDIA_URL_UNAVAILABLE");
+            return textPayload(message);
+        }
+        Map<String, Object> image = new LinkedHashMap<>();
+        image.put("link", mediaUrl.get());
+        image.put("caption", message.body());
+        return Map.of(
+                "messaging_product", "whatsapp",
+                "to", message.recipientId(),
+                "type", "image",
+                "image", image);
     }
 
     private Map<String, Object> templatePayload(OutboundMessage message) {
@@ -105,11 +146,15 @@ public class MetaWhatsAppOutboundAdapter implements OutboundMessagePort {
         if (message == null || message.channel() != Channel.WHATSAPP || isBlank(message.recipientId())) {
             throw new IllegalArgumentException("Recipient is required");
         }
-        if (message.deliveryType() == com.wally.customersupport.conversation.domain.model.DeliveryType.TEXT
+        if (message.deliveryType() == DeliveryType.TEXT
                 && isBlank(message.body())) {
             throw new IllegalArgumentException("Text body is required");
         }
-        if (message.deliveryType() == com.wally.customersupport.conversation.domain.model.DeliveryType.TEMPLATE
+        if (message.deliveryType() == DeliveryType.IMAGE
+                && (isBlank(message.body()) || isBlank(message.mediaReference()))) {
+            throw new IllegalArgumentException("Image body and media reference are required");
+        }
+        if (message.deliveryType() == DeliveryType.TEMPLATE
                 && (isBlank(message.templateName()) || isBlank(message.templateLanguageCode()))) {
             throw new IllegalArgumentException("Template name and language code are required");
         }
@@ -118,6 +163,16 @@ public class MetaWhatsAppOutboundAdapter implements OutboundMessagePort {
                 || isBlank(properties.phoneNumberId())
                 || isBlank(properties.accessToken())) {
             throw new IllegalStateException("Meta WhatsApp adapter is not configured");
+        }
+    }
+
+    private Optional<String> resolveMediaUrl(String mediaReference) {
+        try {
+            return mediaUrlResolver.resolve(mediaReference).filter(url -> !isBlank(url));
+        } catch (RuntimeException exception) {
+            log.warn("OUTBOUND_MEDIA_FALLBACK channel=WHATSAPP deliveryType=IMAGE errorType={}",
+                    exception.getClass().getSimpleName());
+            return Optional.empty();
         }
     }
 

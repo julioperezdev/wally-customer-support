@@ -5,6 +5,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 
 import com.wally.customersupport.agent.application.service.AgentActivationKey;
 import com.wally.customersupport.agent.application.service.AgentActivationResolution;
@@ -17,9 +18,12 @@ import com.wally.customersupport.agent.application.service.AgentRuntimeDefinitio
 import com.wally.customersupport.agent.application.service.AgentShadowRuntimeService;
 import com.wally.customersupport.agent.application.service.AgentExecutionTraceRecorder;
 import com.wally.customersupport.catalog.application.service.CatalogConversationService;
+import com.wally.customersupport.catalog.application.service.CatalogResponseFormatter;
 import com.wally.customersupport.catalog.application.service.CatalogQueryParser;
+import com.wally.customersupport.catalog.application.service.CatalogSearchResult;
 import com.wally.customersupport.catalog.domain.model.CatalogQuery;
 import com.wally.customersupport.conversation.application.port.out.ConversationIntentClassifier;
+import com.wally.customersupport.conversation.application.port.out.PurchaseLinkCreator;
 import com.wally.customersupport.knowledge.application.port.out.KnowledgeRetriever;
 import com.wally.customersupport.conversation.application.port.out.LlmClient;
 import com.wally.customersupport.conversation.application.port.out.ResponseHumanizer;
@@ -54,6 +58,12 @@ public class ConversationOrchestrator {
             + "Podés preguntarme por productos, stock, horarios o políticas de la tienda.";
     private static final String HUMAN_HANDOFF = "Entiendo. Un agente revisará tu consulta con el contexto "
             + "de esta conversación dentro de las próximas 24 horas.";
+    private static final String PURCHASE_VARIANT_REQUIRED = "Para generar el link de pago necesito una única "
+            + "variante. Indicame el producto, talle y color que querés comprar.";
+    private static final String PURCHASE_VARIANT_UNAVAILABLE = "Esa variante no tiene stock disponible en este momento. "
+            + "Si querés, puedo mostrarte otras opciones.";
+    private static final String PURCHASE_LINK_UNAVAILABLE = "No pude generar el link de pago en este momento. "
+            + "Tu pedido no fue confirmado; intentá nuevamente en unos minutos.";
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
     private static final List<String> DAY_NAMES = List.of(
             "lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo");
@@ -73,6 +83,7 @@ public class ConversationOrchestrator {
     private final AgentShadowRuntimeService agentShadowRuntimeService;
     private final ActorKeyGenerator actorKeyGenerator;
     private final AgentExecutionTraceRecorder agentExecutionTraceRecorder;
+    private final PurchaseLinkCreator purchaseLinkCreator;
 
     @Autowired
     public ConversationOrchestrator(
@@ -90,7 +101,43 @@ public class ConversationOrchestrator {
             ResponseHumanizer responseHumanizer,
             AgentShadowRuntimeService agentShadowRuntimeService,
             ActorKeyGenerator actorKeyGenerator,
-            AgentExecutionTraceRecorder agentExecutionTraceRecorder) {
+            PurchaseLinkCreator purchaseLinkCreator) {
+        this(
+                intentClassifier,
+                catalogConversationService,
+                supportConfigurationQueryService,
+                knowledgeRetriever,
+                llmClient,
+                ragProperties,
+                executionPlanFactory,
+                agentActivationResolver,
+                agentRuntimeDefinitionResolver,
+                agentRuntimeProperties,
+                catalogSpecialistExecutor,
+                responseHumanizer,
+                agentShadowRuntimeService,
+                actorKeyGenerator,
+                new AgentExecutionTraceRecorder(),
+                purchaseLinkCreator);
+    }
+
+    public ConversationOrchestrator(
+            ConversationIntentClassifier intentClassifier,
+            CatalogConversationService catalogConversationService,
+            SupportConfigurationQueryService supportConfigurationQueryService,
+            KnowledgeRetriever knowledgeRetriever,
+            LlmClient llmClient,
+            RagProperties ragProperties,
+            ConversationExecutionPlanFactory executionPlanFactory,
+            AgentActivationResolver agentActivationResolver,
+            AgentRuntimeDefinitionResolver agentRuntimeDefinitionResolver,
+            AgentRuntimeProperties agentRuntimeProperties,
+            CatalogSpecialistExecutor catalogSpecialistExecutor,
+            ResponseHumanizer responseHumanizer,
+            AgentShadowRuntimeService agentShadowRuntimeService,
+            ActorKeyGenerator actorKeyGenerator,
+            AgentExecutionTraceRecorder agentExecutionTraceRecorder,
+            PurchaseLinkCreator purchaseLinkCreator) {
         this.intentClassifier = intentClassifier;
         this.catalogConversationService = catalogConversationService;
         this.supportConfigurationQueryService = supportConfigurationQueryService;
@@ -106,6 +153,7 @@ public class ConversationOrchestrator {
         this.agentShadowRuntimeService = agentShadowRuntimeService;
         this.actorKeyGenerator = actorKeyGenerator;
         this.agentExecutionTraceRecorder = agentExecutionTraceRecorder;
+        this.purchaseLinkCreator = purchaseLinkCreator;
     }
 
     public ConversationOrchestrator(
@@ -138,7 +186,8 @@ public class ConversationOrchestrator {
                 responseHumanizer,
                 agentShadowRuntimeService,
                 actorKeyGenerator,
-                new AgentExecutionTraceRecorder());
+                new AgentExecutionTraceRecorder(),
+                request -> Optional.empty());
     }
 
     public String replyFor(ConversationContext context) {
@@ -176,6 +225,7 @@ public class ConversationOrchestrator {
                     executionPlanFactory.safeFallback("NULL_DECISION"),
                     startedAt);
         }
+        decision = normalizeDeterministicPurchaseDecision(context, decision);
         decision = normalizeDeterministicCatalogDecision(context, decision);
         Map<String, Object> classifiedFields = new LinkedHashMap<>();
         classifiedFields.put("intent", decision.intent().name());
@@ -229,24 +279,26 @@ public class ConversationOrchestrator {
 
         ConversationExecutionResult result;
         try {
-            String reply = isCatalogShippingComposite(context, decision)
-                    ? executeCatalogShippingComposite(context, decision)
+            RenderedResponse rendered = isCatalogShippingComposite(context, decision)
+                    ? RenderedResponse.text(executeCatalogShippingComposite(context, decision))
                     : switch (plan.action()) {
-                case DIRECT_RESPONSE -> GREETING;
+                case DIRECT_RESPONSE -> RenderedResponse.text(GREETING);
                 case CATALOG_SEARCH -> executeCatalogSearch(context, decision, definition);
-                case BUSINESS_HOURS -> formatBusinessHours();
-                case POLICY_QUERY -> formatPolicy(decision == null ? null : decision.policyKey());
-                case HUMAN_HANDOFF -> HUMAN_HANDOFF;
-                case GENERAL_SUPPORT -> safeGeneralSupport(context, definition);
-                case LOW_CONFIDENCE -> LOW_CONFIDENCE;
-                case SAFE_FALLBACK -> SAFE_FALLBACK;
+                case PURCHASE_LINK -> executePurchaseLink(context, decision);
+                case BUSINESS_HOURS -> RenderedResponse.text(formatBusinessHours());
+                case POLICY_QUERY -> RenderedResponse.text(formatPolicy(decision == null ? null : decision.policyKey()));
+                case HUMAN_HANDOFF -> RenderedResponse.text(HUMAN_HANDOFF);
+                case GENERAL_SUPPORT -> RenderedResponse.text(safeGeneralSupport(context, definition));
+                case LOW_CONFIDENCE -> RenderedResponse.text(LOW_CONFIDENCE);
+                case SAFE_FALLBACK -> RenderedResponse.text(SAFE_FALLBACK);
             };
+            String reply = rendered.text();
             result = SAFE_FALLBACK.equals(reply)
                     ? ConversationExecutionResult.fallback(
                             plan,
                             reply,
                             plan.fallbackReason() == null ? "SAFE_GENERAL_SUPPORT_FALLBACK" : plan.fallbackReason())
-                    : ConversationExecutionResult.completed(plan, reply);
+                    : ConversationExecutionResult.completed(plan, reply, rendered.mediaReference());
         } catch (RuntimeException exception) {
             Map<String, Object> fields = new LinkedHashMap<>();
             fields.put("workflowVersion", plan.workflowVersion());
@@ -260,6 +312,21 @@ public class ConversationOrchestrator {
         }
         runShadowSafely(definition, context, plan.useCase(), decision, result.response());
         return completeQuery(context, result, startedAt, definition);
+    }
+
+    private ConversationIntentDecision normalizeDeterministicPurchaseDecision(
+            ConversationContext context,
+            ConversationIntentDecision decision) {
+        if (context == null || !CatalogQueryParser.isPurchaseRequest(context.latestMessage())) {
+            return decision;
+        }
+        return new ConversationIntentDecision(
+                ConversationIntent.PURCHASE_LINK,
+                0.99,
+                CatalogQueryParser.parsePurchaseConversation(
+                        context.recentMessages(), context.latestMessage())
+                        .orElse(decision == null ? null : decision.catalogQuery()),
+                null);
     }
 
     private ConversationIntentDecision normalizeDeterministicCatalogDecision(
@@ -294,7 +361,9 @@ public class ConversationOrchestrator {
     private boolean isCatalogShippingComposite(
             ConversationContext context,
             ConversationIntentDecision decision) {
-        if (context == null || !CatalogQueryParser.isShippingQuestion(context.latestMessage())) {
+        if (context == null
+                || CatalogQueryParser.isPurchaseRequest(context.latestMessage())
+                || !CatalogQueryParser.isShippingQuestion(context.latestMessage())) {
             return false;
         }
         return resolveCatalogQuery(context, decision)
@@ -351,7 +420,7 @@ public class ConversationOrchestrator {
         }
     }
 
-    private String executeCatalogSearch(
+    private RenderedResponse executeCatalogSearch(
             ConversationContext context,
             ConversationIntentDecision decision,
             AgentRuntimeDefinitionResolution definition) {
@@ -368,14 +437,105 @@ public class ConversationOrchestrator {
                                 "CATALOG_SEARCH",
                                 context.channel(),
                                 specialistResult.result()));
-                return humanized == null ? SAFE_FALLBACK : humanized.text();
+                return humanized == null
+                        ? RenderedResponse.text(SAFE_FALLBACK)
+                        : humanized.outcome() == ResponseHumanizationResult.Outcome.APPLIED
+                                ? RenderedResponse.catalog(humanized.text(), specialistResult.result())
+                                : RenderedResponse.text(humanized.text());
             }
         }
-        return catalogConversationService.replyFor(
+        return catalogConversationService.search(
                         decision == null ? null : decision.catalogQuery(),
                         context.recentMessages(),
                         context.latestMessage())
-                .orElse(LOW_CONFIDENCE);
+                .map(result -> RenderedResponse.catalog(CatalogResponseFormatter.render(result), result))
+                .orElseGet(() -> RenderedResponse.text(LOW_CONFIDENCE));
+    }
+
+    private RenderedResponse executePurchaseLink(
+            ConversationContext context,
+            ConversationIntentDecision decision) {
+        Optional<CatalogQuery> query = CatalogQueryParser.parsePurchaseConversation(
+                context.recentMessages(), context.latestMessage())
+                .or(() -> decision == null
+                        ? Optional.empty()
+                        : Optional.ofNullable(decision.catalogQuery()))
+                .filter(candidate -> !candidate.isEmpty());
+        if (query.isEmpty()) {
+            logPurchaseOutcome(context, "VARIANT_REQUIRED");
+            return RenderedResponse.text(PURCHASE_VARIANT_REQUIRED);
+        }
+
+        Optional<CatalogSearchResult> searchResult = catalogConversationService.search(
+                query.get(), context.recentMessages(), context.latestMessage());
+        if (searchResult.isEmpty()
+                || searchResult.get().status() != CatalogSearchResult.Status.MATCHED
+                || searchResult.get().facts().size() != 1) {
+            logPurchaseOutcome(context, "VARIANT_NOT_UNIQUE");
+            return RenderedResponse.text(PURCHASE_VARIANT_REQUIRED);
+        }
+
+        var fact = searchResult.get().facts().getFirst();
+        int quantity = CatalogQueryParser.purchaseQuantity(context.latestMessage());
+        if (!fact.available() || quantity > fact.stock()) {
+            logPurchaseOutcome(context, "INSUFFICIENT_STOCK");
+            return RenderedResponse.text(PURCHASE_VARIANT_UNAVAILABLE);
+        }
+
+        String idempotencyKey = "purchase-" + sha256(
+                context.conversationId() + "|" + fact.sku() + "|" + quantity);
+        Optional<PurchaseLinkCreator.PurchaseLink> purchaseLink = purchaseLinkCreator.create(
+                new PurchaseLinkCreator.CreatePurchaseLinkRequest(
+                        context.conversationId(),
+                        customerReference(context),
+                        fact.sku(),
+                        quantity,
+                        idempotencyKey));
+        if (purchaseLink.isEmpty()) {
+            logPurchaseOutcome(context, "LINK_UNAVAILABLE");
+            return RenderedResponse.text(PURCHASE_LINK_UNAVAILABLE);
+        }
+
+        PurchaseLinkCreator.PurchaseLink link = purchaseLink.get();
+        logPurchaseOutcome(context, "LINK_CREATED");
+        return RenderedResponse.text(String.format(
+                Locale.ROOT,
+                "Listo. Preparé tu pedido de %d %s (%s), por un total de %s %s.\n"
+                        + "Podés completar el pago acá: %s",
+                link.quantity(), link.productName(), link.sku(), link.total(), link.currency(), link.checkoutUrl()));
+    }
+
+    private void logPurchaseOutcome(ConversationContext context, String result) {
+        Map<String, Object> fields = new LinkedHashMap<>();
+        fields.put("operation", "conversation.purchase-link");
+        fields.put("result", result);
+        addConversationIdentity(fields, context);
+        StructuredEventLog.info(log, "CONVERSATIONAL_PURCHASE_LINK", fields);
+    }
+
+    private static String customerReference(ConversationContext context) {
+        String channel = context.channel() == null ? "unknown" : context.channel().name().toLowerCase(Locale.ROOT);
+        return channel + ":" + context.externalCustomerId();
+    }
+
+    private static String sha256(String value) {
+        try {
+            return java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        } catch (java.security.NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is not available", exception);
+        }
+    }
+
+    private record RenderedResponse(String text, String mediaReference) {
+
+        private static RenderedResponse text(String text) {
+            return new RenderedResponse(text, null);
+        }
+
+        private static RenderedResponse catalog(String text, CatalogSearchResult result) {
+            return new RenderedResponse(text, result == null ? null : result.singleImageReference().orElse(null));
+        }
     }
 
     private AgentActivationKey resolveActivationKey(
@@ -520,6 +680,7 @@ public class ConversationOrchestrator {
         fields.put("workflowVersion", result.workflowVersion());
         fields.put("executionStepCount", result.stepCount());
         fields.put("responseGenerated", result.response() != null && !result.response().isBlank());
+        fields.put("mediaRequested", result.mediaReference() != null);
         if (result.fallbackReason() != null) {
             fields.put("fallbackReason", result.fallbackReason());
         }

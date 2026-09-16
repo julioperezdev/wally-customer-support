@@ -33,6 +33,14 @@ public class MockConversationIntentClassifier implements ConversationIntentClass
         if (GREETING.matcher(normalized).find()) {
             return new ConversationIntentDecision(ConversationIntent.GREETING, 0.99, null, null);
         }
+        if (CatalogQueryParser.isPurchaseRequest(message)) {
+            return new ConversationIntentDecision(
+                    ConversationIntent.PURCHASE_LINK,
+                    0.99,
+                    CatalogQueryParser.parsePurchaseConversation(
+                            context == null ? java.util.List.of() : context.recentMessages(), message).orElse(null),
+                    null);
+        }
         if (HANDOFF.matcher(normalized).find()) {
             return new ConversationIntentDecision(ConversationIntent.HUMAN_HANDOFF, 0.99, null, null);
         }

@@ -27,7 +27,7 @@ documentación, rollout y rollback.
 | Operación de tienda | [WCS-119](https://julioperezdev.atlassian.net/browse/WCS-119) | Catálogo, variantes, stock, media S3 y bandeja de atención humana | Implementación backend/frontend/IaC; pendiente smoke de bucket y UI |
 | Plataforma de agentes | [WCS-120](https://julioperezdev.atlassian.net/browse/WCS-120) | Registry, authoring, versiones, evaluación, fallback, ejecuciones y métricas | Implementado; falta smoke operativo post-merge y habilitación controlada |
 | Configuración dinámica | [WCS-121](https://julioperezdev.atlassian.net/browse/WCS-121) | Feature flags de negocio con AppConfig sin reinicio | Runtime, publicación, rollback y UI protegida implementados; falta validar AppConfig desplegado |
-| Venta asistida | [WCS-122](https://julioperezdev.atlassian.net/browse/WCS-122) | Pedidos y links de pago con Mercado Pago Sandbox | Implementación vertical en curso; provider mock por defecto |
+| Venta asistida | [WCS-122](https://julioperezdev.atlassian.net/browse/WCS-122) | Pedidos idempotentes, compra conversacional y links de pago con Mercado Pago Sandbox | Implementación vertical en curso; provider mock por defecto |
 
 El runtime conversacional actual permanece como fallback durante toda la
 migración. El backoffice nunca será una dependencia necesaria para procesar un
@@ -178,8 +178,10 @@ en logs operativos.
 ## Pedidos y Mercado Pago
 
 El slice de venta asistida usará Sandbox y deberá incluir pedido idempotente,
-preferencia/link de pago, webhook firmado y deduplicado, estados de pago y
-trazabilidad. No se capturan ni almacenan datos de tarjeta.
+compra conversacional con selección inequívoca, preferencia/link de pago,
+webhook firmado y deduplicado, estados de pago y trazabilidad. No se capturan
+ni almacenan datos de tarjeta. El contrato completo está en
+[`conversational-checkout.md`](conversational-checkout.md).
 
 ## Criterios de cierre del backoffice MVP
 
@@ -189,7 +191,8 @@ trazabilidad. No se capturan ni almacenan datos de tarjeta.
 - métricas de evaluación por agente y versión disponibles, identificadas como
   evidencia de evaluación mientras no exista telemetría runtime completa;
 - feature flag modificable sin restart y con rollback;
-- pedido idempotente y trazable, con link mock o Sandbox según configuración;
+- pedido idempotente y trazable, con link mock o Sandbox según configuración,
+  también disponible desde el chat sólo ante una compra explícita;
 - pruebas automatizadas, smoke documentado y rollback verificado;
 - ausencia de secretos y PII innecesaria en UI, logs y evidencias.
 

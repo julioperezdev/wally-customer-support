@@ -45,6 +45,11 @@ public class ConversationExecutionPlanFactory {
                     ConversationExecutionAction.CATALOG_SEARCH,
                     List.of(step("catalog-search", "catalog-specialist", "catalog-query")),
                     null);
+            case PURCHASE_LINK -> plan(
+                    "PURCHASE_LINK",
+                    ConversationExecutionAction.PURCHASE_LINK,
+                    List.of(step("purchase-link", "checkout-specialist", "payment-link")),
+                    null);
             case BUSINESS_HOURS -> plan(
                     "BUSINESS_HOURS",
                     ConversationExecutionAction.BUSINESS_HOURS,

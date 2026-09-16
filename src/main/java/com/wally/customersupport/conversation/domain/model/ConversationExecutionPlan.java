@@ -17,12 +17,14 @@ public record ConversationExecutionPlan(
     private static final int ABSOLUTE_MAX_STEPS = 3;
     private static final Set<String> ALLOWED_OWNERS = Set.of(
             "catalog-specialist",
+            "checkout-specialist",
             "knowledge-specialist",
             "support-safety",
             "response-humanizer");
     private static final Set<String> ALLOWED_CAPABILITIES = Set.of(
             "direct-response",
             "catalog-query",
+            "payment-link",
             "business-hours",
             "policy-query",
             "knowledge-retrieval",

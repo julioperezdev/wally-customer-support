@@ -85,6 +85,7 @@ operacional necesario para diagnóstico y costo, pero sin contenido de negocio.
 | `AGENT_REGISTRY_MUTATION_DENIED` | `operation`, `agentId`, `status`, `reason` | Mutación rechazada por autorización o ambiente |
 | `AGENT_REGISTRY_MUTATION_FAILED` | `operation`, `agentId`, `status`, `reason` | Fallo controlado del guard o persistencia |
 | `BACKOFFICE_ORDER_CREATED` | `operation`, `orderId`, `status`, `paymentLinkCreated` | Pedido creado desde la operación asistida, sin datos de cliente |
+| `CONVERSATIONAL_PURCHASE_LINK` | `operation`, `result`, `correlationId`, `channel`, `actorKey` opcional | Resultado de solicitar un checkout desde una conversación; nunca incluye URL, SKU, precio, teléfono ni contenido |
 | `PAYMENT_PREFERENCE_CREATION_FAILED` | `operation`, `orderId`, `provider`, `errorType` | El pedido quedó pendiente sin link por una falla del proveedor |
 | `PAYMENT_WEBHOOK_APPLIED` | `orderId`, `provider`, `eventId`, `paymentId`, `paymentStatus`, `result` | Estado de pago reconciliado desde el proveedor |
 | `PAYMENT_WEBHOOK_DEDUPLICATED` | `provider`, `eventId`, `result` | Reintento ya procesado sin nueva transición |
