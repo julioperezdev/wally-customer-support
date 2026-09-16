@@ -77,6 +77,12 @@ class CatalogQueryParserTest {
     }
 
     @Test
+    void recognizesPurchaseDeferralWithoutTreatingItAsCheckout() {
+        assertTrue(CatalogQueryParser.isPurchaseDeferral("No quiero comprar todavía"));
+        assertFalse(CatalogQueryParser.isPurchaseRequest("No quiero comprar todavía"));
+    }
+
+    @Test
     void extractsPriceRangeAndMergesItWithConversationFilters() {
         CatalogQuery query = CatalogQueryParser.parseConversation(
                 List.of("busco ropa negra", "que cueste menos de 50000"),

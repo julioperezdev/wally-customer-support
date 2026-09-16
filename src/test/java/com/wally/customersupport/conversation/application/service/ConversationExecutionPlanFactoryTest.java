@@ -40,6 +40,16 @@ class ConversationExecutionPlanFactoryTest {
     }
 
     @Test
+    void mapsPurchaseDeferralToADirectResponsePlan() {
+        ConversationExecutionPlan plan = factory.purchaseDeferred();
+
+        assertEquals(ConversationExecutionAction.PURCHASE_DEFERRED, plan.action());
+        assertEquals("PURCHASE_DEFERRED", plan.useCase());
+        assertEquals("checkout-specialist", plan.steps().getFirst().owner());
+        assertEquals("direct-response", plan.steps().getFirst().capability());
+    }
+
+    @Test
     void mapsLowConfidenceToTheSafetyFallback() {
         ConversationExecutionPlan plan = factory.create(
                 new ConversationIntentDecision(ConversationIntent.CATALOG_SEARCH, 0.40, null, null));

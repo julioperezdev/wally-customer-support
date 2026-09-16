@@ -193,8 +193,16 @@ public final class CatalogQueryParser {
             return false;
         }
         String normalized = normalize(message);
-        return !NEGATIVE_PURCHASE_MARKER.matcher(normalized).find()
+        return !isPurchaseDeferral(message)
                 && PURCHASE_MARKER.matcher(normalized).find();
+    }
+
+    /** Returns true when the customer explicitly postpones the purchase. */
+    public static boolean isPurchaseDeferral(String message) {
+        if (message == null || message.isBlank()) {
+            return false;
+        }
+        return NEGATIVE_PURCHASE_MARKER.matcher(normalize(message)).find();
     }
 
     /**

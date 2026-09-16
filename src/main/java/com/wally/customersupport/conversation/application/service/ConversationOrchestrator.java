@@ -64,6 +64,8 @@ public class ConversationOrchestrator {
             + "Si querés, puedo mostrarte otras opciones.";
     private static final String PURCHASE_LINK_UNAVAILABLE = "No pude generar el link de pago en este momento. "
             + "Tu pedido no fue confirmado; intentá nuevamente en unos minutos.";
+    private static final String PURCHASE_DEFERRED = "Entendido, no hay problema. No genero ningún pedido. "
+            + "Cuando quieras comprarla, avisame y te preparo el link de pago.";
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
     private static final List<String> DAY_NAMES = List.of(
             "lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo");
@@ -203,6 +205,12 @@ public class ConversationOrchestrator {
                     SAFE_FALLBACK,
                     startedAt);
         }
+        if (CatalogQueryParser.isPurchaseDeferral(context.latestMessage())) {
+            return executePlan(
+                    context,
+                    executionPlanFactory.purchaseDeferred(),
+                    startedAt);
+        }
 
         ConversationIntentDecision decision;
         try {
@@ -283,6 +291,7 @@ public class ConversationOrchestrator {
                     ? RenderedResponse.text(executeCatalogShippingComposite(context, decision))
                     : switch (plan.action()) {
                 case DIRECT_RESPONSE -> RenderedResponse.text(GREETING);
+                case PURCHASE_DEFERRED -> RenderedResponse.text(PURCHASE_DEFERRED);
                 case CATALOG_SEARCH -> executeCatalogSearch(context, decision, definition);
                 case PURCHASE_LINK -> executePurchaseLink(context, decision);
                 case BUSINESS_HOURS -> RenderedResponse.text(formatBusinessHours());
@@ -333,29 +342,46 @@ public class ConversationOrchestrator {
             ConversationContext context,
             ConversationIntentDecision decision) {
         if (context == null
-                || (decision.intent() != ConversationIntent.GENERAL_SUPPORT
-                        && decision.intent() != ConversationIntent.UNKNOWN)) {
+                || decision == null
+                || !isCatalogNormalizationCandidate(decision.intent())) {
             return decision;
         }
 
-        boolean deterministicCatalogTurn = CatalogQueryParser.isUnsupportedCatalogCategory(context.latestMessage())
-                || CatalogQueryParser.isContextualContinuation(context.latestMessage())
-                || CatalogQueryParser.followUpKind(context.latestMessage()) != CatalogQueryParser.FollowUpKind.NONE;
-        if (!deterministicCatalogTurn) {
+        Optional<CatalogQuery> parsedQuery = CatalogQueryParser.parseConversation(
+                context.recentMessages(), context.latestMessage())
+                .filter(query -> !query.isEmpty());
+        if (parsedQuery.isEmpty()) {
             return decision;
         }
-
-        CatalogQuery query = CatalogQueryParser.parseConversation(context.recentMessages(), context.latestMessage())
-                .or(() -> CatalogQueryParser.parse(context.latestMessage()))
-                .orElse(CatalogQuery.empty());
-        if (query.isEmpty()) {
-            return decision;
+        CatalogQuery query = parsedQuery.get();
+        if (decision.intent() == ConversationIntent.CATALOG_SEARCH
+                && query.equals(decision.catalogQuery())) {
+            return decision.confidence() >= ConversationExecutionPlanFactory.MIN_CONFIDENCE
+                    ? decision
+                    : new ConversationIntentDecision(
+                            ConversationIntent.CATALOG_SEARCH,
+                            0.99,
+                            query,
+                            null);
         }
+        Map<String, Object> fields = new LinkedHashMap<>();
+        fields.put("fromIntent", decision.intent().name());
+        fields.put("fromConfidence", decision.confidence());
+        fields.put("toIntent", ConversationIntent.CATALOG_SEARCH.name());
+        fields.put("reason", "STRUCTURED_CATALOG_QUERY");
+        addConversationIdentity(fields, context);
+        StructuredEventLog.info(log, "INTENT_DETERMINISTIC_OVERRIDE", fields);
         return new ConversationIntentDecision(
                 ConversationIntent.CATALOG_SEARCH,
                 0.99,
                 query,
                 null);
+    }
+
+    private static boolean isCatalogNormalizationCandidate(ConversationIntent intent) {
+        return intent == ConversationIntent.CATALOG_SEARCH
+                || intent == ConversationIntent.GENERAL_SUPPORT
+                || intent == ConversationIntent.UNKNOWN;
     }
 
     private boolean isCatalogShippingComposite(
