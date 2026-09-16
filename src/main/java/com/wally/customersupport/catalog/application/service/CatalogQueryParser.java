@@ -319,7 +319,11 @@ public final class CatalogQueryParser {
                 skippedLatest = true;
                 continue;
             }
-            Optional<CatalogQuery> query = parse(message).filter(parsed -> !parsed.isEmpty());
+            if (!looksLikeCatalogTurn(message) && !isContextualContinuation(message)) {
+                continue;
+            }
+            Optional<CatalogQuery> query = parseConversation(recentMessages, message)
+                    .filter(parsed -> !parsed.isEmpty());
             if (query.isPresent()) {
                 return query.get();
             }
@@ -328,6 +332,9 @@ public final class CatalogQueryParser {
     }
 
     private static boolean looksLikeCatalogTurn(String message) {
+        if (message == null || message.isBlank()) {
+            return false;
+        }
         String normalized = normalize(message);
         return CATALOG_MARKER.matcher(normalized).find()
                 || SKU.matcher(normalized).find()

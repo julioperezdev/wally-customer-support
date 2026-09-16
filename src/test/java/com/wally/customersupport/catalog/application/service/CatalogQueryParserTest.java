@@ -154,6 +154,17 @@ class CatalogQueryParserTest {
     }
 
     @Test
+    void reconstructsRefinedSelectionForAnExplicitPurchaseRequest() {
+        CatalogQuery query = CatalogQueryParser.parsePurchaseConversation(
+                List.of("Este producto", "Quiero la talla M", "Busco una remera negra"),
+                "Quiero comprar ahora").orElseThrow();
+
+        assertEquals("remera", query.productType());
+        assertEquals("negro", query.color());
+        assertEquals("m", query.size());
+    }
+
+    @Test
     void recognizesExplicitPurchaseAndQuantityWithoutTreatingInterestAsCheckout() {
         assertTrue(CatalogQueryParser.isPurchaseRequest("Pasame el link de pago para esa remera"));
         assertTrue(CatalogQueryParser.isPurchaseRequest("Me la llevo"));
