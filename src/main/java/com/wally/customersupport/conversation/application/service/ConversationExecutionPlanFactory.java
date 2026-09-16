@@ -74,6 +74,14 @@ public class ConversationExecutionPlanFactory {
         return generalSupport(reason == null ? "CLASSIFICATION_FAILED" : reason);
     }
 
+    public ConversationExecutionPlan purchaseDeferred() {
+        return plan(
+                "PURCHASE_DEFERRED",
+                ConversationExecutionAction.PURCHASE_DEFERRED,
+                List.of(step("purchase-deferred", "checkout-specialist", "direct-response")),
+                null);
+    }
+
     public ConversationExecutionPlan lowConfidence(String reason) {
         return plan(
                 "LOW_CONFIDENCE",

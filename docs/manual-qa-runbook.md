@@ -198,6 +198,9 @@ del flujo está en [`conversational-checkout.md`](conversational-checkout.md).
 | `MAN-054` | Idempotencia por conversación, variante y cantidad | Repetir el mismo mensaje explícito de compra | Se reutiliza el pedido/link existente y no se crean dos pedidos para la misma operación | `PENDIENTE` |
 | `MAN-055` | Provider temporalmente no disponible | Simular o usar una configuración de prueba sin respuesta del proveedor | El bot informa que no pudo generar el link y aclara que el pedido no fue confirmado | `PENDIENTE` |
 | `MAN-056` | Mercado Pago Sandbox con firma requerida | Con credenciales Sandbox y configuración aprobada, abrir el link y repetir el webhook | El checkout abre según la configuración del proveedor; la notificación firmada actualiza el pedido una sola vez y el duplicado queda auditado | `BLOCKED` hasta verificar redirección Sandbox |
+| `MAN-057` | Rescate determinístico de catálogo | Reiniciar contexto y enviar `Busco la remera NullPointer negra talle M` | Aunque Bedrock tenga una clasificación de baja confianza, se devuelve la variante correcta y Telegram entrega su imagen | `PENDIENTE` |
+| `MAN-058` | Refinamiento contextual de catálogo | Enviar `Busco una remera negra` y luego `Quiero la talle M` | El segundo turno conserva remera + negro + talle M y devuelve la variante correcta | `PENDIENTE` |
+| `MAN-059` | Compra postergada | Enviar `No quiero comprar todavía` después de una búsqueda | El bot confirma que no creó ningún pedido ni link y permite continuar la conversación | `PENDIENTE` |
 
 ### G. Observabilidad
 

@@ -42,6 +42,17 @@ La última regla evita que una expresión de interés o una respuesta ambigua se
 interprete como autorización de compra. La intención de compra se puede
 expresar en un turno posterior, utilizando el contexto acotado de catálogo.
 
+Si el cliente posterga explícitamente la compra, por ejemplo `No quiero
+comprar todavía`, WCS responde de forma determinística que no creó ningún
+pedido y no llama al proveedor de pagos. Una posterior intención explícita
+puede retomar el flujo.
+
+Para consultas de catálogo, el orquestador reconcilia la decisión de Bedrock
+con los filtros determinísticos extraídos del mensaje y el contexto reciente.
+Una consulta estructurada válida puede rescatar un resultado aunque el modelo
+devuelva una confianza inferior al umbral general; el modelo no tiene
+autoridad para inventar los datos del catálogo.
+
 ## Flujo completo
 
 ```text

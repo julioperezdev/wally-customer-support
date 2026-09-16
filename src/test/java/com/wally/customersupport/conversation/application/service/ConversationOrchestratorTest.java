@@ -244,6 +244,104 @@ class ConversationOrchestratorTest {
     }
 
     @Test
+    void rescuesExactCatalogQueryWhenBedrockReturnsLowConfidence() {
+        String latestMessage = "Busco la remera NullPointer negra talle M";
+        ConversationContext catalogContext = new ConversationContext(
+                context.conversationId(),
+                context.externalCustomerId(),
+                latestMessage,
+                List.of(latestMessage),
+                List.of(),
+                null,
+                List.of(),
+                Channel.TELEGRAM);
+        when(intentClassifier.classify(any(ConversationContext.class)))
+                .thenReturn(new ConversationIntentDecision(ConversationIntent.CATALOG_SEARCH, 0.40, null, null));
+        when(catalogConversationService.search(
+                argThat(query -> "nullpointer".equals(query.name())
+                        && "remera".equals(query.productType())
+                        && "negro".equals(query.color())
+                        && "m".equalsIgnoreCase(query.size())),
+                any(),
+                any()))
+                .thenReturn(Optional.of(new CatalogSearchResult(
+                        CatalogSearchResult.Status.MATCHED,
+                        List.of(new CatalogFact(
+                                "Remera NullPointer", "RP-REM-NP-NEG-M", "M", "Negro",
+                                new BigDecimal("18900.00"), "ARS", 12)),
+                        null,
+                        CatalogSearchResult.FollowUpKind.NONE,
+                        "MATCHED",
+                        List.of(new CatalogImage(
+                                "RP-REM-NP-NEG-M", "wcs/catalog/remera-nullpointer.jpg")))));
+
+        ConversationExecutionResult result = orchestrator.replyForDetailed(catalogContext);
+
+        assertEquals("CATALOG_SEARCH", result.useCase());
+        assertTrue(result.response().contains("Remera NullPointer"));
+        assertEquals("wcs/catalog/remera-nullpointer.jpg", result.mediaReference());
+    }
+
+    @Test
+    void mergesCatalogContextWhenTheLatestBedrockQueryContainsOnlyTheSize() {
+        String latestMessage = "Quiero la talle M";
+        ConversationContext followUpContext = new ConversationContext(
+                context.conversationId(),
+                context.externalCustomerId(),
+                latestMessage,
+                List.of(latestMessage, "Busco una remera negra"),
+                List.of(),
+                null,
+                List.of(),
+                Channel.TELEGRAM);
+        when(intentClassifier.classify(any(ConversationContext.class)))
+                .thenReturn(new ConversationIntentDecision(
+                        ConversationIntent.CATALOG_SEARCH,
+                        0.90,
+                        new CatalogQuery(null, null, "M", null),
+                        null));
+        when(catalogConversationService.search(
+                argThat(query -> "remera".equals(query.productType())
+                        && "negro".equals(query.color())
+                        && "m".equalsIgnoreCase(query.size())),
+                any(),
+                any()))
+                .thenReturn(Optional.of(new CatalogSearchResult(
+                        CatalogSearchResult.Status.MATCHED,
+                        List.of(new CatalogFact(
+                                "Remera NullPointer", "RP-REM-NP-NEG-M", "M", "Negro",
+                                new BigDecimal("18900.00"), "ARS", 12)),
+                        null,
+                        CatalogSearchResult.FollowUpKind.NONE,
+                        "MATCHED")));
+
+        ConversationExecutionResult result = orchestrator.replyForDetailed(followUpContext);
+
+        assertEquals("CATALOG_SEARCH", result.useCase());
+        assertTrue(result.response().contains("Remera NullPointer"));
+    }
+
+    @Test
+    void answersPurchaseDeferralWithoutCallingTheClassifierOrCreatingAnOrder() {
+        ConversationContext deferralContext = new ConversationContext(
+                context.conversationId(),
+                context.externalCustomerId(),
+                "No quiero comprar todavía",
+                List.of("No quiero comprar todavía"),
+                List.of(),
+                null,
+                List.of(),
+                Channel.TELEGRAM);
+
+        ConversationExecutionResult result = orchestrator.replyForDetailed(deferralContext);
+
+        assertEquals("PURCHASE_DEFERRED", result.useCase());
+        assertTrue(result.response().contains("No genero ningún pedido"));
+        verify(intentClassifier, never()).classify(any(ConversationContext.class));
+        verify(purchaseLinkCreator, never()).create(any());
+    }
+
+    @Test
     void createsAnIdempotentPaymentLinkOnlyForOneAvailableVariant() {
         ConversationContext purchaseContext = new ConversationContext(
                 context.conversationId(),
