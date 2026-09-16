@@ -19,7 +19,7 @@ Ejecutado localmente el `2026-09-16`:
 
 | Suite | Comando | Resultado |
 |---|---|---|
-| Backend unitario, aplicación, contrato e integración | `mvn -q verify` | `PASS`; incluye PostgreSQL 16 con Testcontainers y Flyway hasta V21 |
+| Backend unitario, aplicación, contrato e integración | `mvn -q verify` | `PASS`; incluye PostgreSQL 16 con Testcontainers y Flyway hasta V22 |
 | Backoffice | `cd backoffice && npm run check` | `PASS`; 29 tests Vitest y build TypeScript/Vite |
 
 Estas suites cubren persistencia, migraciones, idempotencia, seguridad JWT
@@ -179,7 +179,7 @@ criterio de cierre del MVP.
 | `MAN-045` | Dedupe de webhook | Repetir la misma notificación de pago | Se registra como duplicada y no vuelve a aplicar la transición | `PENDIENTE` |
 
 No ingresar datos de tarjeta reales. El MVP todavía no implementa reserva de
-stock con expiración, carrito persistido, reembolsos ni pagos productivos.
+stock con expiración, reembolsos ni pagos productivos.
 
 ### H. Compra conversacional — WCS-122
 
@@ -202,6 +202,24 @@ del flujo está en [`conversational-checkout.md`](conversational-checkout.md).
 | `MAN-058` | Refinamiento contextual de catálogo | Enviar `Busco una remera negra` y luego `Quiero la talla M` (también debe funcionar `talle M`) | El segundo turno conserva remera + negro + talle M y devuelve la variante correcta | `PENDIENTE` |
 | `MAN-059` | Compra postergada | Enviar `No quiero comprar todavía` después de una búsqueda | El bot confirma que no creó ningún pedido ni link y permite continuar la conversación | `PENDIENTE` |
 
+### I. Carrito conversacional multiítem — WCS-129
+
+El flujo completo está en [`conversational-cart.md`](conversational-cart.md).
+Usar `/start` antes de comenzar para aislar la evidencia de la prueba.
+
+| ID | Valor actual | Mensaje o acción | Resultado esperado | Estado inicial |
+|---|---|---|---|---|
+| `CART-001` | Carrito persistido por conversación | `Agregá 2 remeras NullPointer negras talle M al carrito` | Agrega 2 unidades de la variante correcta, validando stock y precio en PostgreSQL | `PENDIENTE` |
+| `CART-002` | Carrito multiítem | `Sumá 1 buzo Spring Boot negro talle XL al carrito` | Conserva la remera y agrega el buzo como segunda línea; no crea ningún pedido | `PENDIENTE` |
+| `CART-003` | Resumen dinámico | `¿Qué hay en mi carrito?` | Muestra ambas líneas, cantidad, subtotal, total y stock vigente | `PENDIENTE` |
+| `CART-004` | Modificación previa al checkout | `Sacá 1 remera NullPointer negra talle M` | Reduce sólo esa línea y recalcula el total | `PENDIENTE` |
+| `CART-005` | Confirmación explícita | `Confirmar compra` | Crea un único pedido `PENDING_PAYMENT` con todas las líneas y devuelve un único link | `PENDIENTE` |
+| `CART-006` | Idempotencia por versión | Repetir `Confirmar compra` sin modificar el carrito | Devuelve/reutiliza el mismo pedido y link; no duplica la orden | `PENDIENTE` |
+| `CART-007` | Cancelación segura | `Cancelar el link de pago` y luego `¿Qué hay en mi carrito?` | Cancela el checkout anterior, reabre el carrito y conserva sus líneas | `PENDIENTE` |
+| `CART-008` | Nueva versión | Agregar o quitar una línea y volver a confirmar | Genera un nuevo checkout asociado a una versión posterior del carrito | `PENDIENTE` |
+| `CART-009` | Ambigüedad | `Agregá una remera negra al carrito` si hay más de una variante | Pide talle/producto/color; no agrega ni genera pedido | `PENDIENTE` |
+| `CART-010` | Stock | Intentar agregar más unidades que el stock disponible | Rechaza la operación y deja el carrito sin cambios | `PENDIENTE` |
+
 ### G. Observabilidad
 
 | ID | Valor actual | Acción manual | Resultado esperado | Estado inicial |
@@ -221,6 +239,7 @@ Estas pruebas no bloquean el cierre del MVP con Telegram:
 - Pago real o checkout Sandbox hasta resolver la redirección.
 - Retención esperando 24 horas, 30 días, 90 días o 365 días. Se valida con
   reloj controlado y Testcontainers.
+- Reserva de stock con expiración, descuentos, envío dinámico y reembolsos.
 - Habilitación de memoria de sesión/resumen en `prod`; el código está cubierto,
   pero la política y el rollout siguen pendientes.
 
@@ -253,7 +272,7 @@ El MVP conversacional se puede declarar cerrado cuando:
   documentado como bloqueado por falta de usuario limitado;
 - catálogo, stock, imágenes y handoff pasan;
 - Telegram pasa saludo, catálogo, seguimiento, KB, handoff, opt-out y
-  reactivación;
+  reactivación y carrito conversacional multiítem;
 - Grafana muestra trazabilidad suficiente y no hay secretos ni PII indebida;
 - los casos bloqueados tienen causa explícita y no se presentan como fallos del
   producto;

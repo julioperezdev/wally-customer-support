@@ -22,7 +22,9 @@ public final class CatalogQueryParser {
 
     private static final Pattern SKU = Pattern.compile("\\b[a-z]{2}(?:-[a-z0-9]+){2,}\\b");
     private static final Pattern SIZE = Pattern.compile("\\b(?:talle|talla|tamano|size)?\\s*(xxl|xl|xs|l|m|s)\\b");
-    private static final Pattern COLOR = Pattern.compile("\\b(negro|negra|blanco|blanca|gris|azul|rojo|roja|verde)\\b");
+    private static final Pattern COLOR = Pattern.compile(
+            "\\b(negro|negra|negros|negras|blanco|blanca|blancos|blancas|gris|grises|azul|azules|"
+                    + "rojo|roja|rojos|rojas|verde|verdes)\\b");
     private static final Pattern PRODUCT_TYPE = Pattern.compile("\\b(remera|remeras|buzo|buzos|campera|camperas)\\b");
     private static final Pattern MAX_PRICE = Pattern.compile(
             "\\b(?:menos\\s+de|menor\\s+(?:que|a)?|por\\s+debajo\\s+de|hasta|como\\s+maximo(?:\\s+de)?|maximo(?:\\s+de)?|tope(?:\\s+de)?)"
@@ -406,9 +408,12 @@ public final class CatalogQueryParser {
             return null;
         }
         return switch (color) {
-            case "negra" -> "negro";
-            case "blanca" -> "blanco";
-            case "roja" -> "rojo";
+            case "negra", "negros", "negras" -> "negro";
+            case "blanca", "blancos", "blancas" -> "blanco";
+            case "grises" -> "gris";
+            case "azules" -> "azul";
+            case "roja", "rojos", "rojas" -> "rojo";
+            case "verdes" -> "verde";
             default -> color;
         };
     }

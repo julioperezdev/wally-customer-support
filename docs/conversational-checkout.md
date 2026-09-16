@@ -3,6 +3,7 @@
 Status: `Implemented / pending end-to-end smoke`
 Related Jira: [WCS-122](https://julioperezdev.atlassian.net/browse/WCS-122)
 Related model: [`data-model.md`](data-model.md)
+Related cart: [`conversational-cart.md`](conversational-cart.md)
 Related tests: `CatalogQueryParserTest`, `ConversationOrchestratorTest`, `OrderApplicationServiceTest`
 
 ## Objetivo
@@ -139,6 +140,11 @@ stock todavía. Esa limitación es deliberada y está fuera de este slice; una
 reserva real requiere expiración, compensación y una política para la
 concurrencia de compras.
 
+Cuando el cliente quiere comprar más de una variante o modificar la selección
+antes de pagar, debe usarse el carrito conversacional de `WCS-129`. Ese flujo
+persiste las líneas, acumula cantidades y genera un único checkout por el total
+después de una confirmación explícita.
+
 ### 4. Provider de pagos
 
 El módulo de pedidos usa el puerto `PaymentGateway`:
@@ -260,8 +266,8 @@ credenciales, tokens, teléfonos ni la conversación completa.
 
 ## Rollout y rollback
 
-1. Desplegar el backend que contiene el nuevo flujo y la migración vigente
-   `V21` si todavía no está aplicada.
+1. Desplegar el backend que contiene el nuevo flujo y las migraciones vigentes
+   hasta `V22` si todavía no están aplicadas.
 2. Mantener el proveedor `mock` en local o en un ambiente de prueba hasta
    validar la lógica de conversación.
 3. Para Sandbox, cargar el access token y la firma en Secrets Manager,
@@ -278,7 +284,6 @@ sin link quedan auditables y pueden reintentarse con la misma idempotency key.
 ## Fuera de alcance de este slice
 
 - Reserva o descuento de stock al crear el link.
-- Carrito persistido y múltiples líneas iniciadas desde el chat.
 - Cupones, descuentos, impuestos o costo de envío calculado dinámicamente.
 - Cancelaciones, reembolsos y pagos productivos.
 - Captura de tarjeta dentro de WCS.

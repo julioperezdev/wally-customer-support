@@ -74,7 +74,9 @@ public class OrderApplicationService {
                 paymentProperties.effectiveProvider(),
                 idempotencyKey,
                 requestHash,
-                now);
+                now,
+                command.cartId(),
+                command.cartVersion());
         pricedItems.forEach(item -> order.addItem(
                 item.sku(), item.productName(), item.quantity(), item.unitPrice(), item.currency(), item.lineTotal()));
         try {
@@ -97,6 +99,17 @@ public class OrderApplicationService {
         return orderRepository.findByIdWithItems(id)
                 .map(OrderApplicationService::toView)
                 .orElseThrow(() -> new OrderNotFoundException(id));
+    }
+
+    @Transactional
+    public void cancelPendingForCart(UUID cartId) {
+        if (cartId == null) {
+            return;
+        }
+        orderRepository.findPendingPaymentByCartId(cartId).forEach(order -> {
+            order.cancel(clock.instant());
+            orderRepository.saveAndFlush(order);
+        });
     }
 
     @Transactional(readOnly = true)
@@ -230,7 +243,16 @@ public class OrderApplicationService {
     public record CreateOrderCommand(
             String customerReference,
             List<RequestedItem> items,
-            String idempotencyKey) {
+            String idempotencyKey,
+            UUID cartId,
+            Long cartVersion) {
+
+        public CreateOrderCommand(
+                String customerReference,
+                List<RequestedItem> items,
+                String idempotencyKey) {
+            this(customerReference, items, idempotencyKey, null, null);
+        }
     }
 
     public record RequestedItem(String sku, int quantity) {

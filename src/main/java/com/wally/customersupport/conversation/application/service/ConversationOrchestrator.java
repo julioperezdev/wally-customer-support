@@ -22,6 +22,7 @@ import com.wally.customersupport.catalog.application.service.CatalogResponseForm
 import com.wally.customersupport.catalog.application.service.CatalogQueryParser;
 import com.wally.customersupport.catalog.application.service.CatalogSearchResult;
 import com.wally.customersupport.catalog.domain.model.CatalogQuery;
+import com.wally.customersupport.cart.application.port.in.CartConversationHandler;
 import com.wally.customersupport.conversation.application.port.out.ConversationIntentClassifier;
 import com.wally.customersupport.conversation.application.port.out.PurchaseLinkCreator;
 import com.wally.customersupport.knowledge.application.port.out.KnowledgeRetriever;
@@ -86,8 +87,46 @@ public class ConversationOrchestrator {
     private final ActorKeyGenerator actorKeyGenerator;
     private final AgentExecutionTraceRecorder agentExecutionTraceRecorder;
     private final PurchaseLinkCreator purchaseLinkCreator;
+    private final CartConversationHandler cartConversationHandler;
 
     @Autowired
+    public ConversationOrchestrator(
+            ConversationIntentClassifier intentClassifier,
+            CatalogConversationService catalogConversationService,
+            SupportConfigurationQueryService supportConfigurationQueryService,
+            KnowledgeRetriever knowledgeRetriever,
+            LlmClient llmClient,
+            RagProperties ragProperties,
+            ConversationExecutionPlanFactory executionPlanFactory,
+            AgentActivationResolver agentActivationResolver,
+            AgentRuntimeDefinitionResolver agentRuntimeDefinitionResolver,
+            AgentRuntimeProperties agentRuntimeProperties,
+            CatalogSpecialistExecutor catalogSpecialistExecutor,
+            ResponseHumanizer responseHumanizer,
+            AgentShadowRuntimeService agentShadowRuntimeService,
+            ActorKeyGenerator actorKeyGenerator,
+            PurchaseLinkCreator purchaseLinkCreator,
+            CartConversationHandler cartConversationHandler) {
+        this(
+                intentClassifier,
+                catalogConversationService,
+                supportConfigurationQueryService,
+                knowledgeRetriever,
+                llmClient,
+                ragProperties,
+                executionPlanFactory,
+                agentActivationResolver,
+                agentRuntimeDefinitionResolver,
+                agentRuntimeProperties,
+                catalogSpecialistExecutor,
+                responseHumanizer,
+                agentShadowRuntimeService,
+                actorKeyGenerator,
+                new AgentExecutionTraceRecorder(),
+                purchaseLinkCreator,
+                cartConversationHandler);
+    }
+
     public ConversationOrchestrator(
             ConversationIntentClassifier intentClassifier,
             CatalogConversationService catalogConversationService,
@@ -120,7 +159,45 @@ public class ConversationOrchestrator {
                 agentShadowRuntimeService,
                 actorKeyGenerator,
                 new AgentExecutionTraceRecorder(),
-                purchaseLinkCreator);
+                purchaseLinkCreator,
+                message -> Optional.empty());
+    }
+
+    public ConversationOrchestrator(
+            ConversationIntentClassifier intentClassifier,
+            CatalogConversationService catalogConversationService,
+            SupportConfigurationQueryService supportConfigurationQueryService,
+            KnowledgeRetriever knowledgeRetriever,
+            LlmClient llmClient,
+            RagProperties ragProperties,
+            ConversationExecutionPlanFactory executionPlanFactory,
+            AgentActivationResolver agentActivationResolver,
+            AgentRuntimeDefinitionResolver agentRuntimeDefinitionResolver,
+            AgentRuntimeProperties agentRuntimeProperties,
+            CatalogSpecialistExecutor catalogSpecialistExecutor,
+            ResponseHumanizer responseHumanizer,
+            AgentShadowRuntimeService agentShadowRuntimeService,
+            ActorKeyGenerator actorKeyGenerator,
+            AgentExecutionTraceRecorder agentExecutionTraceRecorder,
+            PurchaseLinkCreator purchaseLinkCreator,
+            CartConversationHandler cartConversationHandler) {
+        this.intentClassifier = intentClassifier;
+        this.catalogConversationService = catalogConversationService;
+        this.supportConfigurationQueryService = supportConfigurationQueryService;
+        this.knowledgeRetriever = knowledgeRetriever;
+        this.llmClient = llmClient;
+        this.ragProperties = ragProperties;
+        this.executionPlanFactory = executionPlanFactory;
+        this.agentActivationResolver = agentActivationResolver;
+        this.agentRuntimeDefinitionResolver = agentRuntimeDefinitionResolver;
+        this.agentRuntimeProperties = agentRuntimeProperties;
+        this.catalogSpecialistExecutor = catalogSpecialistExecutor;
+        this.responseHumanizer = responseHumanizer;
+        this.agentShadowRuntimeService = agentShadowRuntimeService;
+        this.actorKeyGenerator = actorKeyGenerator;
+        this.agentExecutionTraceRecorder = agentExecutionTraceRecorder;
+        this.purchaseLinkCreator = purchaseLinkCreator;
+        this.cartConversationHandler = cartConversationHandler;
     }
 
     public ConversationOrchestrator(
@@ -140,22 +217,24 @@ public class ConversationOrchestrator {
             ActorKeyGenerator actorKeyGenerator,
             AgentExecutionTraceRecorder agentExecutionTraceRecorder,
             PurchaseLinkCreator purchaseLinkCreator) {
-        this.intentClassifier = intentClassifier;
-        this.catalogConversationService = catalogConversationService;
-        this.supportConfigurationQueryService = supportConfigurationQueryService;
-        this.knowledgeRetriever = knowledgeRetriever;
-        this.llmClient = llmClient;
-        this.ragProperties = ragProperties;
-        this.executionPlanFactory = executionPlanFactory;
-        this.agentActivationResolver = agentActivationResolver;
-        this.agentRuntimeDefinitionResolver = agentRuntimeDefinitionResolver;
-        this.agentRuntimeProperties = agentRuntimeProperties;
-        this.catalogSpecialistExecutor = catalogSpecialistExecutor;
-        this.responseHumanizer = responseHumanizer;
-        this.agentShadowRuntimeService = agentShadowRuntimeService;
-        this.actorKeyGenerator = actorKeyGenerator;
-        this.agentExecutionTraceRecorder = agentExecutionTraceRecorder;
-        this.purchaseLinkCreator = purchaseLinkCreator;
+        this(
+                intentClassifier,
+                catalogConversationService,
+                supportConfigurationQueryService,
+                knowledgeRetriever,
+                llmClient,
+                ragProperties,
+                executionPlanFactory,
+                agentActivationResolver,
+                agentRuntimeDefinitionResolver,
+                agentRuntimeProperties,
+                catalogSpecialistExecutor,
+                responseHumanizer,
+                agentShadowRuntimeService,
+                actorKeyGenerator,
+                agentExecutionTraceRecorder,
+                purchaseLinkCreator,
+                message -> Optional.empty());
     }
 
     public ConversationOrchestrator(
@@ -204,6 +283,15 @@ public class ConversationOrchestrator {
                     executionPlanFactory.safeFallback("INVALID_INPUT"),
                     SAFE_FALLBACK,
                     startedAt);
+        }
+        Optional<CartConversationHandler.Response> cartResponse = handleCartCommand(context);
+        if (cartResponse.isPresent()) {
+            return executePlan(
+                    context,
+                    executionPlanFactory.cart(),
+                    null,
+                    startedAt,
+                    RenderedResponse.text(cartResponse.get().text()));
         }
         if (CatalogQueryParser.isPurchaseDeferral(context.latestMessage())) {
             return executePlan(
@@ -256,6 +344,15 @@ public class ConversationOrchestrator {
             ConversationExecutionPlan plan,
             ConversationIntentDecision decision,
             long startedAt) {
+        return executePlan(context, plan, decision, startedAt, null);
+    }
+
+    private ConversationExecutionResult executePlan(
+            ConversationContext context,
+            ConversationExecutionPlan plan,
+            ConversationIntentDecision decision,
+            long startedAt,
+            RenderedResponse preparedResponse) {
         AgentActivationKey activationKey = resolveActivationKey(context, plan);
         AgentActivationResolution activation = resolveActivation(activationKey, plan);
         AgentRuntimeDefinitionResolution definition = resolveDefinition(activationKey);
@@ -287,10 +384,15 @@ public class ConversationOrchestrator {
 
         ConversationExecutionResult result;
         try {
-            RenderedResponse rendered = isCatalogShippingComposite(context, decision)
+            RenderedResponse rendered = preparedResponse != null
+                    ? preparedResponse
+                    : isCatalogShippingComposite(context, decision)
                     ? RenderedResponse.text(executeCatalogShippingComposite(context, decision))
                     : switch (plan.action()) {
                 case DIRECT_RESPONSE -> RenderedResponse.text(GREETING);
+                case CART -> cartConversationHandler.handle(context)
+                        .map(response -> RenderedResponse.text(response.text()))
+                        .orElse(RenderedResponse.text(SAFE_FALLBACK));
                 case PURCHASE_DEFERRED -> RenderedResponse.text(PURCHASE_DEFERRED);
                 case CATALOG_SEARCH -> executeCatalogSearch(context, decision, definition);
                 case PURCHASE_LINK -> executePurchaseLink(context, decision);
@@ -321,6 +423,20 @@ public class ConversationOrchestrator {
         }
         runShadowSafely(definition, context, plan.useCase(), decision, result.response());
         return completeQuery(context, result, startedAt, definition);
+    }
+
+    private Optional<CartConversationHandler.Response> handleCartCommand(ConversationContext context) {
+        if (!cartConversationHandler.recognizes(context.latestMessage())
+                && !CatalogQueryParser.isPurchaseDeferral(context.latestMessage())) {
+            return Optional.empty();
+        }
+        try {
+            return cartConversationHandler.handle(context);
+        } catch (RuntimeException exception) {
+            StructuredEventLog.warn(log, "CONVERSATIONAL_CART_FAILED", Map.of(
+                    "errorType", exception.getClass().getSimpleName()));
+            return Optional.of(new CartConversationHandler.Response(SAFE_FALLBACK));
+        }
     }
 
     private ConversationIntentDecision normalizeDeterministicPurchaseDecision(

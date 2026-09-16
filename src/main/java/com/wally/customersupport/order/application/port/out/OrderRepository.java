@@ -14,6 +14,8 @@ public interface OrderRepository {
 
     Optional<OrderJpaEntity> findByIdempotencyKey(String idempotencyKey);
 
+    List<OrderJpaEntity> findPendingPaymentByCartId(UUID cartId);
+
     List<OrderJpaEntity> findByStatus(String status, int limit);
 
     OrderJpaEntity saveAndFlush(OrderJpaEntity order);

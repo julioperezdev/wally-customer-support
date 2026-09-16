@@ -237,6 +237,10 @@ com.wally.customersupport/
 │   ├── application/port/
 │   ├── domain/model/
 │   └── infrastructure/ai/{bedrock,mock}/
+├── cart/
+│   ├── application/{port,service}/
+│   ├── domain/model/
+│   └── infrastructure/repository/postgres/
 └── shared/infrastructure/{config,observability}/
 ```
 
@@ -246,6 +250,7 @@ com.wally.customersupport/
 | `catalog` | Productos, variantes, filtros y consultas determinísticas | Spring Data JPA, PostgreSQL |
 | `support` | Horarios y políticas operativas | Spring Data JPA, PostgreSQL |
 | `knowledge` | Recuperación documental y Knowledge Bases | AWS Bedrock |
+| `cart` | Carrito conversacional, líneas, cantidades y checkout multiítem | PostgreSQL, pedidos, PaymentGateway |
 | `shared` | Configuración, bootstrap externo y observabilidad transversal | Spring/AWS |
 
 El dominio de cada contexto no importa Spring, Meta, Graph API, Bedrock, SDKs
@@ -464,13 +469,17 @@ los ARNs allowlisted y registra versión/hash, nunca el contenido.
 2. Se valida la firma sobre el body original antes de parsear.
 3. Se transforma a un comando interno y se persiste de forma idempotente.
 4. La primera fundación genera la respuesta mediante puertos y deja el envío en un outbox durable; la separación del processor asíncrono completo queda en la siguiente iteración.
-5. `ConversationOrchestrator` clasifica la intención y ejecuta catálogo, horarios, políticas, handoff o soporte general.
-6. Las consultas documentales consultan `KnowledgeRetriever`; las consultas
+5. `ConversationOrchestrator` reconoce primero comandos determinísticos de
+   carrito y ejecuta agregar, consultar, modificar o confirmar sin depender de
+   la clasificación del LLM.
+6. Si no es una acción de carrito, clasifica la intención y ejecuta catálogo,
+   horarios, políticas, handoff o soporte general.
+7. Las consultas documentales consultan `KnowledgeRetriever`; las consultas
    dinámicas usan tools WCS y fuentes transaccionales antes de generar la
    respuesta detrás de `LlmClient`.
-7. `ResponsePolicy` validará grounding, privacidad, ventana de atención y fallback antes de habilitar producción.
-8. El dispatcher envía la respuesta y registra el resultado/reintento.
-9. Logs, métricas y trazas usan correlación y metadatos sanitizados, nunca payloads completos.
+8. `ResponsePolicy` validará grounding, privacidad, ventana de atención y fallback antes de habilitar producción.
+9. El dispatcher envía la respuesta y registra el resultado/reintento.
+10. Logs, métricas y trazas usan correlación y metadatos sanitizados, nunca payloads completos.
 
 ## Decisiones abiertas antes de producción
 

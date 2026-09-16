@@ -3,6 +3,7 @@
 Status: `In Progress`
 Related Jira: [WCS-122](https://julioperezdev.atlassian.net/browse/WCS-122)
 Related migration: `V18__create_orders_and_payments.sql`
+Related conversational cart: [`conversational-cart.md`](conversational-cart.md)
 
 Este slice agrega venta asistida al backoffice sin acoplar la lógica de WCS a
 Mercado Pago. El backend valida el catálogo vigente, persiste el pedido y
@@ -11,9 +12,10 @@ Mercado Pago usa el SDK oficial Java (`com.mercadopago:sdk-java`) y el proveedor
 actual puede ser `mock` para pruebas y `mercadopago` para Checkout Pro Sandbox.
 
 La misma capacidad está disponible desde una conversación después de una
-solicitud explícita de compra. El flujo conversacional, sus guardas de
-selección, idempotencia, respuestas y pruebas están documentados en
-[`conversational-checkout.md`](conversational-checkout.md).
+solicitud explícita de compra. Para compras de una sola variante se mantiene el
+flujo directo documentado en [`conversational-checkout.md`](conversational-checkout.md).
+Para una compra de múltiples productos, el cliente arma y confirma un carrito
+persistido según [`conversational-cart.md`](conversational-cart.md).
 
 ## Flujo
 
@@ -168,6 +170,6 @@ ni payloads completos.
 5. Repetir la notificación y verificar `DUPLICATE`.
 6. Activar `mercadopago` sólo en el ambiente de prueba antes de producción.
 
-Fuera de este slice quedan reserva con expiración, carrito persistido,
-descuentos, reembolsos, logística, tarjetas y pagos productivos. El puerto
+Fuera de este slice quedan reserva con expiración, descuentos, reembolsos,
+logística, tarjetas y pagos productivos. El puerto
 permite incorporar otro proveedor sin cambiar los casos de uso.

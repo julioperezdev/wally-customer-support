@@ -3,7 +3,7 @@
 Owner: Tech Lead  
 Status: `Proposed`  
 Last reviewed: 2026-09-13
-Related Jira: `WCS-13`, `WCS-14`, `WCS-15`, `WCS-16`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-37`, `WCS-47`, `WCS-48`, `WCS-51`, `WCS-60`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-122`
+Related Jira: `WCS-13`, `WCS-14`, `WCS-15`, `WCS-16`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-37`, `WCS-47`, `WCS-48`, `WCS-51`, `WCS-60`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-122`, `WCS-129`
 Related repository paths: `src/main/java/com/wally/customersupport/{conversation,catalog,support,agent}/infrastructure/repository/postgres`, `src/main/resources/db/migration`
 
 ## Aislamiento en el RDS compartido
@@ -136,7 +136,7 @@ schema `wcs`, sin mezclarlo con tablas de `tesis-dev`:
   proveedor y evento permite deduplicar reintentos del webhook.
 
 La migración verifica stock bajo lock pesimista, pero esta versión no descuenta
-ni reserva stock temporalmente. La reserva con expiración, carrito, descuentos,
+ni reserva stock temporalmente. La reserva con expiración, descuentos,
 reembolsos y compensaciones quedan para una migración posterior; no deben
 inferirse a partir de un pedido `PENDING_PAYMENT`.
 
@@ -145,6 +145,25 @@ recibe precio, nombre ni moneda desde el mensaje o el LLM: resuelve una única
 variante en PostgreSQL y delega en `OrderApplicationService`. El flujo y sus
 respuestas están documentados en
 [`conversational-checkout.md`](conversational-checkout.md).
+
+### `carts` y `cart_items` — implementadas en `V22` (WCS-129)
+
+El carrito conversacional es un agregado persistido por conversación:
+
+* `carts` mantiene el actor pseudonimizado, canal, moneda, estado, versión de
+  negocio y el pedido pendiente asociado al checkout;
+* `cart_items` mantiene una línea por SKU y cantidad, con unicidad por carrito;
+* `orders.cart_id` y `orders.cart_version` permiten reconstruir qué versión del
+  carrito originó el pedido.
+
+El carrito no es fuente de verdad para nombre, precio o stock: esos datos se
+leen de `catalog_variants` al mostrar y al confirmar. La confirmación usa una
+idempotency key derivada de `cart_id` y `cart_version`; cambiar el carrito
+produce una nueva versión y una nueva operación. Cancelar el checkout marca
+los pedidos pendientes como `CANCELLED`, reabre el carrito y evita que un
+webhook posterior reactive un pedido terminal.
+
+El detalle conversacional está en [`conversational-cart.md`](conversational-cart.md).
 
 ### `knowledge_source` y `knowledge_document_version`
 

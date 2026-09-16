@@ -15,6 +15,9 @@ public interface SpringDataOrderRepository extends JpaRepository<OrderJpaEntity,
 
     Optional<OrderJpaEntity> findByIdempotencyKey(String idempotencyKey);
 
+    @Query("select o from OrderJpaEntity o where o.cartId = :cartId and o.status = com.wally.customersupport.order.domain.model.OrderStatus.PENDING_PAYMENT")
+    List<OrderJpaEntity> findPendingPaymentByCartId(@Param("cartId") UUID cartId);
+
     @EntityGraph(attributePaths = "items")
     @Query("select distinct o from OrderJpaEntity o where o.id = :id")
     Optional<OrderJpaEntity> findDetailedById(@Param("id") UUID id);
