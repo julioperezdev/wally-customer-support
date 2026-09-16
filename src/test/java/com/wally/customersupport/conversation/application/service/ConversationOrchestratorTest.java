@@ -284,7 +284,7 @@ class ConversationOrchestratorTest {
 
     @Test
     void mergesCatalogContextWhenTheLatestBedrockQueryContainsOnlyTheSize() {
-        String latestMessage = "Quiero la talle M";
+        String latestMessage = "Quiero la talla M";
         ConversationContext followUpContext = new ConversationContext(
                 context.conversationId(),
                 context.externalCustomerId(),

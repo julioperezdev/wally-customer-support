@@ -21,7 +21,7 @@ public final class CatalogQueryParser {
     }
 
     private static final Pattern SKU = Pattern.compile("\\b[a-z]{2}(?:-[a-z0-9]+){2,}\\b");
-    private static final Pattern SIZE = Pattern.compile("\\b(?:talle|tamano|size)?\\s*(xxl|xl|xs|l|m|s)\\b");
+    private static final Pattern SIZE = Pattern.compile("\\b(?:talle|talla|tamano|size)?\\s*(xxl|xl|xs|l|m|s)\\b");
     private static final Pattern COLOR = Pattern.compile("\\b(negro|negra|blanco|blanca|gris|azul|rojo|roja|verde)\\b");
     private static final Pattern PRODUCT_TYPE = Pattern.compile("\\b(remera|remeras|buzo|buzos|campera|camperas)\\b");
     private static final Pattern MAX_PRICE = Pattern.compile(
@@ -39,7 +39,7 @@ public final class CatalogQueryParser {
             "\\b(que|sea|tambien|también|ahora|solo|sólo|pero|mejor|tipo)\\b");
     private static final Pattern CONTINUATION_MARKER = Pattern.compile(
             "\\b(opcion|opciones|alternativa|alternativas|mostrame|muestrame|mostrar|"
-                    + "anterior|anteriores|eso|esa|esas|asi|algo asi)\\b");
+                    + "anterior|anteriores|esto|este|estos|eso|esa|esas|asi|algo asi)\\b");
     private static final Pattern SHIPPING_MARKER = Pattern.compile(
             "\\b(envio|envios|entrega|despacho)\\b");
     private static final Pattern PURCHASE_MARKER = Pattern.compile(
@@ -65,7 +65,7 @@ public final class CatalogQueryParser {
                     + "media|medias)\\b");
     private static final Pattern CATALOG_MARKER = Pattern.compile(
             "\\b(remera|remeras|buzo|buzos|campera|camperas|producto|productos|catalogo|stock|disponible|"
-                    + "disponibilidad|talle|tamano|size|sku|precio|precios|cuesta|cueste|color|barato|barata|"
+                    + "disponibilidad|talle|talla|tamano|size|sku|precio|precios|cuesta|cueste|color|barato|barata|"
                     + "caro|cara|menos|mas|hasta|debajo|encima|entre|"
                     + "gorra|gorras|zapatilla|zapatillas|zapato|zapatos|pantalon|pantalones|"
                     + "camisa|camisas|short|shorts|accesorio|accesorios|bufanda|bufandas|"
@@ -75,14 +75,15 @@ public final class CatalogQueryParser {
     private static final Pattern PRICE_FOLLOW_UP = Pattern.compile(
             "\\b(cuanto|cuesta|precio|sale|valor)\\b");
     private static final Pattern SIZE_FOLLOW_UP = Pattern.compile(
-            "\\b(que talle|cual talle|que tamano|cual tamano|que size)\\b");
+            "\\b(que talle|cual talle|que talla|cual talla|que tamano|cual tamano|que size)\\b");
     private static final Pattern COLOR_FOLLOW_UP = Pattern.compile(
             "\\b(que color|cual color|en que color)\\b");
     private static final Pattern STOP_WORDS = Pattern.compile(
             "\\b(tienen|tenes|hay|venden|vende|quiero|busco|necesito|una|un|el|la|los|las|del|de|en|con|"
                     + "vendes|"
                     + "por|para|favor|me|podes|pueden|puedo|cuanto|cuál|cual|es|esta|tiene|stock|disponible|"
-                    + "disponibilidad|precio|precios|color|talle|tamano|size|sku|productos?|catalogo|algo|"
+                    + "disponibilidad|precio|precios|color|talle|talla|tamano|size|sku|productos?|catalogo|"
+                    + "este|estos|esto|algo|"
                     + "alguna|alguno|que|qué|sea|estilo|mi|ahora|solo|sólo|tambien|también|mejor|tipo|"
                     + "cuesta|cueste|menos|mas|barato|barata|caro|cara|hasta|debajo|encima|entre|"
                     + "opcion|opciones|alternativa|alternativas|mostrame|muestrame|mostrar|anterior|"

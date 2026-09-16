@@ -64,6 +64,28 @@ class CatalogQueryParserTest {
     }
 
     @Test
+    void understandsTallaAsASizeRefinement() {
+        CatalogQuery query = CatalogQueryParser.parseConversation(
+                List.of("Busco una remera negra"),
+                "Quiero la talla M").orElseThrow();
+
+        assertEquals("remera", query.productType());
+        assertEquals("negro", query.color());
+        assertEquals("m", query.size());
+    }
+
+    @Test
+    void preservesActiveSelectionForThisProductContinuation() {
+        CatalogQuery query = CatalogQueryParser.parseConversation(
+                List.of("Busco una remera negra talle M"),
+                "Este producto").orElseThrow();
+
+        assertEquals("remera", query.productType());
+        assertEquals("negro", query.color());
+        assertEquals("m", query.size());
+    }
+
+    @Test
     void extractsMaximumPriceWithoutPollutingTheProductName() {
         CatalogQuery query = CatalogQueryParser.parse(
                 "Busco una remera negra talle M que cueste menos de 20.000 pesos").orElseThrow();
