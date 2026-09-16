@@ -1017,6 +1017,12 @@ function toUserMessage(cause: unknown) {
     if (cause.status === 401) return "La sesión no es válida. El control plane requiere un JWT válido.";
     if (cause.status === 403) return "Acceso denegado o control plane cerrado por configuración.";
     if (cause.status === 404) return "El recurso de evaluación no existe.";
+    if (cause.code === "MEDIA_NOT_AVAILABLE") {
+      return "La imagen actual no está disponible. Subí una nueva imagen para reemplazarla.";
+    }
+    if (cause.code === "IMAGE_UPLOAD_FAILED") {
+      return "No se pudo subir la imagen. Verificá el origen permitido y que el archivo sea válido.";
+    }
     if (cause.status === 409) return "Los runs no son comparables: verificá que usen el mismo dataset.";
     return `El control plane respondió ${cause.code}.`;
   }

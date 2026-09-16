@@ -815,11 +815,18 @@ export function createBackofficeClient(
             contentLength: file.size
           })
         });
-      const uploadResponse = await fetch(upload.uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": file.type },
-        body: file
-      });
+      let uploadResponse: Response;
+      try {
+        uploadResponse = await fetch(upload.uploadUrl, {
+          method: "PUT",
+          headers: { "Content-Type": file.type },
+          body: file
+        });
+      } catch {
+        // Browser CORS/network failures do not produce an HTTP response. Keep
+        // the error in the same sanitized domain as an S3 rejection.
+        throw new ControlPlaneError(0, "IMAGE_UPLOAD_FAILED");
+      }
       if (!uploadResponse.ok) {
         throw new ControlPlaneError(uploadResponse.status, "IMAGE_UPLOAD_FAILED");
       }
