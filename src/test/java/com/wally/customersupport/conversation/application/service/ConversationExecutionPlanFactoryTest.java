@@ -29,6 +29,17 @@ class ConversationExecutionPlanFactoryTest {
     }
 
     @Test
+    void mapsPurchaseIntentToTheCheckoutPlan() {
+        ConversationExecutionPlan plan = factory.create(
+                new ConversationIntentDecision(ConversationIntent.PURCHASE_LINK, 0.99, null, null));
+
+        assertEquals(ConversationExecutionAction.PURCHASE_LINK, plan.action());
+        assertEquals("PURCHASE_LINK", plan.useCase());
+        assertEquals("checkout-specialist", plan.steps().getFirst().owner());
+        assertEquals("payment-link", plan.steps().getFirst().capability());
+    }
+
+    @Test
     void mapsLowConfidenceToTheSafetyFallback() {
         ConversationExecutionPlan plan = factory.create(
                 new ConversationIntentDecision(ConversationIntent.CATALOG_SEARCH, 0.40, null, null));

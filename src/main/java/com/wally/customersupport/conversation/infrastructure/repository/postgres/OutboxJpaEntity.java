@@ -56,6 +56,9 @@ public class OutboxJpaEntity {
     @Column(name = "template_body_parameters", columnDefinition = "text")
     private String templateBodyParameters;
 
+    @Column(name = "media_reference", length = 2048)
+    private String mediaReference;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
     private OutboxStatus status;
@@ -92,6 +95,7 @@ public class OutboxJpaEntity {
         this.templateName = message.message().templateName();
         this.templateLanguageCode = message.message().templateLanguageCode();
         this.templateBodyParameters = String.join(PARAMETER_SEPARATOR, message.message().templateBodyParameters());
+        this.mediaReference = message.message().mediaReference();
         this.status = message.status();
         this.attempts = message.attempts();
         this.availableAt = message.availableAt();
@@ -112,7 +116,8 @@ public class OutboxJpaEntity {
                 body,
                 templateName,
                 templateLanguageCode,
-                parameters);
+                parameters,
+                mediaReference);
         return new OutboxMessage(
                 id,
                 aggregateId,

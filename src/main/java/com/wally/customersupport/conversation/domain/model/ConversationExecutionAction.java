@@ -3,6 +3,7 @@ package com.wally.customersupport.conversation.domain.model;
 public enum ConversationExecutionAction {
     DIRECT_RESPONSE,
     CATALOG_SEARCH,
+    PURCHASE_LINK,
     BUSINESS_HOURS,
     POLICY_QUERY,
     GENERAL_SUPPORT,

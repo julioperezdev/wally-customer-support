@@ -8,7 +8,8 @@ public record ConversationExecutionResult(
         String outcome,
         String response,
         String fallbackReason,
-        int stepCount) {
+        int stepCount,
+        String mediaReference) {
 
     public ConversationExecutionResult {
         workflowVersion = required(workflowVersion, "workflowVersion");
@@ -19,6 +20,17 @@ public record ConversationExecutionResult(
         if (stepCount < 1) {
             throw new IllegalArgumentException("stepCount must be positive");
         }
+        mediaReference = normalize(mediaReference);
+    }
+
+    public ConversationExecutionResult(
+            String workflowVersion,
+            String useCase,
+            String outcome,
+            String response,
+            String fallbackReason,
+            int stepCount) {
+        this(workflowVersion, useCase, outcome, response, fallbackReason, stepCount, null);
     }
 
     public static ConversationExecutionResult completed(
@@ -36,7 +48,28 @@ public record ConversationExecutionResult(
                 outcome,
                 response,
                 plan.fallbackReason(),
-                plan.stepCount());
+                plan.stepCount(),
+                null);
+    }
+
+    public static ConversationExecutionResult completed(
+            ConversationExecutionPlan plan,
+            String response,
+            String mediaReference) {
+        String outcome = switch (plan.action()) {
+            case LOW_CONFIDENCE -> "LOW_CONFIDENCE";
+            case SAFE_FALLBACK -> "FALLBACK";
+            case HUMAN_HANDOFF -> "HANDOFF";
+            default -> "REPLIED";
+        };
+        return new ConversationExecutionResult(
+                plan.workflowVersion(),
+                plan.useCase(),
+                outcome,
+                response,
+                plan.fallbackReason(),
+                plan.stepCount(),
+                mediaReference);
     }
 
     public static ConversationExecutionResult fallback(
@@ -49,7 +82,8 @@ public record ConversationExecutionResult(
                 "FALLBACK",
                 response,
                 reason,
-                plan.stepCount());
+                plan.stepCount(),
+                null);
     }
 
     private static String required(String value, String field) {

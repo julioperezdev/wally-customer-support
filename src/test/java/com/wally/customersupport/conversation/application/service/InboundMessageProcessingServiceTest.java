@@ -24,6 +24,7 @@ import com.wally.customersupport.conversation.domain.model.Channel;
 import com.wally.customersupport.conversation.domain.model.Conversation;
 import com.wally.customersupport.conversation.domain.model.ConversationExecutionResult;
 import com.wally.customersupport.conversation.domain.model.ConversationStatus;
+import com.wally.customersupport.conversation.domain.model.DeliveryType;
 import com.wally.customersupport.conversation.domain.model.Message;
 import com.wally.customersupport.conversation.domain.model.MessageDirection;
 import com.wally.customersupport.conversation.domain.model.MessageType;
@@ -127,6 +128,26 @@ class InboundMessageProcessingServiceTest {
         verify(conversationOrchestrator).replyForDetailed(any());
         verify(outboxRepository).save(any());
         verify(processingAttemptRepository).markCompleted(attempt.id(), NOW);
+    }
+
+    @Test
+    void enqueuesImageDeliveryWhenExecutionProvidesACatalogMediaReference() {
+        when(conversationOrchestrator.replyForDetailed(any())).thenReturn(
+                new ConversationExecutionResult(
+                        "wcs-agent-runtime-v1",
+                        "CATALOG_SEARCH",
+                        "REPLIED",
+                        "Encontré una variante",
+                        null,
+                        1,
+                        "wcs/catalog/product/image.jpg"));
+
+        service.process(attempt);
+
+        verify(outboxRepository).save(org.mockito.ArgumentMatchers.argThat(outbox ->
+                outbox.message().deliveryType() == DeliveryType.IMAGE
+                        && "wcs/catalog/product/image.jpg".equals(outbox.message().mediaReference())
+                        && "Encontré una variante".equals(outbox.message().body())));
     }
 
     @Test

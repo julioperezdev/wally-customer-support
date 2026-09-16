@@ -13,13 +13,17 @@ Estado: `Accepted` para el MVP. Aprobado por el Product Owner el 2026-09-03. La 
 ## Decisiones de alcance del MVP
 
 - La tienda de demostración se llama **Ropa de Programador**.
-- El canal del MVP es WhatsApp y sólo se procesan mensajes de texto.
-- Telegram se incorpora como canal técnico de desarrollo/prueba con los mismos
-  casos de uso conversacionales; el dominio recibe un contrato interno con
-  `Channel` y no conoce payloads ni APIs de proveedores.
+- El canal del MVP es WhatsApp y Telegram se incorpora como canal técnico de
+  desarrollo/prueba, con los mismos casos de uso conversacionales. Se
+  procesan mensajes de texto y, para una coincidencia única del catálogo, una
+  imagen opcional.
+- El dominio recibe un contrato interno con `Channel` y no conoce payloads,
+  URLs ni APIs de proveedores.
 - El bot responde siempre la primera interacción. El pedido de atención humana crea una tarea priorizada para el backoffice, con el contexto de la conversación y vencimiento recomendado dentro de 24 horas.
-- El MVP no ejecuta cancelaciones, reembolsos, pagos ni modificaciones de pedidos.
-- Se utilizará un catálogo ficticio en PostgreSQL. Las imágenes se almacenarán en S3, pero no se enviarán como media por WhatsApp durante esta fase.
+- El MVP no ejecuta cancelaciones, reembolsos ni modificaciones de pedidos. Sí puede crear un pedido pendiente y generar un link de checkout cuando el cliente expresa explícitamente que quiere comprar una variante única disponible; la confirmación del pago ocurre únicamente mediante el webhook del proveedor.
+- Se utilizará un catálogo ficticio en PostgreSQL. Las imágenes se almacenarán
+  en S3 privado y podrán enviarse como media sólo para una coincidencia única;
+  los listados y seguimientos permanecen textuales.
 - Los horarios y las políticas de demostración serán datos configurables en PostgreSQL.
 - El runtime objetivo usa integraciones reales. Los dobles quedan disponibles para pruebas automatizadas y contractuales, no como perfil operativo normal.
 
@@ -44,11 +48,12 @@ Estado: `Accepted` para el MVP. Aprobado por el Product Owner el 2026-09-03. La 
 | FR-015 | Responder el saludo inicial con `Hola, ¿cómo te puedo ayudar?`. | Alta | Draft |
 | FR-016 | Responder consultas generales usando políticas y horarios versionados/configurables. | Alta | Draft |
 | FR-017 | Consultar productos, variantes, precio y stock desde resultados determinísticos de PostgreSQL. | Alta | Draft |
-| FR-018 | Mantener una referencia de imagen de producto almacenada en S3 sin enviar media en el MVP. | Media | Draft |
+| FR-018 | Acompañar una respuesta de catálogo con una imagen S3 temporal cuando existe una única variante inequívoca; entregar texto si no está disponible. | Media | Draft |
 | FR-019 | Evaluar el horario de atención desde datos persistidos y aplicar la política fuera de horario. | Alta | Draft |
 | FR-020 | Crear una tarea de seguimiento humano priorizada con contexto, motivo, estado y vencimiento. | Alta | Draft |
 | FR-021 | Respetar una solicitud de baja y evitar respuestas o seguimientos automáticos posteriores. | Alta | Draft |
 | FR-022 | Aplicar retención diferenciada para contenido, metadatos, métricas y lista de supresión. | Alta | TBD legal |
+| FR-023 | Generar un pedido pendiente y un link de checkout sólo después de una solicitud explícita de compra con una única variante y stock suficiente. | Alta | Draft |
 
 ## Casos de uso
 
@@ -89,6 +94,11 @@ reactivación. Un mensaje común no revoca una baja.
 
 **Dado** un producto o filtro de nombre, SKU, tipo, talle, color o rango de precio, **cuando** el cliente consulta, **entonces** el sistema obtiene precio y stock desde PostgreSQL y el bot redacta la respuesta usando únicamente esos resultados. Si no hay filtros, devuelve una lista acotada del catálogo; si la consulta continúa un resultado único, conserva el contexto sólo durante la ventana de memoria configurada.
 
+Cuando el resultado inicial contiene una única variante y una referencia de
+imagen válida, puede adjuntar la imagen mediante el adapter del canal. La key
+se conserva en el outbox y la URL prefirmada se genera sólo al despachar; una
+falla de media no impide enviar el texto.
+
 ### UC-009 — Consulta ambigua o sin evidencia
 
 **Dado** un mensaje ambiguo o sin coincidencias confiables, **cuando** el bot lo procesa, **entonces** hace una pregunta de aclaración o informa que no puede confirmar la respuesta y ofrece seguimiento humano. No adivina.
@@ -100,6 +110,21 @@ reactivación. Un mensaje común no revoca una baja.
 ### UC-011 — Retención y eliminación
 
 **Dado** que se cumple el plazo de retención configurado, **cuando** se ejecuta el proceso de limpieza, **entonces** elimina el contenido vencido, conserva sólo los metadatos permitidos y mantiene el mínimo identificador necesario para respetar una baja.
+
+### UC-012 — Compra conversacional
+
+**Dado** que el cliente expresa explícitamente que quiere comprar, **cuando**
+la conversación contiene una única variante activa con stock suficiente,
+**entonces** el sistema valida el catálogo en PostgreSQL, crea o recupera de
+forma idempotente un pedido `PENDING_PAYMENT`, genera el checkout mediante el
+adapter de pagos y envía el link por el canal de origen. El bot no crea el
+pedido sólo porque el cliente consulte, muestre interés o pida opciones.
+
+Si la selección es ambigua, no hay stock o el proveedor no responde, el
+sistema no afirma que la compra esté confirmada: solicita la variante,
+informa la falta de disponibilidad o comunica que el pedido quedó sin link
+para reintentar. El pago sólo pasa a un estado final cuando se procesa una
+notificación firmada y deduplicada del proveedor.
 
 ## Datos demo iniciales
 

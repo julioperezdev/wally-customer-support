@@ -53,24 +53,30 @@ public class CatalogConversationService {
 
     private CatalogSearchResult searchQuery(CatalogQuery query) {
         if (query.isEmpty()) {
-            List<CatalogFact> generalFacts = facts(catalogQueryService.searchAll(MAX_GENERAL_RESULTS));
+            List<CatalogProduct> products = catalogQueryService.searchAll(MAX_GENERAL_RESULTS);
+            List<CatalogFact> generalFacts = facts(products);
             return generalFacts.isEmpty()
                     ? noMatch()
-                    : matched(generalFacts.stream().limit(MAX_GENERAL_RESULTS).toList());
+                    : matched(
+                            generalFacts.stream().limit(MAX_GENERAL_RESULTS).toList(),
+                            images(products));
         }
-        List<CatalogFact> facts = facts(catalogQueryService.search(query));
+        List<CatalogProduct> products = catalogQueryService.search(query);
+        List<CatalogFact> facts = facts(products);
         if (!facts.isEmpty()) {
-            return matched(facts);
+            return matched(facts, images(products));
         }
         if (query.productType() != null) {
-            List<CatalogFact> alternatives = facts(catalogQueryService.search(query.withoutProductType()));
+            List<CatalogProduct> alternativeProducts = catalogQueryService.search(query.withoutProductType());
+            List<CatalogFact> alternatives = facts(alternativeProducts);
             if (!alternatives.isEmpty()) {
                 return new CatalogSearchResult(
                         CatalogSearchResult.Status.ALTERNATIVES,
                         alternatives,
                         query.productType(),
                         CatalogSearchResult.FollowUpKind.NONE,
-                        "PRODUCT_TYPE_ALTERNATIVES");
+                        "PRODUCT_TYPE_ALTERNATIVES",
+                        images(alternativeProducts));
             }
         }
         return noMatch();
@@ -83,7 +89,8 @@ public class CatalogConversationService {
             return clarification("FOLLOW_UP");
         }
 
-        List<CatalogFact> matches = facts(catalogQueryService.search(activeQuery));
+        List<CatalogProduct> products = catalogQueryService.search(activeQuery);
+        List<CatalogFact> matches = facts(products);
         if (matches.isEmpty()) {
             return noMatch();
         }
@@ -100,7 +107,8 @@ public class CatalogConversationService {
                 matches,
                 null,
                 toResultFollowUpKind(followUpKind),
-                "FOLLOW_UP_MATCHED");
+                "FOLLOW_UP_MATCHED",
+                images(products));
     }
 
     private static CatalogQuery resolveActiveQuery(
@@ -134,13 +142,27 @@ public class CatalogConversationService {
                 .toList();
     }
 
-    private static CatalogSearchResult matched(List<CatalogFact> facts) {
+    private static List<CatalogImage> images(List<CatalogProduct> products) {
+        if (products == null) {
+            return List.of();
+        }
+        return products.stream()
+                .filter(product -> product.imageObjectKey() != null && !product.imageObjectKey().isBlank())
+                .flatMap(product -> product.variants().stream()
+                        .map(variant -> new CatalogImage(variant.sku(), product.imageObjectKey())))
+                .toList();
+    }
+
+    private static CatalogSearchResult matched(
+            List<CatalogFact> facts,
+            List<CatalogImage> images) {
         return new CatalogSearchResult(
                 CatalogSearchResult.Status.MATCHED,
                 facts,
                 null,
                 CatalogSearchResult.FollowUpKind.NONE,
-                "MATCHED");
+                "MATCHED",
+                images);
     }
 
     private static CatalogSearchResult clarification(String reason) {

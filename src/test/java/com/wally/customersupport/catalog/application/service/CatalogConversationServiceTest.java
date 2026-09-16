@@ -41,7 +41,24 @@ class CatalogConversationServiceTest {
         assertTrue(reply.get().contains("stock disponible: 12"));
         verify(catalogQueryService).search(argThat(query ->
                 query.name() == null && "m".equals(query.size()) && "negro".equals(query.color())
-                        && "remera".equals(query.productType())));
+                && "remera".equals(query.productType())));
+    }
+
+    @Test
+    void exposesImageForOneUnambiguousInitialMatch() {
+        CatalogProduct product = product(
+                "Remera NullPointer", "RP-REM-NP-NEG-M", "M", "Negro", 12,
+                "wcs/catalog/00000000-0000-0000-0000-000000000001/remera.jpg");
+        when(catalogQueryService.search(argThat(query -> true)))
+                .thenReturn(List.of(product));
+
+        CatalogSearchResult result = new CatalogConversationService(catalogQueryService)
+                .search(new CatalogQuery("nullpointer", null, "M", "negro"), List.of(), null)
+                .orElseThrow();
+
+        assertEquals(
+                "wcs/catalog/00000000-0000-0000-0000-000000000001/remera.jpg",
+                result.singleImageReference().orElseThrow());
     }
 
     @Test
@@ -182,9 +199,19 @@ class CatalogConversationServiceTest {
     }
 
     private static CatalogProduct product(String name, String sku, String size, String color, int stock) {
+        return product(name, sku, size, color, stock, null);
+    }
+
+    private static CatalogProduct product(
+            String name,
+            String sku,
+            String size,
+            String color,
+            int stock,
+            String imageObjectKey) {
         CatalogVariant variant = new CatalogVariant(
                 UUID.randomUUID(), sku, size, color, new BigDecimal("18900.00"), "ARS", stock, true);
-        return new CatalogProduct(UUID.randomUUID(), name, "demo", null, true, true, List.of(variant));
+        return new CatalogProduct(UUID.randomUUID(), name, "demo", imageObjectKey, true, true, List.of(variant));
     }
 
 }

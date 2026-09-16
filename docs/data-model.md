@@ -74,6 +74,8 @@ Permite confirmar el webhook después de una transacción local y despachar el t
 * `aggregate_id` y `event_type`.
 * `channel` y `recipient_id`, para enrutar la entrega al adapter correcto.
 * campos de entrega tipados, sin payload Meta completo.
+* `media_reference`, una referencia opaca opcional para una imagen de catálogo;
+  no contiene una URL prefirmada y se agrega mediante `V21`.
 * `status` (`PENDING`, `PROCESSING`, `SENT`, `FAILED`).
 * `attempts`, `available_at`, `version` y `sent_at`.
 * timestamps.
@@ -88,7 +90,9 @@ outbound. `@Async` sin persistencia no es el mecanismo productivo.
 El catálogo demo de **Ropa de Programador** se separa en producto y variante:
 
 * `catalog_products`: nombre, descripción, referencia `image_object_key` para
-  un objeto futuro en S3, estado `active` y marca `demo`.
+  un objeto en S3, estado `active` y marca `demo`. Una referencia válida puede
+  acompañar una coincidencia única con una entrega de imagen; la URL temporal
+  se genera sólo en el despacho.
 * `product_type`: tipo normalizado (`remera`, `buzo`, `campera` u `other`),
   utilizado para no confundir el tipo de prenda con el nombre del diseño.
 * `catalog_variants`: SKU único, talle, color, importe, moneda, stock y estado
@@ -96,8 +100,8 @@ El catálogo demo de **Ropa de Programador** se separa en producto y variante:
 * El acceso se realiza mediante `CatalogRepository` y filtros determinísticos
   por nombre, tipo, SKU, talle y color. El adapter no recibe SQL ni datos
   generados por el LLM.
-* `V3` contiene sólo datos sintéticos versionados. La referencia S3 no implica
-  que el MVP envíe imágenes como media por WhatsApp.
+* `V3` contiene sólo datos sintéticos versionados. Las referencias de sus datos
+  sólo serán entregables si el objeto existe y respeta el prefijo configurado.
 
 La migración incluye una constraint de stock no negativo y una unicidad por
 producto, talle y color. No se modifica `V1`; el reemplazo de datos demo se
@@ -135,6 +139,12 @@ La migración verifica stock bajo lock pesimista, pero esta versión no descuent
 ni reserva stock temporalmente. La reserva con expiración, carrito, descuentos,
 reembolsos y compensaciones quedan para una migración posterior; no deben
 inferirse a partir de un pedido `PENDING_PAYMENT`.
+
+El mismo modelo se reutiliza para la compra conversacional. El caso de uso no
+recibe precio, nombre ni moneda desde el mensaje o el LLM: resuelve una única
+variante en PostgreSQL y delega en `OrderApplicationService`. El flujo y sus
+respuestas están documentados en
+[`conversational-checkout.md`](conversational-checkout.md).
 
 ### `knowledge_source` y `knowledge_document_version`
 

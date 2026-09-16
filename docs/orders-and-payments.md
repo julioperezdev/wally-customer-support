@@ -10,6 +10,11 @@ delega la creación del checkout al puerto `PaymentGateway`. El adapter de
 Mercado Pago usa el SDK oficial Java (`com.mercadopago:sdk-java`) y el proveedor
 actual puede ser `mock` para pruebas y `mercadopago` para Checkout Pro Sandbox.
 
+La misma capacidad está disponible desde una conversación después de una
+solicitud explícita de compra. El flujo conversacional, sus guardas de
+selección, idempotencia, respuestas y pruebas están documentados en
+[`conversational-checkout.md`](conversational-checkout.md).
+
 ## Flujo
 
 ```text

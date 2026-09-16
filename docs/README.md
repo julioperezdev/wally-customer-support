@@ -54,6 +54,9 @@
 ## Calidad y operación
 
 - [`testing-strategy.md`](testing-strategy.md)
+- [`manual-qa-runbook.md`](manual-qa-runbook.md): matriz de pruebas manuales, valores actuales y criterios de cierre para la tester.
+- [`product-media-delivery.md`](product-media-delivery.md): entrega segura de imágenes de catálogo por Telegram y WhatsApp.
+- [`conversational-checkout.md`](conversational-checkout.md): flujo de compra explícita desde el chat, pedido idempotente y link de Mercado Pago.
 - [`operations.md`](operations.md)
 - [`observability.md`](observability.md): Grafana local, CloudWatch y eventos operativos.
 - [`pilot-runbook.md`](pilot-runbook.md): protocolo, límites, criterios y rollback del piloto WCS-23.

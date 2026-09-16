@@ -82,6 +82,7 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
             ConversationIntent intent = parseIntent(root.path("intent").asText(null));
             double confidence = parseConfidence(root.path("confidence"), intent);
             CatalogQuery catalogQuery = intent == ConversationIntent.CATALOG_SEARCH
+                    || intent == ConversationIntent.PURCHASE_LINK
                     ? catalogQuery(root.path("catalogQuery"))
                     : null;
             String policyKey = intent == ConversationIntent.POLICY_QUERY

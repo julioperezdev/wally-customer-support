@@ -144,12 +144,21 @@ public class InboundMessageProcessingService {
         humanFollowUpTaskService.createIfRequired(conversation, inboundMessage, executionResult);
 
         if (!isBlank(reply)) {
-            outboxRepository.save(OutboxMessage.pendingReply(
-                    OutboundMessage.text(
+            OutboundMessage outboundMessage = executionResult != null
+                    && executionResult.mediaReference() != null
+                    ? OutboundMessage.image(
                             conversation.channel(),
                             conversation.id(),
                             conversation.externalCustomerId(),
-                            reply),
+                            executionResult.mediaReference(),
+                            reply)
+                    : OutboundMessage.text(
+                            conversation.channel(),
+                            conversation.id(),
+                            conversation.externalCustomerId(),
+                            reply);
+            outboxRepository.save(OutboxMessage.pendingReply(
+                    outboundMessage,
                     now));
         }
         processingAttemptRepository.markCompleted(attempt.id(), now);

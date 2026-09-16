@@ -11,8 +11,10 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
+import com.wally.customersupport.conversation.application.port.out.OutboundMediaUrlResolver;
 import com.wally.customersupport.conversation.domain.model.OutboundMessage;
 import com.wally.customersupport.conversation.domain.model.Channel;
 import com.wally.customersupport.shared.infrastructure.config.WhatsAppProperties;
@@ -35,7 +37,8 @@ class MetaWhatsAppOutboundAdapterTest {
         WhatsAppProperties properties = properties();
         RestClient.Builder builder = RestClient.builder().baseUrl(properties.graphApiBaseUrl());
         server = MockRestServiceServer.bindTo(builder).build();
-        adapter = new MetaWhatsAppOutboundAdapter(builder.build(), properties);
+        OutboundMediaUrlResolver mediaUrlResolver = reference -> Optional.of("https://cdn.example.test/catalog/item.jpg");
+        adapter = new MetaWhatsAppOutboundAdapter(builder.build(), properties, mediaUrlResolver);
     }
 
     @Test
@@ -86,6 +89,32 @@ class MetaWhatsAppOutboundAdapterTest {
                 "order_confirmation",
                 "en_US",
                 List.of("John Doe", "123456", "Aug 30, 2026")));
+
+        server.verify();
+    }
+
+    @Test
+    void sendsImagePayloadWithCaption() {
+        server.expect(requestTo("https://graph.facebook.com/v25.0/synthetic-phone/messages"))
+                .andExpect(content().json("""
+                        {
+                          "messaging_product":"whatsapp",
+                          "to":"synthetic-recipient",
+                          "type":"image",
+                          "image":{
+                            "link":"https://cdn.example.test/catalog/item.jpg",
+                            "caption":"Remera NullPointer — Negro, talle M"
+                          }
+                        }
+                        """))
+                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
+
+        adapter.send(OutboundMessage.image(
+                Channel.WHATSAPP,
+                conversationId,
+                "synthetic-recipient",
+                "wcs/catalog/item.jpg",
+                "Remera NullPointer — Negro, talle M"));
 
         server.verify();
     }
