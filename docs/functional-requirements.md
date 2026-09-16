@@ -20,7 +20,7 @@ Estado: `Accepted` para el MVP. Aprobado por el Product Owner el 2026-09-03. La 
 - El dominio recibe un contrato interno con `Channel` y no conoce payloads,
   URLs ni APIs de proveedores.
 - El bot responde siempre la primera interacción. El pedido de atención humana crea una tarea priorizada para el backoffice, con el contexto de la conversación y vencimiento recomendado dentro de 24 horas.
-- El MVP no ejecuta cancelaciones, reembolsos ni modificaciones de pedidos. Sí puede crear un pedido pendiente y generar un link de checkout cuando el cliente expresa explícitamente que quiere comprar una variante única disponible; la confirmación del pago ocurre únicamente mediante el webhook del proveedor.
+- El MVP no ejecuta cancelaciones, reembolsos ni modificaciones de pedidos ya confirmados. Sí permite cancelar un checkout pendiente y modificar un carrito antes de confirmar. Puede crear un pedido pendiente y generar un link de checkout cuando el cliente expresa explícitamente que quiere comprar; la confirmación del pago ocurre únicamente mediante el webhook del proveedor.
 - Se utilizará un catálogo ficticio en PostgreSQL. Las imágenes se almacenarán
   en S3 privado y podrán enviarse como media sólo para una coincidencia única;
   los listados y seguimientos permanecen textuales.
@@ -54,6 +54,8 @@ Estado: `Accepted` para el MVP. Aprobado por el Product Owner el 2026-09-03. La 
 | FR-021 | Respetar una solicitud de baja y evitar respuestas o seguimientos automáticos posteriores. | Alta | Draft |
 | FR-022 | Aplicar retención diferenciada para contenido, metadatos, métricas y lista de supresión. | Alta | TBD legal |
 | FR-023 | Generar un pedido pendiente y un link de checkout sólo después de una solicitud explícita de compra con una única variante y stock suficiente. | Alta | Draft |
+| FR-024 | Permitir armar un carrito persistido por conversación con varias variantes, cantidades y total calculado desde PostgreSQL. | Alta | Implemented |
+| FR-025 | Exigir confirmación explícita para generar un único checkout del carrito, con idempotencia por versión y cancelación segura de links anteriores. | Alta | Implemented |
 
 ## Casos de uso
 
@@ -125,6 +127,20 @@ sistema no afirma que la compra esté confirmada: solicita la variante,
 informa la falta de disponibilidad o comunica que el pedido quedó sin link
 para reintentar. El pago sólo pasa a un estado final cuando se procesa una
 notificación firmada y deduplicada del proveedor.
+
+### UC-013 — Carrito conversacional multiítem
+
+**Dado** que el cliente agrega una o más variantes al carrito, **cuando** pide
+verlo, modificarlo o confirmar la compra, **entonces** WCS conserva las líneas
+por conversación, consulta precio y stock vigentes en PostgreSQL, muestra
+subtotales y total, y sólo genera un pedido multiítem después de una
+confirmación explícita.
+
+Si el cliente modifica el carrito después de un checkout pendiente, debe
+cancelar primero el checkout anterior. WCS cambia la versión del carrito,
+invalida el pedido pendiente en su propio modelo y usa una nueva idempotency
+key para el siguiente link. Un webhook tardío no puede cambiar un pedido ya
+cancelado.
 
 ## Datos demo iniciales
 

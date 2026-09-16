@@ -2,6 +2,7 @@ package com.wally.customersupport.conversation.domain.model;
 
 public enum ConversationExecutionAction {
     DIRECT_RESPONSE,
+    CART,
     PURCHASE_DEFERRED,
     CATALOG_SEARCH,
     PURCHASE_LINK,

@@ -27,6 +27,7 @@ import com.wally.customersupport.agent.application.service.AgentRuntimeDefinitio
 import com.wally.customersupport.agent.application.service.AgentRuntimeDefinitionResolver;
 import com.wally.customersupport.agent.application.service.AgentShadowRuntimeService;
 import com.wally.customersupport.agent.application.service.CatalogSpecialistExecutionResult;
+import com.wally.customersupport.cart.application.port.in.CartConversationHandler;
 import com.wally.customersupport.conversation.application.port.out.ConversationIntentClassifier;
 import com.wally.customersupport.conversation.application.port.out.PurchaseLinkCreator;
 import com.wally.customersupport.conversation.application.port.out.ResponseHumanizer;
@@ -83,6 +84,8 @@ class ConversationOrchestratorTest {
     private AgentShadowRuntimeService agentShadowRuntimeService;
     @Mock
     private PurchaseLinkCreator purchaseLinkCreator;
+    @Mock
+    private CartConversationHandler cartConversationHandler;
 
     private ConversationOrchestrator orchestrator;
     private ConversationContext context;
@@ -121,6 +124,43 @@ class ConversationOrchestratorTest {
                 + "Zona horaria: America/Argentina/Buenos_Aires", orchestrator.replyFor(context));
 
         verify(agentActivationResolver, never()).resolve(any(AgentActivationKey.class));
+    }
+
+    @Test
+    void routesRecognizedCartCommandBeforeCallingTheIntentClassifier() {
+        ConversationOrchestrator cartOrchestrator = new ConversationOrchestrator(
+                intentClassifier,
+                catalogConversationService,
+                supportConfigurationQueryService,
+                knowledgeRetriever,
+                llmClient,
+                new RagProperties("mock", 5, null, null),
+                new ConversationExecutionPlanFactory(),
+                agentActivationResolver,
+                agentRuntimeDefinitionResolver,
+                new AgentRuntimeProperties(false, "prod", false, Duration.ofSeconds(5), "noop", "test", 0),
+                catalogSpecialistExecutor,
+                responseHumanizer,
+                agentShadowRuntimeService,
+                new ActorKeyGenerator(new ObservabilityProperties("test-actor-key")),
+                purchaseLinkCreator,
+                cartConversationHandler);
+        ConversationContext cartContext = new ConversationContext(
+                context.conversationId(),
+                context.externalCustomerId(),
+                "¿Qué hay en mi carrito?",
+                List.of("¿Qué hay en mi carrito?"),
+                List.of(),
+                null,
+                List.of(),
+                Channel.TELEGRAM);
+        when(cartConversationHandler.recognizes(cartContext.latestMessage())).thenReturn(true);
+        when(cartConversationHandler.handle(cartContext))
+                .thenReturn(Optional.of(new CartConversationHandler.Response("Tu carrito está vacío.")));
+
+        assertEquals("Tu carrito está vacío.", cartOrchestrator.replyFor(cartContext));
+        verify(cartConversationHandler).handle(cartContext);
+        verify(intentClassifier, never()).classify(any(ConversationContext.class));
     }
 
     @Test

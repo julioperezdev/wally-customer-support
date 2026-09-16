@@ -25,6 +25,7 @@ public record ConversationExecutionPlan(
             "direct-response",
             "catalog-query",
             "payment-link",
+            "cart-management",
             "business-hours",
             "policy-query",
             "knowledge-retrieval",

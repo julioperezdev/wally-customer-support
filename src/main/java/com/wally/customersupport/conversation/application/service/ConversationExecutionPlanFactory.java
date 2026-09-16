@@ -74,6 +74,14 @@ public class ConversationExecutionPlanFactory {
         return generalSupport(reason == null ? "CLASSIFICATION_FAILED" : reason);
     }
 
+    public ConversationExecutionPlan cart() {
+        return plan(
+                "CART",
+                ConversationExecutionAction.CART,
+                List.of(step("cart-management", "checkout-specialist", "cart-management")),
+                null);
+    }
+
     public ConversationExecutionPlan purchaseDeferred() {
         return plan(
                 "PURCHASE_DEFERRED",

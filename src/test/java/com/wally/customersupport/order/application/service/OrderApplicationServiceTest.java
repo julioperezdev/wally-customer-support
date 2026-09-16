@@ -15,6 +15,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import com.wally.customersupport.catalog.infrastructure.repository.postgres.CatalogVariantJpaEntity;
 import com.wally.customersupport.catalog.infrastructure.repository.postgres.SpringDataCatalogVariantRepository;
@@ -104,6 +105,28 @@ class OrderApplicationServiceTest {
         assertEquals("INSUFFICIENT_STOCK", exception.getMessage());
         verify(orderRepository, never()).saveAndFlush(any());
         verify(paymentGateway, never()).createPreference(any());
+    }
+
+    @Test
+    void cancelsOnlyPendingPaymentsForACart() {
+        UUID cartId = UUID.fromString("20000000-0000-0000-0000-000000000001");
+        OrderJpaEntity pending = new OrderJpaEntity(
+                UUID.randomUUID(),
+                "telegram:actor-hash",
+                "ARS",
+                new BigDecimal("18900.00"),
+                "mock",
+                "cart-" + cartId + "-v1",
+                "request-hash",
+                NOW,
+                cartId,
+                1L);
+        when(orderRepository.findPendingPaymentByCartId(cartId)).thenReturn(List.of(pending));
+
+        service.cancelPendingForCart(cartId);
+
+        assertEquals(com.wally.customersupport.order.domain.model.OrderStatus.CANCELLED, pending.getStatus());
+        verify(orderRepository).saveAndFlush(pending);
     }
 
 }

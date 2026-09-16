@@ -585,6 +585,7 @@ backend, frontend, pruebas, documentación, observabilidad, rollout y rollback.
 | WCS-120 | In Progress | Registry, authoring guiado, lifecycle, activación, auditoría y trazas implementados; falta smoke autenticado y habilitación controlada |
 | WCS-121 | In Progress | Runtime, publicación, rollback y UI de feature flags implementados; falta smoke productivo sin reinicio |
 | WCS-122 | In Progress | Pedidos y links de pago con Mercado Pago Sandbox; provider mock por defecto y activación Sandbox sujeta a gates |
+| WCS-129 | In Progress | Carrito conversacional multiítem, cantidades, confirmación, checkout único e idempotencia por versión |
 
 Nota de secuenciación: WCS-120 no debe considerarse cerrado sólo por la entrega
 del panel visual. El código cubre authoring, versionado, lifecycle, promoción

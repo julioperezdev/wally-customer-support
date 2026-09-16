@@ -55,6 +55,12 @@ public class OrderJpaEntity {
     @Column(name = "request_hash", nullable = false, length = 64)
     private String requestHash;
 
+    @Column(name = "cart_id")
+    private UUID cartId;
+
+    @Column(name = "cart_version")
+    private Long cartVersion;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -76,6 +82,20 @@ public class OrderJpaEntity {
             String idempotencyKey,
             String requestHash,
             Instant createdAt) {
+        this(id, customerReference, currency, total, paymentProvider, idempotencyKey, requestHash, createdAt, null, null);
+    }
+
+    public OrderJpaEntity(
+            UUID id,
+            String customerReference,
+            String currency,
+            BigDecimal total,
+            String paymentProvider,
+            String idempotencyKey,
+            String requestHash,
+            Instant createdAt,
+            UUID cartId,
+            Long cartVersion) {
         this.id = id;
         this.customerReference = customerReference;
         this.status = OrderStatus.PENDING_PAYMENT;
@@ -84,6 +104,8 @@ public class OrderJpaEntity {
         this.paymentProvider = paymentProvider;
         this.idempotencyKey = idempotencyKey;
         this.requestHash = requestHash;
+        this.cartId = cartId;
+        this.cartVersion = cartVersion;
         this.createdAt = createdAt;
         this.updatedAt = createdAt;
     }
@@ -158,6 +180,21 @@ public class OrderJpaEntity {
 
     public String getRequestHash() {
         return requestHash;
+    }
+
+    public UUID getCartId() {
+        return cartId;
+    }
+
+    public Long getCartVersion() {
+        return cartVersion;
+    }
+
+    public void cancel(Instant now) {
+        if (status == OrderStatus.PENDING_PAYMENT) {
+            status = OrderStatus.CANCELLED;
+            updatedAt = now;
+        }
     }
 
     public Instant getCreatedAt() {

@@ -165,6 +165,12 @@ migración y smoke verificados se habilita Mercado Pago Sandbox; ningún pago
 productivo se habilita por el mero hecho de implementar el endpoint. El detalle
 está en [`conversational-checkout.md`](conversational-checkout.md).
 
+WCS-129 agrega el carrito conversacional multiítem sobre ese mismo contrato de
+pedidos: líneas persistidas por conversación, cantidades, subtotales, versión
+de carrito, confirmación explícita, checkout único e idempotencia. El detalle
+está en [`conversational-cart.md`](conversational-cart.md). Reserva de stock,
+descuentos, envío dinámico y reembolsos permanecen fuera del MVP.
+
 WCS-128 agrega la autenticación Cognito del backoffice como un gate transversal
 antes de habilitar escrituras operativas. El login propio de React llama al
 backend, el backend usa el SDK de Cognito y la sesión vuelve en cookies

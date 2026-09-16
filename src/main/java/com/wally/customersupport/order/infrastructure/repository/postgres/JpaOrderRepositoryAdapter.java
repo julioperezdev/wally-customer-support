@@ -33,6 +33,11 @@ public class JpaOrderRepositoryAdapter implements OrderRepository {
     }
 
     @Override
+    public List<OrderJpaEntity> findPendingPaymentByCartId(UUID cartId) {
+        return repository.findPendingPaymentByCartId(cartId);
+    }
+
+    @Override
     public List<OrderJpaEntity> findByStatus(String status, int limit) {
         return repository.findRecentByStatus(
                 status == null || status.isBlank() ? null : com.wally.customersupport.order.domain.model.OrderStatus.valueOf(status),
