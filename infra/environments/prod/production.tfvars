@@ -42,10 +42,13 @@ cognito_logout_urls          = ["http://localhost:5173/"]
 cognito_enable_password_auth = false
 cognito_deletion_protection  = "ACTIVE"
 
-# WCS-119 private media bucket. Keep application upload operations disabled
-# until the bucket and browser origin are verified in the target environment.
-backoffice_media_enabled              = false
-backoffice_media_bucket_name          = null
-backoffice_media_cors_allowed_origins = ["http://localhost:5173"]
+# WCS-119 private media bucket. The exact ngrok origin is temporary and should
+# be removed when the backoffice is served from its permanent HTTPS origin.
+backoffice_media_enabled     = true
+backoffice_media_bucket_name = null
+backoffice_media_cors_allowed_origins = [
+  "http://localhost:5173",
+  "https://constable-daycare-sizzling.ngrok-free.dev"
+]
 
 terraform_permissions_boundary_arn = null
