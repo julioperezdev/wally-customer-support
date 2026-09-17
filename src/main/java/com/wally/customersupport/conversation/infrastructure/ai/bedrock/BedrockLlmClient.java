@@ -112,27 +112,57 @@ public class BedrockLlmClient implements LlmClient {
                         .map(chunk -> "[" + chunk.sourceId() + "] " + chunk.content())
                         .collect(Collectors.joining("\n")), responseProperties.effectiveMaxKnowledgeCharacters()));
         if (definition == null) {
-            return converseClient.complete(
-                    "response-generation",
-                    "conversation.reply.generate",
-                    prompt.content(),
-                    userPrompt,
-                    maxOutputTokens,
-                    temperature,
-                    prompt.version(),
-                    prompt.sha256());
+            String correlationId = context.conversationId() == null
+                    ? null
+                    : context.conversationId().toString();
+            return correlationId == null
+                    ? converseClient.complete(
+                            "response-generation",
+                            "conversation.reply.generate",
+                            prompt.content(),
+                            userPrompt,
+                            maxOutputTokens,
+                            temperature,
+                            prompt.version(),
+                            prompt.sha256())
+                    : converseClient.complete(
+                            "response-generation",
+                            "conversation.reply.generate",
+                            prompt.content(),
+                            userPrompt,
+                            maxOutputTokens,
+                            temperature,
+                            prompt.version(),
+                            prompt.sha256(),
+                            correlationId);
         }
-        return converseClient.completeForAgent(
-                "response-generation",
-                "conversation.reply.generate",
-                prompt.content(),
-                userPrompt,
-                maxOutputTokens,
-                temperature,
-                definition.inferenceParameters().topP().floatValue(),
-                prompt.version(),
-                prompt.sha256(),
-                definition);
+        String correlationId = context.conversationId() == null
+                ? null
+                : context.conversationId().toString();
+        return correlationId == null
+                ? converseClient.completeForAgent(
+                        "response-generation",
+                        "conversation.reply.generate",
+                        prompt.content(),
+                        userPrompt,
+                        maxOutputTokens,
+                        temperature,
+                        definition.inferenceParameters().topP().floatValue(),
+                        prompt.version(),
+                        prompt.sha256(),
+                        definition)
+                : converseClient.completeForAgent(
+                        "response-generation",
+                        "conversation.reply.generate",
+                        prompt.content(),
+                        userPrompt,
+                        maxOutputTokens,
+                        temperature,
+                        definition.inferenceParameters().topP().floatValue(),
+                        prompt.version(),
+                        prompt.sha256(),
+                        definition,
+                        correlationId);
     }
 
     private int effectiveInputCharacterLimit(AgentRuntimeDefinition definition) {

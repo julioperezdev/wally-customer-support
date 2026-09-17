@@ -62,15 +62,29 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
             return ConversationIntentDecision.unknown();
         }
         try {
-            String output = converseClient.complete(
-                    "intent-classification",
-                    "conversation.intent.classify",
-                    prompt.content(),
-                    buildUserMessage(context),
-                    promptProperties.effectiveIntentMaxOutputTokens(),
-                    promptProperties.effectiveIntentTemperature(),
-                    prompt.version(),
-                    prompt.sha256());
+            String correlationId = context.conversationId() == null
+                    ? null
+                    : context.conversationId().toString();
+            String output = correlationId == null
+                    ? converseClient.complete(
+                            "intent-classification",
+                            "conversation.intent.classify",
+                            prompt.content(),
+                            buildUserMessage(context),
+                            promptProperties.effectiveIntentMaxOutputTokens(),
+                            promptProperties.effectiveIntentTemperature(),
+                            prompt.version(),
+                            prompt.sha256())
+                    : converseClient.complete(
+                            "intent-classification",
+                            "conversation.intent.classify",
+                            prompt.content(),
+                            buildUserMessage(context),
+                            promptProperties.effectiveIntentMaxOutputTokens(),
+                            promptProperties.effectiveIntentTemperature(),
+                            prompt.version(),
+                            prompt.sha256(),
+                            correlationId);
             return parse(output);
         } catch (RuntimeException exception) {
             return ConversationIntentDecision.unknown();

@@ -168,6 +168,108 @@ fields @timestamp, @message
 | sort @timestamp asc
 ```
 
+## Decisiones de catálogo y normalización
+
+Esta consulta permite ver cuándo el clasificador produjo una decisión
+estructurada, cuántos filtros llegaron y cuántas veces el backend tuvo que
+normalizarla o rescatarla. Los nombres de filtros no contienen valores de
+producto ni texto del cliente.
+
+```text
+fields @timestamp, @message
+| filter @message like /\"eventType\":\"INTENT_CLASSIFIED\"/
+| parse @message /\"intent\":\"(?<parsedIntent>[^\"]+)\"/
+| parse @message /\"rawIntent\":\"(?<parsedRawIntent>[^\"]+)\"/
+| parse @message /\"confidenceBucket\":\"(?<parsedConfidenceBucket>[^\"]+)\"/
+| parse @message /\"deterministicNormalization\":(?<parsedNormalization>true|false)/
+| parse @message /\"catalogQueryFilterCount\":(?<parsedCatalogFilterCount>[0-9]+)/
+| parse @message /\"catalogQueryProductType\":\"(?<parsedCatalogProductType>[^\"]+)\"/
+| stats count() as classifications,
+        avg(parsedCatalogFilterCount) as averageCatalogFilters,
+        sum(if(parsedNormalization = "true", 1, 0)) as normalizedDecisions
+  by parsedIntent, parsedRawIntent, parsedConfidenceBucket, parsedCatalogProductType, bin(1h)
+| sort @timestamp asc
+```
+
+## Resultados de catálogo, precisión operativa y latencia
+
+`NO_MATCH` y `CLARIFICATION` son señales para revisar ejemplos del prompt,
+parser o datos del catálogo. No deben presentarse como una tasa de exactitud
+sin un dataset esperado.
+
+```text
+fields @timestamp, @message
+| filter @message like /\"eventType\":\"CATALOG_SEARCH_COMPLETED\"/
+| parse @message /\"source\":\"(?<parsedSource>[^\"]+)\"/
+| parse @message /\"resultStatus\":\"(?<parsedResultStatus>[^\"]+)\"/
+| parse @message /\"resultCount\":(?<parsedResultCount>[0-9]+)/
+| parse @message /\"imageCount\":(?<parsedImageCount>[0-9]+)/
+| parse @message /\"queryFilterCount\":(?<parsedQueryFilterCount>[0-9]+)/
+| parse @message /\"queryProductType\":\"(?<parsedQueryProductType>[^\"]+)\"/
+| parse @message /\"executionDurationMs\":(?<parsedExecutionDurationMs>[0-9]+)/
+| stats count() as searches,
+        sum(if(parsedResultStatus = "MATCHED", 1, 0)) as matched,
+        sum(if(parsedResultStatus = "NO_MATCH", 1, 0)) as noMatch,
+        sum(if(parsedResultStatus = "CLARIFICATION", 1, 0)) as clarification,
+        sum(if(parsedResultStatus = "ALTERNATIVES", 1, 0)) as alternatives,
+        avg(parsedResultCount) as averageResults,
+        avg(parsedQueryFilterCount) as averageFilters,
+        avg(parsedExecutionDurationMs) as averageDurationMs,
+        pct(parsedExecutionDurationMs, 95) as p95DurationMs
+  by parsedSource, parsedResultStatus, parsedQueryProductType, bin(1h)
+| sort @timestamp asc
+```
+
+## Catálogo por conversación
+
+Usar esta consulta para investigar un hilo puntual junto con los eventos
+`AI_USAGE_RECORDED` y `CONVERSATION_QUERY_COMPLETED`. `correlationId` es un
+identificador interno de conversación y no debe convertirse en una dimensión
+agregada del dashboard.
+
+```text
+fields @timestamp, @message
+| filter @message like /\"eventType\":\"CATALOG_SEARCH_COMPLETED\"/
+| parse @message /\"correlationId\":\"(?<parsedCorrelationId>[^\"]+)\"/
+| parse @message /\"resultStatus\":\"(?<parsedResultStatus>[^\"]+)\"/
+| parse @message /\"queryFilters\":\[(?<parsedQueryFilters>[^\]]*)\]/
+| parse @message /\"queryProductType\":\"(?<parsedQueryProductType>[^\"]+)\"/
+| parse @message /\"resultCount\":(?<parsedResultCount>[0-9]+)/
+| parse @message /\"executionDurationMs\":(?<parsedExecutionDurationMs>[0-9]+)/
+| sort @timestamp desc
+| limit 100
+| display @timestamp, parsedCorrelationId, parsedResultStatus,
+          parsedQueryFilters, parsedQueryProductType, parsedResultCount,
+          parsedExecutionDurationMs
+```
+
+## Llamadas de Bedrock correlacionadas
+
+La correlación permite saber si una respuesta difícil tuvo clasificación,
+generación, o ambas llamadas, qué versión del prompt estaba activa y cuánto
+costó. No se intenta unir automáticamente eventos de alta cardinalidad en el
+panel agregado; para un caso puntual se filtra por el `correlationId` obtenido
+en la consulta anterior.
+
+```text
+fields @timestamp, @message
+| filter @message like /\"eventType\":\"AI_USAGE_RECORDED\"/
+| parse @message /\"correlationId\":\"(?<parsedCorrelationId>[^\"]+)\"/
+| parse @message /\"stage\":\"(?<parsedStage>[^\"]+)\"/
+| parse @message /\"operation\":\"(?<parsedOperation>[^\"]+)\"/
+| parse @message /\"model\":\"(?<parsedModel>[^\"]+)\"/
+| parse @message /\"promptVersion\":\"(?<parsedPromptVersion>[^\"]+)\"/
+| parse @message /\"success\":(?<parsedSuccess>true|false)/
+| parse @message /\"totalTokens\":(?<parsedTotalTokens>[0-9]+)/
+| parse @message /\"estimatedCostUsd\":(?<parsedEstimatedCostUsd>[0-9.]+)/
+| parse @message /\"durationMs\":(?<parsedDurationMs>[0-9]+)/
+| sort @timestamp desc
+| limit 100
+| display @timestamp, parsedCorrelationId, parsedStage, parsedOperation,
+          parsedModel, parsedPromptVersion, parsedSuccess, parsedTotalTokens,
+          parsedEstimatedCostUsd, parsedDurationMs
+```
+
 ## Eventos de salida
 
 ```text

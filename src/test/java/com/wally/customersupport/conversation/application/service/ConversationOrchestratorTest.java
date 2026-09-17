@@ -414,6 +414,38 @@ class ConversationOrchestratorTest {
     }
 
     @Test
+    void preservesConfidentBedrockCatalogSelectionInsteadOfMergingOldCategoryFilters() {
+        String latestMessage = "Quiero un buzo";
+        ConversationContext catalogContext = new ConversationContext(
+                context.conversationId(),
+                context.externalCustomerId(),
+                latestMessage,
+                List.of(latestMessage, "Busco una remera negra talle M"),
+                List.of(),
+                null,
+                List.of(),
+                Channel.TELEGRAM);
+        CatalogQuery query = new CatalogQuery(null, null, null, null, "buzo");
+        when(intentClassifier.classify(catalogContext))
+                .thenReturn(new ConversationIntentDecision(
+                        ConversationIntent.CATALOG_SEARCH, 0.95, query, null));
+        when(catalogConversationService.search(query, catalogContext.recentMessages(), latestMessage))
+                .thenReturn(Optional.of(new CatalogSearchResult(
+                        CatalogSearchResult.Status.MATCHED,
+                        List.of(new CatalogFact(
+                                "Buzo Spring Boot", "RP-BUZ-SB-GRI-L", "L", "Gris",
+                                new BigDecimal("42900.00"), "ARS", 5)),
+                        null,
+                        CatalogSearchResult.FollowUpKind.NONE,
+                        "MATCHED")));
+
+        ConversationExecutionResult result = orchestrator.replyForDetailed(catalogContext);
+
+        assertEquals("CATALOG_SEARCH", result.useCase());
+        verify(catalogConversationService).search(query, catalogContext.recentMessages(), latestMessage);
+    }
+
+    @Test
     void mergesCatalogContextWhenTheLatestBedrockQueryContainsOnlyTheSize() {
         String latestMessage = "Quiero la talla M";
         ConversationContext followUpContext = new ConversationContext(
