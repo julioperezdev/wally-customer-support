@@ -1,0 +1,173 @@
+[
+  {
+    "name": "greeting",
+    "message": "Hola",
+    "expectedIntent": "GREETING",
+    "expectedAction": "GREETING"
+  },
+  {
+    "name": "general_catalog",
+    "message": "Que vendes?",
+    "expectedIntent": "CATALOG_SEARCH",
+    "expectedAction": "CATALOG_SEARCH"
+  },
+  {
+    "name": "category_interest_is_not_purchase",
+    "message": "Quiero un buzo",
+    "expectedIntent": "CATALOG_SEARCH",
+    "expectedAction": "CATALOG_SEARCH",
+    "expectedProductType": "buzo"
+  },
+  {
+    "name": "explicit_single_variant_purchase",
+    "message": "Quiero comprar el buzo negro talle XL",
+    "expectedIntent": "PURCHASE_LINK",
+    "expectedAction": "PURCHASE_LINK",
+    "expectedProductType": "buzo",
+    "expectedColor": "negro",
+    "expectedSize": "XL"
+  },
+  {
+    "name": "add_quantity_to_cart",
+    "message": "Agregame dos remeras negras M al carrito",
+    "expectedIntent": "CATALOG_SEARCH",
+    "expectedAction": "ADD_TO_CART",
+    "expectedQuantity": 2
+  },
+  {
+    "name": "catalog_reference_not_purchase",
+    "message": "Quiero esa remera",
+    "expectedIntent": "CATALOG_SEARCH",
+    "expectedAction": "CATALOG_SEARCH"
+  },
+  {
+    "name": "payment_link_requires_context",
+    "message": "Pasame el link de pago",
+    "expectedIntent": "PURCHASE_LINK",
+    "expectedAction": "PURCHASE_LINK",
+    "expectedMissingParameter": "confirmation"
+  },
+  {
+    "name": "confirm_cart",
+    "message": "Confirmar compra",
+    "expectedIntent": "PURCHASE_LINK",
+    "expectedAction": "CONFIRM_CHECKOUT"
+  },
+  {
+    "name": "remove_cart_line",
+    "message": "Saca una remera del carrito",
+    "expectedIntent": "CATALOG_SEARCH",
+    "expectedAction": "REMOVE_FROM_CART"
+  },
+  {
+    "name": "clear_cart",
+    "message": "Vacia mi carrito",
+    "expectedIntent": "CATALOG_SEARCH",
+    "expectedAction": "CLEAR_CART"
+  },
+  {
+    "name": "view_cart",
+    "message": "Que hay en mi carrito?",
+    "expectedIntent": "CATALOG_SEARCH",
+    "expectedAction": "VIEW_CART"
+  },
+  {
+    "name": "purchase_deferral",
+    "message": "No quiero comprar todavia",
+    "expectedIntent": "CATALOG_SEARCH",
+    "expectedAction": "CANCEL_CHECKOUT"
+  },
+  {
+    "name": "shipping_policy",
+    "message": "Como funcionan los envios?",
+    "expectedIntent": "POLICY_QUERY",
+    "expectedAction": "POLICY_QUERY",
+    "expectedPolicyKey": "shipping"
+  },
+  {
+    "name": "business_hours",
+    "message": "A que hora abren el sabado?",
+    "expectedIntent": "BUSINESS_HOURS",
+    "expectedAction": "BUSINESS_HOURS"
+  },
+  {
+    "name": "human_handoff",
+    "message": "Quiero hablar con un humano",
+    "expectedIntent": "HUMAN_HANDOFF",
+    "expectedAction": "HUMAN_HANDOFF"
+  },
+  {
+    "name": "store_location",
+    "message": "Donde estan ubicados?",
+    "expectedIntent": "GENERAL_SUPPORT",
+    "expectedAction": "GENERAL_SUPPORT"
+  },
+  {
+    "name": "typo_normalization",
+    "message": "tenes buzo nullpinter negro?",
+    "expectedIntent": "CATALOG_SEARCH",
+    "expectedAction": "CATALOG_SEARCH",
+    "expectedProductType": "buzo",
+    "expectedColor": "negro"
+  },
+  {
+    "name": "catalog_context_refinement",
+    "history": ["Busco una remera negra"],
+    "message": "Que opciones tienen?",
+    "expectedIntent": "CATALOG_SEARCH",
+    "expectedAction": "CATALOG_SEARCH"
+  },
+  {
+    "name": "size_context_refinement",
+    "history": ["Busco una remera negra talle M"],
+    "message": "Quiero la talla M",
+    "expectedIntent": "CATALOG_SEARCH",
+    "expectedAction": "CATALOG_SEARCH",
+    "expectedSize": "M"
+  },
+  {
+    "name": "checkout_context_confirmation",
+    "history": ["Tengo un buzo en el carrito"],
+    "message": "Confirmame la compra",
+    "expectedIntent": "PURCHASE_LINK",
+    "expectedAction": "CONFIRM_CHECKOUT"
+  },
+  {
+    "name": "price_filter",
+    "message": "Quiero una campera barata, menos de 70000",
+    "expectedIntent": "CATALOG_SEARCH",
+    "expectedAction": "CATALOG_SEARCH",
+    "expectedProductType": "campera"
+  },
+  {
+    "name": "interest_with_deferral",
+    "message": "Me gusta esa, pero no la compro ahora",
+    "expectedIntent": "CATALOG_SEARCH",
+    "expectedAction": "CATALOG_SEARCH"
+  },
+  {
+    "name": "semantic_category_interest",
+    "message": "Necesito algo para el frio",
+    "expectedIntent": "CATALOG_SEARCH",
+    "expectedAction": "CATALOG_SEARCH"
+  },
+  {
+    "name": "sku_stock_query",
+    "message": "Hay stock de RP-REM-NP-NEG-M?",
+    "expectedIntent": "CATALOG_SEARCH",
+    "expectedAction": "CATALOG_SEARCH"
+  },
+  {
+    "name": "ambiguous_payment_reference",
+    "message": "quiero pagar esa",
+    "expectedIntent": "PURCHASE_LINK",
+    "expectedAction": "PURCHASE_LINK",
+    "expectedMissingParameter": "product"
+  },
+  {
+    "name": "unknown_message",
+    "message": "asdf qwerty",
+    "expectedIntent": "UNKNOWN",
+    "expectedAction": "UNKNOWN"
+  }
+]

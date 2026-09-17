@@ -22,6 +22,15 @@ class CatalogQueryParserTest {
     }
 
     @Test
+    void recognizesCategoryInterestAsCatalogSearchWithoutPurchaseIntent() {
+        CatalogQuery query = CatalogQueryParser.parse("Quiero un buzo").orElseThrow();
+
+        assertNull(query.name());
+        assertEquals("buzo", query.productType());
+        assertFalse(CatalogQueryParser.isPurchaseRequest("Quiero un buzo"));
+    }
+
+    @Test
     void removesNeutralAvailabilityPhrasesFromProductName() {
         CatalogQuery query = CatalogQueryParser.parse("¿Tienes buzo Spring Boot?").orElseThrow();
 

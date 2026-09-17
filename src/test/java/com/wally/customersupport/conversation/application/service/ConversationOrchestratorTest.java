@@ -374,6 +374,46 @@ class ConversationOrchestratorTest {
     }
 
     @Test
+    void rescuesCategoryInterestWhenBedrockMistakesItForPurchase() {
+        String latestMessage = "Quiero un buzo";
+        ConversationContext catalogContext = new ConversationContext(
+                context.conversationId(),
+                context.externalCustomerId(),
+                latestMessage,
+                List.of(latestMessage),
+                List.of(),
+                null,
+                List.of(),
+                Channel.TELEGRAM);
+        when(intentClassifier.classify(catalogContext))
+                .thenReturn(new ConversationIntentDecision(
+                        ConversationIntent.PURCHASE_LINK,
+                        0.92,
+                        null,
+                        null));
+        when(catalogConversationService.search(
+                argThat(query -> "buzo".equals(query.productType())
+                        && query.name() == null),
+                any(),
+                any()))
+                .thenReturn(Optional.of(new CatalogSearchResult(
+                        CatalogSearchResult.Status.MATCHED,
+                        List.of(new CatalogFact(
+                                "Buzo Spring Boot", "RP-BUZ-SB-NEG-XL", "XL", "Negro",
+                                new BigDecimal("42900.00"), "ARS", 3)),
+                        null,
+                        CatalogSearchResult.FollowUpKind.NONE,
+                        "MATCHED")));
+
+        ConversationExecutionResult result = orchestrator.replyForDetailed(catalogContext);
+
+        assertEquals("CATALOG_SEARCH", result.useCase());
+        assertTrue(result.response().contains("Buzo Spring Boot"));
+        verify(catalogConversationService).search(
+                argThat(query -> "buzo".equals(query.productType())), any(), any());
+    }
+
+    @Test
     void mergesCatalogContextWhenTheLatestBedrockQueryContainsOnlyTheSize() {
         String latestMessage = "Quiero la talla M";
         ConversationContext followUpContext = new ConversationContext(

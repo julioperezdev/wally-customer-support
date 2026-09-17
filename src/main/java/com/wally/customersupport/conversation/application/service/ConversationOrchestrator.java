@@ -508,7 +508,7 @@ public class ConversationOrchestrator {
         if (context == null
                 || decision == null
                 || decision.action().isCartOperation()
-                || !isCatalogNormalizationCandidate(decision.intent())) {
+                || !isCatalogNormalizationCandidate(context, decision)) {
             return decision;
         }
 
@@ -543,10 +543,20 @@ public class ConversationOrchestrator {
                 null);
     }
 
-    private static boolean isCatalogNormalizationCandidate(ConversationIntent intent) {
-        return intent == ConversationIntent.CATALOG_SEARCH
-                || intent == ConversationIntent.GENERAL_SUPPORT
-                || intent == ConversationIntent.UNKNOWN;
+    private static boolean isCatalogNormalizationCandidate(
+            ConversationContext context,
+            ConversationIntentDecision decision) {
+        if (decision.intent() == ConversationIntent.CATALOG_SEARCH
+                || decision.intent() == ConversationIntent.GENERAL_SUPPORT
+                || decision.intent() == ConversationIntent.UNKNOWN) {
+            return true;
+        }
+        // A model can over-read "quiero un buzo" as a purchase because of the
+        // verb "quiero". Only allow the deterministic catalog rescue when the
+        // customer did not use an explicit purchase marker. Explicit checkout
+        // requests remain handled by normalizeDeterministicPurchaseDecision.
+        return decision.intent() == ConversationIntent.PURCHASE_LINK
+                && !CatalogQueryParser.isPurchaseRequest(context.latestMessage());
     }
 
     private boolean isCatalogShippingComposite(
