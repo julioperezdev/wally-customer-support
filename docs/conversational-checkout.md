@@ -145,6 +145,11 @@ antes de pagar, debe usarse el carrito conversacional de `WCS-129`. Ese flujo
 persiste las líneas, acumula cantidades y genera un único checkout por el total
 después de una confirmación explícita.
 
+En un carrito, `Quiero pagar`, `Estoy listo para pagar` y solicitudes
+equivalentes son una revisión previa: WCS muestra el contenido, stock y total y
+espera `Confirmar compra`. La revisión no crea pedidos ni links. Esto evita
+emitir un link equivocado si la persona todavía quiere cambiar una línea.
+
 ### 4. Provider de pagos
 
 El módulo de pedidos usa el puerto `PaymentGateway`:

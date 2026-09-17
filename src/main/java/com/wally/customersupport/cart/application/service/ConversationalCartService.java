@@ -79,6 +79,7 @@ public class ConversationalCartService implements CartConversationHandler {
             case VIEW -> Optional.of(new Response(view(context)));
             case REMOVE -> Optional.of(new Response(remove(context, command)));
             case CLEAR -> Optional.of(new Response(clear(context)));
+            case REVIEW_CHECKOUT -> Optional.of(new Response(reviewCheckout(context)));
             case CONFIRM -> Optional.of(new Response(confirm(context)));
             case CANCEL_CHECKOUT -> Optional.of(new Response(cancelCheckout(context)));
             case DEFER -> defer(context);
@@ -186,6 +187,10 @@ public class ConversationalCartService implements CartConversationHandler {
             return EMPTY_CART;
         }
         CartJpaEntity cart = stored.get();
+        if (cart.getStatus() != CartStatus.ACTIVE) {
+            logOutcome(context, "CHECKOUT_ALREADY_PENDING");
+            return CHECKOUT_PENDING;
+        }
         List<CartCheckoutCreator.Item> items = cart.getItems().stream()
                 .map(item -> new CartCheckoutCreator.Item(item.getSku(), item.getQuantity()))
                 .toList();
@@ -204,6 +209,20 @@ public class ConversationalCartService implements CartConversationHandler {
                 "Listo. Preparé tu pedido con el contenido de tu carrito por un total de %s %s.\n"
                         + "Podés completar el pago acá: %s",
                 checkout.get().total(), checkout.get().currency(), checkout.get().checkoutUrl());
+    }
+
+    private String reviewCheckout(ConversationContext context) {
+        Optional<CartJpaEntity> stored = findOwned(context);
+        if (stored.isEmpty() || stored.get().getItems().isEmpty()) {
+            return EMPTY_CART;
+        }
+        CartJpaEntity cart = stored.get();
+        if (cart.getStatus() != CartStatus.ACTIVE) {
+            return CHECKOUT_PENDING;
+        }
+        return formatSummary(cart,
+                "¿Confirmás la compra? Respondé 'confirmar compra' para generar un único link de pago. "
+                        + "Si querés cambiar algo, decime qué agregar o sacar.");
     }
 
     private String cancelCheckout(ConversationContext context) {
@@ -232,6 +251,25 @@ public class ConversationalCartService implements CartConversationHandler {
         return Optional.of(new Response(
                 "Entendido, cancelé el checkout anterior. No genero ningún pedido nuevo. "
                         + "Tu carrito queda guardado para cuando quieras retomarlo."));
+    }
+
+    @Override
+    @Transactional
+    public void reset(ConversationContext context) {
+        if (context == null || context.conversationId() == null) {
+            return;
+        }
+        Optional<CartJpaEntity> stored = findOwned(context);
+        if (stored.isEmpty()) {
+            return;
+        }
+        CartJpaEntity cart = stored.get();
+        if (cart.getStatus() == CartStatus.CHECKOUT_PENDING) {
+            checkoutCreator.cancelActive(cart.getId());
+        }
+        cart.reset(clock.instant());
+        cartRepository.saveAndFlush(cart);
+        logOutcome(context, "RESET_WITH_CONVERSATION");
     }
 
     private Optional<CatalogFact> resolveSingleFact(
@@ -319,6 +357,12 @@ public class ConversationalCartService implements CartConversationHandler {
     }
 
     private String formatSummary(CartJpaEntity cart) {
+        return formatSummary(cart,
+                "Si querés seguir modificándolo, decime qué agregar o sacar. Cuando esté listo, "
+                        + "escribí: confirmar compra.");
+    }
+
+    private String formatSummary(CartJpaEntity cart, String closingInstruction) {
         if (cart.getItems().isEmpty()) {
             return EMPTY_CART;
         }
@@ -345,8 +389,7 @@ public class ConversationalCartService implements CartConversationHandler {
                     .append(" (SKU: ").append(line.sku()).append(")\n");
         }
         response.append("Total: ").append(money(total)).append(" ").append(cart.getCurrency()).append("\n")
-                .append("Si querés seguir modificándolo, decime qué agregar o sacar. Cuando esté listo, "
-                        + "escribí: confirmar compra.");
+                .append(closingInstruction);
         return response.toString();
     }
 

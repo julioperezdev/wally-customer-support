@@ -73,6 +73,10 @@ public final class CatalogQueryParser {
                     + "gorra|gorras|zapatilla|zapatillas|zapato|zapatos|pantalon|pantalones|"
                     + "camisa|camisas|short|shorts|accesorio|accesorios|bufanda|bufandas|"
                     + "media|medias)\\b");
+    private static final Pattern GENERAL_CATALOG_REQUEST = Pattern.compile(
+            "\\b(?:que|cuales?)\\s+(?:productos?|opciones?)\\s+(?:tienen|hay|ofrecen|venden|vendes|tenes|tienes)\\b|"
+                    + "\\b(?:que|cuales?)\\s+(?:venden|vendes|ofrecen|tenes|tienes)\\b|"
+                    + "\\b(?:mostrame|muestrame|mostrar)\\s+(?:todo|el\\s+catalogo|los\\s+productos)\\b");
     private static final Pattern AVAILABILITY_FOLLOW_UP = Pattern.compile(
             "\\b(disponible|disponibilidad|hay stock|tiene stock)\\b");
     private static final Pattern PRICE_FOLLOW_UP = Pattern.compile(
@@ -87,7 +91,7 @@ public final class CatalogQueryParser {
                     + "por|para|favor|me|podes|pueden|puedo|cuanto|cuál|cual|es|esta|tiene|stock|disponible|"
                     + "disponibilidad|precio|precios|color|talle|talla|tamano|size|sku|productos?|catalogo|"
                     + "este|estos|esto|algo|"
-                    + "alguna|alguno|que|qué|sea|estilo|mi|ahora|solo|sólo|tambien|también|mejor|tipo|"
+            + "alguna|alguno|que|qué|sea|estilo|mi|ahora|solo|sólo|tambien|también|pero|mejor|tipo|"
                     + "cuesta|cueste|menos|mas|barato|barata|caro|cara|hasta|debajo|encima|entre|"
                     + "opcion|opciones|alternativa|alternativas|mostrame|muestrame|mostrar|anterior|"
                     + "anteriores|eso|esa|esas|asi|algo|y|como|hace|hacen|se|envio|envios|entrega|"
@@ -158,42 +162,30 @@ public final class CatalogQueryParser {
             return Optional.empty();
         }
 
-        CatalogQuery activeQuery = null;
-        List<String> history = boundedHistory.reversed();
-        for (String message : history) {
-            Optional<CatalogQuery> parsed = latestMessage.equals(message) ? latestQuery : parse(message);
-            if (parsed.isPresent()) {
-                activeQuery = activeQuery == null ? parsed.get() : activeQuery.merge(parsed.get());
-            }
-        }
-
-        if (history.isEmpty() || !latestMessage.equals(history.getLast())) {
-            activeQuery = activeQuery == null ? latestQuery.get() : activeQuery.merge(latestQuery.get());
-        }
-
-        // A new product category starts a new selection. Carrying size/color
-        // from an earlier category turns a natural follow-up such as
-        // "busco una remera negra M" -> "quiero un buzo" into an impossible
-        // query (buzo + negro + M), even though the latest turn is explicit.
-        CatalogQuery historicalQuery = null;
-        for (String message : history) {
-            if (latestMessage.equals(message)) {
+        // Start from the latest turn and walk backwards only through the
+        // current catalog selection. The previous implementation merged the
+        // entire bounded history first, so a sequence such as "remera negra"
+        // -> "buzo" -> "talle M" could become the impossible filter
+        // "buzo + negro + M". A different explicit product type is a boundary
+        // and older filters must not cross it.
+        CatalogQuery activeQuery = latestQuery.get();
+        boolean skippedLatestFromHistory = false;
+        for (String message : boundedHistory.reversed()) {
+            if (!skippedLatestFromHistory && java.util.Objects.equals(message, latestMessage)) {
+                skippedLatestFromHistory = true;
                 continue;
             }
             Optional<CatalogQuery> parsed = parse(message);
-            if (parsed.isPresent()) {
-                historicalQuery = historicalQuery == null
-                        ? parsed.get()
-                        : historicalQuery.merge(parsed.get());
+            if (parsed.isEmpty()) {
+                continue;
             }
+            CatalogQuery candidate = parsed.get();
+            if (startsNewProductSelection(activeQuery, candidate)) {
+                break;
+            }
+            activeQuery = activeQuery.mergeMissing(candidate);
         }
-        if (historicalQuery != null
-                && latestQuery.get().productType() != null
-                && historicalQuery.productType() != null
-                && !latestQuery.get().productType().equalsIgnoreCase(historicalQuery.productType())) {
-            return latestQuery;
-        }
-        return Optional.ofNullable(activeQuery);
+        return Optional.of(activeQuery);
     }
 
     public static boolean isContextualContinuation(String message) {
@@ -201,6 +193,25 @@ public final class CatalogQueryParser {
             return false;
         }
         return CONTINUATION_MARKER.matcher(normalize(message)).find();
+    }
+
+    public static boolean isGeneralCatalogRequest(String message) {
+        if (message == null || message.isBlank()) {
+            return false;
+        }
+        return GENERAL_CATALOG_REQUEST.matcher(normalize(message)).find();
+    }
+
+    /**
+     * Returns true for a turn that only adds filters to the active selection,
+     * such as "quiero la talla M" or "que sea negro". These turns must be
+     * resolved against conversation state before accepting a model-provided
+     * catalog query.
+     */
+    public static boolean isFilterOnlyRefinement(String message) {
+        return parse(message)
+                .filter(query -> !query.isEmpty() && !query.hasPrimarySelector())
+                .isPresent();
     }
 
     public static boolean isShippingQuestion(String message) {
@@ -452,6 +463,12 @@ public final class CatalogQueryParser {
             case "camperas" -> "campera";
             default -> productType;
         };
+    }
+
+    private static boolean startsNewProductSelection(CatalogQuery activeQuery, CatalogQuery candidate) {
+        return activeQuery.productType() != null
+                && candidate.productType() != null
+                && !activeQuery.productType().equalsIgnoreCase(candidate.productType());
     }
 
     private static String normalize(String value) {

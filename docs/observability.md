@@ -50,7 +50,7 @@ operacional necesario para diagnóstico y costo, pero sin contenido de negocio.
 | `INBOUND_MESSAGE_FAILED` | `result`, `attempt`, `durationMs`, `errorType`, `correlationId` | Intentos agotados; se encola fallback seguro |
 | `INTENT_CLASSIFIED` | `intent`, `action`, `confidence`, `confidenceBucket`, `rawIntent`, `rawAction`, `rawConfidence`, `deterministicNormalization`, `catalogQueryPresent`, `catalogQueryFilterCount`, `catalogQueryFilters`, `catalogQueryProductType`, `missingParameterCount`, `historyMessageCount`, `durationMs`, `correlationId`, `channel`, `actorKey` opcional | Decisión efectiva del orquestador y evidencia sanitizada de cuánto fue normalizada |
 | `INTENT_DETERMINISTIC_OVERRIDE` | `fromIntent`, `fromConfidence`, `toIntent`, `reason`, `fromCatalogFilterCount`, `fromCatalogFilters`, `toCatalogFilterCount`, `toCatalogFilters`, `fromCatalogProductType`, `toCatalogProductType`, `correlationId`, `channel`, `actorKey` opcional | Rescue determinístico o corrección de una decisión ambigua; permite detectar cuándo el parser contradice al LLM |
-| `CATALOG_SEARCH_COMPLETED` | `source`, `resultStatus`, `resultCount`, `imageCount`, `followUpKind`, `resultReason`, `executionDurationMs`, `queryPresent`, `queryFilterCount`, `queryFilters`, `queryProductType`, `correlationId`, `channel`, `actorKey` opcional | Resultado verificable de catálogo y forma sanitizada de la consulta que se ejecutó |
+| `CATALOG_SEARCH_COMPLETED` | `source`, `queryType`, `resultStatus`, `resultCount`, `imageCount`, `followUpKind`, `resultReason`, `executionDurationMs`, `queryPresent`, `queryFilterCount`, `queryFilters`, `queryProductType`, `correlationId`, `channel`, `actorKey` opcional | Resultado verificable de catálogo y forma sanitizada de la consulta que se ejecutó |
 | `INTENT_CLASSIFICATION_FAILED` | `errorType`, `durationMs` | Fallo del clasificador |
 | `INTENT_COMPOSED` | `primaryIntent`, `secondaryIntent`, `components`, `result` | Consulta acotada que combina catálogo con una política publicada |
 | `AGENT_ACTIVATION_RESOLUTION_SKIPPED` | `useCase`, `reason` | Registry no consultado porque la flag está deshabilitada |
@@ -128,6 +128,13 @@ la consulta ejecutada. No es una métrica de exactitud por sí sola. Para medir
 calidad se deben comparar estos eventos con un dataset etiquetado o con una
 acción posterior del operador, y no inferir "acierto" únicamente desde la
 confianza del modelo.
+
+`queryType` permite agrupar sin inspeccionar el texto del cliente:
+`CATALOG_SEARCH` para búsquedas generales, `STOCK_QUERY`, `PRICE_QUERY`,
+`SIZE_QUERY` y `COLOR_QUERY` para seguimientos, y `UNSUPPORTED_CATALOG` cuando
+se pidió una categoría que WCS no ofrece. Un aumento de `UNSUPPORTED_CATALOG`
+puede indicar una oportunidad de negocio o una brecha del catálogo; no debe
+confundirse con un error de infraestructura.
 
 La versión actual separa además una nueva selección explícita por categoría de
 un refinamiento contextual. Por ejemplo, después de "remera negra talle M",

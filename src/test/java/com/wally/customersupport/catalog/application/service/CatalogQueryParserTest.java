@@ -62,6 +62,15 @@ class CatalogQueryParserTest {
     }
 
     @Test
+    void recognizesARequestToListTheWholeCatalog() {
+        assertTrue(CatalogQueryParser.isGeneralCatalogRequest("¿Qué productos tienen?"));
+        assertTrue(CatalogQueryParser.isGeneralCatalogRequest("¿Qué opciones ofrecen?"));
+        assertTrue(CatalogQueryParser.isGeneralCatalogRequest("¿Qué vendés?"));
+        assertTrue(CatalogQueryParser.isGeneralCatalogRequest("¿Qué tenés?"));
+        assertFalse(CatalogQueryParser.isGeneralCatalogRequest("Quiero la talla M"));
+    }
+
+    @Test
     void recognizesCatalogFollowUpQuestions() {
         assertEquals(CatalogQueryParser.FollowUpKind.AVAILABILITY,
                 CatalogQueryParser.followUpKind("¿Está disponible?"));
@@ -89,6 +98,17 @@ class CatalogQueryParserTest {
         assertEquals("remera", query.productType());
         assertEquals("negro", query.color());
         assertEquals("m", query.size());
+    }
+
+    @Test
+    void appliesAFilterOnlyRefinementToTheCurrentCategoryWithoutStaleFilters() {
+        CatalogQuery query = CatalogQueryParser.parseConversation(
+                List.of("Busco una remera negra talle M", "Quiero un buzo"),
+                "Quiero la talla M").orElseThrow();
+
+        assertEquals("buzo", query.productType());
+        assertEquals("m", query.size());
+        assertNull(query.color());
     }
 
     @Test

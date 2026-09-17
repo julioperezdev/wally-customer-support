@@ -126,6 +126,14 @@ public class CartJpaEntity {
         touch(now);
     }
 
+    /** Resets the cart and invalidates its previous checkout version. */
+    public void reset(Instant now) {
+        items.clear();
+        status = CartStatus.ACTIVE;
+        checkoutOrderId = null;
+        touch(now);
+    }
+
     public void markCheckoutPending(UUID orderId, Instant now) {
         if (orderId == null) {
             throw new CartStateException("ORDER_REQUIRED");

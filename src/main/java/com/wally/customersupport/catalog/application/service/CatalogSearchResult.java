@@ -18,7 +18,8 @@ public record CatalogSearchResult(
         NO_MATCH,
         CLARIFICATION,
         AMBIGUOUS,
-        ALTERNATIVES
+        ALTERNATIVES,
+        UNSUPPORTED_CATEGORY
     }
 
     public enum FollowUpKind {
@@ -39,7 +40,8 @@ public record CatalogSearchResult(
         if (status == Status.MATCHED && facts.isEmpty()) {
             throw new IllegalArgumentException("matched result requires at least one fact");
         }
-        if ((status == Status.NO_MATCH || status == Status.CLARIFICATION || status == Status.AMBIGUOUS)
+        if ((status == Status.NO_MATCH || status == Status.CLARIFICATION || status == Status.AMBIGUOUS
+                || status == Status.UNSUPPORTED_CATEGORY)
                 && !facts.isEmpty()) {
             throw new IllegalArgumentException(status + " result must not expose facts");
         }

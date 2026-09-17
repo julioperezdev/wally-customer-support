@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.wally.customersupport.cart.application.port.in.CartConversationHandler;
 import com.wally.customersupport.conversation.application.port.out.ConversationMemory;
 import com.wally.customersupport.conversation.application.port.out.ConversationRepository;
 import com.wally.customersupport.conversation.application.port.out.MessageRepository;
@@ -68,6 +69,8 @@ class InboundMessageProcessingServiceTest {
     private ContactSuppressionService contactSuppressionService;
     @Mock
     private HumanFollowUpTaskService humanFollowUpTaskService;
+    @Mock
+    private CartConversationHandler cartConversationHandler;
 
     private InboundMessageProcessingService service;
     private Conversation conversation;
@@ -90,6 +93,7 @@ class InboundMessageProcessingServiceTest {
                 optInDetector,
                 contactSuppressionService,
                 humanFollowUpTaskService,
+                cartConversationHandler,
                 new InboundProcessingProperties(1000, 20, 3, Duration.ofMinutes(5), Duration.ofSeconds(30)),
                 Clock.fixed(NOW, ZoneOffset.UTC));
         UUID conversationId = UUID.randomUUID();
@@ -170,6 +174,7 @@ class InboundMessageProcessingServiceTest {
                 conversation.channel(), conversation.externalCustomerId(), message.id(), NOW);
         verify(conversationMemory).clear(conversation.id(), conversation.id().toString());
         verify(customerPreferenceService).clearConversation(conversation.id(), conversation.id().toString());
+        verify(cartConversationHandler).reset(any());
         verify(conversationOrchestrator, never()).replyForDetailed(any());
         verify(outboxRepository, never()).save(any());
         verify(processingAttemptRepository).markCompleted(attempt.id(), NOW);
@@ -187,6 +192,7 @@ class InboundMessageProcessingServiceTest {
                 conversation.channel(), conversation.externalCustomerId(), NOW);
         verify(conversationMemory).clear(conversation.id(), conversation.id().toString());
         verify(customerPreferenceService).clearConversation(conversation.id(), conversation.id().toString());
+        verify(cartConversationHandler).reset(any());
         verify(conversationMemory).save(org.mockito.ArgumentMatchers.argThat(state ->
                 state.conversationId().equals(conversation.id())
                         && state.recentMessages().isEmpty()

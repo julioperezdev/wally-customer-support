@@ -94,6 +94,22 @@ class CatalogConversationServiceTest {
     }
 
     @Test
+    void ignoresStaleFiltersWhenTheCustomerRequestsTheWholeCatalog() {
+        when(catalogQueryService.searchAll(5))
+                .thenReturn(List.of(product("Buzo Spring Boot", "RP-BUZ-SB-GRI-L", "L", "Gris", 5)));
+
+        CatalogSearchResult result = new CatalogConversationService(catalogQueryService)
+                .search(
+                        new CatalogQuery(null, null, "M", null, "buzo"),
+                        List.of("Quiero la talla M", "Quiero un buzo"),
+                        "¿Qué productos tienen?")
+                .orElseThrow();
+
+        assertEquals(CatalogSearchResult.Status.MATCHED, result.status());
+        verify(catalogQueryService).searchAll(5);
+    }
+
+    @Test
     void answersAvailabilityUsingTheSinglePreviousCatalogResult() {
         CatalogProduct product = product("Remera NullPointer", "RP-REM-NP-NEG-M", "M", "Negro", 12);
         when(catalogQueryService.search(argThat(query ->
@@ -184,17 +200,14 @@ class CatalogConversationServiceTest {
     }
 
     @Test
-    void usesTheSameSafeFallbackForAnUnsupportedCatalogCategory() {
-        when(catalogQueryService.search(argThat(query -> "gorras".equals(query.name()))))
-                .thenReturn(List.of());
-
+    void explainsWhenTheRequestedCatalogCategoryIsNotSupported() {
         String reply = new CatalogConversationService(catalogQueryService)
                 .replyFor("¿Venden gorras?")
                 .orElseThrow();
 
         assertEquals(
-                "No encontré coincidencias en el catálogo demo para esa consulta. "
-                        + "No puedo confirmar disponibilidad fuera de los datos registrados.",
+                "Por ahora no ofrecemos gorras. Nuestro catálogo actual incluye remeras, buzos y camperas. "
+                        + "Si querés, puedo mostrarte esas opciones.",
                 reply);
     }
 

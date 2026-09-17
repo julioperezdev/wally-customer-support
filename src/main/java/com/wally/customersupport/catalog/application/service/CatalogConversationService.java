@@ -40,10 +40,18 @@ public class CatalogConversationService {
             CatalogQuery query,
             List<String> recentMessages,
             String latestMessage) {
-        if (query == null) {
+        CatalogQuery effectiveQuery = CatalogQueryParser.isGeneralCatalogRequest(latestMessage)
+                ? CatalogQuery.empty()
+                : query;
+        if (effectiveQuery == null) {
             return Optional.of(clarification("QUERY_REQUIRED"));
         }
-        CatalogQuery activeQuery = resolveActiveQuery(query, recentMessages, latestMessage);
+        if (CatalogQueryParser.isUnsupportedCatalogCategory(latestMessage)) {
+            CatalogQuery parsedLatest = CatalogQueryParser.parse(latestMessage).orElse(query);
+            String requestedCategory = parsedLatest.name() == null ? query.name() : parsedLatest.name();
+            return Optional.of(unsupportedCategory(requestedCategory));
+        }
+        CatalogQuery activeQuery = resolveActiveQuery(effectiveQuery, recentMessages, latestMessage);
         CatalogQueryParser.FollowUpKind followUpKind = CatalogQueryParser.followUpKind(latestMessage);
         if (followUpKind != CatalogQueryParser.FollowUpKind.NONE) {
             return Optional.of(searchFollowUp(activeQuery, followUpKind));
@@ -181,6 +189,15 @@ public class CatalogConversationService {
                 null,
                 CatalogSearchResult.FollowUpKind.NONE,
                 "NO_MATCH");
+    }
+
+    private static CatalogSearchResult unsupportedCategory(String requestedCategory) {
+        return new CatalogSearchResult(
+                CatalogSearchResult.Status.UNSUPPORTED_CATEGORY,
+                List.of(),
+                requestedCategory,
+                CatalogSearchResult.FollowUpKind.NONE,
+                "UNSUPPORTED_CATEGORY");
     }
 
     private static CatalogSearchResult.FollowUpKind toResultFollowUpKind(

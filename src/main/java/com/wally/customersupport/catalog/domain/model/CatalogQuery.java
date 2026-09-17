@@ -102,6 +102,25 @@ public record CatalogQuery(
                 patch.maxPrice() == null ? maxPrice : patch.maxPrice());
     }
 
+    /**
+     * Completes this query only with values that are not already present.
+     * This is used while walking history backwards: the latest turn wins and
+     * older turns may only provide missing context.
+     */
+    public CatalogQuery mergeMissing(CatalogQuery fallback) {
+        if (fallback == null) {
+            return this;
+        }
+        return new CatalogQuery(
+                name == null ? fallback.name() : name,
+                sku == null ? fallback.sku() : sku,
+                size == null ? fallback.size() : size,
+                color == null ? fallback.color() : color,
+                productType == null ? fallback.productType() : productType,
+                minPrice == null ? fallback.minPrice() : minPrice,
+                maxPrice == null ? fallback.maxPrice() : maxPrice);
+    }
+
     public CatalogQuery withoutProductType() {
         return new CatalogQuery(name, sku, size, color, null, minPrice, maxPrice);
     }

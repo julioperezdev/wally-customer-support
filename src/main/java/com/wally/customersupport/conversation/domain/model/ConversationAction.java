@@ -15,6 +15,7 @@ public enum ConversationAction {
     VIEW_CART,
     REMOVE_FROM_CART,
     CLEAR_CART,
+    REVIEW_CHECKOUT,
     CONFIRM_CHECKOUT,
     CANCEL_CHECKOUT,
     PURCHASE_LINK,
@@ -45,6 +46,7 @@ public enum ConversationAction {
                 || this == VIEW_CART
                 || this == REMOVE_FROM_CART
                 || this == CLEAR_CART
+                || this == REVIEW_CHECKOUT
                 || this == CONFIRM_CHECKOUT
                 || this == CANCEL_CHECKOUT;
     }

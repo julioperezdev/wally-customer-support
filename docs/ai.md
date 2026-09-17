@@ -185,7 +185,9 @@ El router responde sólo este contrato, sin SQL ni datos de negocio:
 `action` es una operación allow-listed que el backend puede ejecutar; no es un
 nombre de tool ni una instrucción ejecutable. Para acciones de carrito se
 aceptan `ADD_TO_CART`, `VIEW_CART`, `REMOVE_FROM_CART`, `CLEAR_CART`,
-`CONFIRM_CHECKOUT` y `CANCEL_CHECKOUT`. El router puede indicar
+`REVIEW_CHECKOUT`, `CONFIRM_CHECKOUT` y `CANCEL_CHECKOUT`. `REVIEW_CHECKOUT`
+solamente presenta el resumen vigente y solicita una confirmación; no crea
+pedidos ni links. El router puede indicar
 `missingParameters` para pedir una aclaración antes de ejecutar. `quantity` se
 normaliza a un rango acotado por el backend.
 
