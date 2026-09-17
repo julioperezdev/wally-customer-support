@@ -3,7 +3,7 @@
 Owner: Tech Lead  
 Status: `Accepted`
 Last reviewed: 2026-09-08
-Related Jira: `WCS-13`, `WCS-17`, `WCS-18`, `WCS-20`, `WCS-21`, `WCS-22`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-32`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-71`, `WCS-72`, `WCS-73`, `WCS-74`, `WCS-75`, `WCS-76`, `WCS-77`, `WCS-78`
+Related Jira: `WCS-13`, `WCS-17`, `WCS-18`, `WCS-20`, `WCS-21`, `WCS-22`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-32`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-71`, `WCS-72`, `WCS-73`, `WCS-74`, `WCS-75`, `WCS-76`, `WCS-77`, `WCS-78`, `WCS-130`
 Related repository paths: `src/main/java/com/wally/customersupport/{conversation,catalog,support,knowledge,shared}`, `src/main/resources`, `db/migration`
 Decision/source: specification de WhatsApp y re-baseline solicitada el 2026-08-30
 
@@ -405,10 +405,11 @@ Los nombres y contratos son internos de WCS; ningún adapter debe filtrarlos con
 
 El flujo conversacional pasa por `ConversationOrchestrator`, que usa el puerto
 `ConversationIntentClassifier` para convertir lenguaje natural en una decisión
-estructurada. Las decisiones permitidas son `GREETING`, `CATALOG_SEARCH`,
-`BUSINESS_HOURS`, `POLICY_QUERY`, `HUMAN_HANDOFF`, `GENERAL_SUPPORT` y
-`UNKNOWN`. El orquestador invoca el caso de uso correspondiente; no ejecuta
-acciones derivadas directamente de texto libre.
+estructurada. Desde `WCS-130`, esa decisión incluye `intent`, `action`,
+`confidence`, `catalogQuery`, `quantity` y `missingParameters`. Las acciones
+son un catálogo cerrado; no son SQL ni nombres libres de herramientas. El
+orquestador valida la decisión y delega en el caso de uso correspondiente; no
+ejecuta acciones derivadas directamente de texto libre.
 
 Desde `WCS-50`, el contexto interno conserva el canal de entrada y el
 orquestador puede consultar el registry mediante `AgentActivationResolver`
@@ -428,10 +429,12 @@ no existe o el hash falla, se conserva el flujo anterior con fallback seguro.
 El catálogo continúa siendo determinístico y consulta PostgreSQL sólo a
 través de sus tools WCS.
 
-En `CATALOG_SEARCH`, el clasificador sólo extrae filtros
-`name`/`sku`/`size`/`color`. El catálogo se consulta con esos filtros y
-resultados determinísticos de PostgreSQL. El LLM no genera SQL ni inventa
-precio, stock, políticas u horarios.
+En `CATALOG_SEARCH`, el router sólo extrae filtros
+`name`/`sku`/`size`/`color`/`productType`/rango de precio. En las acciones de
+carrito también puede extraer cantidad y parámetros faltantes. El caso de uso
+valida esos datos, consulta el catálogo con filtros parametrizados y aplica las
+reglas de ownership, stock, precio e idempotencia. El LLM no genera SQL ni
+inventa precio, stock, políticas u horarios.
 Las imágenes se modelan como referencias de objeto S3 y su envío por WhatsApp
 queda fuera del MVP.
 
@@ -472,8 +475,10 @@ los ARNs allowlisted y registra versión/hash, nunca el contenido.
 5. `ConversationOrchestrator` reconoce primero comandos determinísticos de
    carrito y ejecuta agregar, consultar, modificar o confirmar sin depender de
    la clasificación del LLM.
-6. Si no es una acción de carrito, clasifica la intención y ejecuta catálogo,
-   horarios, políticas, handoff o soporte general.
+6. Si no es un comando determinístico, el router Bedrock propone una intención
+   y una acción estructurada; el backend valida confianza, parámetros y
+   allow-list antes de ejecutar catálogo, carrito, horarios, políticas, handoff
+   o soporte general.
 7. Las consultas documentales consultan `KnowledgeRetriever`; las consultas
    dinámicas usan tools WCS y fuentes transaccionales antes de generar la
    respuesta detrás de `LlmClient`.

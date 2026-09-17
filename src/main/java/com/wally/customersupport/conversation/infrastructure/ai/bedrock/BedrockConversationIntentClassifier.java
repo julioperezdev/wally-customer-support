@@ -9,6 +9,7 @@ import java.util.Set;
 import com.wally.customersupport.catalog.domain.model.CatalogQuery;
 import com.wally.customersupport.conversation.application.port.out.ConversationIntentClassifier;
 import com.wally.customersupport.conversation.domain.model.ConversationContext;
+import com.wally.customersupport.conversation.domain.model.ConversationAction;
 import com.wally.customersupport.conversation.domain.model.ConversationIntent;
 import com.wally.customersupport.conversation.domain.model.ConversationIntentDecision;
 import com.wally.customersupport.conversation.domain.model.CustomerPreference;
@@ -38,7 +39,7 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
         this(
                 converseClient,
                 objectMapper,
-                new AiPromptProperties("conversation-intent-v2", 1_024, BigDecimal.ZERO, 2_000, 12),
+                new AiPromptProperties("conversation-intent-v3", 1_024, BigDecimal.ZERO, 2_000, 12),
                 new ClasspathPromptRegistry());
     }
 
@@ -80,18 +81,59 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
         try {
             JsonNode root = objectMapper.readTree(extractJsonObject(output));
             ConversationIntent intent = parseIntent(root.path("intent").asText(null));
+            ConversationAction action = parseAction(root.path("action").asText(null), intent);
             double confidence = parseConfidence(root.path("confidence"), intent);
-            CatalogQuery catalogQuery = intent == ConversationIntent.CATALOG_SEARCH
-                    || intent == ConversationIntent.PURCHASE_LINK
+            CatalogQuery catalogQuery = action == ConversationAction.CATALOG_SEARCH
+                    || action == ConversationAction.PURCHASE_LINK
+                    || action.isCartOperation()
                     ? catalogQuery(root.path("catalogQuery"))
                     : null;
             String policyKey = intent == ConversationIntent.POLICY_QUERY
                     ? policyKey(root.path("policyKey").asText(null))
                     : null;
-            return new ConversationIntentDecision(intent, confidence, catalogQuery, policyKey);
+            return new ConversationIntentDecision(
+                    intent,
+                    action,
+                    confidence,
+                    catalogQuery,
+                    policyKey,
+                    parseQuantity(root.path("quantity")),
+                    missingParameters(root.path("missingParameters")));
         } catch (RuntimeException exception) {
             return ConversationIntentDecision.unknown();
         }
+    }
+
+    private ConversationAction parseAction(String value, ConversationIntent intent) {
+        if (value == null || value.isBlank()) {
+            return ConversationAction.fromIntent(intent);
+        }
+        try {
+            return ConversationAction.valueOf(value.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException exception) {
+            return ConversationAction.UNKNOWN;
+        }
+    }
+
+    private int parseQuantity(JsonNode node) {
+        if (node == null || node.isMissingNode() || node.isNull() || !node.isNumber()) {
+            return 1;
+        }
+        return Math.max(1, Math.min(100, node.asInt()));
+    }
+
+    private List<String> missingParameters(JsonNode node) {
+        if (node == null || !node.isArray()) {
+            return List.of();
+        }
+        List<String> values = new ArrayList<>();
+        for (JsonNode value : node) {
+            String text = value.asText(null);
+            if (text != null && text.matches("[a-zA-Z][a-zA-Z0-9_.-]{0,31}")) {
+                values.add(text.toLowerCase(Locale.ROOT));
+            }
+        }
+        return values;
     }
 
     private double parseConfidence(JsonNode node, ConversationIntent intent) {

@@ -23,6 +23,7 @@ import com.wally.customersupport.catalog.application.service.CatalogQueryParser;
 import com.wally.customersupport.catalog.application.service.CatalogSearchResult;
 import com.wally.customersupport.catalog.domain.model.CatalogQuery;
 import com.wally.customersupport.cart.application.port.in.CartConversationHandler;
+import com.wally.customersupport.cart.application.service.CartCommandParser;
 import com.wally.customersupport.conversation.application.port.out.ConversationIntentClassifier;
 import com.wally.customersupport.conversation.application.port.out.PurchaseLinkCreator;
 import com.wally.customersupport.knowledge.application.port.out.KnowledgeRetriever;
@@ -323,8 +324,18 @@ public class ConversationOrchestrator {
         }
         decision = normalizeDeterministicPurchaseDecision(context, decision);
         decision = normalizeDeterministicCatalogDecision(context, decision);
+        Optional<CartConversationHandler.Response> structuredCartResponse = handleStructuredCartCommand(context, decision);
+        if (structuredCartResponse.isPresent()) {
+            return executePlan(
+                    context,
+                    executionPlanFactory.cart(),
+                    decision,
+                    startedAt,
+                    RenderedResponse.text(structuredCartResponse.get().text()));
+        }
         Map<String, Object> classifiedFields = new LinkedHashMap<>();
         classifiedFields.put("intent", decision.intent().name());
+        classifiedFields.put("action", decision.action().name());
         classifiedFields.put("confidence", decision.confidence());
         classifiedFields.put("durationMs", elapsedMillis(startedAt));
         addConversationIdentity(classifiedFields, context);
@@ -439,6 +450,43 @@ public class ConversationOrchestrator {
         }
     }
 
+    private Optional<CartConversationHandler.Response> handleStructuredCartCommand(
+            ConversationContext context,
+            ConversationIntentDecision decision) {
+        if (decision == null
+                || !decision.action().isCartOperation()
+                || !executionPlanFactory.isConfident(decision.confidence())) {
+            return Optional.empty();
+        }
+        if (!decision.missingParameters().isEmpty()) {
+            return Optional.of(new CartConversationHandler.Response(
+                    "Para continuar necesito estos datos: "
+                            + String.join(", ", decision.missingParameters()) + "."));
+        }
+        CartCommandParser.Action action = switch (decision.action()) {
+            case ADD_TO_CART -> CartCommandParser.Action.ADD;
+            case VIEW_CART -> CartCommandParser.Action.VIEW;
+            case REMOVE_FROM_CART -> CartCommandParser.Action.REMOVE;
+            case CLEAR_CART -> CartCommandParser.Action.CLEAR;
+            case CONFIRM_CHECKOUT -> CartCommandParser.Action.CONFIRM;
+            case CANCEL_CHECKOUT -> CartCommandParser.Action.CANCEL_CHECKOUT;
+            default -> null;
+        };
+        if (action == null) {
+            return Optional.empty();
+        }
+        try {
+            return cartConversationHandler.handle(
+                    context,
+                    new CartCommandParser.Command(action, decision.catalogQuery(), decision.quantity()));
+        } catch (RuntimeException exception) {
+            StructuredEventLog.warn(log, "CONVERSATIONAL_CART_FAILED", Map.of(
+                    "errorType", exception.getClass().getSimpleName(),
+                    "action", decision.action().name()));
+            return Optional.of(new CartConversationHandler.Response(SAFE_FALLBACK));
+        }
+    }
+
     private ConversationIntentDecision normalizeDeterministicPurchaseDecision(
             ConversationContext context,
             ConversationIntentDecision decision) {
@@ -459,6 +507,7 @@ public class ConversationOrchestrator {
             ConversationIntentDecision decision) {
         if (context == null
                 || decision == null
+                || decision.action().isCartOperation()
                 || !isCatalogNormalizationCandidate(decision.intent())) {
             return decision;
         }

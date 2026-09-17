@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -28,6 +29,7 @@ import com.wally.customersupport.agent.application.service.AgentRuntimeDefinitio
 import com.wally.customersupport.agent.application.service.AgentShadowRuntimeService;
 import com.wally.customersupport.agent.application.service.CatalogSpecialistExecutionResult;
 import com.wally.customersupport.cart.application.port.in.CartConversationHandler;
+import com.wally.customersupport.cart.application.service.CartCommandParser;
 import com.wally.customersupport.conversation.application.port.out.ConversationIntentClassifier;
 import com.wally.customersupport.conversation.application.port.out.PurchaseLinkCreator;
 import com.wally.customersupport.conversation.application.port.out.ResponseHumanizer;
@@ -42,6 +44,7 @@ import com.wally.customersupport.support.domain.model.BusinessHour;
 import com.wally.customersupport.catalog.domain.model.CatalogQuery;
 import com.wally.customersupport.agent.domain.model.AgentInferenceParameters;
 import com.wally.customersupport.conversation.domain.model.ConversationContext;
+import com.wally.customersupport.conversation.domain.model.ConversationAction;
 import com.wally.customersupport.conversation.domain.model.Channel;
 import com.wally.customersupport.conversation.domain.model.ConversationExecutionResult;
 import com.wally.customersupport.conversation.domain.model.ConversationIntent;
@@ -161,6 +164,54 @@ class ConversationOrchestratorTest {
         assertEquals("Tu carrito está vacío.", cartOrchestrator.replyFor(cartContext));
         verify(cartConversationHandler).handle(cartContext);
         verify(intentClassifier, never()).classify(any(ConversationContext.class));
+    }
+
+    @Test
+    void executesStructuredCartActionProposedByTheRouter() {
+        ConversationOrchestrator cartOrchestrator = new ConversationOrchestrator(
+                intentClassifier,
+                catalogConversationService,
+                supportConfigurationQueryService,
+                knowledgeRetriever,
+                llmClient,
+                new RagProperties("mock", 5, null, null),
+                new ConversationExecutionPlanFactory(),
+                agentActivationResolver,
+                agentRuntimeDefinitionResolver,
+                new AgentRuntimeProperties(false, "prod", false, Duration.ofSeconds(5), "noop", "test", 0),
+                catalogSpecialistExecutor,
+                responseHumanizer,
+                agentShadowRuntimeService,
+                new ActorKeyGenerator(new ObservabilityProperties("test-actor-key")),
+                new com.wally.customersupport.agent.application.service.AgentExecutionTraceRecorder(),
+                purchaseLinkCreator,
+                cartConversationHandler);
+        ConversationContext cartContext = new ConversationContext(
+                context.conversationId(),
+                context.externalCustomerId(),
+                "Sumame dos de esos, el negro talle XL",
+                List.of("Busco un buzo Spring Boot", "Sumame dos de esos, el negro talle XL"),
+                List.of(),
+                null,
+                List.of(),
+                Channel.TELEGRAM);
+        CatalogQuery query = new CatalogQuery("spring boot", null, "XL", "negro", "buzo", null, null);
+        when(intentClassifier.classify(cartContext)).thenReturn(new ConversationIntentDecision(
+                ConversationIntent.CATALOG_SEARCH,
+                ConversationAction.ADD_TO_CART,
+                0.96,
+                query,
+                null,
+                2,
+                List.of()));
+        when(cartConversationHandler.handle(eq(cartContext), any(CartCommandParser.Command.class)))
+                .thenReturn(Optional.of(new CartConversationHandler.Response("Agregué 2 al carrito.")));
+
+        assertEquals("Agregué 2 al carrito.", cartOrchestrator.replyFor(cartContext));
+        verify(cartConversationHandler).handle(eq(cartContext), argThat(command ->
+                command.action() == CartCommandParser.Action.ADD
+                        && command.quantity() == 2
+                        && "spring boot".equals(command.query().name())));
     }
 
     @Test
