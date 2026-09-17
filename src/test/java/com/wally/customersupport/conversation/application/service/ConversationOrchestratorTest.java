@@ -446,6 +446,41 @@ class ConversationOrchestratorTest {
     }
 
     @Test
+    void ignoresStaleModelFiltersWhenTheCustomerRequestsTheWholeCatalog() {
+        String latestMessage = "¿Qué productos tienen?";
+        ConversationContext catalogContext = new ConversationContext(
+                context.conversationId(),
+                context.externalCustomerId(),
+                latestMessage,
+                List.of(latestMessage, "Quiero la talla M", "Quiero un buzo"),
+                List.of(),
+                null,
+                List.of(),
+                Channel.TELEGRAM);
+        CatalogQuery staleQuery = new CatalogQuery(null, null, "M", null, "buzo");
+        when(intentClassifier.classify(catalogContext))
+                .thenReturn(new ConversationIntentDecision(
+                        ConversationIntent.CATALOG_SEARCH, 0.95, staleQuery, null));
+        when(catalogConversationService.search(
+                eq(CatalogQuery.empty()), eq(catalogContext.recentMessages()), eq(latestMessage)))
+                .thenReturn(Optional.of(new CatalogSearchResult(
+                        CatalogSearchResult.Status.MATCHED,
+                        List.of(new CatalogFact(
+                                "Buzo Spring Boot", "RP-BUZ-SB-GRI-L", "L", "Gris",
+                                new BigDecimal("42900.00"), "ARS", 5)),
+                        null,
+                        CatalogSearchResult.FollowUpKind.NONE,
+                        "MATCHED")));
+
+        ConversationExecutionResult result = orchestrator.replyForDetailed(catalogContext);
+
+        assertEquals("CATALOG_SEARCH", result.useCase());
+        assertTrue(result.response().contains("Buzo Spring Boot"));
+        verify(catalogConversationService).search(
+                eq(CatalogQuery.empty()), eq(catalogContext.recentMessages()), eq(latestMessage));
+    }
+
+    @Test
     void mergesCatalogContextWhenTheLatestBedrockQueryContainsOnlyTheSize() {
         String latestMessage = "Quiero la talla M";
         ConversationContext followUpContext = new ConversationContext(

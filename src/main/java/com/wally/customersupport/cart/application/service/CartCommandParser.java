@@ -17,6 +17,7 @@ public final class CartCommandParser {
         VIEW,
         REMOVE,
         CLEAR,
+        REVIEW_CHECKOUT,
         CONFIRM,
         CANCEL_CHECKOUT,
         DEFER
@@ -30,6 +31,10 @@ public final class CartCommandParser {
     private static final Pattern CANCEL_CHECKOUT = Pattern.compile(
             "\\b(cancelar|cancela|anular|anula)\\b.*\\b(compra|pedido|checkout|pago|link)\\b|"
                     + "\\b(cambiar|modificar)\\b.*\\b(carrito|compra|pedido)\\b");
+    private static final Pattern REVIEW_CHECKOUT = Pattern.compile(
+            "\\b(?:quiero|deseo|necesito)\\s+pagar\\b|"
+                    + "\\bestoy\\s+list[oa]\\s+para\\s+pagar\\b|"
+                    + "\\b(?:quiero|deseo|necesito)\\s+(?:hacer|realizar|iniciar)\\s+(?:el\\s+)?(?:pago|checkout)\\b");
     private static final Pattern CONFIRM = Pattern.compile(
             "\\b(confirmar|confirmo|confirmá|confirmame|finalizar|finalizo)\\b.*\\b(compra|pedido|carrito|pago)?\\b|"
                     + "\\b(generar|genera|generame|pasame)\\b.*\\b(link|enlace)\\b.*\\b(pago|carrito|compra)?\\b");
@@ -63,6 +68,9 @@ public final class CartCommandParser {
         }
         if (CANCEL_CHECKOUT.matcher(normalized).find()) {
             return new Command(Action.CANCEL_CHECKOUT, null, 1);
+        }
+        if (REVIEW_CHECKOUT.matcher(normalized).find()) {
+            return new Command(Action.REVIEW_CHECKOUT, null, 1);
         }
         if (CONFIRM.matcher(normalized).find()) {
             return new Command(Action.CONFIRM, null, 1);

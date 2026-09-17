@@ -477,6 +477,7 @@ public class ConversationOrchestrator {
             case VIEW_CART -> CartCommandParser.Action.VIEW;
             case REMOVE_FROM_CART -> CartCommandParser.Action.REMOVE;
             case CLEAR_CART -> CartCommandParser.Action.CLEAR;
+            case REVIEW_CHECKOUT -> CartCommandParser.Action.REVIEW_CHECKOUT;
             case CONFIRM_CHECKOUT -> CartCommandParser.Action.CONFIRM;
             case CANCEL_CHECKOUT -> CartCommandParser.Action.CANCEL_CHECKOUT;
             default -> null;
@@ -523,18 +524,24 @@ public class ConversationOrchestrator {
 
         // Bedrock v4 returns a structured query for explicit selections. Keep
         // that decision when it is confident and contains a primary selector;
-        // otherwise the deterministic parser is allowed to rescue ambiguous
-        // or partial turns such as "quiero la talla M" from conversation state.
-        if (decision.intent() == ConversationIntent.CATALOG_SEARCH
+        // a filter-only turn is different: it must be resolved against the
+        // active conversation selection even when the model copied stale
+        // selectors from its context (for example, "quiero la talla M").
+        boolean filterOnlyRefinement = CatalogQueryParser.isFilterOnlyRefinement(context.latestMessage());
+        boolean generalCatalogRequest = CatalogQueryParser.isGeneralCatalogRequest(context.latestMessage());
+        if (!filterOnlyRefinement && !generalCatalogRequest
+                && decision.intent() == ConversationIntent.CATALOG_SEARCH
                 && executionPlanFactory.isConfident(decision.confidence())
                 && decision.catalogQuery() != null
                 && decision.catalogQuery().hasPrimarySelector()) {
             return decision;
         }
 
-        Optional<CatalogQuery> parsedQuery = CatalogQueryParser.parseConversation(
-                context.recentMessages(), context.latestMessage())
-                .filter(query -> !query.isEmpty());
+        Optional<CatalogQuery> parsedQuery = generalCatalogRequest
+                ? Optional.of(CatalogQuery.empty())
+                : CatalogQueryParser.parseConversation(
+                        context.recentMessages(), context.latestMessage())
+                        .filter(query -> !query.isEmpty());
         if (parsedQuery.isEmpty()) {
             return decision;
         }
@@ -553,7 +560,9 @@ public class ConversationOrchestrator {
         fields.put("fromIntent", decision.intent().name());
         fields.put("fromConfidence", decision.confidence());
         fields.put("toIntent", ConversationIntent.CATALOG_SEARCH.name());
-        fields.put("reason", "STRUCTURED_CATALOG_QUERY");
+        fields.put("reason", generalCatalogRequest
+                ? "GENERAL_CATALOG_REQUEST"
+                : "STRUCTURED_CATALOG_QUERY");
         addCatalogQueryFields(fields, "fromCatalog", decision.catalogQuery());
         addCatalogQueryFields(fields, "toCatalog", query);
         addConversationIdentity(fields, context);
@@ -701,9 +710,26 @@ public class ConversationOrchestrator {
         fields.put("followUpKind", result == null ? null : result.followUpKind().name());
         fields.put("resultReason", result == null ? "NO_RESULT" : result.reason());
         fields.put("executionDurationMs", executionDurationMs);
+        fields.put("queryType", queryType(result));
         addCatalogQueryFields(fields, "query", decision == null ? null : decision.catalogQuery());
         addConversationIdentity(fields, context);
         StructuredEventLog.info(log, "CATALOG_SEARCH_COMPLETED", fields);
+    }
+
+    private static String queryType(CatalogSearchResult result) {
+        if (result == null) {
+            return "CATALOG_SEARCH";
+        }
+        if (result.status() == CatalogSearchResult.Status.UNSUPPORTED_CATEGORY) {
+            return "UNSUPPORTED_CATALOG";
+        }
+        return switch (result.followUpKind()) {
+            case AVAILABILITY -> "STOCK_QUERY";
+            case PRICE -> "PRICE_QUERY";
+            case SIZE -> "SIZE_QUERY";
+            case COLOR -> "COLOR_QUERY";
+            case NONE -> "CATALOG_SEARCH";
+        };
     }
 
     private RenderedResponse executePurchaseLink(

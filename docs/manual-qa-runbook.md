@@ -150,13 +150,13 @@ exclusivamente con el perfil `feature-flags`.
 | `MAN-031` | Catálogo PostgreSQL | `Busco una remera negra talle M que cueste menos de 20000` | Devuelve sólo la variante que cumple nombre/tipo, color, talle y precio | `PENDIENTE` |
 | `MAN-032` | Contexto estructurado del turno | `¿Está disponible?` y luego `¿Cuánto cuesta?` | Reconsulta stock y precio vigentes del producto correcto | `PENDIENTE` |
 | `MAN-033` | Refinamiento multi-turno | `Quiero algo para el frío`; luego `Mejor un buzo`; luego `¿Qué opciones tienen?` | Conserva el filtro válido y devuelve buzos, sin mezclar remeras | `PENDIENTE` |
-| `MAN-034` | Pregunta inexistente | `¿Venden zapatillas?` | No inventa productos; informa que no hay coincidencias o deriva | `PENDIENTE` |
+| `MAN-034` | Categoría no ofrecida | `¿Venden zapatillas?` | Informa que actualmente no ofrece zapatillas y sugiere remeras, buzos o camperas; no inventa productos | `PENDIENTE` |
 | `MAN-035` | Knowledge Base WCS | `¿Dónde están ubicados?` | Responde con la ubicación publicada en la KB, sin inventar datos | `PENDIENTE` |
 | `MAN-036` | Knowledge Base WCS | `¿A qué hora están abiertos el sábado?` | Responde sábado `10:00 a 14:00` y la zona horaria configurada | `PENDIENTE` |
 | `MAN-037` | Política de envíos | `¿Cómo funcionan los envíos?` | Responde sólo con la política demo publicada | `PENDIENTE` |
 | `MAN-038` | Handoff humano | `Necesito hablar con un humano` | Crea una solicitud priorizada; informa atención dentro de 24 horas | `PENDIENTE` |
 | `MAN-039` | Opt-out | `BAJA` o `STOP` | Suprime el contacto, no llama a IA y no envía una respuesta automática posterior | `PENDIENTE` |
-| `MAN-040` | Reactivación | `ALTA`, `REANUDAR` o `/start` después de una baja | Reactiva el chat, limpia el contexto anterior y permite una nueva conversación | `PENDIENTE` |
+| `MAN-040` | Reactivación | `ALTA`, `REANUDAR` o `/start` después de una baja | Reactiva el chat, limpia memoria/preferencias y carrito, cancela checkout pendiente y permite una nueva conversación | `PENDIENTE` |
 | `MAN-041` | Catálogo con una única variante e imagen cargada | `Busco la remera NullPointer negra talle M` | Telegram entrega una imagen del producto y el texto como caption | `PENDIENTE` |
 | `MAN-042` | Catálogo con varias variantes | `¿Qué remeras tienen?` | Telegram entrega un listado textual sin enviar una imagen por cada variante | `PENDIENTE` |
 | `MAN-043` | Seguimiento de una variante | `¿Está disponible?` después de una búsqueda única | La respuesta de stock es textual y no repite la imagen | `PENDIENTE` |
@@ -213,12 +213,14 @@ Usar `/start` antes de comenzar para aislar la evidencia de la prueba.
 | `CART-002` | Carrito multiítem | `Sumá 1 buzo Spring Boot negro talle XL al carrito` | Conserva la remera y agrega el buzo como segunda línea; no crea ningún pedido | `PENDIENTE` |
 | `CART-003` | Resumen dinámico | `¿Qué hay en mi carrito?` | Muestra ambas líneas, cantidad, subtotal, total y stock vigente | `PENDIENTE` |
 | `CART-004` | Modificación previa al checkout | `Sacá 1 remera NullPointer negra talle M` | Reduce sólo esa línea y recalcula el total | `PENDIENTE` |
-| `CART-005` | Confirmación explícita | `Confirmar compra` | Crea un único pedido `PENDING_PAYMENT` con todas las líneas y devuelve un único link | `PENDIENTE` |
-| `CART-006` | Idempotencia por versión | Repetir `Confirmar compra` sin modificar el carrito | Devuelve/reutiliza el mismo pedido y link; no duplica la orden | `PENDIENTE` |
-| `CART-007` | Cancelación segura | `Cancelar el link de pago` y luego `¿Qué hay en mi carrito?` | Cancela el checkout anterior, reabre el carrito y conserva sus líneas | `PENDIENTE` |
-| `CART-008` | Nueva versión | Agregar o quitar una línea y volver a confirmar | Genera un nuevo checkout asociado a una versión posterior del carrito | `PENDIENTE` |
-| `CART-009` | Ambigüedad | `Agregá una remera negra al carrito` si hay más de una variante | Pide talle/producto/color; no agrega ni genera pedido | `PENDIENTE` |
-| `CART-010` | Stock | Intentar agregar más unidades que el stock disponible | Rechaza la operación y deja el carrito sin cambios | `PENDIENTE` |
+| `CART-005` | Revisión previa | `Quiero pagar` | Muestra todas las líneas y el total; no crea pedido ni link y solicita confirmación | `PENDIENTE` |
+| `CART-006` | Confirmación explícita | `Confirmar compra` después de la revisión | Crea un único pedido `PENDING_PAYMENT` con todas las líneas y devuelve un único link | `PENDIENTE` |
+| `CART-007` | Idempotencia por versión | Repetir `Confirmar compra` sin modificar el carrito | No crea un segundo pedido ni un segundo link | `PENDIENTE` |
+| `CART-008` | Cancelación segura | `Cancelar el link de pago` y luego `¿Qué hay en mi carrito?` | Cancela el checkout anterior, reabre el carrito y conserva sus líneas | `PENDIENTE` |
+| `CART-009` | Nueva versión | Agregar o quitar una línea y volver a confirmar | Genera un nuevo checkout asociado a una versión posterior del carrito | `PENDIENTE` |
+| `CART-010` | Ambigüedad | `Agregá una remera negra al carrito` si hay más de una variante | Pide talle/producto/color; no agrega ni genera pedido | `PENDIENTE` |
+| `CART-011` | Stock | Intentar agregar más unidades que el stock disponible | Rechaza la operación y deja el carrito sin cambios | `PENDIENTE` |
+| `CART-012` | Reinicio comercial | Agregar productos, enviar `/start` y luego consultar carrito | Vacía el carrito, cancela checkout pendiente y no reutiliza el contexto anterior | `PENDIENTE` |
 
 ### G. Observabilidad
 

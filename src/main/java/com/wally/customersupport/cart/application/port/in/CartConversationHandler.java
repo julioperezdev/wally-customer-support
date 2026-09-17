@@ -13,6 +13,11 @@ public interface CartConversationHandler {
 
     Optional<Response> handle(ConversationContext context);
 
+    /** Clears customer-owned cart state when the conversation is restarted. */
+    default void reset(ConversationContext context) {
+        // Optional for handlers that do not own cart persistence.
+    }
+
     /**
      * Executes a previously validated structured cart action. The default
      * delegates to the legacy text parser so existing adapters remain safe

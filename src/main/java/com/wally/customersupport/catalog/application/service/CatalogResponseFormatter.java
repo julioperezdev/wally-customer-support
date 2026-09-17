@@ -18,6 +18,9 @@ public final class CatalogResponseFormatter {
     private static final String NO_MATCH =
             "No encontré coincidencias en el catálogo demo para esa consulta. "
                     + "No puedo confirmar disponibilidad fuera de los datos registrados.";
+    private static final String UNSUPPORTED_CATEGORY =
+            "Por ahora no ofrecemos %s. Nuestro catálogo actual incluye remeras, buzos y camperas. "
+                    + "Si querés, puedo mostrarte esas opciones.";
 
     private CatalogResponseFormatter() {
     }
@@ -36,6 +39,10 @@ public final class CatalogResponseFormatter {
                     : CATALOG_CLARIFICATION;
             case AMBIGUOUS -> MULTIPLE_FOLLOW_UP_RESULTS;
             case NO_MATCH -> NO_MATCH;
+            case UNSUPPORTED_CATEGORY -> String.format(
+                    Locale.forLanguageTag("es-AR"),
+                    UNSUPPORTED_CATEGORY,
+                    result.requestedProductType() == null ? "esa categoría" : result.requestedProductType());
         };
     }
 

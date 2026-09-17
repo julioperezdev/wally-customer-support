@@ -28,13 +28,17 @@ necesita que el cliente conozca los nombres internos de las acciones:
 | Ver | `¿Qué hay en mi carrito?`; `Mostrame la cesta` | Muestra líneas, subtotales, total y disponibilidad actual |
 | Quitar | `Sacá 1 remera NullPointer negra talle M`; `Quitá el buzo del carrito` | Reduce la cantidad o elimina la línea |
 | Vaciar | `Vaciar carrito` | Elimina todas las líneas mientras no haya checkout activo |
-| Confirmar | `Confirmar compra`; `Generame el link de pago` | Crea un único pedido multiítem y devuelve un link |
+| Revisar antes de pagar | `Quiero pagar`; `Estoy listo para pagar` | Muestra todas las líneas, stock y total; todavía no crea pedido ni link |
+| Confirmar | `Confirmar compra` | Crea un único pedido multiítem y devuelve un link después de la revisión |
 | Cancelar checkout | `Cancelar el link de pago`; `Quiero modificar el carrito` | Cancela pedidos pendientes del carrito y lo reabre |
 | Postergar | `No quiero comprar todavía` | No crea un pedido; si había checkout activo, lo cancela y conserva el carrito |
 
 Si una frase apunta a varias variantes, el bot no elige arbitrariamente: pide
 los datos faltantes (producto, talle y color). Si no hay coincidencias, no
-agrega una línea ni inventa stock.
+agrega una línea ni inventa stock. Si la categoría solicitada no forma parte
+del catálogo soportado —por ejemplo `¿Venden zapatillas?`— responde que no se
+ofrece actualmente y sugiere las categorías disponibles; no lo presenta como
+un fallo técnico ni inventa alternativas.
 
 ## Flujo
 
@@ -64,9 +68,23 @@ Outbox -> adapter Telegram / WhatsApp
 ```
 
 El parser y el servicio de carrito se ejecutan antes de la clasificación del
-LLM. Esto evita que una pregunta como `confirmar compra` o `sacá el buzo` se
-convierta en una respuesta genérica por una clasificación de baja confianza.
-El LLM no puede inventar SKU, precio, moneda ni stock.
+LLM. Esto evita que una pregunta como `confirmar compra`, `quiero pagar` o
+`sacá el buzo` se convierta en una respuesta genérica por una clasificación
+de baja confianza. `Quiero pagar` sólo dispara la revisión del carrito. El
+LLM no puede inventar SKU, precio, moneda ni stock.
+
+## Reinicio de conversación
+
+`/start`, `ALTA` y `REANUDAR` reactivan una conversación suprimida y
+reinician el contexto conversacional. Como parte del mismo límite de
+privacidad y de la nueva sesión comercial, WCS también vacía el carrito activo
+y cancela en WCS cualquier checkout pendiente asociado. El proveedor de pagos
+puede conservar la URL anterior, pero su pedido queda en estado terminal y un
+webhook tardío no puede reactivarlo. La persona debe armar un carrito nuevo
+después del reinicio.
+
+`BAJA` y `STOP` limpian igualmente el carrito junto con la memoria y las
+preferencias; al reactivar no se recupera información de la sesión anterior.
 
 ## Persistencia y ownership
 
@@ -156,13 +174,17 @@ mvn -q verify
 3. Enviar `Sumá 1 buzo Spring Boot negro talle XL al carrito`.
 4. Enviar `¿Qué hay en mi carrito?` y verificar dos líneas, subtotales y total.
 5. Enviar `Sacá 1 remera NullPointer negra talle M` y verificar el nuevo total.
-6. Enviar `Confirmar compra` y verificar un único link por el total restante.
-7. Repetir `Confirmar compra`: no debe aparecer un segundo pedido para la misma
-   versión.
-8. Enviar `Cancelar el link de pago`; el bot debe cancelar el checkout anterior.
-9. Agregar o quitar una línea y confirmar otra vez: debe generarse un pedido
-   nuevo asociado a una versión posterior del carrito.
-10. Enviar `No quiero comprar todavía`: no debe crear otro pedido.
+6. Enviar `Quiero pagar` y verificar el resumen completo con la pregunta de confirmación;
+   no debe aparecer todavía ningún link.
+7. Enviar `Confirmar compra` y verificar un único link por el total restante.
+8. Repetir `Confirmar compra`: no debe aparecer un segundo pedido para la misma
+  versión.
+9. Enviar `Cancelar el link de pago`; el bot debe cancelar el checkout anterior.
+10. Agregar o quitar una línea y confirmar otra vez: debe generarse un pedido
+  nuevo asociado a una versión posterior del carrito.
+11. Enviar `No quiero comprar todavía`: no debe crear otro pedido.
+12. Volver a enviar `/start` y consultar `¿Qué hay en mi carrito?`: debe indicar
+    que está vacío y no debe reutilizar el link ni las líneas anteriores.
 
 Registrar sólo resultado, timestamp, estado y un identificador sanitizado. No
 adjuntar el chat completo ni URLs de pago.

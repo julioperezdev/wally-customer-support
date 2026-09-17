@@ -54,6 +54,12 @@
     "expectedAction": "CONFIRM_CHECKOUT"
   },
   {
+    "name": "review_cart_before_checkout",
+    "message": "Quiero pagar",
+    "expectedIntent": "PURCHASE_LINK",
+    "expectedAction": "REVIEW_CHECKOUT"
+  },
+  {
     "name": "remove_cart_line",
     "message": "Saca una remera del carrito",
     "expectedIntent": "CATALOG_SEARCH",
@@ -114,6 +120,12 @@
     "name": "catalog_context_refinement",
     "history": ["Busco una remera negra"],
     "message": "Que opciones tienen?",
+    "expectedIntent": "CATALOG_SEARCH",
+    "expectedAction": "CATALOG_SEARCH"
+  },
+  {
+    "name": "unsupported_catalog_category",
+    "message": "Venden zapatillas?",
     "expectedIntent": "CATALOG_SEARCH",
     "expectedAction": "CATALOG_SEARCH"
   },

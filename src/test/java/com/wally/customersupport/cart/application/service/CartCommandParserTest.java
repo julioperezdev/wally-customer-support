@@ -33,6 +33,7 @@ class CartCommandParserTest {
         assertEquals(CartCommandParser.Action.VIEW, CartCommandParser.parse("¿Qué hay en mi carrito?").action());
         assertEquals(CartCommandParser.Action.REMOVE, CartCommandParser.parse("Sacá 1 del carrito").action());
         assertEquals(CartCommandParser.Action.CLEAR, CartCommandParser.parse("Vaciar carrito").action());
+        assertEquals(CartCommandParser.Action.REVIEW_CHECKOUT, CartCommandParser.parse("Quiero pagar").action());
         assertEquals(CartCommandParser.Action.CONFIRM, CartCommandParser.parse("Confirmar compra").action());
         assertEquals(CartCommandParser.Action.CANCEL_CHECKOUT,
                 CartCommandParser.parse("Cancelar el link de pago").action());

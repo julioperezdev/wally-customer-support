@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 
+import com.wally.customersupport.cart.application.port.in.CartConversationHandler;
 import com.wally.customersupport.conversation.application.port.out.ConversationMemory;
 import com.wally.customersupport.conversation.application.port.out.ConversationRepository;
 import com.wally.customersupport.conversation.application.port.out.MessageRepository;
@@ -47,6 +48,7 @@ public class InboundMessageProcessingService {
     private final OptInDetector optInDetector;
     private final ContactSuppressionService contactSuppressionService;
     private final HumanFollowUpTaskService humanFollowUpTaskService;
+    private final CartConversationHandler cartConversationHandler;
     private final InboundProcessingProperties properties;
     private final Clock clock;
 
@@ -64,7 +66,7 @@ public class InboundMessageProcessingService {
                     conversation.channel(),
                     conversation.externalCustomerId(),
                     now);
-            resetConversationContext(conversation.id(), actorId, now);
+            resetConversationContext(conversation, actorId, now);
             StructuredEventLog.info(log, "MESSAGE_REACTIVATED", java.util.Map.of(
                     "operation", "conversation.reactivate",
                     "result", reactivated ? "REACTIVATED" : "ALREADY_ACTIVE",
@@ -89,6 +91,7 @@ public class InboundMessageProcessingService {
                     now);
             conversationMemory.clear(conversation.id(), actorId);
             customerPreferenceService.clearConversation(conversation.id(), actorId);
+            resetCart(conversation, inboundMessage.body());
             StructuredEventLog.info(log, "MESSAGE_OPTED_OUT", java.util.Map.of(
                     "operation", "conversation.opt_out",
                     "result", "SUPPRESSED",
@@ -224,16 +227,31 @@ public class InboundMessageProcessingService {
     }
 
     private void resetConversationContext(
-            java.util.UUID conversationId,
+            com.wally.customersupport.conversation.domain.model.Conversation conversation,
             String actorId,
             Instant now) {
-        conversationMemory.clear(conversationId, actorId);
-        customerPreferenceService.clearConversation(conversationId, actorId);
+        conversationMemory.clear(conversation.id(), actorId);
+        customerPreferenceService.clearConversation(conversation.id(), actorId);
+        resetCart(conversation, "start");
         saveConversationMemory(new ConversationState(
-                conversationId,
+                conversation.id(),
                 actorId,
                 List.of(),
                 now));
+    }
+
+    private void resetCart(
+            com.wally.customersupport.conversation.domain.model.Conversation conversation,
+            String latestMessage) {
+        cartConversationHandler.reset(new ConversationContext(
+                conversation.id(),
+                conversation.externalCustomerId(),
+                latestMessage,
+                List.of(),
+                List.of(),
+                null,
+                List.of(),
+                conversation.channel()));
     }
 
     private void saveConversationMemory(ConversationState state) {

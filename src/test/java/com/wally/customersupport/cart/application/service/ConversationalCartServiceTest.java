@@ -125,6 +125,57 @@ class ConversationalCartServiceTest {
     }
 
     @Test
+    void reviewsTheWholeCartBeforeCreatingTheCheckout() {
+        CartJpaEntity cart = cart();
+        cart.addOrIncrement("RP-REM-NP-NEG-M", 2, NOW);
+        cart.addOrIncrement("RP-BUZ-SB-NEG-XL", 1, NOW);
+        when(cartRepository.findByConversationId(CONVERSATION_ID)).thenReturn(Optional.of(cart));
+        when(catalogReader.findBySku("RP-REM-NP-NEG-M"))
+                .thenReturn(Optional.of(toCatalogItem(fact(
+                        "Remera NullPointer", "RP-REM-NP-NEG-M", "M", "Negro", "18900.00", 12))));
+        when(catalogReader.findBySku("RP-BUZ-SB-NEG-XL"))
+                .thenReturn(Optional.of(toCatalogItem(fact(
+                        "Buzo Spring Boot", "RP-BUZ-SB-NEG-XL", "XL", "Negro", "42900.00", 3))));
+
+        String response = service.handle(context("Quiero pagar")).orElseThrow().text();
+
+        assertTrue(response.contains("2 x Remera NullPointer"));
+        assertTrue(response.contains("1 x Buzo Spring Boot"));
+        assertTrue(response.contains("¿Confirmás la compra?"));
+        verify(checkoutCreator, org.mockito.Mockito.never()).create(any());
+    }
+
+    @Test
+    void resetsTheCartAndCancelsItsPendingCheckoutWhenConversationRestarts() {
+        CartJpaEntity cart = cart();
+        cart.addOrIncrement("RP-REM-NP-NEG-M", 1, NOW);
+        cart.markCheckoutPending(UUID.randomUUID(), NOW);
+        when(cartRepository.findByConversationId(CONVERSATION_ID)).thenReturn(Optional.of(cart));
+        when(cartRepository.saveAndFlush(any(CartJpaEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.reset(context("start"));
+
+        assertTrue(cart.getItems().isEmpty());
+        assertEquals(CartStatus.ACTIVE, cart.getStatus());
+        verify(checkoutCreator).cancelActive(cart.getId());
+        verify(cartRepository).saveAndFlush(cart);
+    }
+
+    @Test
+    void doesNotCreateASecondCheckoutWhileThePreviousLinkIsActive() {
+        CartJpaEntity cart = cart();
+        cart.addOrIncrement("RP-REM-NP-NEG-M", 1, NOW);
+        cart.markCheckoutPending(UUID.randomUUID(), NOW);
+        when(cartRepository.findByConversationId(CONVERSATION_ID)).thenReturn(Optional.of(cart));
+
+        String response = service.handle(context("Confirmar compra")).orElseThrow().text();
+
+        assertTrue(response.contains("ya tiene un link de pago activo"));
+        verify(checkoutCreator, org.mockito.Mockito.never()).create(any());
+    }
+
+    @Test
     void cancelsCheckoutAndReopensTheSameCartForModification() {
         CartJpaEntity cart = cart();
         cart.addOrIncrement("RP-REM-NP-NEG-M", 1, NOW);
