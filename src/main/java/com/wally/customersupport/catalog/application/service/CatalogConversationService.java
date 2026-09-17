@@ -123,6 +123,19 @@ public class CatalogConversationService {
             CatalogQuery query,
             List<String> recentMessages,
             String latestMessage) {
+        boolean contextualTurn = CatalogQueryParser.followUpKind(latestMessage)
+                        != CatalogQueryParser.FollowUpKind.NONE
+                || CatalogQueryParser.isContextualContinuation(latestMessage)
+                || CatalogQueryParser.isFilterOnlyRefinement(latestMessage);
+        if (contextualTurn) {
+            Optional<CatalogQuery> contextualQuery = CatalogQueryParser.parseConversation(
+                            recentMessages,
+                            latestMessage)
+                    .filter(parsed -> !parsed.isEmpty());
+            if (contextualQuery.isPresent()) {
+                return contextualQuery.get();
+            }
+        }
         if (query != null && !query.isEmpty()) {
             return query;
         }
@@ -131,8 +144,7 @@ public class CatalogConversationService {
         if (explicitLatestQuery.isPresent()) {
             return explicitLatestQuery.get();
         }
-        if (CatalogQueryParser.followUpKind(latestMessage) != CatalogQueryParser.FollowUpKind.NONE
-                || CatalogQueryParser.isContextualContinuation(latestMessage)) {
+        if (contextualTurn) {
             return CatalogQueryParser.parseConversation(recentMessages, latestMessage)
                     .filter(parsed -> !parsed.isEmpty())
                     .orElse(query);

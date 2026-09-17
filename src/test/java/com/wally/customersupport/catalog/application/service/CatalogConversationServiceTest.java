@@ -200,6 +200,30 @@ class CatalogConversationServiceTest {
     }
 
     @Test
+    void resolvesAFilterOnlySizeRefinementAgainstTheActiveCatalogSelection() {
+        CatalogProduct product = product("Remera NullPointer", "RP-REM-NP-NEG-M", "M", "Negro", 12);
+        when(catalogQueryService.search(argThat(query ->
+                "m".equals(query.size())
+                        && "negro".equals(query.color())
+                        && "remera".equals(query.productType()))))
+                .thenReturn(List.of(product));
+
+        CatalogSearchResult result = new CatalogConversationService(catalogQueryService)
+                .search(
+                        new CatalogQuery(null, null, "M", null),
+                        List.of("Quiero la talle M", "Busco una remera negra"),
+                        "Quiero la talle M")
+                .orElseThrow();
+
+        assertEquals(CatalogSearchResult.Status.MATCHED, result.status());
+        assertEquals("RP-REM-NP-NEG-M", result.facts().getFirst().sku());
+        verify(catalogQueryService).search(argThat(query ->
+                "m".equals(query.size())
+                        && "negro".equals(query.color())
+                        && "remera".equals(query.productType())));
+    }
+
+    @Test
     void explainsWhenTheRequestedCatalogCategoryIsNotSupported() {
         String reply = new CatalogConversationService(catalogQueryService)
                 .replyFor("¿Venden gorras?")
