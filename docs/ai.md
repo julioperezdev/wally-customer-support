@@ -3,7 +3,7 @@
 Owner: AI/Tech Lead  
 Status: `Accepted`
 Last reviewed: 2026-09-08
-Related Jira: `WCS-11`, `WCS-20`, `WCS-21`, `WCS-30`, `WCS-33`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-82`, `WCS-83`, `WCS-84`, `WCS-130`
+Related Jira: `WCS-11`, `WCS-20`, `WCS-21`, `WCS-30`, `WCS-33`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-82`, `WCS-83`, `WCS-84`, `WCS-130`, `WCS-131`
 Related repository paths: `src/main/java/com/wally/customersupport/conversation/infrastructure/ai`, `src/main/resources/prompts`, `src/test/resources/fixtures`
 
 ## Registro de modelos
@@ -95,7 +95,8 @@ AppConfig como texto libre ni el usuario final. La decisión completa está en
 [`ADR-032`](decisions/032-bedrock-prompt-management.md).
 
 Las versiones empaquetadas incluyen `conversation-intent-v1.system.md`,
-`conversation-intent-v2.system.md` y `conversation-intent-v3.system.md`. En el proveedor administrado, la versión
+`conversation-intent-v2.system.md`, `conversation-intent-v3.system.md` y
+`conversation-intent-v4.system.md`. En el proveedor administrado, la versión
 activa es la que devuelve `GetPrompt` para la referencia configurada. Al iniciar
 una clasificación, WCS calcula un SHA-256 del contenido y registra únicamente
 `promptVersion` y `promptHash` junto con el evento `AI_USAGE_RECORDED`. El
@@ -195,7 +196,7 @@ con baja confianza nunca habilita una búsqueda sin filtros ni una operación
 sensible. El modelo no puede generar SQL, seleccionar un repositorio
 arbitrario ni ejecutar herramientas por su cuenta.
 
-El prompt de routing está versionado como `conversation-intent-v3` y el
+El prompt de routing está versionado como `conversation-intent-v4` y el
 texto del cliente se envía como datos delimitados y acotados. El modelo real es
 `openai.gpt-oss-20b-1:0`, seleccionado por `wcs.ai.model`.
 GPT-OSS puede emitir un bloque de razonamiento antes del resultado final; por
@@ -207,7 +208,7 @@ El contrato exige una confianza numérica. Si Bedrock devuelve una intención
 para ese camino documental de bajo riesgo; las intenciones operativas siguen
 siendo rechazadas cuando la confianza está ausente o malformada.
 
-### Router conversacional estructurado — WCS-130
+### Router conversacional estructurado — WCS-130 y WCS-131
 
 El router usa Bedrock para interpretar lenguaje natural, continuidad y errores
 de escritura y convertirlos en una decisión estructurada. La ejecución sigue
@@ -223,13 +224,28 @@ caso de uso WCS existente
 PostgreSQL, Knowledge Base, carrito, pagos u handoff
 ```
 
-La versión `v3` mantiene compatibilidad con respuestas de prompts anteriores:
+La versión `v4` mantiene compatibilidad con respuestas de prompts anteriores:
 si falta `action`, se deriva de `intent`; si el JSON no es válido o la
 confianza es insuficiente, se usa el fallback seguro. Los comandos
 determinísticos de carrito continúan teniendo prioridad y no dependen del LLM.
 La activación del router natural requiere el proveedor Bedrock y la versión de
 prompt correspondiente; el proveedor `mock` permanece destinado a tests y
 desarrollo.
+
+WCS-131 agrega ejemplos few-shot contrastivos y un dataset sintético versionado
+en `src/test/resources/fixtures/conversation-intent-v4.json`. El objetivo no es
+convertir el prompt en una fuente de verdad, sino reducir confusiones entre
+interés de catálogo y operaciones de compra. Por ejemplo, `quiero un buzo` es
+`CATALOG_SEARCH`, mientras que `quiero comprar el buzo negro talle XL` es una
+acción de checkout. El dataset se valida sin llamar a AWS y no contiene
+conversaciones reales, teléfonos ni otros datos personales.
+
+Como segunda barrera, el orquestador puede rescatar de forma determinística una
+consulta estructurada de catálogo si Bedrock la clasifica erróneamente como
+`PURCHASE_LINK`, siempre que el mensaje no contenga un marcador explícito de
+compra. Una solicitud explícita de comprar, pagar, confirmar o pedir un link
+conserva la ruta operacional y sus validaciones de stock, ownership,
+idempotencia y pago.
 
 ## Datos dinámicos y tools
 

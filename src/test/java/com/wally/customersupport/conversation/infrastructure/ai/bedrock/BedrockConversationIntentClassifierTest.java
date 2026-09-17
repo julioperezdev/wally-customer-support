@@ -44,7 +44,7 @@ class BedrockConversationIntentClassifierTest {
         assertEquals(new BigDecimal("20000"), decision.catalogQuery().maxPrice());
         verify(converseClient).complete(
                 anyString(), anyString(), anyString(), anyString(), eq(1_024), eq(0.0f),
-                eq("conversation-intent-v3"), anyString());
+                eq("conversation-intent-v4"), anyString());
     }
 
     @Test
@@ -64,7 +64,7 @@ class BedrockConversationIntentClassifierTest {
         org.mockito.ArgumentCaptor<String> prompt = org.mockito.ArgumentCaptor.forClass(String.class);
         verify(converseClient).complete(
                 anyString(), anyString(), anyString(), prompt.capture(), eq(1_024), eq(0.0f),
-                eq("conversation-intent-v3"), anyString());
+                eq("conversation-intent-v4"), anyString());
         assertTrue(prompt.getValue().contains("quiero un buzo"));
         assertTrue(prompt.getValue().contains("que sea negro"));
     }

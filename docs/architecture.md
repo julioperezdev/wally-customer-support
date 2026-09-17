@@ -3,7 +3,7 @@
 Owner: Tech Lead  
 Status: `Accepted`
 Last reviewed: 2026-09-08
-Related Jira: `WCS-13`, `WCS-17`, `WCS-18`, `WCS-20`, `WCS-21`, `WCS-22`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-32`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-71`, `WCS-72`, `WCS-73`, `WCS-74`, `WCS-75`, `WCS-76`, `WCS-77`, `WCS-78`, `WCS-130`
+Related Jira: `WCS-13`, `WCS-17`, `WCS-18`, `WCS-20`, `WCS-21`, `WCS-22`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-32`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-71`, `WCS-72`, `WCS-73`, `WCS-74`, `WCS-75`, `WCS-76`, `WCS-77`, `WCS-78`, `WCS-130`, `WCS-131`
 Related repository paths: `src/main/java/com/wally/customersupport/{conversation,catalog,support,knowledge,shared}`, `src/main/resources`, `db/migration`
 Decision/source: specification de WhatsApp y re-baseline solicitada el 2026-08-30
 
@@ -143,6 +143,16 @@ etapa de humanización puede cambiar tono y formato sin convertirse en fuente
 de precio, stock, SKU, talle o color. WCS-55 formaliza esa frontera con
 `ResponseHumanizer` y la implementación `DeterministicResponseHumanizer` v1;
 un futuro adapter Bedrock deberá mantener el mismo contrato y fallback.
+
+El router conversacional usa un prompt empaquetado y versionado, pero la
+decisión del modelo nunca ejecuta SQL, tools arbitrarias ni operaciones de
+negocio. WCS-131 agrega ejemplos contrastivos y un dataset sintético para
+detectar regresiones entre interés de catálogo y compra. Si el modelo devuelve
+una intención de compra para una frase de interés sin marcadores explícitos de
+compra, el orquestador puede reconstruir la consulta desde el mensaje y el
+historial acotado y dirigirla a catálogo. Las frases explícitas de comprar,
+pagar, confirmar o pedir un link no se rescatan: permanecen en el flujo de
+checkout y sus validaciones.
 
 Los horarios y políticas que gobiernan reglas operativas permanecen en datos
 estructurados y versionados. La Knowledge Base puede contener una copia
