@@ -322,6 +322,7 @@ public class ConversationOrchestrator {
                     executionPlanFactory.safeFallback("NULL_DECISION"),
                     startedAt);
         }
+        ConversationIntentDecision rawDecision = decision;
         decision = normalizeDeterministicPurchaseDecision(context, decision);
         decision = normalizeDeterministicCatalogDecision(context, decision);
         Optional<CartConversationHandler.Response> structuredCartResponse = handleStructuredCartCommand(context, decision);
@@ -337,6 +338,14 @@ public class ConversationOrchestrator {
         classifiedFields.put("intent", decision.intent().name());
         classifiedFields.put("action", decision.action().name());
         classifiedFields.put("confidence", decision.confidence());
+        classifiedFields.put("confidenceBucket", confidenceBucket(decision.confidence()));
+        classifiedFields.put("rawIntent", rawDecision.intent().name());
+        classifiedFields.put("rawAction", rawDecision.action().name());
+        classifiedFields.put("rawConfidence", rawDecision.confidence());
+        classifiedFields.put("deterministicNormalization", !rawDecision.equals(decision));
+        classifiedFields.put("historyMessageCount", context.recentMessages().size());
+        addCatalogQueryFields(classifiedFields, "catalogQuery", decision.catalogQuery());
+        classifiedFields.put("missingParameterCount", decision.missingParameters().size());
         classifiedFields.put("durationMs", elapsedMillis(startedAt));
         addConversationIdentity(classifiedFields, context);
         StructuredEventLog.info(log, "INTENT_CLASSIFIED", classifiedFields);
@@ -512,6 +521,17 @@ public class ConversationOrchestrator {
             return decision;
         }
 
+        // Bedrock v4 returns a structured query for explicit selections. Keep
+        // that decision when it is confident and contains a primary selector;
+        // otherwise the deterministic parser is allowed to rescue ambiguous
+        // or partial turns such as "quiero la talla M" from conversation state.
+        if (decision.intent() == ConversationIntent.CATALOG_SEARCH
+                && executionPlanFactory.isConfident(decision.confidence())
+                && decision.catalogQuery() != null
+                && decision.catalogQuery().hasPrimarySelector()) {
+            return decision;
+        }
+
         Optional<CatalogQuery> parsedQuery = CatalogQueryParser.parseConversation(
                 context.recentMessages(), context.latestMessage())
                 .filter(query -> !query.isEmpty());
@@ -534,6 +554,8 @@ public class ConversationOrchestrator {
         fields.put("fromConfidence", decision.confidence());
         fields.put("toIntent", ConversationIntent.CATALOG_SEARCH.name());
         fields.put("reason", "STRUCTURED_CATALOG_QUERY");
+        addCatalogQueryFields(fields, "fromCatalog", decision.catalogQuery());
+        addCatalogQueryFields(fields, "toCatalog", query);
         addConversationIdentity(fields, context);
         StructuredEventLog.info(log, "INTENT_DETERMINISTIC_OVERRIDE", fields);
         return new ConversationIntentDecision(
@@ -633,6 +655,8 @@ public class ConversationOrchestrator {
                             context.recentMessages(),
                             context.latestMessage()));
             if (specialistResult.executed()) {
+                logCatalogSearchOutcome(context, decision, specialistResult.result(),
+                        "agent-specialist", specialistResult.durationMs());
                 ResponseHumanizationResult humanized = responseHumanizer.humanize(
                         new ResponseHumanizationRequest(
                                 "CATALOG_SEARCH",
@@ -645,12 +669,41 @@ public class ConversationOrchestrator {
                                 : RenderedResponse.text(humanized.text());
             }
         }
-        return catalogConversationService.search(
+        long searchStartedAt = System.nanoTime();
+        Optional<CatalogSearchResult> result = catalogConversationService.search(
                         decision == null ? null : decision.catalogQuery(),
                         context.recentMessages(),
-                        context.latestMessage())
-                .map(result -> RenderedResponse.catalog(CatalogResponseFormatter.render(result), result))
+                        context.latestMessage());
+        result.ifPresentOrElse(
+                catalogResult -> logCatalogSearchOutcome(
+                        context, decision, catalogResult, "deterministic-catalog",
+                        elapsedMillis(searchStartedAt)),
+                () -> logCatalogSearchOutcome(
+                        context, decision, null, "deterministic-catalog",
+                        elapsedMillis(searchStartedAt)));
+        return result
+                .map(catalogResult -> RenderedResponse.catalog(
+                        CatalogResponseFormatter.render(catalogResult), catalogResult))
                 .orElseGet(() -> RenderedResponse.text(LOW_CONFIDENCE));
+    }
+
+    private void logCatalogSearchOutcome(
+            ConversationContext context,
+            ConversationIntentDecision decision,
+            CatalogSearchResult result,
+            String source,
+            Long executionDurationMs) {
+        Map<String, Object> fields = new LinkedHashMap<>();
+        fields.put("source", source);
+        fields.put("resultStatus", result == null ? "NO_RESULT" : result.status().name());
+        fields.put("resultCount", result == null ? 0 : result.resultCount());
+        fields.put("imageCount", result == null ? 0 : result.images().size());
+        fields.put("followUpKind", result == null ? null : result.followUpKind().name());
+        fields.put("resultReason", result == null ? "NO_RESULT" : result.reason());
+        fields.put("executionDurationMs", executionDurationMs);
+        addCatalogQueryFields(fields, "query", decision == null ? null : decision.catalogQuery());
+        addConversationIdentity(fields, context);
+        StructuredEventLog.info(log, "CATALOG_SEARCH_COMPLETED", fields);
     }
 
     private RenderedResponse executePurchaseLink(
@@ -919,6 +972,40 @@ public class ConversationOrchestrator {
 
     private static long elapsedMillis(long startedAt) {
         return (System.nanoTime() - startedAt) / 1_000_000;
+    }
+
+    private static void addCatalogQueryFields(
+            Map<String, Object> fields,
+            String prefix,
+            CatalogQuery query) {
+        if (query == null) {
+            fields.put(prefix + "Present", false);
+            fields.put(prefix + "FilterCount", 0);
+            fields.put(prefix + "Filters", List.of());
+            return;
+        }
+        fields.put(prefix + "Present", !query.isEmpty());
+        fields.put(prefix + "FilterCount", query.presentFieldCount());
+        fields.put(prefix + "Filters", query.presentFieldNames());
+        if (query.productType() != null) {
+            fields.put(prefix + "ProductType", query.productType());
+        }
+    }
+
+    private static String confidenceBucket(double confidence) {
+        if (confidence < 0.5) {
+            return "<0.50";
+        }
+        if (confidence < 0.65) {
+            return "0.50-0.64";
+        }
+        if (confidence < 0.8) {
+            return "0.65-0.79";
+        }
+        if (confidence < 0.95) {
+            return "0.80-0.94";
+        }
+        return ">=0.95";
     }
 
     private String formatBusinessHours() {

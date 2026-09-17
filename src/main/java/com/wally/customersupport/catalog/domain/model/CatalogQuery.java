@@ -1,6 +1,8 @@
 package com.wally.customersupport.catalog.domain.model;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Deterministic filters used to query the store catalog.
@@ -45,6 +47,45 @@ public record CatalogQuery(
     public boolean isEmpty() {
         return name == null && sku == null && size == null && color == null && productType == null
                 && minPrice == null && maxPrice == null;
+    }
+
+    /**
+     * Returns only the names of the filters present in this query. The values
+     * are intentionally excluded so this shape can be emitted in telemetry
+     * without logging product names, SKUs or customer text.
+     */
+    public List<String> presentFieldNames() {
+        List<String> fields = new ArrayList<>();
+        if (name != null) {
+            fields.add("name");
+        }
+        if (sku != null) {
+            fields.add("sku");
+        }
+        if (size != null) {
+            fields.add("size");
+        }
+        if (color != null) {
+            fields.add("color");
+        }
+        if (productType != null) {
+            fields.add("productType");
+        }
+        if (minPrice != null) {
+            fields.add("minPrice");
+        }
+        if (maxPrice != null) {
+            fields.add("maxPrice");
+        }
+        return List.copyOf(fields);
+    }
+
+    public int presentFieldCount() {
+        return presentFieldNames().size();
+    }
+
+    public boolean hasPrimarySelector() {
+        return name != null || sku != null || productType != null;
     }
 
     public CatalogQuery merge(CatalogQuery patch) {

@@ -2,7 +2,7 @@
 
 Owner: Tech Lead
 Status: `In Progress`
-Related Jira: `WCS-21`, `WCS-22`, `WCS-23`, `WCS-36`, `WCS-50`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-55`, `WCS-56`, `WCS-57`, `WCS-58`, `WCS-59`, `WCS-60`, `WCS-61`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-85`, `WCS-86`, `WCS-87`, `WCS-88`, `WCS-89`, `WCS-90`, `WCS-91`, `WCS-92`, `WCS-93`, `WCS-94`, `WCS-95`, `WCS-96`, `WCS-100`, `WCS-101`, `WCS-102`, `WCS-103`, `WCS-104`, `WCS-105`, `WCS-126`
+Related Jira: `WCS-21`, `WCS-22`, `WCS-23`, `WCS-36`, `WCS-50`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-55`, `WCS-56`, `WCS-57`, `WCS-58`, `WCS-59`, `WCS-60`, `WCS-61`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-85`, `WCS-86`, `WCS-87`, `WCS-88`, `WCS-89`, `WCS-90`, `WCS-91`, `WCS-92`, `WCS-93`, `WCS-94`, `WCS-95`, `WCS-96`, `WCS-100`, `WCS-101`, `WCS-102`, `WCS-103`, `WCS-104`, `WCS-105`, `WCS-126`, `WCS-132`
 Related repository paths: `observability/grafana/`, `backoffice/`, `src/main/java/com/wally/customersupport/conversation/infrastructure/http/`, `src/main/java/com/wally/customersupport/conversation/application/service/`, `src/main/java/com/wally/customersupport/shared/infrastructure/observability/`
 
 ## Objetivo de esta iteración
@@ -48,7 +48,9 @@ operacional necesario para diagnóstico y costo, pero sin contenido de negocio.
 | `INBOUND_MESSAGE_PROCESSED` | `result`, `attempt`, `durationMs`, `correlationId` | Worker completó el procesamiento fuera del request |
 | `INBOUND_MESSAGE_RETRY_SCHEDULED` | `result`, `attempt`, `durationMs`, `errorType`, `correlationId` | Fallo transitorio con retry diferido |
 | `INBOUND_MESSAGE_FAILED` | `result`, `attempt`, `durationMs`, `errorType`, `correlationId` | Intentos agotados; se encola fallback seguro |
-| `INTENT_CLASSIFIED` | `intent`, `confidence`, `durationMs` | Clasificación del orquestador |
+| `INTENT_CLASSIFIED` | `intent`, `action`, `confidence`, `confidenceBucket`, `rawIntent`, `rawAction`, `rawConfidence`, `deterministicNormalization`, `catalogQueryPresent`, `catalogQueryFilterCount`, `catalogQueryFilters`, `catalogQueryProductType`, `missingParameterCount`, `historyMessageCount`, `durationMs`, `correlationId`, `channel`, `actorKey` opcional | Decisión efectiva del orquestador y evidencia sanitizada de cuánto fue normalizada |
+| `INTENT_DETERMINISTIC_OVERRIDE` | `fromIntent`, `fromConfidence`, `toIntent`, `reason`, `fromCatalogFilterCount`, `fromCatalogFilters`, `toCatalogFilterCount`, `toCatalogFilters`, `fromCatalogProductType`, `toCatalogProductType`, `correlationId`, `channel`, `actorKey` opcional | Rescue determinístico o corrección de una decisión ambigua; permite detectar cuándo el parser contradice al LLM |
+| `CATALOG_SEARCH_COMPLETED` | `source`, `resultStatus`, `resultCount`, `imageCount`, `followUpKind`, `resultReason`, `executionDurationMs`, `queryPresent`, `queryFilterCount`, `queryFilters`, `queryProductType`, `correlationId`, `channel`, `actorKey` opcional | Resultado verificable de catálogo y forma sanitizada de la consulta que se ejecutó |
 | `INTENT_CLASSIFICATION_FAILED` | `errorType`, `durationMs` | Fallo del clasificador |
 | `INTENT_COMPOSED` | `primaryIntent`, `secondaryIntent`, `components`, `result` | Consulta acotada que combina catálogo con una política publicada |
 | `AGENT_ACTIVATION_RESOLUTION_SKIPPED` | `useCase`, `reason` | Registry no consultado porque la flag está deshabilitada |
@@ -71,7 +73,7 @@ operacional necesario para diagnóstico y costo, pero sin contenido de negocio.
 | `CONVERSATION_SUMMARY_CREATED` | `summaryVersion`, `summarizedMessageCount`, `recentMessageCount`, `summaryCharacters`, `durationMs` | Resumen versionado, tamaño y latencia |
 | `CONVERSATION_SUMMARY_FALLBACK` | `errorType`, `recentMessageCount`, `correlationId`, `durationMs` | Fallo de resumen, latencia y uso de ventana reciente |
 | `RAG_RETRIEVAL_RECORDED` | `provider`, `success`, `resultCount`, `durationMs`, `errorType` | Resultado y latencia de Knowledge Base |
-| `AI_USAGE_RECORDED` | `stage`, `operation`, `provider`, `model`, `success`, `inputTokens`, `outputTokens`, `totalTokens`, `estimatedCostUsd`, `pricingVersion`, `durationMs`, `providerLatencyMs`, `errorType` | Cada llamada real a un proveedor de IA |
+| `AI_USAGE_RECORDED` | `stage`, `operation`, `provider`, `model`, `success`, `inputTokens`, `outputTokens`, `totalTokens`, `estimatedCostUsd`, `pricingVersion`, `durationMs`, `providerLatencyMs`, `promptVersion`, `promptHash`, `correlationId`, `errorType` | Cada llamada real a un proveedor de IA, correlacionable con la decisión sin registrar contenido |
 | `AGENT_EVALUATION_COMPLETED` | `runId`, `datasetVersion`, `agentId`, `agentVersion`, `provider`, `model`, `totalScenarios`, `passedScenarios`, `failedScenarios`, `passRate`, `averageScore`, `durationMs` | Resultado agregado de una suite sintética, sin respuestas |
 | `AGENT_EVALUATION_FAILED` | `runId`, `datasetVersion`, `agentId`, `agentVersion`, `provider`, `model`, `durationMs`, `errorType` | Fallo sanitizado de una ejecución de evaluación |
 | `AGENT_EVALUATION_TRIGGER_DENIED` | `status`, `reason`, `datasetVersion`, `agentId`, `agentVersion`, `provider`, `model` | Trigger rechazado antes de idempotencia y ejecución |
@@ -108,6 +110,30 @@ precio por millón de tokens de entrada/salida vigente en la configuración
 efectiva y `pricingVersion` identifica la tabla utilizada. Es una estimación
 operativa y no una conciliación de facturación. Si el provider está en `mock`,
 no existe una llamada de IA real y no se emite este evento.
+
+### Diagnóstico de decisiones de catálogo
+
+`INTENT_CLASSIFIED` conserva la decisión original del clasificador (`raw*`) y
+la decisión que efectivamente se ejecutó. `deterministicNormalization=true`
+indica que WCS tuvo que rescatar o normalizar la decisión antes de ejecutar el
+caso de uso. `catalogFilters` sólo contiene nombres de campos presentes, nunca
+valores; `catalogProductType` está limitado a la categoría normalizada. Esto
+permite medir prompts y orquestación sin registrar mensajes ni identificadores
+de productos.
+
+`CATALOG_SEARCH_COMPLETED` es la evidencia de negocio que faltaba en los logs
+anteriores: indica si hubo coincidencias, alternativas, ambigüedad o ausencia
+de resultado, cuántos hechos e imágenes devolvió la fuente y qué forma tenía
+la consulta ejecutada. No es una métrica de exactitud por sí sola. Para medir
+calidad se deben comparar estos eventos con un dataset etiquetado o con una
+acción posterior del operador, y no inferir "acierto" únicamente desde la
+confianza del modelo.
+
+La versión actual separa además una nueva selección explícita por categoría de
+un refinamiento contextual. Por ejemplo, después de "remera negra talle M",
+"quiero un buzo" no hereda color ni talle de la remera anterior; en cambio,
+"quiero la talla M" sí conserva la selección activa. Esta regla evita consultas
+imposibles y queda cubierta por pruebas de regresión.
 
 ### Trazabilidad de actores
 

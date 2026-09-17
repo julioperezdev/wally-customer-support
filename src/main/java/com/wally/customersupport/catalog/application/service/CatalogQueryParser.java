@@ -170,6 +170,29 @@ public final class CatalogQueryParser {
         if (history.isEmpty() || !latestMessage.equals(history.getLast())) {
             activeQuery = activeQuery == null ? latestQuery.get() : activeQuery.merge(latestQuery.get());
         }
+
+        // A new product category starts a new selection. Carrying size/color
+        // from an earlier category turns a natural follow-up such as
+        // "busco una remera negra M" -> "quiero un buzo" into an impossible
+        // query (buzo + negro + M), even though the latest turn is explicit.
+        CatalogQuery historicalQuery = null;
+        for (String message : history) {
+            if (latestMessage.equals(message)) {
+                continue;
+            }
+            Optional<CatalogQuery> parsed = parse(message);
+            if (parsed.isPresent()) {
+                historicalQuery = historicalQuery == null
+                        ? parsed.get()
+                        : historicalQuery.merge(parsed.get());
+            }
+        }
+        if (historicalQuery != null
+                && latestQuery.get().productType() != null
+                && historicalQuery.productType() != null
+                && !latestQuery.get().productType().equalsIgnoreCase(historicalQuery.productType())) {
+            return latestQuery;
+        }
         return Optional.ofNullable(activeQuery);
     }
 

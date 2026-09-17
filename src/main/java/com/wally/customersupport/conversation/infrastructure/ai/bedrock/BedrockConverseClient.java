@@ -51,9 +51,26 @@ final class BedrockConverseClient implements MeasuredLlmClient {
                 temperature,
                 null,
                 null,
+                null,
                 modelId,
                 0.9f,
                 null,
+                properties.effectiveRequestTimeout()).text();
+    }
+
+    String complete(
+            String stage,
+            String operation,
+            String systemPrompt,
+            String userPrompt,
+            int maxTokens,
+            float temperature,
+            String promptVersion,
+            String promptHash,
+            String correlationId) {
+        return completeMeasured(
+                stage, operation, systemPrompt, userPrompt, maxTokens, temperature,
+                promptVersion, promptHash, correlationId, modelId, 0.9f, null,
                 properties.effectiveRequestTimeout()).text();
     }
 
@@ -75,6 +92,7 @@ final class BedrockConverseClient implements MeasuredLlmClient {
                 temperature,
                 promptVersion,
                 promptHash,
+                null,
                 modelId,
                 0.9f,
                 null,
@@ -101,10 +119,29 @@ final class BedrockConverseClient implements MeasuredLlmClient {
                 temperature,
                 promptVersion,
                 promptHash,
+                null,
                 definition.modelId(),
                 topP,
                 definition,
                 effectiveTimeout(definition.timeout())).text();
+    }
+
+    String completeForAgent(
+            String stage,
+            String operation,
+            String systemPrompt,
+            String userPrompt,
+            int maxTokens,
+            float temperature,
+            float topP,
+            String promptVersion,
+            String promptHash,
+            AgentRuntimeDefinition definition,
+            String correlationId) {
+        return completeMeasured(
+                stage, operation, systemPrompt, userPrompt, maxTokens, temperature,
+                promptVersion, promptHash, correlationId, definition.modelId(), topP,
+                definition, effectiveTimeout(definition.timeout())).text();
     }
 
     @Override
@@ -124,6 +161,7 @@ final class BedrockConverseClient implements MeasuredLlmClient {
                 temperature,
                 null,
                 null,
+                null,
                 modelId,
                 0.9f,
                 null,
@@ -139,6 +177,7 @@ final class BedrockConverseClient implements MeasuredLlmClient {
             float temperature,
             String promptVersion,
             String promptHash,
+            String correlationId,
             String requestedModelId,
             float topP,
             AgentRuntimeDefinition definition,
@@ -186,6 +225,7 @@ final class BedrockConverseClient implements MeasuredLlmClient {
                     null,
                     promptVersion,
                     promptHash,
+                    correlationId,
                     definition,
                     requestTimeout);
             return completion;
@@ -202,6 +242,7 @@ final class BedrockConverseClient implements MeasuredLlmClient {
                     exception.getClass().getSimpleName(),
                     promptVersion,
                     promptHash,
+                    correlationId,
                     definition,
                     requestTimeout);
             throw exception;
@@ -249,6 +290,7 @@ final class BedrockConverseClient implements MeasuredLlmClient {
             String errorType,
             String promptVersion,
             String promptHash,
+            String correlationId,
             AgentRuntimeDefinition definition,
             Duration requestTimeout) {
 
@@ -256,6 +298,9 @@ final class BedrockConverseClient implements MeasuredLlmClient {
         fields.put("stage", stage);
         fields.put("operation", operation);
         fields.put("provider", "bedrock");
+        if (correlationId != null && !correlationId.isBlank()) {
+            fields.put("correlationId", correlationId);
+        }
         fields.put("model", completion == null
                 ? definition == null ? modelId : definition.modelId()
                 : completion.modelId());

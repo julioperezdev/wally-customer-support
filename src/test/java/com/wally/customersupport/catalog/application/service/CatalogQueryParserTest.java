@@ -92,6 +92,17 @@ class CatalogQueryParserTest {
     }
 
     @Test
+    void startsANewCatalogSelectionWhenProductTypeChanges() {
+        CatalogQuery query = CatalogQueryParser.parseConversation(
+                List.of("Busco una remera negra talle M"),
+                "Quiero un buzo").orElseThrow();
+
+        assertEquals("buzo", query.productType());
+        assertNull(query.color());
+        assertNull(query.size());
+    }
+
+    @Test
     void preservesActiveSelectionForThisProductContinuation() {
         CatalogQuery query = CatalogQueryParser.parseConversation(
                 List.of("Busco una remera negra talle M"),
