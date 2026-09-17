@@ -61,8 +61,12 @@ public class ConversationalCartService implements CartConversationHandler {
     @Override
     @Transactional
     public Optional<Response> handle(ConversationContext context) {
-        CartCommandParser.Command command = CartCommandParser.parse(
-                context == null ? null : context.latestMessage());
+        return handle(context, CartCommandParser.parse(context == null ? null : context.latestMessage()));
+    }
+
+    @Override
+    @Transactional
+    public Optional<Response> handle(ConversationContext context, CartCommandParser.Command command) {
         if (command.action() == CartCommandParser.Action.NONE) {
             return Optional.empty();
         }

@@ -70,6 +70,10 @@ public class ConversationExecutionPlanFactory {
         };
     }
 
+    public boolean isConfident(double confidence) {
+        return Double.isFinite(confidence) && confidence >= minConfidence;
+    }
+
     public ConversationExecutionPlan classificationFailure(String reason) {
         return generalSupport(reason == null ? "CLASSIFICATION_FAILED" : reason);
     }

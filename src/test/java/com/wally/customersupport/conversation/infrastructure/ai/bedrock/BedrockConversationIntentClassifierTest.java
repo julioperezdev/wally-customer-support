@@ -14,6 +14,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import com.wally.customersupport.conversation.domain.model.ConversationContext;
+import com.wally.customersupport.conversation.domain.model.ConversationAction;
 import com.wally.customersupport.conversation.domain.model.ConversationIntent;
 import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -43,7 +44,7 @@ class BedrockConversationIntentClassifierTest {
         assertEquals(new BigDecimal("20000"), decision.catalogQuery().maxPrice());
         verify(converseClient).complete(
                 anyString(), anyString(), anyString(), anyString(), eq(1_024), eq(0.0f),
-                eq("conversation-intent-v2"), anyString());
+                eq("conversation-intent-v3"), anyString());
     }
 
     @Test
@@ -63,7 +64,7 @@ class BedrockConversationIntentClassifierTest {
         org.mockito.ArgumentCaptor<String> prompt = org.mockito.ArgumentCaptor.forClass(String.class);
         verify(converseClient).complete(
                 anyString(), anyString(), anyString(), prompt.capture(), eq(1_024), eq(0.0f),
-                eq("conversation-intent-v2"), anyString());
+                eq("conversation-intent-v3"), anyString());
         assertTrue(prompt.getValue().contains("quiero un buzo"));
         assertTrue(prompt.getValue().contains("que sea negro"));
     }
@@ -112,5 +113,42 @@ class BedrockConversationIntentClassifierTest {
         assertEquals(ConversationIntent.PURCHASE_LINK, decision.intent());
         assertEquals("nullpointer", decision.catalogQuery().name());
         assertEquals("M", decision.catalogQuery().size());
+    }
+
+    @Test
+    void parsesStructuredCartActionAndBoundedQuantity() {
+        BedrockConverseClient converseClient = mock(BedrockConverseClient.class);
+        when(converseClient.complete(
+                anyString(), anyString(), anyString(), anyString(), anyInt(), anyFloat(), anyString(), anyString()))
+                .thenReturn("""
+                        {"intent":"CATALOG_SEARCH","action":"ADD_TO_CART","confidence":0.96,
+                         "quantity":2,"missingParameters":[],
+                         "catalogQuery":{"name":"spring boot","sku":null,"size":"XL",
+                         "color":"negro","productType":"buzo","minPrice":null,"maxPrice":null},
+                         "policyKey":null}
+                        """);
+
+        var decision = new BedrockConversationIntentClassifier(converseClient, new ObjectMapper())
+                .classify("Sumame dos de esos, el negro talle XL");
+
+        assertEquals(ConversationAction.ADD_TO_CART, decision.action());
+        assertEquals(2, decision.quantity());
+        assertTrue(decision.missingParameters().isEmpty());
+        assertEquals("spring boot", decision.catalogQuery().name());
+    }
+
+    @Test
+    void derivesLegacyActionWhenManagedPromptDoesNotReturnAction() {
+        BedrockConverseClient converseClient = mock(BedrockConverseClient.class);
+        when(converseClient.complete(
+                anyString(), anyString(), anyString(), anyString(), anyInt(), anyFloat(), anyString(), anyString()))
+                .thenReturn("{" +
+                        "\"intent\":\"CATALOG_SEARCH\",\"confidence\":0.90," +
+                        "\"catalogQuery\":{\"name\":\"buzo\"},\"policyKey\":null}");
+
+        var decision = new BedrockConversationIntentClassifier(converseClient, new ObjectMapper())
+                .classify("¿Qué buzos tienen?");
+
+        assertEquals(ConversationAction.CATALOG_SEARCH, decision.action());
     }
 }

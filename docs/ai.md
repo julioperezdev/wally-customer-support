@@ -3,7 +3,7 @@
 Owner: AI/Tech Lead  
 Status: `Accepted`
 Last reviewed: 2026-09-08
-Related Jira: `WCS-11`, `WCS-20`, `WCS-21`, `WCS-30`, `WCS-33`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-82`, `WCS-83`, `WCS-84`
+Related Jira: `WCS-11`, `WCS-20`, `WCS-21`, `WCS-30`, `WCS-33`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-82`, `WCS-83`, `WCS-84`, `WCS-130`
 Related repository paths: `src/main/java/com/wally/customersupport/conversation/infrastructure/ai`, `src/main/resources/prompts`, `src/test/resources/fixtures`
 
 ## Registro de modelos
@@ -94,8 +94,8 @@ configurados en AppConfig. No se acepta prompt arbitrario desde requests,
 AppConfig como texto libre ni el usuario final. La decisión completa está en
 [`ADR-032`](decisions/032-bedrock-prompt-management.md).
 
-Las versiones empaquetadas incluyen `conversation-intent-v1.system.md` y
-`conversation-intent-v2.system.md`. En el proveedor administrado, la versión
+Las versiones empaquetadas incluyen `conversation-intent-v1.system.md`,
+`conversation-intent-v2.system.md` y `conversation-intent-v3.system.md`. En el proveedor administrado, la versión
 activa es la que devuelve `GetPrompt` para la referencia configurada. Al iniciar
 una clasificación, WCS calcula un SHA-256 del contenido y registra únicamente
 `promptVersion` y `promptHash` junto con el evento `AI_USAGE_RECORDED`. El
@@ -162,12 +162,15 @@ El piloto requiere un dataset sanitizado con casos frecuentes, ambiguos, descono
 
 ## Orquestación y contrato de intención
 
-El clasificador responde sólo este contrato, sin SQL ni datos de negocio:
+El router responde sólo este contrato, sin SQL ni datos de negocio:
 
 ```json
 {
   "intent": "CATALOG_SEARCH",
+  "action": "CATALOG_SEARCH",
   "confidence": 0.94,
+  "quantity": 1,
+  "missingParameters": [],
   "catalogQuery": {
     "name": "remera",
     "sku": null,
@@ -178,22 +181,55 @@ El clasificador responde sólo este contrato, sin SQL ni datos de negocio:
 }
 ```
 
-El backend valida la intención, limita la confianza mínima a `0.65`, normaliza
-los filtros y ejecuta el caso de uso. Una respuesta malformada o una intención
-con baja confianza nunca habilita una búsqueda sin filtros ni una operación
-sensible.
+`action` es una operación allow-listed que el backend puede ejecutar; no es un
+nombre de tool ni una instrucción ejecutable. Para acciones de carrito se
+aceptan `ADD_TO_CART`, `VIEW_CART`, `REMOVE_FROM_CART`, `CLEAR_CART`,
+`CONFIRM_CHECKOUT` y `CANCEL_CHECKOUT`. El router puede indicar
+`missingParameters` para pedir una aclaración antes de ejecutar. `quantity` se
+normaliza a un rango acotado por el backend.
 
-El prompt de clasificación está versionado como `conversation-intent-v2` y el
+El backend valida la intención, acción, confianza mínima (`0.65`), filtros,
+identidad de la conversación, ownership, stock, precios e idempotencia; luego
+delega en el caso de uso existente. Una respuesta malformada o una intención
+con baja confianza nunca habilita una búsqueda sin filtros ni una operación
+sensible. El modelo no puede generar SQL, seleccionar un repositorio
+arbitrario ni ejecutar herramientas por su cuenta.
+
+El prompt de routing está versionado como `conversation-intent-v3` y el
 texto del cliente se envía como datos delimitados y acotados. El modelo real es
 `openai.gpt-oss-20b-1:0`, seleccionado por `wcs.ai.model`.
 GPT-OSS puede emitir un bloque de razonamiento antes del resultado final; por
-eso la clasificación y la redacción usan un presupuesto de salida de `1024`
+eso el routing y la redacción usan un presupuesto de salida de `1024`
 tokens. `maxTokens` incluye razonamiento y respuesta, y el adapter sólo extrae
 bloques de texto finales, nunca razonamiento ni prompts.
 El contrato exige una confianza numérica. Si Bedrock devuelve una intención
 `GENERAL_SUPPORT` válida pero omite la confianza, el backend aplica `0.70` sólo
 para ese camino documental de bajo riesgo; las intenciones operativas siguen
 siendo rechazadas cuando la confianza está ausente o malformada.
+
+### Router conversacional estructurado — WCS-130
+
+El router usa Bedrock para interpretar lenguaje natural, continuidad y errores
+de escritura y convertirlos en una decisión estructurada. La ejecución sigue
+siendo responsabilidad del backend:
+
+```text
+mensaje + contexto acotado
+        ↓
+Bedrock: intent + action + filtros + cantidad + faltantes
+        ↓ validación allow-list / confianza / ownership
+caso de uso WCS existente
+        ↓
+PostgreSQL, Knowledge Base, carrito, pagos u handoff
+```
+
+La versión `v3` mantiene compatibilidad con respuestas de prompts anteriores:
+si falta `action`, se deriva de `intent`; si el JSON no es válido o la
+confianza es insuficiente, se usa el fallback seguro. Los comandos
+determinísticos de carrito continúan teniendo prioridad y no dependen del LLM.
+La activación del router natural requiere el proveedor Bedrock y la versión de
+prompt correspondiente; el proveedor `mock` permanece destinado a tests y
+desarrollo.
 
 ## Datos dinámicos y tools
 

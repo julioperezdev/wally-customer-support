@@ -22,6 +22,14 @@ class CatalogQueryParserTest {
     }
 
     @Test
+    void removesNeutralAvailabilityPhrasesFromProductName() {
+        CatalogQuery query = CatalogQueryParser.parse("¿Tienes buzo Spring Boot?").orElseThrow();
+
+        assertEquals("spring boot", query.name());
+        assertEquals("buzo", query.productType());
+    }
+
+    @Test
     void combinesFiltersAcrossMultiTurnCatalogConversation() {
         CatalogQuery query = CatalogQueryParser.parseConversation(
                 List.of("que sea nullpointer", "pero quiero buzo", "tenes algo negro"),
