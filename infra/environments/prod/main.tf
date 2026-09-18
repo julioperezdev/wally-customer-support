@@ -330,17 +330,17 @@ module "github_backend_deploy" {
   count  = var.existing_github_oidc_provider_arn == null ? 0 : 1
   source = "../../modules/github-backend-deploy"
 
-  project_name                  = var.project_name
-  environment                   = var.environment
-  github_repository             = var.github_repository
-  github_repository_owner_id    = var.github_repository_owner_id
-  github_repository_id          = var.github_repository_id
+  project_name                   = var.project_name
+  environment                    = var.environment
+  github_repository              = var.github_repository
+  github_repository_owner_id     = var.github_repository_owner_id
+  github_repository_id           = var.github_repository_id
   additional_github_environments = ["production-auto"]
-  github_oidc_provider_arn      = var.existing_github_oidc_provider_arn
-  ecr_repository_arn            = module.backend_apprunner.ecr_repository_arn
-  apprunner_service_arn         = module.backend_apprunner.apprunner_service_arn
-  apprunner_ecr_access_role_arn = module.backend_apprunner.apprunner_ecr_access_role_arn
-  tags                          = local.common_tags
+  github_oidc_provider_arn       = var.existing_github_oidc_provider_arn
+  ecr_repository_arn             = module.backend_apprunner.ecr_repository_arn
+  apprunner_service_arn          = module.backend_apprunner.apprunner_service_arn
+  apprunner_ecr_access_role_arn  = module.backend_apprunner.apprunner_ecr_access_role_arn
+  tags                           = local.common_tags
 }
 
 module "github_terraform_deploy" {
