@@ -864,6 +864,39 @@ La implementación usa webhook; el long polling no forma parte del runtime de
 WCS. Para una prueba local, se expone la aplicación con ngrok y se registra esa
 URL temporal.
 
+### Smoke test de mensajes desde la terminal
+
+El helper de registro anterior configura Telegram, pero no genera mensajes
+entrantes. Para probar una conversación sin escribir manualmente desde el
+cliente de Telegram, se puede enviar un `Update` sintético al webhook:
+
+```bash
+WCS_TELEGRAM_CHAT_ID=<chat-id-permitido> \\
+./scripts/smoke-telegram-message.sh \\
+  --message "Busco una remera negra"
+```
+
+El script lee `webhook-secret-token` desde `wcs/prod/telegram`, genera un
+`update_id` nuevo y conserva el `chat_id` para que el backend ejecute su flujo
+normal y envíe la respuesta al chat real mediante el adapter de Telegram. No
+lee ni imprime el bot token.
+
+Para probar un refinamiento contextual, se ejecutan varios comandos usando el
+mismo `WCS_TELEGRAM_CHAT_ID`:
+
+```bash
+WCS_TELEGRAM_CHAT_ID=<chat-id-permitido> ./scripts/smoke-telegram-message.sh --message "Start"
+WCS_TELEGRAM_CHAT_ID=<chat-id-permitido> ./scripts/smoke-telegram-message.sh --message "Busco una remera negra"
+WCS_TELEGRAM_CHAT_ID=<chat-id-permitido> ./scripts/smoke-telegram-message.sh --message "Quiero la talle M"
+```
+
+La respuesta HTTP `200` confirma que el webhook aceptó el evento; el
+procesamiento continúa de forma asíncrona. La respuesta final se valida en el
+chat y los eventos `INBOUND_MESSAGE_ENQUEUED`, `INBOUND_MESSAGE_PROCESSED`,
+`AGENT_EXECUTION_COMPLETED` y `OUTBOUND_MESSAGE_SENT` en los logs. El smoke
+test no reemplaza una prueba manual completa de la entrega desde Telegram:
+simula el `Update` dentro del límite del webhook.
+
 ## Trigger de evaluación del control plane
 
 ### Executor y límites de evaluación
