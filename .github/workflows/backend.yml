@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "Dockerfile"
+      - "pom.xml"
+      - "src/main/**"
+      - "ci/backend-deploy.sh"
   pull_request:
   workflow_dispatch:
     inputs:
@@ -20,10 +25,16 @@ on:
         required: true
         default: false
         type: boolean
+      skip_approval:
+        description: "Use the automatic production path without an Environment reviewer (main + approved PR required)"
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
   id-token: write
+  pull-requests: read
 
 jobs:
   verify:
@@ -48,19 +59,67 @@ jobs:
   deploy:
     name: Deploy Backend Image
     needs: verify
-    if: github.event_name == 'workflow_dispatch' && inputs.deploy == true
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy == true)
     runs-on: ubuntu-latest
     timeout-minutes: 40
-    environment: ${{ inputs.target_environment == 'test' && 'test' || 'production' }}
+    environment:
+      name: ${{ github.event_name == 'push' && 'production-auto' || inputs.target_environment == 'test' && 'test' || inputs.skip_approval == true && 'production-auto' || 'production' }}
     env:
       AWS_BACKEND_DEPLOY_ROLE_ARN: ${{ secrets.AWS_BACKEND_DEPLOY_ROLE_ARN }}
       AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
       BACKEND_ECR_REPOSITORY: ${{ vars.BACKEND_ECR_REPOSITORY }}
       BACKEND_APPRUNNER_SERVICE_ARN: ${{ vars.BACKEND_APPRUNNER_SERVICE_ARN }}
+      TARGET_ENVIRONMENT: ${{ github.event_name == 'push' && 'prod' || inputs.target_environment }}
+      AUTOMATIC_PRODUCTION_DEPLOY: ${{ github.event_name == 'push' || inputs.skip_approval == true }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Verify production deploy source and approval
+        if: env.TARGET_ENVIRONMENT == 'prod'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Production backend deploys are allowed only from main."
+            exit 1
+          fi
+
+          if [ "$AUTOMATIC_PRODUCTION_DEPLOY" != "true" ]; then
+            exit 0
+          fi
+
+          prs_json="$(gh api \
+            --header 'Accept: application/vnd.github+json' \
+            "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls")"
+          pr_number="$(jq -r '[.[] | select(.merged_at != null) | .number] | first // empty' <<<"$prs_json")"
+
+          if [ -z "$pr_number" ]; then
+            echo "::error::Automatic production deploy requires a commit merged through an approved pull request."
+            exit 1
+          fi
+
+          reviews_json="$(gh api \
+            --header 'Accept: application/vnd.github+json' \
+            "repos/$GITHUB_REPOSITORY/pulls/$pr_number/reviews")"
+          approved_count="$(jq '
+            map(select(.user.login != null))
+            | group_by(.user.login)
+            | map(sort_by(.submitted_at) | last)
+            | map(select(.state == "APPROVED"))
+            | length
+          ' <<<"$reviews_json")"
+
+          if [ "$approved_count" -lt 1 ]; then
+            echo "::error::Automatic production deploy requires at least one approved review on PR #$pr_number."
+            exit 1
+          fi
+
+          echo "Automatic production deploy authorized by merged approved PR #$pr_number."
 
       - name: Check backend deploy configuration
         run: |

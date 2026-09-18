@@ -107,8 +107,45 @@ acceder al backend remoto. El plan y el apply se ejecutan desde
 resumen del workflow y el apply sólo puede ejecutarse desde `main`, con
 `confirm_apply=true`, un rol AWS con OIDC y la aprobación del Environment
 `production`. El workflow bloquea destrucciones y reemplazos, y aplica el plan
-generado en esa misma ejecución. El deploy de backend también es manual y usa
-una imagen identificada por digest.
+generado en esa misma ejecución.
+
+El workflow de backend mantiene dos caminos de despliegue:
+
+- Un deploy manual normal usa el Environment `production` y conserva la
+  aprobación requerida.
+- Un merge aprobado a `main` dispara automáticamente la verificación y el
+  deploy de una imagen identificada por digest. También se puede solicitar
+  manualmente con `skip_approval=true`. Ese camino usa el Environment
+  `production-auto`, que no tiene reviewer, pero sólo acepta `main` y verifica
+  mediante la API de GitHub que el commit provenga de un PR mergeado con una
+  aprobación vigente. Un push directo sin PR aprobado falla antes de acceder a
+  AWS.
+
+El Environment `production-auto` debe tener las mismas variables y el mismo
+secret `AWS_BACKEND_DEPLOY_ROLE_ARN` que `production`. El rol OIDC de backend
+también debe incluir el subject del Environment `production-auto`; esto queda
+versionado en `infra/modules/github-backend-deploy` y requiere un apply de
+Terraform una sola vez antes de habilitar el camino automático.
+
+Ejecuciones manuales:
+
+```bash
+# Mantiene la aprobación de production
+gh workflow run Backend --ref main \
+  -f target_environment=prod \
+  -f deploy=true \
+  -f skip_approval=false
+
+# Omite el reviewer de Environment, pero exige main + PR aprobado
+gh workflow run Backend --ref main \
+  -f target_environment=prod \
+  -f deploy=true \
+  -f skip_approval=true
+```
+
+El camino automático no se dispara para cambios únicamente documentales,
+tests o Terraform; el filtro `paths` evita reconstruir y publicar el backend
+cuando no cambió el runtime.
 
 El backoffice no forma parte de la imagen ni del deploy del backend. Su
 workflow sólo instala dependencias, ejecuta tests y genera el build cuando

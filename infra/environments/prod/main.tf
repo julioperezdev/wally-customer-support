@@ -335,6 +335,7 @@ module "github_backend_deploy" {
   github_repository             = var.github_repository
   github_repository_owner_id    = var.github_repository_owner_id
   github_repository_id          = var.github_repository_id
+  additional_github_environments = ["production-auto"]
   github_oidc_provider_arn      = var.existing_github_oidc_provider_arn
   ecr_repository_arn            = module.backend_apprunner.ecr_repository_arn
   apprunner_service_arn         = module.backend_apprunner.apprunner_service_arn

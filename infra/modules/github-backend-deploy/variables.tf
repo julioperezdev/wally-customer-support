@@ -25,6 +25,12 @@ variable "github_repository_id" {
   default     = null
 }
 
+variable "additional_github_environments" {
+  type        = set(string)
+  description = "Additional GitHub Environment names allowed to assume the backend deploy role."
+  default     = []
+}
+
 variable "github_oidc_provider_arn" {
   type        = string
   description = "Existing GitHub Actions OIDC provider ARN."
