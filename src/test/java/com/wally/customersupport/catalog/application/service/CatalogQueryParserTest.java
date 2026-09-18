@@ -173,6 +173,47 @@ class CatalogQueryParserTest {
     }
 
     @Test
+    void ignoresNaturalLanguageWarmthDescriptorsWhenExtractingCatalogFilters() {
+        CatalogQuery query = CatalogQueryParser.parse(
+                "Busco algo negro para el frío, talle XL").orElseThrow();
+
+        assertNull(query.name());
+        assertEquals("xl", query.size());
+        assertEquals("negro", query.color());
+        assertEquals("abrigo", query.productType());
+    }
+
+    @Test
+    void recognizesRelativeCheaperContinuationAndPreservesPreviousSelection() {
+        assertTrue(CatalogQueryParser.isCheaperContinuation(
+                "Algo como lo de antes pero más barato"));
+
+        CatalogQuery query = CatalogQueryParser.parseConversation(
+                List.of("Quiero un buzo"),
+                "Algo como lo de antes pero más barato").orElseThrow();
+
+        assertEquals("buzo", query.productType());
+    }
+
+    @Test
+    void recognizesAStrictCheaperThanPriceFilter() {
+        CatalogQuery query = CatalogQueryParser.parse(
+                "Busco algo más barato que 20.000 pesos").orElseThrow();
+
+        assertEquals(new java.math.BigDecimal("20000"), query.maxPrice());
+        assertNull(query.name());
+        assertFalse(CatalogQueryParser.isRelativeCheaperContinuation(
+                "Busco algo más barato que 20.000 pesos"));
+    }
+
+    @Test
+    void recognizesPronounReferencesAsContextualContinuations() {
+        assertTrue(CatalogQueryParser.isContextualContinuation("Ese en negro"));
+        assertTrue(CatalogQueryParser.isContextualContinuation("El de arriba"));
+        assertTrue(CatalogQueryParser.isContextualContinuation("La misma pero talle M"));
+    }
+
+    @Test
     void recognizesPurchaseDeferralWithoutTreatingItAsCheckout() {
         assertTrue(CatalogQueryParser.isPurchaseDeferral("No quiero comprar todavía"));
         assertFalse(CatalogQueryParser.isPurchaseRequest("No quiero comprar todavía"));

@@ -736,6 +736,18 @@ public class ConversationOrchestrator {
         fields.put("resultReason", result == null ? "NO_RESULT" : result.reason());
         fields.put("executionDurationMs", executionDurationMs);
         fields.put("queryType", queryType(result));
+        fields.put("contextualContinuation", context != null
+                && CatalogQueryParser.isContextualContinuation(context.latestMessage()));
+        fields.put("cheaperContinuation", context != null
+                && CatalogQueryParser.isCheaperContinuation(context.latestMessage()));
+        fields.put("relativeCheaperContinuation", context != null
+                && CatalogQueryParser.isRelativeCheaperContinuation(context.latestMessage()));
+        fields.put("explicitPriceFilter", decision != null
+                && decision.catalogQuery() != null
+                && (decision.catalogQuery().minPrice() != null
+                || decision.catalogQuery().maxPrice() != null));
+        fields.put("warmthSelection", decision != null
+                && CatalogQueryParser.isWarmthSelection(decision.catalogQuery()));
         addCatalogQueryFields(fields, "query", decision == null ? null : decision.catalogQuery());
         addConversationIdentity(fields, context);
         StructuredEventLog.info(log, "CATALOG_SEARCH_COMPLETED", fields);

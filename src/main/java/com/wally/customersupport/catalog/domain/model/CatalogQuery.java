@@ -125,6 +125,10 @@ public record CatalogQuery(
         return new CatalogQuery(name, sku, size, color, null, minPrice, maxPrice);
     }
 
+    public CatalogQuery withProductType(String replacementProductType) {
+        return new CatalogQuery(name, sku, size, color, replacementProductType, minPrice, maxPrice);
+    }
+
     private static String normalize(String value) {
         if (value == null || value.isBlank()) {
             return null;
