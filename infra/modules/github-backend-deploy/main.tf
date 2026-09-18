@@ -4,12 +4,27 @@ locals {
     "repo:${var.github_repository}:environment:production"
   ]
 
+  additional_legacy_allowed_subjects = [
+    for environment_name in var.additional_github_environments :
+    "repo:${var.github_repository}:environment:${environment_name}"
+  ]
+
   immutable_allowed_subjects = var.github_repository_owner_id == null || var.github_repository_id == null ? [] : [
     "repo:${split("/", var.github_repository)[0]}@${var.github_repository_owner_id}/${split("/", var.github_repository)[1]}@${var.github_repository_id}:ref:refs/heads/main",
     "repo:${split("/", var.github_repository)[0]}@${var.github_repository_owner_id}/${split("/", var.github_repository)[1]}@${var.github_repository_id}:environment:production",
   ]
 
-  allowed_subjects = concat(local.legacy_allowed_subjects, local.immutable_allowed_subjects)
+  additional_immutable_allowed_subjects = var.github_repository_owner_id == null || var.github_repository_id == null ? [] : [
+    for environment_name in var.additional_github_environments :
+    "repo:${split("/", var.github_repository)[0]}@${var.github_repository_owner_id}/${split("/", var.github_repository)[1]}@${var.github_repository_id}:environment:${environment_name}"
+  ]
+
+  allowed_subjects = concat(
+    local.legacy_allowed_subjects,
+    local.additional_legacy_allowed_subjects,
+    local.immutable_allowed_subjects,
+    local.additional_immutable_allowed_subjects
+  )
 }
 
 data "aws_iam_policy_document" "assume_role" {
