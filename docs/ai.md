@@ -251,13 +251,17 @@ idempotencia y pago.
 
 ## Datos dinámicos y tools
 
-Los datos transaccionales no se consultan como texto vectorizado. Bedrock puede
-proponer una tool mediante Converse, pero el backend de WCS valida sus
-argumentos y ejecuta el caso de uso correspondiente:
+Los datos transaccionales no se consultan como texto vectorizado. La frontera
+interna de tools de WCS es provider-neutral y no depende de MCP. Cada tool tiene
+nombre, descripción, versiones de schema de input/output, capability requerida
+y un input tipado; el registro rechaza duplicados al iniciar la aplicación.
+El adapter de Bedrock ya puede mapear el contrato de routing a Tool Use cuando
+`wcs.ai.structured-tool-calling.enabled=true`, pero la ejecución siempre
+delega en un servicio de aplicación:
 
 | Tool | Fuente | Parámetros iniciales |
 | --- | --- | --- |
-| `search_catalog` | PostgreSQL | `name`, `sku`, `size`, `color`, `maxPrice` |
+| `catalog.search` | PostgreSQL | `name`, `sku`, `size`, `color`, `productType`, `minPrice`, `maxPrice` |
 | `get_stock` | PostgreSQL/inventario | `sku`, variante |
 | `get_cart` | Servicio transaccional | `customerId` |
 | `get_order_status` | Servicio de pedidos | `customerId`, `orderId` |
@@ -267,9 +271,25 @@ precio, stock, carrito ni estado de pedido. Las consultas se mantienen
 parametrizadas y allow-listed. Para DynamoDB se implementará un adapter de
 persistencia equivalente.
 
+La primera implementación ejecutable es `catalog.search`, registrada en
+`WcsToolRegistry` y utilizada por `CatalogSpecialistExecutor`. Las demás
+capacidades quedan como contratos siguientes; no se simulan como una única
+tool genérica `query_database`.
+
 Las preguntas documentales pasan por `KnowledgeRetriever`; las preguntas
 dinámicas pasan por tools de aplicación. Una pregunta mixta puede combinar
 ambos caminos antes de redactar la respuesta final.
+
+El router actual se conserva porque contiene reglas de workflow —carrito,
+confirmación, handoff, pagos y fallback— además de la selección semántica. La
+normalización determinística reconcilia filtros explícitos del mensaje con la
+propuesta del modelo: por ejemplo, `quiero un buzo` siempre conserva
+`productType=buzo` y no permite que `name=buzo` sustituya la categoría. El LLM
+interpreta; PostgreSQL y los servicios de aplicación resuelven y validan.
+
+MCP no forma parte del runtime. Si en el futuro otros clientes externos
+necesitan consumir estas mismas capacidades, se agregará un adapter MCP sobre el
+registro actual sin duplicar lógica, SQL, autorización ni reglas de negocio.
 
 ### Continuidad y consultas compuestas del catálogo
 
@@ -314,7 +334,7 @@ GENERAL_SUPPORT
   → LlmClient
 
 CATALOG_SEARCH / STOCK / CART / ORDER
-  → Bedrock Converse tool use
+  → contrato estructurado validado por WCS
   → caso de uso WCS
   → PostgreSQL o adapter transaccional
   → LlmClient para redactar sólo con el resultado validado
@@ -333,11 +353,13 @@ y delega la consulta en el servicio de catálogo existente. No acepta SQL,
 prompts ni argumentos arbitrarios. La salida sigue siendo texto construido a
 partir de resultados PostgreSQL determinísticos.
 
-La ruta se habilita únicamente cuando la definición runtime está activa. Ante
-una definición ausente, un tool no permitido, un resultado vacío o una
-excepción, se conserva el flujo legacy y se emite un evento de fallback. Esta
-decisión permite probar el límite y sus métricas sin cambiar el comportamiento
-productivo ni requerir una llamada adicional a Bedrock.
+La tool ejecutable de catálogo se habilita únicamente cuando la definición
+runtime está activa. Ante una definición ausente, un tool no permitido, un
+resultado vacío o una excepción, se conserva el flujo legacy y se emite un
+evento de fallback. El Tool Use estructurado de Bedrock sólo se aplica al
+contrato `conversation.route` cuando el flag explícito está activo; no entrega
+al modelo autoridad para ejecutar operaciones ni requiere migrar el catálogo a
+un mega-tool.
 
 El resultado de catálogo no es texto libre: `CatalogSearchResult` define el
 estado (`MATCHED`, `NO_MATCH`, `CLARIFICATION`, `AMBIGUOUS` o `ALTERNATIVES`)
@@ -345,3 +367,27 @@ y una lista limitada de `CatalogFact`. `CatalogResponseFormatter` convierte
 esos hechos en el texto actual del canal. Un futuro `response-humanizer` podrá
 adaptar tono, idioma y formato, pero no podrá agregar hechos que no estén en
 el resultado validado.
+
+## Humanización Bedrock del catálogo (WCS-133)
+
+Cuando `wcs.ai.provider=bedrock`, `BedrockResponseHumanizer` implementa el
+contrato `ResponseHumanizer` y se usa también en la ruta normal de catálogo.
+Recibe únicamente el rendering acotado de `CatalogSearchResult`, junto con el
+caso de uso y el canal. No recibe el mensaje completo, SQL, credenciales ni
+acceso a PostgreSQL. El prompt se resuelve mediante `PromptRegistry` y se
+identifica en observabilidad por versión y hash, sin registrar su contenido.
+
+La respuesta de Bedrock se acepta sólo si conserva los identificadores y
+afirmaciones estructuradas relevantes —producto, SKU, talle, color, moneda,
+precio y stock cuando corresponda— y no incorpora SKU, importes o cantidades
+desconocidos. Ante error, timeout, respuesta vacía o hechos no preservados, se
+devuelve `CatalogResponseFormatter` y se conserva la imagen del resultado.
+
+Con `wcs.ai.provider=mock` o sin la propiedad, sólo se registra
+`DeterministicResponseHumanizer`. Así existe un único bean productivo por
+proveedor y el modo de tests no depende de AWS. Los eventos
+`RESPONSE_POLICY_APPLIED` y `RESPONSE_POLICY_FALLBACK` permiten comparar
+aplicaciones y fallbacks. El fallback agrega diagnóstico sanitizado de campos
+faltantes y categorías de claims no aprobados, pero nunca registra el texto
+generado ni sus valores de negocio. `AI_USAGE_RECORDED` conserva tokens,
+latencia, costo, modelo, versión y hash del prompt sin texto conversacional.

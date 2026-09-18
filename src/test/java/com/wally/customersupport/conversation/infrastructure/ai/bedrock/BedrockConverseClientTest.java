@@ -9,15 +9,20 @@ import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 
 import com.wally.customersupport.agent.application.service.AgentRuntimeDefinition;
 import com.wally.customersupport.agent.domain.model.AgentInferenceParameters;
+import com.wally.customersupport.conversation.application.port.out.MeasuredLlmClient;
+import com.wally.customersupport.conversation.application.tool.ConversationRouteToolContract;
 import com.wally.customersupport.shared.infrastructure.config.AiProperties;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
+import software.amazon.awssdk.core.document.Document;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseMetrics;
@@ -28,6 +33,7 @@ import software.amazon.awssdk.services.bedrockruntime.model.ConversationRole;
 import software.amazon.awssdk.services.bedrockruntime.model.Message;
 import software.amazon.awssdk.services.bedrockruntime.model.StopReason;
 import software.amazon.awssdk.services.bedrockruntime.model.TokenUsage;
+import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
 
 @ExtendWith(OutputCaptureExtension.class)
 class BedrockConverseClientTest {
@@ -133,5 +139,59 @@ class BedrockConverseClientTest {
         assertTrue(output.getOut().contains("\"agentVersion\":3"));
         assertTrue(output.getOut().contains("\"inputSchemaVersion\":\"input-v3\""));
         assertTrue(output.getOut().contains("\"outputSchemaVersion\":\"output-v3\""));
+    }
+
+    @Test
+    void sendsBoundedToolSchemaAndExtractsStructuredToolInput(CapturedOutput output) {
+        BedrockRuntimeClient client = mock(BedrockRuntimeClient.class);
+        Map<String, Document> route = new LinkedHashMap<>();
+        route.put("intent", Document.fromString("CATALOG_SEARCH"));
+        route.put("action", Document.fromString("CATALOG_SEARCH"));
+        route.put("confidence", Document.fromNumber(new BigDecimal("0.94")));
+        route.put("quantity", Document.fromNumber(BigDecimal.ONE));
+        route.put("catalogQuery", Document.fromMap(Map.of(
+                "name", Document.fromString("buzo"),
+                "size", Document.fromString("M"))));
+        route.put("policyKey", Document.fromNull());
+        route.put("missingParameters", Document.fromList(java.util.List.of()));
+        when(client.converse(any(ConverseRequest.class))).thenReturn(ConverseResponse.builder()
+                .output(ConverseOutput.fromMessage(Message.builder()
+                        .role(ConversationRole.ASSISTANT)
+                        .content(ContentBlock.fromToolUse(ToolUseBlock.builder()
+                                .toolUseId("tool-use-1")
+                                .name("conversation_route")
+                                .input(Document.fromMap(route))
+                                .build()))
+                        .build()))
+                .usage(TokenUsage.builder().inputTokens(30).outputTokens(20).totalTokens(50).build())
+                .stopReason(StopReason.TOOL_USE)
+                .build());
+
+        AiProperties properties = new AiProperties(
+                "bedrock", "openai.gpt-oss-20b-1:0", "us-east-1", "pricing-test-v1",
+                new BigDecimal("0.0721"), new BigDecimal("0.3090"), Duration.ofSeconds(10), true);
+
+        BedrockConverseClient.ToolUseCompletion result = new BedrockConverseClient(client, properties)
+                .completeWithToolUse(
+                        "intent-classification", "conversation.intent.classify", "system", "user",
+                        512, 0.0f, "conversation-intent-v4", "hash-v4",
+                        ConversationRouteToolContract.DESCRIPTOR);
+
+        assertEquals(ConversationRouteToolContract.NAME, result.toolName());
+        assertTrue(result.inputJson().contains("\"intent\":\"CATALOG_SEARCH\""));
+        assertTrue(output.getOut().contains("\"eventType\":\"AI_TOOL_CALL_PROPOSED\""));
+        assertTrue(output.getOut().contains("\"inputFieldCount\":7"));
+        assertTrue(!output.getOut().contains("\"name\":\"buzo\""));
+
+        org.mockito.ArgumentCaptor<ConverseRequest> request =
+                org.mockito.ArgumentCaptor.forClass(ConverseRequest.class);
+        org.mockito.Mockito.verify(client).converse(request.capture());
+        assertEquals("conversation_route",
+                request.getValue().toolConfig().tools().getFirst().toolSpec().name());
+        assertTrue(request.getValue().toolConfig().toolChoice() == null);
+        assertTrue(request.getValue().toolConfig().tools().getFirst().toolSpec()
+                .inputSchema().json().isMap());
+        assertEquals("bedrock", result.completion().provider());
+        assertEquals(50, result.completion().totalTokens());
     }
 }

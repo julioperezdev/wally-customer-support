@@ -82,6 +82,7 @@ locals {
     "wcs.ai.input-price-usd-per-million-tokens"                   = 0.0721
     "wcs.ai.output-price-usd-per-million-tokens"                  = 0.3090
     "wcs.ai.request-timeout"                                      = "PT30S"
+    "wcs.ai.structured-tool-calling.enabled"                      = false
     "wcs.ai.prompt.provider"                                      = "classpath"
     "wcs.ai.prompt.intent-version"                                = "conversation-intent-v2"
     "wcs.ai.prompt.intent-max-output-tokens"                      = 1024

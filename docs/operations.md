@@ -324,6 +324,7 @@ wcs.ai.pricing-version
 wcs.ai.input-price-usd-per-million-tokens
 wcs.ai.output-price-usd-per-million-tokens
 wcs.ai.request-timeout
+wcs.ai.structured-tool-calling.enabled
 wcs.ai.prompt.intent-version
 wcs.ai.prompt.intent-max-output-tokens
 wcs.ai.prompt.intent-temperature
@@ -405,6 +406,7 @@ referencias a secretos, por ejemplo:
   "wcs.ai.input-price-usd-per-million-tokens": 0.0721,
   "wcs.ai.output-price-usd-per-million-tokens": 0.3090,
   "wcs.ai.request-timeout": "PT30S",
+  "wcs.ai.structured-tool-calling.enabled": false,
   "wcs.ai.prompt.provider": "classpath",
   "wcs.ai.prompt.intent-version": "conversation-intent-v4",
   "wcs.ai.response.prompt-version": "conversation-response-v1",

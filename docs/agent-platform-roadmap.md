@@ -96,7 +96,7 @@ acceso directo a la base.
 
 ## Agentes core del primer diseño
 
-El runtime actual ya tiene cuatro owners de ejecución registrados en el
+El runtime actual ya tiene cinco owners de ejecución registrados en el
 baseline del registry. `conversation-router` permanece como responsabilidad
 del clasificador y del planificador, no como agente ejecutable persistido.
 
@@ -104,6 +104,7 @@ del clasificador y del planificador, no como agente ejecutable persistido.
 | --- | --- | --- | --- |
 | `conversation-router` | Mapear el mensaje y el contexto a un caso de uso | Contratos de intención y contexto | Plan de ejecución tipado |
 | `catalog-specialist` | Buscar productos, variantes, precio y stock | Tools determinísticas sobre PostgreSQL | Resultado de catálogo verificable |
+| `checkout-specialist` | Gestionar carrito, confirmación y link de pago | Servicios transaccionales de carrito y pagos | Carrito o checkout idempotente |
 | `knowledge-specialist` | Responder horarios, ubicación, envíos y políticas | Knowledge Base de WCS | Evidencia y respuesta propuesta |
 | `support-safety` | Detectar incertidumbre, operación sensible o derivación | Políticas WCS | Fallback, escalamiento o bloqueo |
 | `response-humanizer` | Adaptar tono, idioma y formato al canal | Hechos validados y política de estilo | Texto final sin hechos nuevos |

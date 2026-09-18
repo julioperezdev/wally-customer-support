@@ -31,6 +31,32 @@ class CatalogQueryParserTest {
     }
 
     @Test
+    void removesAProductTypeDuplicatedAsTheModelProductName() {
+        CatalogQuery deterministic = CatalogQueryParser.parse("Quiero un buzo").orElseThrow();
+        CatalogQuery modelProposal = new CatalogQuery("buzo", null, null, null, null);
+
+        CatalogQuery result = CatalogQueryParser.reconcile(deterministic, modelProposal);
+
+        assertNull(result.name());
+        assertEquals("buzo", result.productType());
+    }
+
+    @Test
+    void keepsDeterministicFiltersAndNonConflictingModelFields() {
+        CatalogQuery deterministic = CatalogQueryParser.parse(
+                "Busco una remera negra talle M que cueste menos de 20000").orElseThrow();
+        CatalogQuery modelProposal = new CatalogQuery("nullpointer", null, "L", "blanco", null);
+
+        CatalogQuery result = CatalogQueryParser.reconcile(deterministic, modelProposal);
+
+        assertEquals("nullpointer", result.name());
+        assertEquals("remera", result.productType());
+        assertEquals("m", result.size());
+        assertEquals("negro", result.color());
+        assertEquals(new BigDecimal("20000"), result.maxPrice());
+    }
+
+    @Test
     void removesNeutralAvailabilityPhrasesFromProductName() {
         CatalogQuery query = CatalogQueryParser.parse("¿Tienes buzo Spring Boot?").orElseThrow();
 

@@ -19,10 +19,18 @@ Se define `ResponseHumanizer` como contrato de aplicación. Su entrada es un
 su salida es `ResponseHumanizationResult` con el texto, la política y su
 versión, además del resultado operativo.
 
-La implementación actual es `DeterministicResponseHumanizer` (`v1`). Reutiliza
+La implementación baseline es `DeterministicResponseHumanizer` (`v1`). Reutiliza
 el renderer de catálogo existente y sólo puede presentar los hechos que ya
 fueron validados por el caso de uso. La política no recibe SQL, secretos,
 prompts, mensajes completos ni acceso a repositorios.
+
+WCS-133 agrega `BedrockResponseHumanizer` (`bedrock-response-humanizer`, `v1`)
+como una implementación condicional del mismo contrato. Cuando el proveedor
+configurado es Bedrock, el modelo recibe únicamente el rendering acotado de
+los hechos validados. La salida se acepta sólo si preserva los identificadores,
+precios, monedas y cantidades relevantes del resultado; en caso contrario se
+descarta y se devuelve el rendering determinista. La selección condicional
+mantiene un único bean `ResponseHumanizer` por proveedor.
 
 Si la entrada es inválida o falla el render, devuelve un fallback seguro y
 emite un evento sanitizado. WhatsApp y Telegram comparten la política; el
@@ -32,7 +40,8 @@ contrato de canal queda disponible para futuras restricciones de formato.
 
 - El humanizador no es autoridad para precio, stock, SKU, talle, color,
   horarios, políticas, carrito ni pedidos.
-- No se ejecuta Bedrock en esta entrega.
+- Bedrock sólo humaniza resultados de catálogo ya validados; no ejecuta SQL,
+  tools ni operaciones de negocio.
 - No se cambia AppConfig, Secrets Manager, Terraform ni la activación
   productiva.
 - No se registran textos de respuesta, prompts ni PII en el evento.

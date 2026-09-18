@@ -9,6 +9,7 @@ import com.wally.customersupport.conversation.domain.model.ResponseHumanizationR
 import com.wally.customersupport.conversation.domain.model.ResponseHumanizationResult;
 import com.wally.customersupport.shared.infrastructure.observability.StructuredEventLog;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @Slf4j
+@ConditionalOnProperty(name = "wcs.ai.provider", havingValue = "mock", matchIfMissing = true)
 public class DeterministicResponseHumanizer implements ResponseHumanizer {
 
     public static final String POLICY_ID = "deterministic-response-humanizer";

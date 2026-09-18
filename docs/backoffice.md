@@ -92,8 +92,8 @@ agrupa cada caso de uso y expone relaciones `ROUTES_TO`, `USES_TOOL`,
 explícita y no equivale a un kill switch real.
 
 El baseline actual registra los owners que ya aparecen en
-`ConversationExecutionPlan`: `catalog-specialist`, `knowledge-specialist`,
-`support-safety` y `response-humanizer`. Sus asignaciones declaradas cubren
+`ConversationExecutionPlan`: `catalog-specialist`, `checkout-specialist`,
+`knowledge-specialist`, `support-safety` y `response-humanizer`. Sus asignaciones declaradas cubren
 `prod` para los adapters `telegram` y `whatsapp`, y reflejan los casos de uso
 que cada owner ejecuta en el plan. Las filas de baseline se crean con
 `enabled=false` y rollout `0`; sirven para que el panel muestre el mapa y sus

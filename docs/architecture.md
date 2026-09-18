@@ -128,21 +128,28 @@ consultas parametrizadas y allow-listed; DynamoDB u otra fuente futura se
 integra mediante un adapter equivalente.
 
 El primer límite ejecutable de esta arquitectura es `catalog-specialist`.
-Cuando una definición runtime activa autoriza `catalog.search`, el
-`CatalogSpecialistExecutor` recibe un contrato tipado con filtros acotados y
-delega en `CatalogConversationService`. Si la definición no está activa, el
-tool no está permitido o el especialista no obtiene una respuesta válida, el
-orquestador conserva la ruta determinística existente. Esta etapa no ejecuta
-prompts dinámicos ni selecciona modelos en caliente; establece el límite de
-seguridad antes de incorporar agentes Bedrock especializados.
+`WcsToolRegistry` registra `catalog.search` con un schema versionado y
+`CatalogSpecialistExecutor` recibe un contrato tipado con filtros acotados para
+delegar en `CatalogConversationService`. Si la definición no está activa, el
+tool no está permitido, el contrato no está registrado o el especialista no
+obtiene una respuesta válida, el orquestador conserva la ruta determinística
+existente. Esta etapa no ejecuta prompts dinámicos ni selecciona modelos en
+caliente; establece el límite de seguridad antes de incorporar agentes Bedrock
+especializados.
+
+La capa es interna y no introduce MCP. Bedrock, un job de evaluación o un
+futuro adapter MCP pueden consumir los mismos descriptores, pero ninguno puede
+ejecutar SQL, saltar autorización o llamar directamente un repositorio.
 
 WCS-54 separa el resultado de la consulta de su presentación. El especialista
 entrega `CatalogSearchResult` con `CatalogFact` tipados; el formatter es una
-política independiente que sólo puede renderizar esos hechos. Así, una futura
-etapa de humanización puede cambiar tono y formato sin convertirse en fuente
-de precio, stock, SKU, talle o color. WCS-55 formaliza esa frontera con
-`ResponseHumanizer` y la implementación `DeterministicResponseHumanizer` v1;
-un futuro adapter Bedrock deberá mantener el mismo contrato y fallback.
+política independiente que sólo puede renderizar esos hechos. Así, la etapa de
+humanización puede cambiar tono y formato sin convertirse en fuente de precio,
+stock, SKU, talle o color. WCS-55 formaliza esa frontera con
+`ResponseHumanizer`. WCS-133 agrega `BedrockResponseHumanizer` como adapter
+condicional para `wcs.ai.provider=bedrock`; mantiene el
+`DeterministicResponseHumanizer` v1 en mock/tests, valida que los hechos
+críticos permanezcan en la salida y conserva un fallback determinista.
 
 El router conversacional usa un prompt empaquetado y versionado, pero la
 decisión del modelo nunca ejecuta SQL, tools arbitrarias ni operaciones de

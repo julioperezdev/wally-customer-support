@@ -529,19 +529,40 @@ public class ConversationOrchestrator {
         // selectors from its context (for example, "quiero la talla M").
         boolean filterOnlyRefinement = CatalogQueryParser.isFilterOnlyRefinement(context.latestMessage());
         boolean generalCatalogRequest = CatalogQueryParser.isGeneralCatalogRequest(context.latestMessage());
-        if (!filterOnlyRefinement && !generalCatalogRequest
-                && decision.intent() == ConversationIntent.CATALOG_SEARCH
-                && executionPlanFactory.isConfident(decision.confidence())
-                && decision.catalogQuery() != null
-                && decision.catalogQuery().hasPrimarySelector()) {
-            return decision;
-        }
-
         Optional<CatalogQuery> parsedQuery = generalCatalogRequest
                 ? Optional.of(CatalogQuery.empty())
                 : CatalogQueryParser.parseConversation(
                         context.recentMessages(), context.latestMessage())
                         .filter(query -> !query.isEmpty());
+        if (!filterOnlyRefinement && !generalCatalogRequest
+                && decision.intent() == ConversationIntent.CATALOG_SEARCH
+                && executionPlanFactory.isConfident(decision.confidence())
+                && decision.catalogQuery() != null
+                && decision.catalogQuery().hasPrimarySelector()
+                && parsedQuery.isPresent()) {
+            CatalogQuery reconciled = CatalogQueryParser.reconcile(parsedQuery.get(), decision.catalogQuery());
+            if (!reconciled.equals(decision.catalogQuery())) {
+                Map<String, Object> fields = new LinkedHashMap<>();
+                fields.put("fromIntent", decision.intent().name());
+                fields.put("fromConfidence", decision.confidence());
+                fields.put("toIntent", ConversationIntent.CATALOG_SEARCH.name());
+                fields.put("reason", "MODEL_QUERY_RECONCILED_WITH_DETERMINISTIC_FILTERS");
+                addCatalogQueryFields(fields, "fromCatalog", decision.catalogQuery());
+                addCatalogQueryFields(fields, "toCatalog", reconciled);
+                addConversationIdentity(fields, context);
+                StructuredEventLog.info(log, "INTENT_DETERMINISTIC_OVERRIDE", fields);
+                return new ConversationIntentDecision(
+                        decision.intent(),
+                        decision.action(),
+                        decision.confidence(),
+                        reconciled,
+                        decision.policyKey(),
+                        decision.quantity(),
+                        decision.missingParameters());
+            }
+            return decision;
+        }
+
         if (parsedQuery.isEmpty()) {
             return decision;
         }
@@ -666,16 +687,7 @@ public class ConversationOrchestrator {
             if (specialistResult.executed()) {
                 logCatalogSearchOutcome(context, decision, specialistResult.result(),
                         "agent-specialist", specialistResult.durationMs());
-                ResponseHumanizationResult humanized = responseHumanizer.humanize(
-                        new ResponseHumanizationRequest(
-                                "CATALOG_SEARCH",
-                                context.channel(),
-                                specialistResult.result()));
-                return humanized == null
-                        ? RenderedResponse.text(SAFE_FALLBACK)
-                        : humanized.outcome() == ResponseHumanizationResult.Outcome.APPLIED
-                                ? RenderedResponse.catalog(humanized.text(), specialistResult.result())
-                                : RenderedResponse.text(humanized.text());
+                return humanizeCatalogResult(context, specialistResult.result());
             }
         }
         long searchStartedAt = System.nanoTime();
@@ -691,9 +703,22 @@ public class ConversationOrchestrator {
                         context, decision, null, "deterministic-catalog",
                         elapsedMillis(searchStartedAt)));
         return result
-                .map(catalogResult -> RenderedResponse.catalog(
-                        CatalogResponseFormatter.render(catalogResult), catalogResult))
+                .map(catalogResult -> humanizeCatalogResult(context, catalogResult))
                 .orElseGet(() -> RenderedResponse.text(LOW_CONFIDENCE));
+    }
+
+    private RenderedResponse humanizeCatalogResult(
+            ConversationContext context,
+            CatalogSearchResult catalogResult) {
+        if (context == null || context.channel() == null) {
+            return RenderedResponse.catalog(CatalogResponseFormatter.render(catalogResult), catalogResult);
+        }
+        ResponseHumanizationResult humanized = responseHumanizer.humanize(
+                new ResponseHumanizationRequest("CATALOG_SEARCH", context.channel(), catalogResult));
+        if (humanized == null || humanized.text() == null || humanized.text().isBlank()) {
+            return RenderedResponse.catalog(CatalogResponseFormatter.render(catalogResult), catalogResult);
+        }
+        return RenderedResponse.catalog(humanized.text(), catalogResult);
     }
 
     private void logCatalogSearchOutcome(

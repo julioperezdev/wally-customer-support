@@ -2,6 +2,22 @@
 
 El Space Jira `WCS` fue creado el 2026-08-29 y el backlog inicial fue cargado. Las keys reales quedaron registradas debajo; los identificadores `WCS-BL-*` son referencias estables del blueprint.
 
+## WCS-133 — Humanizador de respuestas de catálogo con Amazon Bedrock
+
+**Tipo:** Task · **Prioridad:** High · **Estado:** In Progress · **Depends on:** WCS-55
+
+Agregar `BedrockResponseHumanizer` detrás de `ResponseHumanizer` para que
+Bedrock adapte el tono de respuestas de catálogo sin convertirse en fuente de
+datos. La ruta normal envía al modelo sólo hechos validados, acepta la salida
+únicamente cuando conserva SKU, producto, variante, precio, moneda y stock
+relevantes, y conserva el formatter determinista ante errores o claims no
+aprobados. El provider `mock` mantiene un único humanizador determinista.
+
+**Evidencia:** tests unitarios del adapter y selección de beans, test del
+orquestador, `mvn verify`, eventos `AI_USAGE_RECORDED` y
+`RESPONSE_POLICY_FALLBACK/APPLIED`; sin cambios de AppConfig ni despliegue en
+esta tarea.
+
 ## Mapeo de keys reales
 
 | Blueprint | Jira |
