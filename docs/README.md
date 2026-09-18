@@ -14,6 +14,7 @@
 - [`architecture.md`](architecture.md)
 - [`data-model.md`](data-model.md)
 - [`ai.md`](ai.md)
+- [`ai-tool-routing-inventory.md`](ai-tool-routing-inventory.md): inventario, contratos, tool layer y Bedrock Tool Use estructurado sin MCP.
 - [`conversational-memory-and-agentcore-plan.md`](conversational-memory-and-agentcore-plan.md): contexto conversacional, memoria, Knowledge Base y evaluación opcional de AgentCore.
 - [`privacy-retention.md`](privacy-retention.md): clasificación, límites, aislamiento, borrado y retención de memoria conversacional.
 - [`decisions/`](decisions/)
@@ -27,6 +28,7 @@
   - [`009-agent-runtime-definition.md`](decisions/009-agent-runtime-definition.md): definición ejecutable inmutable y validación de allowlists.
   - [`010-agent-definition-runtime-observability.md`](decisions/010-agent-definition-runtime-observability.md): integración observacional del snapshot al orquestador.
   - [`011-catalog-specialist-deterministic-boundary.md`](decisions/011-catalog-specialist-deterministic-boundary.md): primer límite ejecutable con tool de catálogo determinística.
+  - [`038-internal-tool-routing-without-mcp.md`](decisions/038-internal-tool-routing-without-mcp.md): routing interno tipado y provider-neutral sin MCP.
   - [`012-structured-catalog-facts.md`](decisions/012-structured-catalog-facts.md): hechos tipados separados de la presentación de respuesta.
   - [`013-safe-response-humanization.md`](decisions/013-safe-response-humanization.md): política de presentación reemplazable sin autoridad sobre los hechos.
   - [`014-agent-evaluation-contract.md`](decisions/014-agent-evaluation-contract.md): escenarios sintéticos versionados y evaluación determinística.

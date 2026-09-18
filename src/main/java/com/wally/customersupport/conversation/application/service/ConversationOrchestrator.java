@@ -529,19 +529,40 @@ public class ConversationOrchestrator {
         // selectors from its context (for example, "quiero la talla M").
         boolean filterOnlyRefinement = CatalogQueryParser.isFilterOnlyRefinement(context.latestMessage());
         boolean generalCatalogRequest = CatalogQueryParser.isGeneralCatalogRequest(context.latestMessage());
-        if (!filterOnlyRefinement && !generalCatalogRequest
-                && decision.intent() == ConversationIntent.CATALOG_SEARCH
-                && executionPlanFactory.isConfident(decision.confidence())
-                && decision.catalogQuery() != null
-                && decision.catalogQuery().hasPrimarySelector()) {
-            return decision;
-        }
-
         Optional<CatalogQuery> parsedQuery = generalCatalogRequest
                 ? Optional.of(CatalogQuery.empty())
                 : CatalogQueryParser.parseConversation(
                         context.recentMessages(), context.latestMessage())
                         .filter(query -> !query.isEmpty());
+        if (!filterOnlyRefinement && !generalCatalogRequest
+                && decision.intent() == ConversationIntent.CATALOG_SEARCH
+                && executionPlanFactory.isConfident(decision.confidence())
+                && decision.catalogQuery() != null
+                && decision.catalogQuery().hasPrimarySelector()
+                && parsedQuery.isPresent()) {
+            CatalogQuery reconciled = CatalogQueryParser.reconcile(parsedQuery.get(), decision.catalogQuery());
+            if (!reconciled.equals(decision.catalogQuery())) {
+                Map<String, Object> fields = new LinkedHashMap<>();
+                fields.put("fromIntent", decision.intent().name());
+                fields.put("fromConfidence", decision.confidence());
+                fields.put("toIntent", ConversationIntent.CATALOG_SEARCH.name());
+                fields.put("reason", "MODEL_QUERY_RECONCILED_WITH_DETERMINISTIC_FILTERS");
+                addCatalogQueryFields(fields, "fromCatalog", decision.catalogQuery());
+                addCatalogQueryFields(fields, "toCatalog", reconciled);
+                addConversationIdentity(fields, context);
+                StructuredEventLog.info(log, "INTENT_DETERMINISTIC_OVERRIDE", fields);
+                return new ConversationIntentDecision(
+                        decision.intent(),
+                        decision.action(),
+                        decision.confidence(),
+                        reconciled,
+                        decision.policyKey(),
+                        decision.quantity(),
+                        decision.missingParameters());
+            }
+            return decision;
+        }
+
         if (parsedQuery.isEmpty()) {
             return decision;
         }

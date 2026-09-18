@@ -1,6 +1,7 @@
 package com.wally.customersupport.conversation.infrastructure.ai.bedrock;
 
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -75,7 +76,7 @@ public class BedrockResponseHumanizer implements ResponseHumanizer {
         try {
             deterministicText = CatalogResponseFormatter.render(request.catalogResult());
         } catch (RuntimeException exception) {
-            logFallback(request, "RENDERING_FAILED", exception, startedAt);
+            logFallback(request, "RENDERING_FAILED", exception, startedAt, notEvaluated(), 0);
             return ResponseHumanizationResult.fallback(
                     SAFE_FALLBACK, POLICY_ID, POLICY_VERSION, "RENDERING_FAILED");
         }
@@ -94,16 +95,23 @@ public class BedrockResponseHumanizer implements ResponseHumanizer {
                 return fallback(deterministicText, "EMPTY_RESPONSE", request, startedAt);
             }
             String normalized = generated.trim();
-            if (!preservesApprovedFacts(normalized, request.catalogResult())) {
-                return fallback(deterministicText, "FACTS_NOT_PRESERVED", request, startedAt);
+            ValidationDiagnostics validation = validateApprovedFacts(normalized, request.catalogResult());
+            if (!validation.valid()) {
+                return fallback(
+                        deterministicText,
+                        "FACTS_NOT_PRESERVED",
+                        request,
+                        startedAt,
+                        validation,
+                        normalized.length());
             }
 
             ResponseHumanizationResult result = ResponseHumanizationResult.applied(
                     normalized, POLICY_ID, POLICY_VERSION);
-            logApplied(request, startedAt);
+            logApplied(request, startedAt, validation, normalized.length());
             return result;
         } catch (RuntimeException exception) {
-            logFallback(request, "PROVIDER_ERROR", exception, startedAt);
+            logFallback(request, "PROVIDER_ERROR", exception, startedAt, notEvaluated(), 0);
             return ResponseHumanizationResult.fallback(
                     deterministicText, POLICY_ID, POLICY_VERSION, "PROVIDER_ERROR");
         }
@@ -129,14 +137,26 @@ public class BedrockResponseHumanizer implements ResponseHumanizer {
                 """.formatted(request.useCase(), request.channel().name(), boundedFacts);
     }
 
-    private boolean preservesApprovedFacts(String generated, CatalogSearchResult result) {
+    private ValidationDiagnostics validateApprovedFacts(String generated, CatalogSearchResult result) {
         String normalizedGenerated = normalize(generated);
         List<CatalogFact> facts = result.facts();
         if (result.status() == CatalogSearchResult.Status.MATCHED && facts.isEmpty()) {
-            return false;
+            return new ValidationDiagnostics(
+                    false,
+                    "RESULT_SHAPE",
+                    List.of("MATCHED_FACTS"),
+                    List.of(),
+                    0,
+                    0);
         }
+
+        Set<String> unapprovedClaims = new LinkedHashSet<>();
         if (result.status() != CatalogSearchResult.Status.MATCHED && facts.isEmpty()) {
-            return !containsUnapprovedStructuredClaim(normalizedGenerated, Set.of(), Set.of());
+            unapprovedClaims.addAll(findUnapprovedStructuredClaims(
+                    normalizedGenerated,
+                    Set.of(),
+                    Set.of()));
+            return diagnostics(unapprovedClaims.isEmpty(), Set.of(), unapprovedClaims, 0, 0);
         }
 
         Set<String> approvedSkus = facts.stream()
@@ -150,58 +170,123 @@ public class BedrockResponseHumanizer implements ResponseHumanizer {
                 .map(fact -> Integer.toString(fact.stock()))
                 .collect(Collectors.toSet());
 
-        if (containsUnapprovedStructuredClaim(normalizedGenerated, approvedSkus, approvedMoney)) {
-            return false;
-        }
+        unapprovedClaims.addAll(findUnapprovedStructuredClaims(
+                normalizedGenerated,
+                approvedSkus,
+                approvedMoney));
         if (extractCounts(normalizedGenerated).stream().anyMatch(count -> !approvedCounts.contains(count))) {
-            return false;
+            unapprovedClaims.add("STOCK");
         }
 
-        return facts.stream().allMatch(fact -> preservesFact(normalizedGenerated, fact, result.followUpKind()));
+        Set<String> missingFacts = new LinkedHashSet<>();
+        int preservedFactCount = 0;
+        for (CatalogFact fact : facts) {
+            List<String> missingForFact = missingFacts(normalizedGenerated, fact, result.followUpKind());
+            if (missingForFact.isEmpty()) {
+                preservedFactCount++;
+            } else {
+                missingFacts.addAll(missingForFact);
+            }
+        }
+        return diagnostics(
+                unapprovedClaims.isEmpty() && missingFacts.isEmpty(),
+                missingFacts,
+                unapprovedClaims,
+                facts.size(),
+                preservedFactCount);
     }
 
-    private boolean preservesFact(
+    private List<String> missingFacts(
             String generated,
             CatalogFact fact,
             CatalogSearchResult.FollowUpKind followUpKind) {
-        if (!contains(generated, fact.productName()) || !contains(generated, fact.sku())) {
-            return false;
+        Set<String> missing = new LinkedHashSet<>();
+        if (!contains(generated, fact.productName())) {
+            missing.add("PRODUCT_NAME");
         }
-        return switch (followUpKind) {
-            case NONE -> contains(generated, fact.size())
-                    && contains(generated, fact.color())
-                    && contains(generated, fact.currency())
-                    && containsMoney(generated, fact)
-                    && (fact.available()
-                            ? contains(generated, Integer.toString(fact.stock()))
-                            : contains(generated, "sin stock"));
-            case AVAILABILITY -> fact.available()
-                    ? contains(generated, Integer.toString(fact.stock()))
-                    : contains(generated, "sin stock");
-            case PRICE -> containsMoney(generated, fact);
-            case SIZE -> contains(generated, fact.size());
-            case COLOR -> contains(generated, fact.color());
-        };
+        if (!contains(generated, fact.sku())) {
+            missing.add("SKU");
+        }
+        switch (followUpKind) {
+            case NONE -> {
+                if (!contains(generated, fact.size())) {
+                    missing.add("SIZE");
+                }
+                if (!contains(generated, fact.color())) {
+                    missing.add("COLOR");
+                }
+                if (!contains(generated, fact.currency())) {
+                    missing.add("CURRENCY");
+                }
+                if (!containsMoney(generated, fact)) {
+                    missing.add("PRICE");
+                }
+                if (fact.available()
+                        ? !contains(generated, Integer.toString(fact.stock()))
+                        : !contains(generated, "sin stock")) {
+                    missing.add("STOCK");
+                }
+            }
+            case AVAILABILITY -> {
+                if (fact.available()
+                        ? !contains(generated, Integer.toString(fact.stock()))
+                        : !contains(generated, "sin stock")) {
+                    missing.add("STOCK");
+                }
+            }
+            case PRICE -> {
+                if (!containsMoney(generated, fact)) {
+                    missing.add("PRICE");
+                }
+            }
+            case SIZE -> {
+                if (!contains(generated, fact.size())) {
+                    missing.add("SIZE");
+                }
+            }
+            case COLOR -> {
+                if (!contains(generated, fact.color())) {
+                    missing.add("COLOR");
+                }
+            }
+        }
+        return List.copyOf(missing);
     }
 
-    private boolean containsUnapprovedStructuredClaim(
+    private Set<String> findUnapprovedStructuredClaims(
             String generated,
             Set<String> approvedSkus,
             Set<String> approvedMoney) {
+        Set<String> unapprovedClaims = new LinkedHashSet<>();
         Matcher skuMatcher = SKU_PATTERN.matcher(generated);
         while (skuMatcher.find()) {
             if (!approvedSkus.contains(normalize(skuMatcher.group()))) {
-                return true;
+                unapprovedClaims.add("SKU");
             }
         }
         Matcher moneyMatcher = MONEY_PATTERN.matcher(generated);
         while (moneyMatcher.find()) {
             String claim = normalizeDigits(moneyMatcher.group(1)) + ":" + moneyMatcher.group(2).toUpperCase();
             if (!approvedMoney.contains(claim)) {
-                return true;
+                unapprovedClaims.add("PRICE");
             }
         }
-        return false;
+        return unapprovedClaims;
+    }
+
+    private static ValidationDiagnostics diagnostics(
+            boolean valid,
+            Set<String> missingFacts,
+            Set<String> unapprovedClaims,
+            int expectedFactCount,
+            int preservedFactCount) {
+        return new ValidationDiagnostics(
+                valid,
+                "APPROVED_FACTS",
+                List.copyOf(missingFacts),
+                List.copyOf(unapprovedClaims),
+                expectedFactCount,
+                preservedFactCount);
     }
 
     private Set<String> extractCounts(String value) {
@@ -234,6 +319,16 @@ public class BedrockResponseHumanizer implements ResponseHumanizer {
             String reason,
             ResponseHumanizationRequest request,
             long startedAt) {
+        return fallback(text, reason, request, startedAt, notEvaluated(), 0);
+    }
+
+    private ResponseHumanizationResult fallback(
+            String text,
+            String reason,
+            ResponseHumanizationRequest request,
+            long startedAt,
+            ValidationDiagnostics validation,
+            int generatedCharacters) {
         if (request == null) {
             Map<String, Object> fields = new LinkedHashMap<>();
             fields.put("policyId", POLICY_ID);
@@ -241,18 +336,22 @@ public class BedrockResponseHumanizer implements ResponseHumanizer {
             fields.put("outcome", ResponseHumanizationResult.Outcome.FALLBACK.name());
             fields.put("fallbackReason", reason);
             fields.put("durationMs", elapsedMillis(startedAt));
+            addValidationFields(fields, validation, generatedCharacters);
             StructuredEventLog.warn(log, "RESPONSE_POLICY_FALLBACK", fields);
         } else {
-            logFallback(request, reason, null, startedAt);
+            logFallback(request, reason, null, startedAt, validation, generatedCharacters);
         }
         return ResponseHumanizationResult.fallback(text, POLICY_ID, POLICY_VERSION, reason);
     }
 
-    private void logApplied(ResponseHumanizationRequest request, long startedAt) {
+    private void logApplied(
+            ResponseHumanizationRequest request,
+            long startedAt,
+            ValidationDiagnostics validation,
+            int generatedCharacters) {
         Map<String, Object> fields = baseFields(request, startedAt);
         fields.put("outcome", ResponseHumanizationResult.Outcome.APPLIED.name());
-        fields.put("promptVersion", prompt.version());
-        fields.put("promptHash", prompt.sha256());
+        addValidationFields(fields, validation, generatedCharacters);
         StructuredEventLog.info(log, "RESPONSE_POLICY_APPLIED", fields);
     }
 
@@ -260,10 +359,13 @@ public class BedrockResponseHumanizer implements ResponseHumanizer {
             ResponseHumanizationRequest request,
             String reason,
             RuntimeException exception,
-            long startedAt) {
+            long startedAt,
+            ValidationDiagnostics validation,
+            int generatedCharacters) {
         Map<String, Object> fields = baseFields(request, startedAt);
         fields.put("outcome", ResponseHumanizationResult.Outcome.FALLBACK.name());
         fields.put("fallbackReason", reason);
+        addValidationFields(fields, validation, generatedCharacters);
         if (exception != null) {
             fields.put("errorType", exception.getClass().getSimpleName());
         }
@@ -286,6 +388,22 @@ public class BedrockResponseHumanizer implements ResponseHumanizer {
         return fields;
     }
 
+    private void addValidationFields(
+            Map<String, Object> fields,
+            ValidationDiagnostics validation,
+            int generatedCharacters) {
+        fields.put("validationStage", validation.stage());
+        fields.put("generatedCharacters", generatedCharacters);
+        fields.put("expectedFactCount", validation.expectedFactCount());
+        fields.put("preservedFactCount", validation.preservedFactCount());
+        fields.put("missingFacts", validation.missingFacts());
+        fields.put("unapprovedClaims", validation.unapprovedClaims());
+    }
+
+    private static ValidationDiagnostics notEvaluated() {
+        return new ValidationDiagnostics(true, "NOT_EVALUATED", List.of(), List.of(), 0, 0);
+    }
+
     private static String limit(String value, int maxChars) {
         return value.length() <= maxChars ? value : value.substring(0, maxChars);
     }
@@ -304,5 +422,14 @@ public class BedrockResponseHumanizer implements ResponseHumanizer {
 
     private static long elapsedMillis(long startedAt) {
         return Math.max(0, (System.nanoTime() - startedAt) / 1_000_000);
+    }
+
+    private record ValidationDiagnostics(
+            boolean valid,
+            String stage,
+            List<String> missingFacts,
+            List<String> unapprovedClaims,
+            int expectedFactCount,
+            int preservedFactCount) {
     }
 }

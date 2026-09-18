@@ -1,17 +1,25 @@
 package com.wally.customersupport.conversation.infrastructure.ai.bedrock;
 
+import java.math.BigDecimal;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import com.wally.customersupport.agent.application.service.AgentRuntimeDefinition;
 import com.wally.customersupport.conversation.application.port.out.MeasuredLlmClient;
+import com.wally.customersupport.conversation.application.tool.WcsToolDescriptor;
 import com.wally.customersupport.shared.infrastructure.config.AiProperties;
 import com.wally.customersupport.shared.infrastructure.observability.AiPricingCalculator;
 import com.wally.customersupport.shared.infrastructure.observability.StructuredEventLog;
 import lombok.extern.slf4j.Slf4j;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import software.amazon.awssdk.awscore.AwsRequestOverrideConfiguration;
+import software.amazon.awssdk.core.document.Document;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseRequest;
@@ -21,18 +29,126 @@ import software.amazon.awssdk.services.bedrockruntime.model.InferenceConfigurati
 import software.amazon.awssdk.services.bedrockruntime.model.Message;
 import software.amazon.awssdk.services.bedrockruntime.model.SystemContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.StopReason;
+import software.amazon.awssdk.services.bedrockruntime.model.SpecificToolChoice;
+import software.amazon.awssdk.services.bedrockruntime.model.Tool;
+import software.amazon.awssdk.services.bedrockruntime.model.ToolConfiguration;
+import software.amazon.awssdk.services.bedrockruntime.model.ToolInputSchema;
+import software.amazon.awssdk.services.bedrockruntime.model.ToolSpecification;
+import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
 
 @Slf4j
 final class BedrockConverseClient implements MeasuredLlmClient {
 
     private final BedrockRuntimeClient client;
     private final AiProperties properties;
+    private final ObjectMapper objectMapper;
     private final String modelId;
 
     BedrockConverseClient(BedrockRuntimeClient client, AiProperties properties) {
+        this(client, properties, new ObjectMapper());
+    }
+
+    BedrockConverseClient(BedrockRuntimeClient client, AiProperties properties, ObjectMapper objectMapper) {
         this.client = client;
         this.properties = properties;
+        this.objectMapper = objectMapper;
         this.modelId = properties.effectiveModel();
+    }
+
+    ToolUseCompletion completeWithToolUse(
+            String stage,
+            String operation,
+            String systemPrompt,
+            String userPrompt,
+            int maxTokens,
+            float temperature,
+            String promptVersion,
+            String promptHash,
+            WcsToolDescriptor descriptor) {
+        return completeWithToolUse(
+                stage, operation, systemPrompt, userPrompt, maxTokens, temperature,
+                promptVersion, promptHash, null, descriptor);
+    }
+
+    ToolUseCompletion completeWithToolUse(
+            String stage,
+            String operation,
+            String systemPrompt,
+            String userPrompt,
+            int maxTokens,
+            float temperature,
+            String promptVersion,
+            String promptHash,
+            String correlationId,
+            WcsToolDescriptor descriptor) {
+        Objects.requireNonNull(descriptor, "descriptor");
+        String providerToolName = providerToolName(descriptor.name());
+        Message message = Message.builder()
+                .role(ConversationRole.USER)
+                .content(ContentBlock.fromText(userPrompt))
+                .build();
+        ToolConfiguration.Builder toolConfigurationBuilder = ToolConfiguration.builder()
+                .tools(Tool.builder()
+                        .toolSpec(ToolSpecification.builder()
+                                .name(providerToolName)
+                                .description(descriptor.description())
+                                .inputSchema(ToolInputSchema.builder()
+                                        .json(toDocument(descriptor.inputSchemaJson()))
+                                        .build())
+                                .build())
+                        .build())
+                ;
+        if (supportsSpecificToolChoice(modelId)) {
+            toolConfigurationBuilder.toolChoice(choice(providerToolName));
+        }
+        ToolConfiguration toolConfiguration = toolConfigurationBuilder.build();
+        ConverseRequest request = ConverseRequest.builder()
+                .modelId(modelId)
+                .system(SystemContentBlock.fromText(systemPrompt))
+                .messages(message)
+                .toolConfig(toolConfiguration)
+                .overrideConfiguration(AwsRequestOverrideConfiguration.builder()
+                        .apiCallTimeout(properties.effectiveRequestTimeout())
+                        .build())
+                .inferenceConfig(InferenceConfiguration.builder()
+                        .maxTokens(maxTokens)
+                        .temperature(temperature)
+                        .topP(0.9f)
+                        .build())
+                .build();
+
+        ConverseResponse response = null;
+        long startedAt = System.nanoTime();
+        try {
+            response = client.converse(request);
+            ToolUseBlock toolUse = response.output() == null || response.output().message() == null
+                    ? null
+                    : response.output().message().content().stream()
+                            .map(ContentBlock::toolUse)
+                            .filter(Objects::nonNull)
+                            .findFirst()
+                            .orElse(null);
+            if (toolUse == null || !providerToolName.equals(toolUse.name()) || toolUse.input() == null) {
+                throw new IllegalStateException("Bedrock did not return the requested tool call");
+            }
+            String inputJson = objectMapper.writeValueAsString(toolUse.input().unwrap());
+            LlmCompletion completion = completion(null, response, startedAt, modelId);
+            recordUsage(stage, operation, completion, response.stopReason(), true, null,
+                    promptVersion, promptHash, correlationId, null, properties.effectiveRequestTimeout());
+            recordToolCall(stage, operation, descriptor, inputJson, correlationId, true, null);
+            return new ToolUseCompletion(descriptor.name(), inputJson, completion);
+        } catch (RuntimeException exception) {
+            LlmCompletion completion = response == null
+                    ? null
+                    : completion(null, response, startedAt, modelId);
+            recordUsage(stage, operation, completion,
+                    response == null ? null : response.stopReason(), false,
+                    exception.getClass().getSimpleName(), promptVersion, promptHash,
+                    correlationId, null, properties.effectiveRequestTimeout());
+            recordToolCall(stage, operation, descriptor, null, correlationId, false,
+                    exception.getClass().getSimpleName());
+            throw exception;
+        }
     }
 
     String complete(
@@ -347,6 +463,97 @@ final class BedrockConverseClient implements MeasuredLlmClient {
         }
     }
 
+    private void recordToolCall(
+            String stage,
+            String operation,
+            WcsToolDescriptor descriptor,
+            String inputJson,
+            String correlationId,
+            boolean success,
+            String errorType) {
+        Map<String, Object> fields = new LinkedHashMap<>();
+        fields.put("stage", stage);
+        fields.put("operation", operation);
+        fields.put("toolName", descriptor.name());
+        fields.put("providerToolName", providerToolName(descriptor.name()));
+        fields.put("inputSchemaVersion", descriptor.inputSchemaVersion());
+        fields.put("outputSchemaVersion", descriptor.outputSchemaVersion());
+        fields.put("requiredCapability", descriptor.requiredCapability());
+        fields.put("success", success);
+        if (correlationId != null && !correlationId.isBlank()) {
+            fields.put("correlationId", correlationId);
+        }
+        if (inputJson != null) {
+            try {
+                JsonNode input = objectMapper.readTree(inputJson);
+                List<String> keys = new ArrayList<>();
+                input.propertyNames().forEach(keys::add);
+                fields.put("inputFieldCount", keys.size());
+                fields.put("inputFields", keys);
+            } catch (RuntimeException ignored) {
+                fields.put("inputFieldCount", null);
+            }
+        }
+        if (errorType != null) {
+            fields.put("errorType", errorType);
+        }
+        if (success) {
+            StructuredEventLog.info(log, "AI_TOOL_CALL_PROPOSED", fields);
+        } else {
+            StructuredEventLog.warn(log, "AI_TOOL_CALL_FAILED", fields);
+        }
+    }
+
+    private static software.amazon.awssdk.services.bedrockruntime.model.ToolChoice choice(String name) {
+        return software.amazon.awssdk.services.bedrockruntime.model.ToolChoice.builder()
+                .tool(SpecificToolChoice.builder().name(name).build())
+                .build();
+    }
+
+    private static boolean supportsSpecificToolChoice(String modelId) {
+        return modelId != null
+                && (modelId.startsWith("anthropic.claude-3") || modelId.startsWith("amazon.nova"));
+    }
+
+    private static String providerToolName(String logicalName) {
+        String normalized = logicalName.replace('.', '_');
+        if (!normalized.matches("[a-zA-Z0-9_-]{1,64}")) {
+            throw new IllegalArgumentException("Tool name is not valid for Bedrock Converse");
+        }
+        return normalized;
+    }
+
+    private Document toDocument(String json) {
+        try {
+            return toDocument(objectMapper.readTree(json));
+        } catch (Exception exception) {
+            throw new IllegalArgumentException("Invalid tool input schema", exception);
+        }
+    }
+
+    private Document toDocument(JsonNode node) {
+        if (node == null || node.isNull()) {
+            return Document.fromNull();
+        }
+        if (node.isObject()) {
+            Map<String, Document> values = new LinkedHashMap<>();
+            node.properties().forEach(entry -> values.put(entry.getKey(), toDocument(entry.getValue())));
+            return Document.fromMap(values);
+        }
+        if (node.isArray()) {
+            List<Document> values = new ArrayList<>();
+            node.forEach(value -> values.add(toDocument(value)));
+            return Document.fromList(values);
+        }
+        if (node.isBoolean()) {
+            return Document.fromBoolean(node.booleanValue());
+        }
+        if (node.isNumber()) {
+            return Document.fromNumber(node.decimalValue());
+        }
+        return Document.fromString(node.asText());
+    }
+
     private static long elapsedMillis(long startedAt) {
         return Math.max(0, (System.nanoTime() - startedAt) / 1_000_000);
     }
@@ -355,5 +562,8 @@ final class BedrockConverseClient implements MeasuredLlmClient {
         return agentTimeout.compareTo(properties.effectiveRequestTimeout()) < 0
                 ? agentTimeout
                 : properties.effectiveRequestTimeout();
+    }
+
+    record ToolUseCompletion(String toolName, String inputJson, LlmCompletion completion) {
     }
 }

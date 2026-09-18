@@ -59,6 +59,19 @@ class ConversationIntentV4FixtureTest {
         assertEquals(64, definition.sha256().length());
     }
 
+    @Test
+    void packagedKnowledgePromptIsAvailableForThePublishedAgentDefinition() {
+        PromptDefinition definition = new ClasspathPromptRegistry()
+                .responsePrompt("knowledge-system-v2");
+
+        assertEquals("knowledge-system-v2", definition.version());
+        assertEquals(
+                "f257258bb932f92b0b22657b64590d8ac7f79eb0999855e502072388b389447f",
+                definition.sha256());
+        assertTrue(definition.content().contains("approved_knowledge"));
+        assertTrue(definition.content().contains("No inventes"));
+    }
+
     private JsonNode scenario(JsonNode scenarios, String name) {
         for (JsonNode scenario : scenarios) {
             if (name.equals(scenario.path("name").asText())) {

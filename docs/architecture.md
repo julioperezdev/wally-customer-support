@@ -128,13 +128,18 @@ consultas parametrizadas y allow-listed; DynamoDB u otra fuente futura se
 integra mediante un adapter equivalente.
 
 El primer límite ejecutable de esta arquitectura es `catalog-specialist`.
-Cuando una definición runtime activa autoriza `catalog.search`, el
-`CatalogSpecialistExecutor` recibe un contrato tipado con filtros acotados y
-delega en `CatalogConversationService`. Si la definición no está activa, el
-tool no está permitido o el especialista no obtiene una respuesta válida, el
-orquestador conserva la ruta determinística existente. Esta etapa no ejecuta
-prompts dinámicos ni selecciona modelos en caliente; establece el límite de
-seguridad antes de incorporar agentes Bedrock especializados.
+`WcsToolRegistry` registra `catalog.search` con un schema versionado y
+`CatalogSpecialistExecutor` recibe un contrato tipado con filtros acotados para
+delegar en `CatalogConversationService`. Si la definición no está activa, el
+tool no está permitido, el contrato no está registrado o el especialista no
+obtiene una respuesta válida, el orquestador conserva la ruta determinística
+existente. Esta etapa no ejecuta prompts dinámicos ni selecciona modelos en
+caliente; establece el límite de seguridad antes de incorporar agentes Bedrock
+especializados.
+
+La capa es interna y no introduce MCP. Bedrock, un job de evaluación o un
+futuro adapter MCP pueden consumir los mismos descriptores, pero ninguno puede
+ejecutar SQL, saltar autorización o llamar directamente un repositorio.
 
 WCS-54 separa el resultado de la consulta de su presentación. El especialista
 entrega `CatalogSearchResult` con `CatalogFact` tipados; el formatter es una

@@ -1,6 +1,9 @@
 package com.wally.customersupport.conversation.infrastructure.ai.bedrock;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -16,7 +19,9 @@ import com.wally.customersupport.conversation.domain.model.CustomerPreference;
 import com.wally.customersupport.conversation.infrastructure.ai.prompt.ClasspathPromptRegistry;
 import com.wally.customersupport.conversation.infrastructure.ai.prompt.PromptDefinition;
 import com.wally.customersupport.conversation.infrastructure.ai.prompt.PromptRegistry;
+import com.wally.customersupport.conversation.application.tool.ConversationRouteToolContract;
 import com.wally.customersupport.shared.infrastructure.config.AiPromptProperties;
+import com.wally.customersupport.shared.infrastructure.config.AiProperties;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,19 +33,31 @@ import org.springframework.stereotype.Component;
 public class BedrockConversationIntentClassifier implements ConversationIntentClassifier {
 
     private static final double DEFAULT_GENERAL_SUPPORT_CONFIDENCE = 0.70;
+    private static final double DEFAULT_SAFE_ROUTE_CONFIDENCE = 0.90;
     private static final Set<String> POLICY_KEYS = Set.of("shipping", "payments", "changes", "returns");
 
     private final BedrockConverseClient converseClient;
     private final ObjectMapper objectMapper;
     private final AiPromptProperties promptProperties;
     private final PromptDefinition prompt;
+    private final AiProperties aiProperties;
 
     public BedrockConversationIntentClassifier(BedrockConverseClient converseClient, ObjectMapper objectMapper) {
         this(
                 converseClient,
                 objectMapper,
                 new AiPromptProperties("conversation-intent-v4", 1_024, BigDecimal.ZERO, 2_000, 12),
-                new ClasspathPromptRegistry());
+                new ClasspathPromptRegistry(),
+                new AiProperties("bedrock", null, "us-east-1", null, BigDecimal.ZERO, BigDecimal.ZERO));
+    }
+
+    public BedrockConversationIntentClassifier(
+            BedrockConverseClient converseClient,
+            ObjectMapper objectMapper,
+            AiPromptProperties promptProperties,
+            PromptRegistry promptRegistry) {
+        this(converseClient, objectMapper, promptProperties, promptRegistry,
+                new AiProperties("bedrock", null, "us-east-1", null, BigDecimal.ZERO, BigDecimal.ZERO));
     }
 
     @Autowired
@@ -48,11 +65,13 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
             BedrockConverseClient converseClient,
             ObjectMapper objectMapper,
             AiPromptProperties promptProperties,
-            PromptRegistry promptRegistry) {
+            PromptRegistry promptRegistry,
+            AiProperties aiProperties) {
         this.converseClient = converseClient;
         this.objectMapper = objectMapper;
         this.promptProperties = promptProperties;
         this.prompt = promptRegistry.intentPrompt(promptProperties.effectiveIntentVersion());
+        this.aiProperties = aiProperties;
     }
 
     @Override
@@ -65,29 +84,81 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
             String correlationId = context.conversationId() == null
                     ? null
                     : context.conversationId().toString();
-            String output = correlationId == null
-                    ? converseClient.complete(
-                            "intent-classification",
-                            "conversation.intent.classify",
-                            prompt.content(),
-                            buildUserMessage(context),
-                            promptProperties.effectiveIntentMaxOutputTokens(),
-                            promptProperties.effectiveIntentTemperature(),
-                            prompt.version(),
-                            prompt.sha256())
-                    : converseClient.complete(
-                            "intent-classification",
-                            "conversation.intent.classify",
-                            prompt.content(),
-                            buildUserMessage(context),
-                            promptProperties.effectiveIntentMaxOutputTokens(),
-                            promptProperties.effectiveIntentTemperature(),
-                            prompt.version(),
-                            prompt.sha256(),
-                            correlationId);
+            String userMessage = buildUserMessage(context);
+            String output;
+            if (aiProperties.structuredToolCallingEnabled()) {
+                String structuredSystemPrompt = structuredToolUsePrompt();
+                String structuredPromptHash = sha256(structuredSystemPrompt);
+                BedrockConverseClient.ToolUseCompletion completion = correlationId == null
+                        ? converseClient.completeWithToolUse(
+                                "intent-classification",
+                                "conversation.intent.classify",
+                                structuredSystemPrompt,
+                                userMessage,
+                                promptProperties.effectiveIntentMaxOutputTokens(),
+                                promptProperties.effectiveIntentTemperature(),
+                                prompt.version(),
+                                structuredPromptHash,
+                                ConversationRouteToolContract.DESCRIPTOR)
+                        : converseClient.completeWithToolUse(
+                                "intent-classification",
+                                "conversation.intent.classify",
+                                structuredSystemPrompt,
+                                userMessage,
+                                promptProperties.effectiveIntentMaxOutputTokens(),
+                                promptProperties.effectiveIntentTemperature(),
+                                prompt.version(),
+                                structuredPromptHash,
+                                correlationId,
+                                ConversationRouteToolContract.DESCRIPTOR);
+                output = completion.inputJson();
+            } else {
+                output = correlationId == null
+                        ? converseClient.complete(
+                                "intent-classification",
+                                "conversation.intent.classify",
+                                prompt.content(),
+                                userMessage,
+                                promptProperties.effectiveIntentMaxOutputTokens(),
+                                promptProperties.effectiveIntentTemperature(),
+                                prompt.version(),
+                                prompt.sha256())
+                        : converseClient.complete(
+                                "intent-classification",
+                                "conversation.intent.classify",
+                                prompt.content(),
+                                userMessage,
+                                promptProperties.effectiveIntentMaxOutputTokens(),
+                                promptProperties.effectiveIntentTemperature(),
+                                prompt.version(),
+                                prompt.sha256(),
+                                correlationId);
+            }
             return parse(output);
         } catch (RuntimeException exception) {
             return ConversationIntentDecision.unknown();
+        }
+    }
+
+    private String structuredToolUsePrompt() {
+        return prompt.content()
+                + "\n\nMODO STRUCTURED TOOL USE:\n"
+                + "Usa la herramienta conversation_route exactamente una vez para devolver la decision estructurada. "
+                + "No escribas JSON como texto, no respondas con texto libre y no agregues una respuesta conversacional. "
+                + "La herramienta es la unica salida valida para este turno.";
+    }
+
+    private static String sha256(String value) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(value.getBytes(StandardCharsets.UTF_8));
+            StringBuilder result = new StringBuilder(digest.length * 2);
+            for (byte current : digest) {
+                result.append(String.format("%02x", current));
+            }
+            return result.toString();
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is unavailable", exception);
         }
     }
 
@@ -152,14 +223,36 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
 
     private double parseConfidence(JsonNode node, ConversationIntent intent) {
         if (node == null || node.isMissingNode() || node.isNull()) {
-            // GENERAL_SUPPORT is a read-only/documentary path. Allow a valid
-            // intent with an omitted confidence to reach RAG, while keeping
-            // malformed confidence unsafe for operational intents.
-            return intent == ConversationIntent.GENERAL_SUPPORT
-                    ? DEFAULT_GENERAL_SUPPORT_CONFIDENCE
-                    : 0.0;
+            // These routes are read-only, deterministic or explicitly safe:
+            // allow a valid intent with omitted confidence to reach its bounded
+            // handler. Operational routes still require explicit confidence.
+            return safeDefaultConfidence(intent);
+        }
+        if (isSafeRoute(intent)) {
+            try {
+                double parsed = Double.parseDouble(node.asText());
+                return parsed <= 0.0 ? safeDefaultConfidence(intent) : parsed;
+            } catch (NumberFormatException exception) {
+                return safeDefaultConfidence(intent);
+            }
         }
         return node.isNumber() ? node.asDouble() : 0.0;
+    }
+
+    private boolean isSafeRoute(ConversationIntent intent) {
+        return switch (intent) {
+            case GREETING, BUSINESS_HOURS, POLICY_QUERY, GENERAL_SUPPORT, HUMAN_HANDOFF -> true;
+            default -> false;
+        };
+    }
+
+    private double safeDefaultConfidence(ConversationIntent intent) {
+        return intent == ConversationIntent.GENERAL_SUPPORT
+                ? DEFAULT_GENERAL_SUPPORT_CONFIDENCE
+                : switch (intent) {
+                    case GREETING, BUSINESS_HOURS, POLICY_QUERY, HUMAN_HANDOFF -> DEFAULT_SAFE_ROUTE_CONFIDENCE;
+                    default -> 0.0;
+                };
     }
 
     private CatalogQuery catalogQuery(JsonNode node) {

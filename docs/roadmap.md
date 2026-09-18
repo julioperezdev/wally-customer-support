@@ -133,7 +133,8 @@ Las etapas propuestas son:
 3. registry y lectura versionada de agentes — primer corte implementado en modo
    read-only;
 4. authoring y ciclo de vida de agentes — implementado; pendiente smoke y rollout;
-5. agentes core y tools determinísticas — se amplía después del control plane;
+5. agentes core y tools determinísticas — `catalog.search` ya tiene registry y
+   adapter tipado; se amplía después del control plane;
 6. evaluación, persistencia histórica, observabilidad y costos — debe alimentar
    el workflow de promoción;
 7. backoffice React/TypeScript de escritura protegida — implementado con

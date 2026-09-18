@@ -188,6 +188,39 @@ public final class CatalogQueryParser {
         return Optional.of(activeQuery);
     }
 
+    /**
+     * Reconciles model-proposed filters with values extracted deterministically
+     * from the current conversation. Explicit lexical filters win over model
+     * guesses, while non-conflicting model fields remain available for future
+     * entity-resolution capabilities. Category names are never duplicated as
+     * free-text product names (for example, "quiero un buzo").
+     */
+    public static CatalogQuery reconcile(CatalogQuery deterministic, CatalogQuery proposed) {
+        if (deterministic == null) {
+            return proposed;
+        }
+        if (proposed == null) {
+            return deterministic;
+        }
+        String productType = firstNonBlank(deterministic.productType(), proposed.productType());
+        String name = firstNonBlank(deterministic.name(), proposed.name());
+        if (name != null && productType != null && name.equalsIgnoreCase(productType)) {
+            name = null;
+        }
+        return new CatalogQuery(
+                name,
+                firstNonBlank(deterministic.sku(), proposed.sku()),
+                firstNonBlank(deterministic.size(), proposed.size()),
+                firstNonBlank(deterministic.color(), proposed.color()),
+                productType,
+                deterministic.minPrice() == null ? proposed.minPrice() : deterministic.minPrice(),
+                deterministic.maxPrice() == null ? proposed.maxPrice() : deterministic.maxPrice());
+    }
+
+    private static String firstNonBlank(String preferred, String fallback) {
+        return preferred == null || preferred.isBlank() ? fallback : preferred;
+    }
+
     public static boolean isContextualContinuation(String message) {
         if (message == null || message.isBlank()) {
             return false;

@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyFloat;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -16,6 +17,9 @@ import java.util.List;
 import com.wally.customersupport.conversation.domain.model.ConversationContext;
 import com.wally.customersupport.conversation.domain.model.ConversationAction;
 import com.wally.customersupport.conversation.domain.model.ConversationIntent;
+import com.wally.customersupport.conversation.application.tool.ConversationRouteToolContract;
+import com.wally.customersupport.shared.infrastructure.config.AiProperties;
+import com.wally.customersupport.conversation.application.port.out.MeasuredLlmClient;
 import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
@@ -98,6 +102,39 @@ class BedrockConversationIntentClassifierTest {
     }
 
     @Test
+    void usesSafeDefaultConfidenceWhenHumanHandoffOmitsConfidence() {
+        BedrockConverseClient converseClient = mock(BedrockConverseClient.class);
+        when(converseClient.complete(
+                anyString(), anyString(), anyString(), anyString(), anyInt(), anyFloat(), anyString(), anyString()))
+                .thenReturn("{\"intent\":\"HUMAN_HANDOFF\",\"action\":\"HUMAN_HANDOFF\","
+                        + "\"confidence\":0.0}");
+
+        var decision = new BedrockConversationIntentClassifier(converseClient, new ObjectMapper())
+                .classify("Necesito hablar con una persona");
+
+        assertEquals(ConversationIntent.HUMAN_HANDOFF, decision.intent());
+        assertEquals(ConversationAction.HUMAN_HANDOFF, decision.action());
+        assertEquals(0.90, decision.confidence());
+    }
+
+    @Test
+    void usesSafeDefaultConfidenceWhenPolicyQueryOmitsConfidence() {
+        BedrockConverseClient converseClient = mock(BedrockConverseClient.class);
+        when(converseClient.complete(
+                anyString(), anyString(), anyString(), anyString(), anyInt(), anyFloat(), anyString(), anyString()))
+                .thenReturn("{\"intent\":\"POLICY_QUERY\",\"action\":\"POLICY_QUERY\","
+                        + "\"confidence\":0.0,\"policyKey\":\"shipping\"}");
+
+        var decision = new BedrockConversationIntentClassifier(converseClient, new ObjectMapper())
+                .classify("¿Cómo funcionan los envíos?");
+
+        assertEquals(ConversationIntent.POLICY_QUERY, decision.intent());
+        assertEquals(ConversationAction.POLICY_QUERY, decision.action());
+        assertEquals(0.90, decision.confidence());
+        assertEquals("shipping", decision.policyKey());
+    }
+
+    @Test
     void parsesPurchaseIntentAndCatalogSelection() {
         BedrockConverseClient converseClient = mock(BedrockConverseClient.class);
         when(converseClient.complete(
@@ -150,5 +187,43 @@ class BedrockConversationIntentClassifierTest {
                 .classify("¿Qué buzos tienen?");
 
         assertEquals(ConversationAction.CATALOG_SEARCH, decision.action());
+    }
+
+    @Test
+    void usesBedrockToolUseWhenStructuredRoutingIsEnabled() {
+        BedrockConverseClient converseClient = mock(BedrockConverseClient.class);
+        when(converseClient.completeWithToolUse(
+                anyString(), anyString(), anyString(), anyString(), anyInt(), anyFloat(), anyString(), anyString(),
+                any(com.wally.customersupport.conversation.application.tool.WcsToolDescriptor.class)))
+                .thenReturn(new BedrockConverseClient.ToolUseCompletion(
+                        ConversationRouteToolContract.NAME,
+                        "{\"intent\":\"CATALOG_SEARCH\",\"action\":\"CATALOG_SEARCH\","
+                                + "\"confidence\":0.97,\"quantity\":1,\"catalogQuery\":{"
+                                + "\"name\":\"buzo\",\"sku\":null,\"size\":null,\"color\":null,"
+                                + "\"productType\":\"buzo\",\"minPrice\":null,\"maxPrice\":null},"
+                                + "\"policyKey\":null,\"missingParameters\":[]}",
+                        new MeasuredLlmClient.LlmCompletion(
+                                null, "bedrock", "model-v1", 10, 8L, 20, 15, 35,
+                                new BigDecimal("0.0001"), "pricing-v1")));
+
+        AiProperties properties = new AiProperties(
+                "bedrock", "model-v1", "us-east-1", "pricing-v1", BigDecimal.ZERO, BigDecimal.ZERO,
+                java.time.Duration.ofSeconds(30), true);
+        var classifier = new BedrockConversationIntentClassifier(
+                converseClient,
+                new ObjectMapper(),
+                new com.wally.customersupport.shared.infrastructure.config.AiPromptProperties(
+                        "conversation-intent-v4", 1024, BigDecimal.ZERO, 2000, 12),
+                new com.wally.customersupport.conversation.infrastructure.ai.prompt.ClasspathPromptRegistry(),
+                properties);
+
+        var decision = classifier.classify("Quiero un buzo");
+
+        assertEquals(ConversationIntent.CATALOG_SEARCH, decision.intent());
+        assertEquals(ConversationAction.CATALOG_SEARCH, decision.action());
+        assertEquals("buzo", decision.catalogQuery().productType());
+        verify(converseClient).completeWithToolUse(
+                anyString(), anyString(), anyString(), anyString(), eq(1_024), eq(0.0f),
+                eq("conversation-intent-v4"), anyString(), eq(ConversationRouteToolContract.DESCRIPTOR));
     }
 }

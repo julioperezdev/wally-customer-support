@@ -14,7 +14,8 @@ public record AiProperties(
         String pricingVersion,
         BigDecimal inputPriceUsdPerMillionTokens,
         BigDecimal outputPriceUsdPerMillionTokens,
-        Duration requestTimeout) {
+        Duration requestTimeout,
+        StructuredToolCalling structuredToolCalling) {
 
     @ConstructorBinding
     public AiProperties {
@@ -34,7 +35,54 @@ public record AiProperties(
                 pricingVersion,
                 inputPriceUsdPerMillionTokens,
                 outputPriceUsdPerMillionTokens,
-                Duration.ofSeconds(30));
+                Duration.ofSeconds(30),
+                new StructuredToolCalling(false));
+    }
+
+    public AiProperties(
+            String provider,
+            String model,
+            String region,
+            String pricingVersion,
+            BigDecimal inputPriceUsdPerMillionTokens,
+            BigDecimal outputPriceUsdPerMillionTokens,
+            Duration requestTimeout) {
+        this(
+                provider,
+                model,
+                region,
+                pricingVersion,
+                inputPriceUsdPerMillionTokens,
+                outputPriceUsdPerMillionTokens,
+                requestTimeout,
+                new StructuredToolCalling(false));
+    }
+
+    public AiProperties(
+            String provider,
+            String model,
+            String region,
+            String pricingVersion,
+            BigDecimal inputPriceUsdPerMillionTokens,
+            BigDecimal outputPriceUsdPerMillionTokens,
+            Duration requestTimeout,
+            boolean structuredToolCallingEnabled) {
+        this(
+                provider,
+                model,
+                region,
+                pricingVersion,
+                inputPriceUsdPerMillionTokens,
+                outputPriceUsdPerMillionTokens,
+                requestTimeout,
+                new StructuredToolCalling(structuredToolCallingEnabled));
+    }
+
+    public boolean structuredToolCallingEnabled() {
+        return structuredToolCalling != null && structuredToolCalling.enabled();
+    }
+
+    public record StructuredToolCalling(boolean enabled) {
     }
 
     public String effectiveModel() {

@@ -300,6 +300,25 @@ variante y responder el stock o precio vigente. Si hay múltiples variantes o
 no existe contexto previo, el bot debe pedir el SKU o una identificación más
 precisa sin elegir arbitrariamente.
 
+La regresión crítica del router también debe cubrir:
+
+```text
+Quiero un buzo
+Quiero la talla M
+Tienes buzo Spring Boot
+```
+
+`Quiero un buzo` debe consultar por `productType=buzo`, sin convertir `buzo` en
+un nombre de producto. Un filtro posterior debe conservar sólo la selección
+activa correspondiente y no arrastrar color/talle de una categoría anterior.
+El resultado debe registrar la forma sanitizada de la consulta en
+`CATALOG_SEARCH_COMPLETED`.
+
+En pruebas de contrato, `WcsToolRegistry` debe rechazar nombres duplicados y
+`CatalogSpecialistExecutor` debe delegar únicamente a `catalog.search` cuando
+la definición activa lo autoriza. No se prueba SQL generado por el modelo ni se
+introduce MCP en este escenario.
+
 ## Datos y fixtures
 
 - Catálogo, horarios y políticas demo versionados y marcados como `DEMO`.
