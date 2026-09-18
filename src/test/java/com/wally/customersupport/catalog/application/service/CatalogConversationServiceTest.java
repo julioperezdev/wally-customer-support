@@ -105,8 +105,8 @@ class CatalogConversationServiceTest {
                         "¿Qué productos tienen?")
                 .orElseThrow();
 
-        assertEquals(CatalogSearchResult.Status.MATCHED, result.status());
         verify(catalogQueryService).searchAll(5);
+        assertEquals(CatalogSearchResult.Status.MATCHED, result.status());
     }
 
     @Test
@@ -148,6 +148,94 @@ class CatalogConversationServiceTest {
         assertEquals(
                 "El precio actual de Remera NullPointer (SKU: RP-REM-NP-NEG-M) es 18.900,00 ARS.",
                 reply);
+    }
+
+    @Test
+    void prefersExplicitCatalogFiltersOverAModelQuery() {
+        CatalogProduct product = product("Remera NullPointer", "RP-REM-NP-NEG-M", "M", "Negro", 12);
+        when(catalogQueryService.search(argThat(query ->
+                query.name() == null
+                        && "m".equals(query.size())
+                        && "negro".equals(query.color())
+                        && "remera".equals(query.productType())
+                        && new BigDecimal("20000").equals(query.maxPrice()))))
+                .thenReturn(List.of(product));
+
+        CatalogSearchResult result = new CatalogConversationService(catalogQueryService)
+                .search(
+                        new CatalogQuery("frio", null, null, null),
+                        List.of("Busco una remera negra talle M de menos de 20000 pesos"),
+                        "Busco una remera negra talle M de menos de 20000 pesos")
+                .orElseThrow();
+
+        assertEquals(CatalogSearchResult.Status.MATCHED, result.status());
+        verify(catalogQueryService).search(argThat(query ->
+                query.name() == null
+                        && "m".equals(query.size())
+                        && "negro".equals(query.color())
+                        && "remera".equals(query.productType())
+                        && new BigDecimal("20000").equals(query.maxPrice())));
+    }
+
+    @Test
+    void resolvesTheCheapestVariantFromTheActiveCatalogSelection() {
+        when(catalogQueryService.search(argThat(query -> "buzo".equals(query.productType()))))
+                .thenReturn(List.of(
+                        productAtPrice("Buzo Spring Boot", "RP-BUZ-SB-GRI-L", "L", "Gris", 5, "42900.00"),
+                        productAtPrice("Buzo Spring Boot", "RP-BUZ-SB-NEG-XL", "XL", "Negro", 3, "39900.00")));
+
+        CatalogSearchResult result = new CatalogConversationService(catalogQueryService)
+                .search(
+                        CatalogQuery.empty(),
+                        List.of("Quiero un buzo"),
+                        "Algo como lo de antes pero más barato")
+                .orElseThrow();
+
+        assertEquals(CatalogSearchResult.Status.MATCHED, result.status());
+        assertEquals(List.of("RP-BUZ-SB-NEG-XL"), result.facts().stream().map(CatalogFact::sku).toList());
+        assertEquals("CHEAPEST_MATCH", result.reason());
+    }
+
+    @Test
+    void keepsExplicitCheaperThanPriceAsAFilterInsteadOfSelectingOnlyTheCheapest() {
+        CatalogProduct cheaper = productAtPrice(
+                "Remera NullPointer", "RP-REM-NP-NEG-M", "M", "Negro", 12, "18900.00");
+        CatalogProduct secondMatch = productAtPrice(
+                "Remera NullPointer", "RP-REM-NP-NEG-L", "L", "Negro", 7, "19900.00");
+        when(catalogQueryService.search(argThat(query ->
+                query != null
+                        && "remera".equals(query.productType())
+                        && new BigDecimal("20000").equals(query.maxPrice()))))
+                .thenReturn(List.of(cheaper, secondMatch));
+
+        CatalogSearchResult result = new CatalogConversationService(catalogQueryService)
+                .search(
+                        CatalogQuery.empty(),
+                        List.of(),
+                        "Busco una remera más barata que 20.000 pesos")
+                .orElseThrow();
+
+        assertEquals(CatalogSearchResult.Status.MATCHED, result.status());
+        assertEquals(2, result.resultCount());
+        assertEquals("MATCHED", result.reason());
+    }
+
+    @Test
+    void searchesWarmClothingAcrossSweatersAndJackets() {
+        when(catalogQueryService.search(argThat(query -> query != null && "buzo".equals(query.productType()))))
+                .thenReturn(List.of(product("Buzo Spring Boot", "RP-BUZ-SB-NEG-XL", "XL", "Negro", 3)));
+        when(catalogQueryService.search(argThat(query -> query != null && "campera".equals(query.productType()))))
+                .thenReturn(List.of(product("Campera Deploy Friday", "RP-CAM-DF-AZU-M", "M", "Azul", 4)));
+
+        CatalogSearchResult result = new CatalogConversationService(catalogQueryService)
+                .search(
+                        CatalogQuery.empty(),
+                        List.of(),
+                        "Busco algo para el frío")
+                .orElseThrow();
+
+        assertEquals(CatalogSearchResult.Status.MATCHED, result.status());
+        assertEquals(2, result.resultCount());
     }
 
     @Test
@@ -246,8 +334,29 @@ class CatalogConversationServiceTest {
             String color,
             int stock,
             String imageObjectKey) {
+        return productAtPrice(name, sku, size, color, stock, "18900.00", imageObjectKey);
+    }
+
+    private static CatalogProduct productAtPrice(
+            String name,
+            String sku,
+            String size,
+            String color,
+            int stock,
+            String price) {
+        return productAtPrice(name, sku, size, color, stock, price, null);
+    }
+
+    private static CatalogProduct productAtPrice(
+            String name,
+            String sku,
+            String size,
+            String color,
+            int stock,
+            String price,
+            String imageObjectKey) {
         CatalogVariant variant = new CatalogVariant(
-                UUID.randomUUID(), sku, size, color, new BigDecimal("18900.00"), "ARS", stock, true);
+                UUID.randomUUID(), sku, size, color, new BigDecimal(price), "ARS", stock, true);
         return new CatalogProduct(UUID.randomUUID(), name, "demo", imageObjectKey, true, true, List.of(variant));
     }
 

@@ -27,7 +27,7 @@ public final class CatalogQueryParser {
                     + "rojo|roja|rojos|rojas|verde|verdes)\\b");
     private static final Pattern PRODUCT_TYPE = Pattern.compile("\\b(remera|remeras|buzo|buzos|campera|camperas)\\b");
     private static final Pattern MAX_PRICE = Pattern.compile(
-            "\\b(?:menos\\s+de|menor\\s+(?:que|a)?|por\\s+debajo\\s+de|hasta|como\\s+maximo(?:\\s+de)?|maximo(?:\\s+de)?|tope(?:\\s+de)?)"
+            "\\b(?:menos\\s+de|menor\\s+(?:que|a)?|mas\\s+barat(?:o|a|os|as)\\s+(?:que|a)|por\\s+debajo\\s+de|hasta|como\\s+maximo(?:\\s+de)?|maximo(?:\\s+de)?|tope(?:\\s+de)?)"
                     + "\\s*\\$?\\s*([0-9][0-9\\s.,]*)",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern MIN_PRICE = Pattern.compile(
@@ -41,7 +41,19 @@ public final class CatalogQueryParser {
             "\\b(que|sea|tambien|también|ahora|solo|sólo|pero|mejor|tipo)\\b");
     private static final Pattern CONTINUATION_MARKER = Pattern.compile(
             "\\b(opcion|opciones|alternativa|alternativas|mostrame|muestrame|mostrar|"
-                    + "anterior|anteriores|esto|este|estos|eso|esa|esas|asi|algo asi)\\b");
+                    + "anterior|anteriores|antes|esto|este|estos|ese|eso|esa|esas|mismo|misma|"
+                    + "ultimo|ultima|arriba|abajo|asi|algo asi|"
+                    + "algo como|lo de antes|mas barato|mas barata|mas baratos|mas baratas|"
+                    + "menor precio|economico|economica)\\b");
+    private static final Pattern CHEAPER_CONTINUATION_MARKER = Pattern.compile(
+            "\\b(mas barato|mas barata|mas baratos|mas baratas|menor precio|"
+                    + "economico|economica|mas conveniente)\\b");
+    private static final Pattern NON_PRODUCT_DESCRIPTOR = Pattern.compile(
+            "\\b(frio|abrigo|abrigado|abrigada|invierno|lindo|linda|bonito|bonita|"
+                    + "algo|lo|antes|anterior|anteriormente)\\b");
+    private static final Pattern WARMTH_MARKER = Pattern.compile(
+            "\\b(frio|abrigo|abrigado|abrigada|invierno|para el frio|para abrigo|"
+                    + "para abrigarse|para el invierno)\\b");
     private static final Pattern SHIPPING_MARKER = Pattern.compile(
             "\\b(envio|envios|entrega|despacho)\\b");
     private static final Pattern PURCHASE_MARKER = Pattern.compile(
@@ -68,7 +80,7 @@ public final class CatalogQueryParser {
     private static final Pattern CATALOG_MARKER = Pattern.compile(
             "\\b(remera|remeras|buzo|buzos|campera|camperas|producto|productos|catalogo|stock|disponible|"
                     + "disponibilidad|talle|talla|tamano|size|sku|precio|precios|cuesta|cueste|color|barato|barata|"
-                    + "caro|cara|menos|mas|hasta|debajo|encima|entre|"
+                    + "caro|cara|menos|mas|hasta|debajo|encima|entre|frio|abrigo|invierno|"
                     + "tienen|tienes|tenes|hay|ofrece|ofrecen|dispone|disponen|"
                     + "gorra|gorras|zapatilla|zapatillas|zapato|zapatos|pantalon|pantalones|"
                     + "camisa|camisas|short|shorts|accesorio|accesorios|bufanda|bufandas|"
@@ -92,9 +104,10 @@ public final class CatalogQueryParser {
                     + "disponibilidad|precio|precios|color|talle|talla|tamano|size|sku|productos?|catalogo|"
                     + "este|estos|esto|algo|"
             + "alguna|alguno|que|qué|sea|estilo|mi|ahora|solo|sólo|tambien|también|pero|mejor|tipo|"
+                    + "frio|abrigo|abrigado|abrigada|invierno|lindo|linda|bonito|bonita|"
                     + "cuesta|cueste|menos|mas|barato|barata|caro|cara|hasta|debajo|encima|entre|"
                     + "opcion|opciones|alternativa|alternativas|mostrame|muestrame|mostrar|anterior|"
-                    + "anteriores|eso|esa|esas|asi|algo|y|como|hace|hacen|se|envio|envios|entrega|"
+                    + "anteriores|antes|eso|esa|esas|asi|algo|lo|y|como|hace|hacen|se|envio|envios|entrega|"
                     + "despacho|pesos?|ars|comprar|comprarla|comprarlo|comprame|compro|adquirir|llevarme|"
                     + "llevar|llevarme|llevo|pasame|generame|link|enlace|pago|pagar|pagarla|compra|unidades?|u)\\b");
 
@@ -112,6 +125,9 @@ public final class CatalogQueryParser {
         String size = extract(SIZE, normalized);
         String color = normalizeColor(extract(COLOR, normalized));
         String productType = normalizeProductType(extract(PRODUCT_TYPE, normalized));
+        if (productType == null && WARMTH_MARKER.matcher(normalized).find()) {
+            productType = "abrigo";
+        }
         PriceRange priceRange = extractPriceRange(message);
 
         if (!CATALOG_MARKER.matcher(normalized).find()
@@ -203,7 +219,8 @@ public final class CatalogQueryParser {
             return deterministic;
         }
         String productType = firstNonBlank(deterministic.productType(), proposed.productType());
-        String name = firstNonBlank(deterministic.name(), proposed.name());
+        String proposedName = isNonProductDescriptor(proposed.name()) ? null : proposed.name();
+        String name = firstNonBlank(deterministic.name(), proposedName);
         if (name != null && productType != null && name.equalsIgnoreCase(productType)) {
             name = null;
         }
@@ -221,11 +238,56 @@ public final class CatalogQueryParser {
         return preferred == null || preferred.isBlank() ? fallback : preferred;
     }
 
+    private static boolean isNonProductDescriptor(String value) {
+        if (value == null || value.isBlank()) {
+            return true;
+        }
+        return NON_PRODUCT_DESCRIPTOR.matcher(normalize(value)).replaceAll(" ")
+                .replaceAll("\\s+", " ")
+                .trim()
+                .isBlank();
+    }
+
     public static boolean isContextualContinuation(String message) {
         if (message == null || message.isBlank()) {
             return false;
         }
         return CONTINUATION_MARKER.matcher(normalize(message)).find();
+    }
+
+    /**
+     * Detects a relative price refinement such as "algo como lo de antes pero
+     * más barato". The actual cheapest variant is always selected from the
+     * catalog facts, never inferred by the language model.
+     */
+    public static boolean isCheaperContinuation(String message) {
+        if (message == null || message.isBlank()) {
+            return false;
+        }
+        return CHEAPER_CONTINUATION_MARKER.matcher(normalize(message)).find();
+    }
+
+    /**
+     * Detects only a relative cheaper request. A numeric constraint such as
+     * "más barato que 20.000" must remain a normal max-price filter and must
+     * not be reduced to the single cheapest result.
+     */
+    public static boolean isRelativeCheaperContinuation(String message) {
+        if (!isCheaperContinuation(message)) {
+            return false;
+        }
+        return parse(message)
+                .map(query -> query.minPrice() == null && query.maxPrice() == null)
+                .orElse(true);
+    }
+
+    /**
+     * Uses a stable internal category for natural-language requests about
+     * winter or warm clothing. The catalog service expands it to the actual
+     * supported product types (buzo and campera).
+     */
+    public static boolean isWarmthSelection(CatalogQuery query) {
+        return query != null && "abrigo".equalsIgnoreCase(query.productType());
     }
 
     public static boolean isGeneralCatalogRequest(String message) {
