@@ -345,3 +345,25 @@ y una lista limitada de `CatalogFact`. `CatalogResponseFormatter` convierte
 esos hechos en el texto actual del canal. Un futuro `response-humanizer` podrá
 adaptar tono, idioma y formato, pero no podrá agregar hechos que no estén en
 el resultado validado.
+
+## Humanización Bedrock del catálogo (WCS-133)
+
+Cuando `wcs.ai.provider=bedrock`, `BedrockResponseHumanizer` implementa el
+contrato `ResponseHumanizer` y se usa también en la ruta normal de catálogo.
+Recibe únicamente el rendering acotado de `CatalogSearchResult`, junto con el
+caso de uso y el canal. No recibe el mensaje completo, SQL, credenciales ni
+acceso a PostgreSQL. El prompt se resuelve mediante `PromptRegistry` y se
+identifica en observabilidad por versión y hash, sin registrar su contenido.
+
+La respuesta de Bedrock se acepta sólo si conserva los identificadores y
+afirmaciones estructuradas relevantes —producto, SKU, talle, color, moneda,
+precio y stock cuando corresponda— y no incorpora SKU, importes o cantidades
+desconocidos. Ante error, timeout, respuesta vacía o hechos no preservados, se
+devuelve `CatalogResponseFormatter` y se conserva la imagen del resultado.
+
+Con `wcs.ai.provider=mock` o sin la propiedad, sólo se registra
+`DeterministicResponseHumanizer`. Así existe un único bean productivo por
+proveedor y el modo de tests no depende de AWS. Los eventos
+`RESPONSE_POLICY_APPLIED` y `RESPONSE_POLICY_FALLBACK` permiten comparar
+aplicaciones y fallbacks; `AI_USAGE_RECORDED` conserva tokens, latencia, costo,
+modelo, versión y hash del prompt sin texto conversacional.

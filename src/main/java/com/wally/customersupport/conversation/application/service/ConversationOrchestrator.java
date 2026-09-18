@@ -666,16 +666,7 @@ public class ConversationOrchestrator {
             if (specialistResult.executed()) {
                 logCatalogSearchOutcome(context, decision, specialistResult.result(),
                         "agent-specialist", specialistResult.durationMs());
-                ResponseHumanizationResult humanized = responseHumanizer.humanize(
-                        new ResponseHumanizationRequest(
-                                "CATALOG_SEARCH",
-                                context.channel(),
-                                specialistResult.result()));
-                return humanized == null
-                        ? RenderedResponse.text(SAFE_FALLBACK)
-                        : humanized.outcome() == ResponseHumanizationResult.Outcome.APPLIED
-                                ? RenderedResponse.catalog(humanized.text(), specialistResult.result())
-                                : RenderedResponse.text(humanized.text());
+                return humanizeCatalogResult(context, specialistResult.result());
             }
         }
         long searchStartedAt = System.nanoTime();
@@ -691,9 +682,22 @@ public class ConversationOrchestrator {
                         context, decision, null, "deterministic-catalog",
                         elapsedMillis(searchStartedAt)));
         return result
-                .map(catalogResult -> RenderedResponse.catalog(
-                        CatalogResponseFormatter.render(catalogResult), catalogResult))
+                .map(catalogResult -> humanizeCatalogResult(context, catalogResult))
                 .orElseGet(() -> RenderedResponse.text(LOW_CONFIDENCE));
+    }
+
+    private RenderedResponse humanizeCatalogResult(
+            ConversationContext context,
+            CatalogSearchResult catalogResult) {
+        if (context == null || context.channel() == null) {
+            return RenderedResponse.catalog(CatalogResponseFormatter.render(catalogResult), catalogResult);
+        }
+        ResponseHumanizationResult humanized = responseHumanizer.humanize(
+                new ResponseHumanizationRequest("CATALOG_SEARCH", context.channel(), catalogResult));
+        if (humanized == null || humanized.text() == null || humanized.text().isBlank()) {
+            return RenderedResponse.catalog(CatalogResponseFormatter.render(catalogResult), catalogResult);
+        }
+        return RenderedResponse.catalog(humanized.text(), catalogResult);
     }
 
     private void logCatalogSearchOutcome(
