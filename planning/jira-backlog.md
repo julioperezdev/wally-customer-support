@@ -38,8 +38,8 @@ promueve a AppConfig, Terraform o App Runner.
 
 No se debe abrir una migración, eliminar una implementación legacy ni cambiar
 AppConfig sólo por avanzar el ticket. Cada tarea necesita tests, evidencia y
-rollback local; el estado Jira se mantiene en `To Do` hasta iniciar la
-implementación de forma explícita.
+rollback local; una tarea pasa a `In Progress` sólo cuando la implementación
+local comienza de forma explícita.
 
 ## Mapeo de keys reales
 

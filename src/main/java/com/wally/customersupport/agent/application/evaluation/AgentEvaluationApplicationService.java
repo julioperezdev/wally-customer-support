@@ -9,6 +9,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 import com.wally.customersupport.agent.application.port.out.AgentEvaluationRunRepository;
+import com.wally.customersupport.agent.domain.model.AgentEvaluationQualityScorecard;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationSuiteResult;
 import com.wally.customersupport.agent.infrastructure.config.AgentEvaluationProperties;
 import com.wally.customersupport.shared.infrastructure.config.AiProperties;
@@ -72,6 +73,7 @@ public class AgentEvaluationApplicationService {
 
     private void logCompleted(AgentEvaluationRun run) {
         AgentEvaluationSuiteResult result = run.suiteResult();
+        AgentEvaluationQualityScorecard scorecard = result.qualityScorecard();
         Map<String, Object> fields = new LinkedHashMap<>();
         fields.put("runId", run.runId().toString());
         fields.put("datasetVersion", run.datasetVersion());
@@ -86,6 +88,23 @@ public class AgentEvaluationApplicationService {
         fields.put("averageScore", result.averageScore());
         fields.put("durationMs", run.durationMs());
         StructuredEventLog.info(log, "AGENT_EVALUATION_COMPLETED", fields);
+
+        Map<String, Object> scorecardFields = new LinkedHashMap<>();
+        scorecardFields.put("runId", run.runId().toString());
+        scorecardFields.put("datasetVersion", run.datasetVersion());
+        scorecardFields.put("agentId", run.agentId());
+        scorecardFields.put("agentVersion", run.agentVersion());
+        scorecardFields.put("provider", run.provider());
+        scorecardFields.put("model", run.modelId());
+        scorecardFields.put("evaluatedScenarios", scorecard.evaluatedScenarios());
+        scorecardFields.put("responseValidityRate", scorecard.responseValidityRate());
+        scorecardFields.put("responseGroundingRate", scorecard.responseGroundingRate());
+        scorecardFields.put("safetyRate", scorecard.safetyRate());
+        scorecardFields.put("utilityRate", scorecard.utilityRate());
+        scorecardFields.put("failureCounts", scorecard.failureCounts());
+        scorecardFields.put("unavailableDimensions", scorecard.unavailableDimensions());
+        scorecardFields.put("durationMs", run.durationMs());
+        StructuredEventLog.info(log, "AGENT_EVALUATION_SCORECARD", scorecardFields);
     }
 
     private void logFailed(

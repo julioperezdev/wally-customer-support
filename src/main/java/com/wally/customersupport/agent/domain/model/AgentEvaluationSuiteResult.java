@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+
 /** Aggregated, sanitized result of one versioned evaluation suite. */
 public record AgentEvaluationSuiteResult(
         String datasetVersion,
@@ -14,7 +15,8 @@ public record AgentEvaluationSuiteResult(
         int failedScenarios,
         double passRate,
         double averageScore,
-        Map<String, Integer> failureReasons) {
+        Map<String, Integer> failureReasons,
+        AgentEvaluationQualityScorecard qualityScorecard) {
 
     public AgentEvaluationSuiteResult {
         datasetVersion = required(datasetVersion, "datasetVersion");
@@ -50,6 +52,36 @@ public record AgentEvaluationSuiteResult(
             throw new IllegalArgumentException("aggregated metrics must match scenarioResults");
         }
         failureReasons = normalizeReasons(failureReasons);
+        qualityScorecard = Objects.requireNonNull(qualityScorecard, "qualityScorecard");
+        if (qualityScorecard.evaluatedScenarios() != totalScenarios) {
+            throw new IllegalArgumentException("qualityScorecard must match totalScenarios");
+        }
+    }
+
+    /** Backwards-compatible constructor that derives the scorecard from the evaluated results. */
+    public AgentEvaluationSuiteResult(
+            String datasetVersion,
+            List<AgentEvaluationResult> scenarioResults,
+            int totalScenarios,
+            int passedScenarios,
+            int failedScenarios,
+            double passRate,
+            double averageScore,
+            Map<String, Integer> failureReasons) {
+        this(datasetVersion, scenarioResults, totalScenarios, passedScenarios, failedScenarios,
+                passRate, averageScore, failureReasons, scorecard(scenarioResults));
+    }
+
+    private static AgentEvaluationQualityScorecard scorecard(List<AgentEvaluationResult> results) {
+        List<AgentEvaluationResult> safeResults = results == null ? List.of() : results;
+        if (safeResults.isEmpty()) {
+            throw new IllegalArgumentException("scenarioResults must not be empty");
+        }
+        double averageScore = safeResults.stream()
+                .mapToDouble(AgentEvaluationResult::score)
+                .average()
+                .orElseThrow();
+        return AgentEvaluationQualityScorecard.fromResults(safeResults, averageScore);
     }
 
     private static Map<String, Integer> normalizeReasons(Map<String, Integer> reasons) {

@@ -247,6 +247,16 @@ Entregables:
 - redacción de PII y prohibición de prompts/respuestas completas en logs;
 - alarmas de costo, latencia, error, fallback y regresión.
 
+Implementación local iniciada para WCS-138:
+
+- `AgentEvaluationQualityScorecard` separa validez de respuesta, grounding de
+  hechos, seguridad y utilidad;
+- `AGENT_EVALUATION_SCORECARD` expone sólo métricas agregadas y declara las
+  dimensiones todavía no evaluadas;
+- Grafana agrega un panel por dataset, agente, versión, proveedor y modelo;
+- el scorecard no promociona agentes automáticamente ni cambia configuración
+  remota.
+
 **Gate:** no se promociona un modelo o prompt por percepción subjetiva. Debe
 existir evidencia comparable y un resultado de rollback.
 
