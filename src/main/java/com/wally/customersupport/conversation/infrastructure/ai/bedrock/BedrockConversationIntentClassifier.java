@@ -5,8 +5,10 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 import com.wally.customersupport.catalog.domain.model.CatalogQuery;
@@ -22,6 +24,8 @@ import com.wally.customersupport.conversation.infrastructure.ai.prompt.PromptReg
 import com.wally.customersupport.conversation.application.tool.ConversationRouteToolContract;
 import com.wally.customersupport.shared.infrastructure.config.AiPromptProperties;
 import com.wally.customersupport.shared.infrastructure.config.AiProperties;
+import com.wally.customersupport.shared.infrastructure.observability.StructuredEventLog;
+import lombok.extern.slf4j.Slf4j;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +34,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @ConditionalOnProperty(name = "wcs.ai.provider", havingValue = "bedrock")
+@Slf4j
 public class BedrockConversationIntentClassifier implements ConversationIntentClassifier {
 
     private static final double DEFAULT_GENERAL_SUPPORT_CONFIDENCE = 0.70;
@@ -134,8 +139,9 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
                                 prompt.sha256(),
                                 correlationId);
             }
-            return parse(output);
+            return parse(output, context);
         } catch (RuntimeException exception) {
+            recordFallback("provider", exception, context);
             return ConversationIntentDecision.unknown();
         }
     }
@@ -162,7 +168,7 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
         }
     }
 
-    private ConversationIntentDecision parse(String output) {
+    private ConversationIntentDecision parse(String output, ConversationContext context) {
         try {
             JsonNode root = objectMapper.readTree(extractJsonObject(output));
             ConversationIntent intent = parseIntent(root.path("intent").asText(null));
@@ -185,8 +191,21 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
                     parseQuantity(root.path("quantity")),
                     missingParameters(root.path("missingParameters")));
         } catch (RuntimeException exception) {
+            recordFallback("parse", exception, context);
             return ConversationIntentDecision.unknown();
         }
+    }
+
+    private void recordFallback(String stage, RuntimeException exception, ConversationContext context) {
+        Map<String, Object> fields = new LinkedHashMap<>();
+        fields.put("operation", "conversation.intent.classify");
+        fields.put("stage", stage);
+        fields.put("result", "UNKNOWN");
+        fields.put("errorType", exception.getClass().getSimpleName());
+        if (context != null && context.conversationId() != null) {
+            fields.put("correlationId", context.conversationId());
+        }
+        StructuredEventLog.warn(log, "ROUTER_CLASSIFICATION_FALLBACK", fields);
     }
 
     private ConversationAction parseAction(String value, ConversationIntent intent) {

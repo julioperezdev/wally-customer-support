@@ -43,6 +43,7 @@ public class InboundMessageProcessingService {
     private final ConversationOrchestrator conversationOrchestrator;
     private final ConversationSummaryService conversationSummaryService;
     private final ConversationSelectionStateService conversationSelectionStateService;
+    private final ConversationContextBuilder conversationContextBuilder = new ConversationContextBuilder();
     private final CustomerPreferenceService customerPreferenceService;
     private final ExplicitPreferenceCaptureService explicitPreferenceCaptureService;
     private final OptOutDetector optOutDetector;
@@ -124,16 +125,15 @@ public class InboundMessageProcessingService {
                 explicitPreferenceCaptureService.capture(actorId, inboundMessage.body(), now);
         var preferences = customerPreferenceService.findForContext(conversation.id().toString(), conversation.id());
         ConversationExecutionResult executionResult = null;
-        ConversationContext context = new ConversationContext(
+        ConversationContext context = conversationContextBuilder.build(
                 conversation.id(),
                 conversation.externalCustomerId(),
                 inboundMessage.body(),
-                conversationState.recentMessages(),
+                conversationState,
                 List.of(),
                 conversationSummaryService.summaryForContext(conversationState),
                 preferences,
-                inboundMessage.channel(),
-                conversationState.selection());
+                inboundMessage.channel());
         String reply;
         if (preferenceCapture.shouldAcknowledge()) {
             reply = preferenceReply(preferenceCapture);

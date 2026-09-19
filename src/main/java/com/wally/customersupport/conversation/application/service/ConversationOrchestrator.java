@@ -89,6 +89,7 @@ public class ConversationOrchestrator {
     private final AgentExecutionTraceRecorder agentExecutionTraceRecorder;
     private final PurchaseLinkCreator purchaseLinkCreator;
     private final CartConversationHandler cartConversationHandler;
+    private final ConversationRoutingService conversationRoutingService;
 
     @Autowired
     public ConversationOrchestrator(
@@ -199,6 +200,7 @@ public class ConversationOrchestrator {
         this.agentExecutionTraceRecorder = agentExecutionTraceRecorder;
         this.purchaseLinkCreator = purchaseLinkCreator;
         this.cartConversationHandler = cartConversationHandler;
+        this.conversationRoutingService = new ConversationRoutingService(intentClassifier);
     }
 
     public ConversationOrchestrator(
@@ -301,9 +303,9 @@ public class ConversationOrchestrator {
                     startedAt);
         }
 
-        ConversationIntentDecision decision;
+        ConversationRoutingService.RoutingResult routingResult;
         try {
-            decision = intentClassifier.classify(context);
+            routingResult = conversationRoutingService.route(context);
         } catch (RuntimeException exception) {
             StructuredEventLog.warn(log, "INTENT_CLASSIFICATION_FAILED", Map.of(
                     "errorType", exception.getClass().getSimpleName(),
@@ -313,18 +315,8 @@ public class ConversationOrchestrator {
                     executionPlanFactory.classificationFailure("CLASSIFICATION_FAILED"),
                     startedAt);
         }
-        if (decision == null) {
-            StructuredEventLog.warn(log, "INTENT_CLASSIFICATION_FAILED", Map.of(
-                    "errorType", "null_decision",
-                    "durationMs", elapsedMillis(startedAt)));
-            return executePlan(
-                    context,
-                    executionPlanFactory.safeFallback("NULL_DECISION"),
-                    startedAt);
-        }
-        ConversationIntentDecision rawDecision = decision;
-        decision = normalizeDeterministicPurchaseDecision(context, decision);
-        decision = normalizeDeterministicCatalogDecision(context, decision);
+        ConversationIntentDecision rawDecision = routingResult.rawDecision();
+        ConversationIntentDecision decision = routingResult.decision();
         Optional<CartConversationHandler.Response> structuredCartResponse = handleStructuredCartCommand(context, decision);
         if (structuredCartResponse.isPresent()) {
             return executePlan(
@@ -342,7 +334,11 @@ public class ConversationOrchestrator {
         classifiedFields.put("rawIntent", rawDecision.intent().name());
         classifiedFields.put("rawAction", rawDecision.action().name());
         classifiedFields.put("rawConfidence", rawDecision.confidence());
-        classifiedFields.put("deterministicNormalization", !rawDecision.equals(decision));
+        classifiedFields.put("deterministicNormalization", routingResult.normalized());
+        classifiedFields.put("routingStrategy", routingResult.strategy());
+        classifiedFields.put("resolvedEntityCount", routingResult.resolvedFields().size());
+        classifiedFields.put("resolvedEntityTypes", routingResult.resolvedFields());
+        classifiedFields.put("routingMissingParameterCount", routingResult.missingFields().size());
         classifiedFields.put("historyMessageCount", context.recentMessages().size());
         addCatalogQueryFields(classifiedFields, "catalogQuery", decision.catalogQuery());
         classifiedFields.put("missingParameterCount", decision.missingParameters().size());
@@ -495,120 +491,6 @@ public class ConversationOrchestrator {
                     "action", decision.action().name()));
             return Optional.of(new CartConversationHandler.Response(SAFE_FALLBACK));
         }
-    }
-
-    private ConversationIntentDecision normalizeDeterministicPurchaseDecision(
-            ConversationContext context,
-            ConversationIntentDecision decision) {
-        if (context == null || !CatalogQueryParser.isPurchaseRequest(context.latestMessage())) {
-            return decision;
-        }
-        return new ConversationIntentDecision(
-                ConversationIntent.PURCHASE_LINK,
-                0.99,
-                CatalogQueryParser.parsePurchaseConversation(
-                        context.recentMessages(), context.latestMessage())
-                        .orElse(decision == null ? null : decision.catalogQuery()),
-                null);
-    }
-
-    private ConversationIntentDecision normalizeDeterministicCatalogDecision(
-            ConversationContext context,
-            ConversationIntentDecision decision) {
-        if (context == null
-                || decision == null
-                || decision.action().isCartOperation()
-                || !isCatalogNormalizationCandidate(context, decision)) {
-            return decision;
-        }
-
-        // Bedrock v4 returns a structured query for explicit selections. Keep
-        // that decision when it is confident and contains a primary selector;
-        // a filter-only turn is different: it must be resolved against the
-        // active conversation selection even when the model copied stale
-        // selectors from its context (for example, "quiero la talla M").
-        boolean filterOnlyRefinement = CatalogQueryParser.isFilterOnlyRefinement(context.latestMessage());
-        boolean generalCatalogRequest = CatalogQueryParser.isGeneralCatalogRequest(context.latestMessage());
-        Optional<CatalogQuery> parsedQuery = generalCatalogRequest
-                ? Optional.of(CatalogQuery.empty())
-                : CatalogQueryParser.parseConversation(
-                        context.recentMessages(), context.latestMessage())
-                        .filter(query -> !query.isEmpty());
-        if (!filterOnlyRefinement && !generalCatalogRequest
-                && decision.intent() == ConversationIntent.CATALOG_SEARCH
-                && executionPlanFactory.isConfident(decision.confidence())
-                && decision.catalogQuery() != null
-                && decision.catalogQuery().hasPrimarySelector()
-                && parsedQuery.isPresent()) {
-            CatalogQuery reconciled = CatalogQueryParser.reconcile(parsedQuery.get(), decision.catalogQuery());
-            if (!reconciled.equals(decision.catalogQuery())) {
-                Map<String, Object> fields = new LinkedHashMap<>();
-                fields.put("fromIntent", decision.intent().name());
-                fields.put("fromConfidence", decision.confidence());
-                fields.put("toIntent", ConversationIntent.CATALOG_SEARCH.name());
-                fields.put("reason", "MODEL_QUERY_RECONCILED_WITH_DETERMINISTIC_FILTERS");
-                addCatalogQueryFields(fields, "fromCatalog", decision.catalogQuery());
-                addCatalogQueryFields(fields, "toCatalog", reconciled);
-                addConversationIdentity(fields, context);
-                StructuredEventLog.info(log, "INTENT_DETERMINISTIC_OVERRIDE", fields);
-                return new ConversationIntentDecision(
-                        decision.intent(),
-                        decision.action(),
-                        decision.confidence(),
-                        reconciled,
-                        decision.policyKey(),
-                        decision.quantity(),
-                        decision.missingParameters());
-            }
-            return decision;
-        }
-
-        if (parsedQuery.isEmpty()) {
-            return decision;
-        }
-        CatalogQuery query = parsedQuery.get();
-        if (decision.intent() == ConversationIntent.CATALOG_SEARCH
-                && query.equals(decision.catalogQuery())) {
-            return decision.confidence() >= ConversationExecutionPlanFactory.MIN_CONFIDENCE
-                    ? decision
-                    : new ConversationIntentDecision(
-                            ConversationIntent.CATALOG_SEARCH,
-                            0.99,
-                            query,
-                            null);
-        }
-        Map<String, Object> fields = new LinkedHashMap<>();
-        fields.put("fromIntent", decision.intent().name());
-        fields.put("fromConfidence", decision.confidence());
-        fields.put("toIntent", ConversationIntent.CATALOG_SEARCH.name());
-        fields.put("reason", generalCatalogRequest
-                ? "GENERAL_CATALOG_REQUEST"
-                : "STRUCTURED_CATALOG_QUERY");
-        addCatalogQueryFields(fields, "fromCatalog", decision.catalogQuery());
-        addCatalogQueryFields(fields, "toCatalog", query);
-        addConversationIdentity(fields, context);
-        StructuredEventLog.info(log, "INTENT_DETERMINISTIC_OVERRIDE", fields);
-        return new ConversationIntentDecision(
-                ConversationIntent.CATALOG_SEARCH,
-                0.99,
-                query,
-                null);
-    }
-
-    private static boolean isCatalogNormalizationCandidate(
-            ConversationContext context,
-            ConversationIntentDecision decision) {
-        if (decision.intent() == ConversationIntent.CATALOG_SEARCH
-                || decision.intent() == ConversationIntent.GENERAL_SUPPORT
-                || decision.intent() == ConversationIntent.UNKNOWN) {
-            return true;
-        }
-        // A model can over-read "quiero un buzo" as a purchase because of the
-        // verb "quiero". Only allow the deterministic catalog rescue when the
-        // customer did not use an explicit purchase marker. Explicit checkout
-        // requests remain handled by normalizeDeterministicPurchaseDecision.
-        return decision.intent() == ConversationIntent.PURCHASE_LINK
-                && !CatalogQueryParser.isPurchaseRequest(context.latestMessage());
     }
 
     private boolean isCatalogShippingComposite(

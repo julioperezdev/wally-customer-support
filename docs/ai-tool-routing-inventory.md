@@ -105,7 +105,7 @@ backoffice/runtime; el modelo no puede elevar permisos.
 ### Contrato de routing
 
 `conversation.route` es un contrato de inferencia: no ejecuta una operación.
-Su input estructurado está versionado como `conversation-route-input-v1` y
+Su input estructurado está versionado como `conversation-route-input-v2` y
 contiene únicamente los campos que el backend ya sabe validar. La primera
 implementación permite:
 

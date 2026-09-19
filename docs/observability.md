@@ -48,8 +48,10 @@ operacional necesario para diagnóstico y costo, pero sin contenido de negocio.
 | `INBOUND_MESSAGE_PROCESSED` | `result`, `attempt`, `durationMs`, `correlationId` | Worker completó el procesamiento fuera del request |
 | `INBOUND_MESSAGE_RETRY_SCHEDULED` | `result`, `attempt`, `durationMs`, `errorType`, `correlationId` | Fallo transitorio con retry diferido |
 | `INBOUND_MESSAGE_FAILED` | `result`, `attempt`, `durationMs`, `errorType`, `correlationId` | Intentos agotados; se encola fallback seguro |
-| `INTENT_CLASSIFIED` | `intent`, `action`, `confidence`, `confidenceBucket`, `rawIntent`, `rawAction`, `rawConfidence`, `deterministicNormalization`, `catalogQueryPresent`, `catalogQueryFilterCount`, `catalogQueryFilters`, `catalogQueryProductType`, `missingParameterCount`, `historyMessageCount`, `durationMs`, `correlationId`, `channel`, `actorKey` opcional | Decisión efectiva del orquestador y evidencia sanitizada de cuánto fue normalizada |
-| `INTENT_DETERMINISTIC_OVERRIDE` | `fromIntent`, `fromConfidence`, `toIntent`, `reason`, `fromCatalogFilterCount`, `fromCatalogFilters`, `toCatalogFilterCount`, `toCatalogFilters`, `fromCatalogProductType`, `toCatalogProductType`, `correlationId`, `channel`, `actorKey` opcional | Rescue determinístico o corrección de una decisión ambigua; permite detectar cuándo el parser contradice al LLM |
+| `INTENT_CLASSIFIED` | `intent`, `action`, `confidence`, `confidenceBucket`, `rawIntent`, `rawAction`, `rawConfidence`, `deterministicNormalization`, `routingStrategy`, `resolvedEntityCount`, `resolvedEntityTypes`, `routingMissingParameterCount`, `catalogQueryPresent`, `catalogQueryFilterCount`, `catalogQueryFilters`, `catalogQueryProductType`, `missingParameterCount`, `historyMessageCount`, `durationMs`, `correlationId`, `channel`, `actorKey` opcional | Decisión efectiva del router y evidencia sanitizada de cuánto fue normalizada |
+| `ROUTER_CLASSIFICATION_FALLBACK` | `operation`, `stage`, `result`, `errorType`, `correlationId` | El clasificador Bedrock no pudo producir una decisión válida; no incluye prompt, respuesta ni texto del cliente |
+| `ROUTING_SAFE_FALLBACK` | `reason`, `rawIntent`, `rawAction` | La frontera de routing recibió una propuesta nula y falló cerrada |
+| `INTENT_DETERMINISTIC_OVERRIDE` | `fromIntent`, `fromAction`, `fromConfidence`, `toIntent`, `toAction`, `toConfidence`, `reason`, `fromCatalogFilterCount`, `fromCatalogFilters`, `toCatalogFilterCount`, `toCatalogFilters`, `fromCatalogProductType`, `toCatalogProductType`, `correlationId`, `channel` | Rescue determinístico o corrección de una decisión ambigua; permite detectar cuándo el parser contradice al LLM |
 | `CATALOG_SEARCH_COMPLETED` | `source`, `queryType`, `resultStatus`, `resultCount`, `imageCount`, `followUpKind`, `resultReason`, `executionDurationMs`, `queryPresent`, `queryFilterCount`, `queryFilters`, `queryProductType`, `correlationId`, `channel`, `actorKey` opcional | Resultado verificable de catálogo y forma sanitizada de la consulta que se ejecutó |
 | `INTENT_CLASSIFICATION_FAILED` | `errorType`, `durationMs` | Fallo del clasificador |
 | `INTENT_COMPOSED` | `primaryIntent`, `secondaryIntent`, `components`, `result` | Consulta acotada que combina catálogo con una política publicada |
@@ -118,10 +120,12 @@ no existe una llamada de IA real y no se emite este evento.
 `INTENT_CLASSIFIED` conserva la decisión original del clasificador (`raw*`) y
 la decisión que efectivamente se ejecutó. `deterministicNormalization=true`
 indica que WCS tuvo que rescatar o normalizar la decisión antes de ejecutar el
-caso de uso. `catalogFilters` sólo contiene nombres de campos presentes, nunca
-valores; `catalogProductType` está limitado a la categoría normalizada. Esto
-permite medir prompts y orquestación sin registrar mensajes ni identificadores
-de productos.
+caso de uso. `routingStrategy` distingue la propuesta del modelo de una
+reconciliación determinística o un fallback seguro; `resolvedEntityTypes`
+contiene sólo nombres de campos, nunca valores. `catalogFilters` sólo contiene
+nombres de campos presentes, nunca valores; `catalogProductType` está limitado
+a la categoría normalizada. Esto permite medir prompts y orquestación sin
+registrar mensajes ni identificadores de productos.
 
 `CATALOG_SEARCH_COMPLETED` es la evidencia de negocio que faltaba en los logs
 anteriores: indica si hubo coincidencias, alternativas, ambigüedad o ausencia

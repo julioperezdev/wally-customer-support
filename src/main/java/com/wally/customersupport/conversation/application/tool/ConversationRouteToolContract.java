@@ -12,7 +12,7 @@ public final class ConversationRouteToolContract {
     public static final WcsToolDescriptor DESCRIPTOR = new WcsToolDescriptor(
             NAME,
             "Clasifica el mensaje en un caso de uso WCS y extrae únicamente argumentos estructurados. No ejecuta ninguna operación.",
-            "conversation-route-input-v1",
+            "conversation-route-input-v2",
             """
                     {"type":"object","properties":{
                       "intent":{"type":"string","enum":["UNKNOWN","GREETING","CATALOG_SEARCH","PURCHASE_LINK","BUSINESS_HOURS","POLICY_QUERY","GENERAL_SUPPORT","HUMAN_HANDOFF"]},
