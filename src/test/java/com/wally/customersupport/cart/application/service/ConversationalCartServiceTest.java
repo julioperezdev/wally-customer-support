@@ -192,8 +192,7 @@ class ConversationalCartServiceTest {
     }
 
     private void stubCatalogSearch(CatalogFact shirt, CatalogFact hoodie) {
-        when(catalogConversationService.search(
-                any(CatalogQuery.class), any(), anyString()))
+        when(catalogConversationService.searchExact(any(CatalogQuery.class)))
                 .thenAnswer(invocation -> {
                     CatalogQuery query = invocation.getArgument(0);
                     CatalogFact fact = "buzo".equals(query.productType()) ? hoodie : shirt;

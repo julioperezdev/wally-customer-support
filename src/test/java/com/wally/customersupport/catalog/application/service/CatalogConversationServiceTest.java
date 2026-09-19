@@ -62,6 +62,26 @@ class CatalogConversationServiceTest {
     }
 
     @Test
+    void exactSearchDoesNotReconstructQuantityAsPartOfProductName() {
+        CatalogProduct product = product("Remera NullPointer", "RP-REM-NP-NEG-M", "M", "Negro", 12);
+        when(catalogQueryService.search(argThat(query ->
+                "nullpointer".equals(query.name())
+                        && "m".equalsIgnoreCase(query.size())
+                        && "negro".equalsIgnoreCase(query.color())
+                        && "remera".equalsIgnoreCase(query.productType()))))
+                .thenReturn(List.of(product));
+
+        CatalogSearchResult result = new CatalogConversationService(catalogQueryService)
+                .searchExact(new CatalogQuery("nullpointer", null, "M", "negro", "remera"))
+                .orElseThrow();
+
+        assertEquals(CatalogSearchResult.Status.MATCHED, result.status());
+        assertEquals("RP-REM-NP-NEG-M", result.facts().getFirst().sku());
+        verify(catalogQueryService).search(argThat(query ->
+                "nullpointer".equals(query.name()) && "remera".equalsIgnoreCase(query.productType())));
+    }
+
+    @Test
     void doesNotInventAProductWhenThereAreNoMatches() {
         when(catalogQueryService.search(argThat(query ->
                 "fantasma".equals(query.name()) && "remera".equals(query.productType()))))
