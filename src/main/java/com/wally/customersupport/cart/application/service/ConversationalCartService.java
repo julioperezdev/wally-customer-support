@@ -283,8 +283,9 @@ public class ConversationalCartService implements CartConversationHandler {
             }
             return Optional.empty();
         }
-        Optional<CatalogSearchResult> result = catalogConversationService.search(
-                query.get(), context.recentMessages(), context.latestMessage());
+        Optional<CatalogSearchResult> result = command.query() != null && !command.query().isEmpty()
+                ? catalogConversationService.searchExact(query.get())
+                : catalogConversationService.search(query.get(), context.recentMessages(), context.latestMessage());
         if (result.isEmpty()
                 || result.get().status() != CatalogSearchResult.Status.MATCHED
                 || result.get().facts().isEmpty()) {

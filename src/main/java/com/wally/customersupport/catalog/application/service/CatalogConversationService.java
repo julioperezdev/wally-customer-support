@@ -66,6 +66,19 @@ public class CatalogConversationService {
         return Optional.of(searchQuery(activeQuery));
     }
 
+    /**
+     * Searches exactly the supplied filters without reconstructing them from
+     * conversation history. This is used by deterministic commands such as
+     * cart mutations, where quantity and action words must never become part
+     * of the product name.
+     */
+    public Optional<CatalogSearchResult> searchExact(CatalogQuery query) {
+        if (query == null) {
+            return Optional.of(clarification("QUERY_REQUIRED"));
+        }
+        return Optional.of(searchQuery(query));
+    }
+
     private CatalogSearchResult searchCheaper(CatalogQuery activeQuery) {
         List<CatalogProduct> products = activeQuery == null || activeQuery.isEmpty()
                 ? catalogQueryService.searchAll(MAX_GENERAL_RESULTS)
