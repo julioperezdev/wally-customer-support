@@ -110,6 +110,22 @@ La ejecución controlada de esta fase está definida en
 [`pilot-report-template.md`](pilot-report-template.md) y el scorecard de
 CloudWatch en [`observability/grafana/queries/pilot-scorecard.md`](../observability/grafana/queries/pilot-scorecard.md).
 
+## Programa vigente — Refactor conversacional y fundación de datos
+
+**Estado:** `Proposed` · Jira `WCS-134`
+**Documento operativo:** [`conversational-platform-refactor-roadmap.md`](conversational-platform-refactor-roadmap.md)
+
+Este programa toma el comportamiento observado en Telegram, la auditoría de
+código y el modelo actual de PostgreSQL para mejorar la interpretación de
+mensajes humanos sin perder la autoridad de las tools WCS. Se ejecuta en cinco
+fases grandes: contrato/baseline, estado conversacional y schema, routing
+semántico, agentes y tools, observabilidad/evaluación y cleanup/rollout.
+
+La ejecución será local-first con PostgreSQL/Testcontainers y Bedrock opcional
+antes de abrir PR o tocar AWS. No se incorpora MCP al runtime, no se genera SQL
+desde el LLM y no se eliminan migraciones ni paths legacy hasta contar con
+evidencia de equivalencia y rollback.
+
 ## Programa siguiente — Plataforma de agentes
 
 **Estado:** `Accepted` · Jira `WCS-45`

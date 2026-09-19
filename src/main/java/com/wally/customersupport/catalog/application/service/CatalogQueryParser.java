@@ -109,7 +109,9 @@ public final class CatalogQueryParser {
                     + "opcion|opciones|alternativa|alternativas|mostrame|muestrame|mostrar|anterior|"
                     + "anteriores|antes|eso|esa|esas|asi|algo|lo|y|como|hace|hacen|se|envio|envios|entrega|"
                     + "despacho|pesos?|ars|comprar|comprarla|comprarlo|comprame|compro|adquirir|llevarme|"
-                    + "llevar|llevarme|llevo|pasame|generame|link|enlace|pago|pagar|pagarla|compra|unidades?|u)\\b");
+                    + "llevar|llevarme|llevo|pasame|generame|link|enlace|pago|pagar|pagarla|compra|unidades?|u|"
+                    + "suma|sumame|agrega|agregame|agregar|anade|anademe|anadir|al|carrito|"
+                    + "dos|tres|cuatro|cinco|ese|esos|misma|mismo)\\b");
 
     private CatalogQueryParser() {
     }

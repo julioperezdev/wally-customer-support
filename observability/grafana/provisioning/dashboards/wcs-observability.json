@@ -274,7 +274,7 @@
       "targets": [
         {
           "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
-          "expression": "fields @timestamp, @message\n| filter @message like /\\\"eventType\\\":\\\"AI_USAGE_RECORDED\\\"/\n| parse @message /\\\"stage\\\":\\\"(?<parsedStage>[^\\\"]+)\\\"/\n| parse @message /\\\"operation\\\":\\\"(?<parsedOperation>[^\\\"]+)\\\"/\n| parse @message /\\\"provider\\\":\\\"(?<parsedProvider>[^\\\"]+)\\\"/\n| parse @message /\\\"model\\\":\\\"(?<parsedModel>[^\\\"]+)\\\"/\n| parse @message /\\\"pricingVersion\\\":\\\"(?<parsedPricingVersion>[^\\\"]+)\\\"/\n| parse @message /\\\"inputTokens\\\":(?<parsedInputTokens>[0-9]+)/\n| parse @message /\\\"outputTokens\\\":(?<parsedOutputTokens>[0-9]+)/\n| parse @message /\\\"totalTokens\\\":(?<parsedTotalTokens>[0-9]+)/\n| parse @message /\\\"estimatedCostUsd\\\":(?<parsedEstimatedCostUsd>[0-9.]+)/\n| parse @message /\\\"durationMs\\\":(?<parsedDurationMs>[0-9]+)/\n| parse @message /\\\"success\\\":(?<parsedSuccess>true|false)/\n| stats sum(parsedInputTokens) as inputTokens, sum(parsedOutputTokens) as outputTokens, sum(parsedTotalTokens) as totalTokens, sum(parsedEstimatedCostUsd) as estimatedCostUsd, avg(parsedDurationMs) as averageDurationMs, pct(parsedDurationMs, 95) as p95DurationMs, sum(if(parsedSuccess = \"false\", 1, 0)) as failures, count() as aiCalls by parsedStage, parsedOperation, parsedProvider, parsedModel, parsedPricingVersion, bin(1h)\n| sort @timestamp asc",
+          "expression": "fields @timestamp, @message\n| filter @message like /\"eventType\":\"AI_USAGE_RECORDED\"/\n| parse @message /\"stage\":\"(?<parsedStage>[^\"]+)\"/\n| parse @message /\"operation\":\"(?<parsedOperation>[^\"]+)\"/\n| parse @message /\"provider\":\"(?<parsedProvider>[^\"]+)\"/\n| parse @message /\"model\":\"(?<parsedModel>[^\"]+)\"/\n| parse @message /\"pricingVersion\":\"(?<parsedPricingVersion>[^\"]+)\"/\n| parse @message /\"inputTokens\":(?<parsedInputTokens>[0-9]+)/\n| parse @message /\"outputTokens\":(?<parsedOutputTokens>[0-9]+)/\n| parse @message /\"totalTokens\":(?<parsedTotalTokens>[0-9]+)/\n| parse @message /\"estimatedCostUsd\":(?<parsedEstimatedCostUsd>[0-9.]+)/\n| parse @message /\"durationMs\":(?<parsedDurationMs>[0-9]+)/\n| parse @message /\"success\":(?<parsedSuccess>true|false)/\n| stats sum(parsedInputTokens) as inputTokens, sum(parsedOutputTokens) as outputTokens, sum(parsedTotalTokens) as totalTokens, sum(parsedEstimatedCostUsd) as estimatedCostUsd, avg(parsedDurationMs) as averageDurationMs, pct(parsedDurationMs, 95) as p95DurationMs, sum(if(parsedSuccess = \"false\", 1, 0)) as failures, count() as aiCalls by parsedStage, parsedOperation, parsedProvider, parsedModel, parsedPricingVersion, bin(1h)\n| sort @timestamp asc",
           "id": "",
           "label": "",
           "logsMode": "Insights",
@@ -316,7 +316,7 @@
       "targets": [
         {
           "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
-          "expression": "fields @timestamp, @message\n| filter @message like /\\\"eventType\\\":\\\"CONVERSATION_QUERY_COMPLETED\\\"/\n| parse @message /\\\"queryType\\\":\\\"(?<parsedQueryType>[^\\\"]+)\\\"/\n| parse @message /\\\"outcome\\\":\\\"(?<parsedOutcome>[^\\\"]+)\\\"/\n| parse @message /\\\"durationMs\\\":(?<parsedDurationMs>[0-9]+)/\n| stats count() as queries, avg(parsedDurationMs) as averageDurationMs, pct(parsedDurationMs, 95) as p95DurationMs by parsedQueryType, parsedOutcome, bin(1h)\n| sort @timestamp asc",
+          "expression": "fields @timestamp, @message\n| filter @message like /\"eventType\":\"CONVERSATION_QUERY_COMPLETED\"/\n| parse @message /\"queryType\":\"(?<parsedQueryType>[^\"]+)\"/\n| parse @message /\"outcome\":\"(?<parsedOutcome>[^\"]+)\"/\n| parse @message /\"durationMs\":(?<parsedDurationMs>[0-9]+)/\n| stats count() as queries, avg(parsedDurationMs) as averageDurationMs, pct(parsedDurationMs, 95) as p95DurationMs by parsedQueryType, parsedOutcome, bin(1h)\n| sort @timestamp asc",
           "id": "",
           "label": "",
           "logsMode": "Insights",
@@ -361,7 +361,7 @@
       "targets": [
         {
           "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
-          "expression": "fields @timestamp, @message\n| filter @message like /\\\"eventType\\\":\\\"CONVERSATION_QUERY_COMPLETED\\\"/\n| parse @message /\\\"channel\\\":\\\"(?<parsedChannel>[^\\\"]+)\\\"/\n| parse @message /\\\"actorKey\\\":\\\"(?<parsedActorKey>[^\\\"]+)\\\"/\n| parse @message /\\\"queryType\\\":\\\"(?<parsedQueryType>[^\\\"]+)\\\"/\n| parse @message /\\\"outcome\\\":\\\"(?<parsedOutcome>[^\\\"]+)\\\"/\n| parse @message /\\\"durationMs\\\":(?<parsedDurationMs>[0-9]+)/\n| parse @message /\\\"workflowVersion\\\":\\\"(?<parsedWorkflowVersion>[^\\\"]+)\\\"/\n| parse @message /\\\"correlationId\\\":\\\"(?<parsedCorrelationId>[^\\\"]+)\\\"/\n| parse @message /\\\"fallbackReason\\\":\\\"(?<parsedFallbackReason>[^\\\"]+)\\\"/\n| sort @timestamp desc\n| limit 100\n| display @timestamp, parsedChannel, parsedActorKey, parsedQueryType, parsedOutcome, parsedDurationMs, parsedWorkflowVersion, parsedCorrelationId, parsedFallbackReason",
+          "expression": "fields @timestamp, @message\n| filter @message like /\"eventType\":\"CONVERSATION_QUERY_COMPLETED\"/\n| parse @message /\"channel\":\"(?<parsedChannel>[^\"]+)\"/\n| parse @message /\"actorKey\":\"(?<parsedActorKey>[^\"]+)\"/\n| parse @message /\"queryType\":\"(?<parsedQueryType>[^\"]+)\"/\n| parse @message /\"outcome\":\"(?<parsedOutcome>[^\"]+)\"/\n| parse @message /\"durationMs\":(?<parsedDurationMs>[0-9]+)/\n| parse @message /\"workflowVersion\":\"(?<parsedWorkflowVersion>[^\"]+)\"/\n| parse @message /\"correlationId\":\"(?<parsedCorrelationId>[^\"]+)\"/\n| parse @message /\"fallbackReason\":\"(?<parsedFallbackReason>[^\"]+)\"/\n| sort @timestamp desc\n| limit 100\n| display @timestamp, parsedChannel, parsedActorKey, parsedQueryType, parsedOutcome, parsedDurationMs, parsedWorkflowVersion, parsedCorrelationId, parsedFallbackReason",
           "id": "",
           "label": "",
           "logsMode": "Insights",
@@ -411,7 +411,7 @@
       "targets": [
         {
           "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
-          "expression": "fields @timestamp, @message\n| filter @message like /\\\"eventType\\\":\\\"AGENT_TRAFFIC_COMPARISON_RECORDED\\\"/\n| parse @message /\\\"agentId\\\":\\\"(?<parsedAgentId>[^\\\"]+)\\\"/\n| parse @message /\\\"agentVersion\\\":(?<parsedAgentVersion>[0-9]+)/\n| parse @message /\\\"model\\\":\\\"(?<parsedModel>[^\\\"]+)\\\"/\n| parse @message /\\\"channel\\\":\\\"(?<parsedChannel>[^\\\"]+)\\\"/\n| parse @message /\\\"useCase\\\":\\\"(?<parsedUseCase>[^\\\"]+)\\\"/\n| parse @message /\\\"outcome\\\":\\\"(?<parsedOutcome>[^\\\"]+)\\\"/\n| parse @message /\\\"comparisonOutcome\\\":\\\"(?<parsedComparisonOutcome>[^\\\"]+)\\\"/\n| stats count() as executions, sum(if(parsedComparisonOutcome = \"MATCH\", 1, 0)) as matches, sum(if(parsedComparisonOutcome = \"MISMATCH\", 1, 0)) as mismatches, sum(if(parsedComparisonOutcome = \"UNKNOWN\", 1, 0)) as unknowns, sum(if(parsedOutcome = \"COMPLETED\", 1, 0)) as completed, sum(if(parsedOutcome != \"COMPLETED\", 1, 0)) as failures, (sum(if(parsedComparisonOutcome = \"MATCH\", 1, 0)) * 100.0 / count()) as matchRatePercent, (sum(if(parsedComparisonOutcome = \"MISMATCH\", 1, 0)) * 100.0 / count()) as mismatchRatePercent, (sum(if(parsedComparisonOutcome = \"UNKNOWN\", 1, 0)) * 100.0 / count()) as unknownRatePercent by parsedAgentId, parsedAgentVersion, parsedModel, parsedChannel, parsedUseCase, bin(1h)\n| sort @timestamp desc",
+          "expression": "fields @timestamp, @message\n| filter @message like /\"eventType\":\"AGENT_TRAFFIC_COMPARISON_RECORDED\"/\n| parse @message /\"agentId\":\"(?<parsedAgentId>[^\"]+)\"/\n| parse @message /\"agentVersion\":(?<parsedAgentVersion>[0-9]+)/\n| parse @message /\"model\":\"(?<parsedModel>[^\"]+)\"/\n| parse @message /\"channel\":\"(?<parsedChannel>[^\"]+)\"/\n| parse @message /\"useCase\":\"(?<parsedUseCase>[^\"]+)\"/\n| parse @message /\"outcome\":\"(?<parsedOutcome>[^\"]+)\"/\n| parse @message /\"comparisonOutcome\":\"(?<parsedComparisonOutcome>[^\"]+)\"/\n| stats count() as executions, sum(if(parsedComparisonOutcome = \"MATCH\", 1, 0)) as matches, sum(if(parsedComparisonOutcome = \"MISMATCH\", 1, 0)) as mismatches, sum(if(parsedComparisonOutcome = \"UNKNOWN\", 1, 0)) as unknowns, sum(if(parsedOutcome = \"COMPLETED\", 1, 0)) as completed, sum(if(parsedOutcome != \"COMPLETED\", 1, 0)) as failures, (sum(if(parsedComparisonOutcome = \"MATCH\", 1, 0)) * 100.0 / count()) as matchRatePercent, (sum(if(parsedComparisonOutcome = \"MISMATCH\", 1, 0)) * 100.0 / count()) as mismatchRatePercent, (sum(if(parsedComparisonOutcome = \"UNKNOWN\", 1, 0)) * 100.0 / count()) as unknownRatePercent by parsedAgentId, parsedAgentVersion, parsedModel, parsedChannel, parsedUseCase, bin(1h)\n| sort @timestamp desc",
           "id": "",
           "label": "",
           "logsMode": "Insights",
@@ -461,7 +461,7 @@
       "targets": [
         {
           "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
-          "expression": "fields @timestamp, @message\n| filter @message like /\\\"eventType\\\":\\\"AGENT_TRAFFIC_COMPARISON_RECORDED\\\"/\n| parse @message /\\\"agentId\\\":\\\"(?<parsedAgentId>[^\\\"]+)\\\"/\n| parse @message /\\\"agentVersion\\\":(?<parsedAgentVersion>[0-9]+)/\n| parse @message /\\\"model\\\":\\\"(?<parsedModel>[^\\\"]+)\\\"/\n| parse @message /\\\"channel\\\":\\\"(?<parsedChannel>[^\\\"]+)\\\"/\n| parse @message /\\\"useCase\\\":\\\"(?<parsedUseCase>[^\\\"]+)\\\"/\n| parse @message /\\\"latencyMs\\\":(?<parsedLatencyMs>[0-9]+)/\n| parse @message /\\\"inputTokens\\\":(?<parsedInputTokens>[0-9]+)/\n| parse @message /\\\"outputTokens\\\":(?<parsedOutputTokens>[0-9]+)/\n| parse @message /\\\"totalTokens\\\":(?<parsedTotalTokens>[0-9]+)/\n| parse @message /\\\"estimatedCostUsd\\\":(?<parsedEstimatedCostUsd>[0-9.]+)/\n| stats count() as executions, avg(parsedLatencyMs) as averageLatencyMs, pct(parsedLatencyMs, 50) as p50LatencyMs, pct(parsedLatencyMs, 95) as p95LatencyMs, sum(parsedInputTokens) as inputTokens, sum(parsedOutputTokens) as outputTokens, sum(parsedTotalTokens) as totalTokens, sum(parsedEstimatedCostUsd) as estimatedCostUsd by parsedAgentId, parsedAgentVersion, parsedModel, parsedChannel, parsedUseCase, bin(1h)\n| sort @timestamp desc",
+          "expression": "fields @timestamp, @message\n| filter @message like /\"eventType\":\"AGENT_TRAFFIC_COMPARISON_RECORDED\"/\n| parse @message /\"agentId\":\"(?<parsedAgentId>[^\"]+)\"/\n| parse @message /\"agentVersion\":(?<parsedAgentVersion>[0-9]+)/\n| parse @message /\"model\":\"(?<parsedModel>[^\"]+)\"/\n| parse @message /\"channel\":\"(?<parsedChannel>[^\"]+)\"/\n| parse @message /\"useCase\":\"(?<parsedUseCase>[^\"]+)\"/\n| parse @message /\"latencyMs\":(?<parsedLatencyMs>[0-9]+)/\n| parse @message /\"inputTokens\":(?<parsedInputTokens>[0-9]+)/\n| parse @message /\"outputTokens\":(?<parsedOutputTokens>[0-9]+)/\n| parse @message /\"totalTokens\":(?<parsedTotalTokens>[0-9]+)/\n| parse @message /\"estimatedCostUsd\":(?<parsedEstimatedCostUsd>[0-9.]+)/\n| stats count() as executions, avg(parsedLatencyMs) as averageLatencyMs, pct(parsedLatencyMs, 50) as p50LatencyMs, pct(parsedLatencyMs, 95) as p95LatencyMs, sum(parsedInputTokens) as inputTokens, sum(parsedOutputTokens) as outputTokens, sum(parsedTotalTokens) as totalTokens, sum(parsedEstimatedCostUsd) as estimatedCostUsd by parsedAgentId, parsedAgentVersion, parsedModel, parsedChannel, parsedUseCase, bin(1h)\n| sort @timestamp desc",
           "id": "",
           "label": "",
           "logsMode": "Insights",
@@ -473,6 +473,54 @@
           "refId": "A",
           "region": "us-east-1",
           "statsGroups": ["parsedAgentId", "parsedAgentVersion", "parsedModel", "parsedChannel", "parsedUseCase"]
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "table",
+      "title": "Evaluaciones · scorecard de calidad",
+      "description": "Calidad agregada por dataset, agente, versión, proveedor y modelo. Las dimensiones no disponibles se mantienen explícitas en el evento y no se interpretan como cero.",
+      "gridPos": {"h": 14, "w": 24, "x": 0, "y": 110},
+      "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
+      "fieldConfig": {
+        "defaults": {"custom": {"align": "auto", "cellOptions": {"type": "auto"}, "inspect": false}},
+        "overrides": [
+          {"matcher": {"id": "byName", "options": "bin(1h)"}, "properties": [{"id": "displayName", "value": "Hora"}, {"id": "unit", "value": "time:YYYY-MM-DD HH:mm:ss"}]},
+          {"matcher": {"id": "byName", "options": "parsedDatasetVersion"}, "properties": [{"id": "displayName", "value": "Dataset"}]},
+          {"matcher": {"id": "byName", "options": "parsedAgentId"}, "properties": [{"id": "displayName", "value": "Agente"}]},
+          {"matcher": {"id": "byName", "options": "parsedAgentVersion"}, "properties": [{"id": "displayName", "value": "Versión"}]},
+          {"matcher": {"id": "byName", "options": "parsedProvider"}, "properties": [{"id": "displayName", "value": "Proveedor"}]},
+          {"matcher": {"id": "byName", "options": "parsedModel"}, "properties": [{"id": "displayName", "value": "Modelo"}]},
+          {"matcher": {"id": "byName", "options": "runs"}, "properties": [{"id": "displayName", "value": "Runs"}]},
+          {"matcher": {"id": "byName", "options": "evaluatedScenarios"}, "properties": [{"id": "displayName", "value": "Escenarios"}]},
+          {"matcher": {"id": "byName", "options": "responseValidityRate"}, "properties": [{"id": "displayName", "value": "Respuesta válida"}, {"id": "unit", "value": "percentunit"}]},
+          {"matcher": {"id": "byName", "options": "responseGroundingRate"}, "properties": [{"id": "displayName", "value": "Grounding respuesta"}, {"id": "unit", "value": "percentunit"}]},
+          {"matcher": {"id": "byName", "options": "safetyRate"}, "properties": [{"id": "displayName", "value": "Seguridad"}, {"id": "unit", "value": "percentunit"}]},
+          {"matcher": {"id": "byName", "options": "utilityRate"}, "properties": [{"id": "displayName", "value": "Utilidad"}, {"id": "unit", "value": "percentunit"}]}
+        ]
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {"show": false},
+        "showHeader": true,
+        "sortBy": [{"displayName": "Hora", "desc": true}]
+      },
+      "targets": [
+        {
+          "datasource": {"type": "cloudwatch", "uid": "wcs-cloudwatch"},
+          "expression": "fields @timestamp, @message\n| filter @message like /\"eventType\":\"AGENT_EVALUATION_SCORECARD\"/\n| parse @message /\"datasetVersion\":\"(?<parsedDatasetVersion>[^\"]+)\"/\n| parse @message /\"agentId\":\"(?<parsedAgentId>[^\"]+)\"/\n| parse @message /\"agentVersion\":\"(?<parsedAgentVersion>[^\"]+)\"/\n| parse @message /\"provider\":\"(?<parsedProvider>[^\"]+)\"/\n| parse @message /\"model\":\"(?<parsedModel>[^\"]+)\"/\n| parse @message /\"evaluatedScenarios\":(?<parsedEvaluatedScenarios>[0-9]+)/\n| parse @message /\"responseValidityRate\":(?<parsedResponseValidityRate>[0-9.]+)/\n| parse @message /\"responseGroundingRate\":(?<parsedResponseGroundingRate>[0-9.]+)/\n| parse @message /\"safetyRate\":(?<parsedSafetyRate>[0-9.]+)/\n| parse @message /\"utilityRate\":(?<parsedUtilityRate>[0-9.]+)/\n| stats count() as runs, sum(parsedEvaluatedScenarios) as evaluatedScenarios, avg(parsedResponseValidityRate) as responseValidityRate, avg(parsedResponseGroundingRate) as responseGroundingRate, avg(parsedSafetyRate) as safetyRate, avg(parsedUtilityRate) as utilityRate by parsedDatasetVersion, parsedAgentId, parsedAgentVersion, parsedProvider, parsedModel, bin(1h)\n| sort @timestamp desc",
+          "id": "",
+          "label": "",
+          "logsMode": "Insights",
+          "logsQueryScope": "namePrefix",
+          "logGroupClass": "STANDARD",
+          "logGroupPrefixes": ["/aws/apprunner/wally-customer-support-prod-backend"],
+          "queryLanguage": "CWLI",
+          "queryMode": "Logs",
+          "refId": "A",
+          "region": "us-east-1",
+          "statsGroups": ["parsedDatasetVersion", "parsedAgentId", "parsedAgentVersion", "parsedProvider", "parsedModel"]
         }
       ]
     },

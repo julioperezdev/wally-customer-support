@@ -6,6 +6,7 @@ import com.wally.customersupport.conversation.domain.model.ConversationExecution
 import com.wally.customersupport.conversation.domain.model.ConversationExecutionPlan;
 import com.wally.customersupport.conversation.domain.model.ConversationExecutionStep;
 import com.wally.customersupport.conversation.domain.model.ConversationIntentDecision;
+import com.wally.customersupport.conversation.application.tool.WcsToolContractCatalog;
 import com.wally.customersupport.shared.infrastructure.config.ConversationGuardrailProperties;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -43,27 +44,47 @@ public class ConversationExecutionPlanFactory {
             case CATALOG_SEARCH -> plan(
                     "CATALOG_SEARCH",
                     ConversationExecutionAction.CATALOG_SEARCH,
-                    List.of(step("catalog-search", "catalog-specialist", "catalog-query")),
+                    List.of(toolStep(
+                            "catalog-search",
+                            "catalog-specialist",
+                            "catalog-query",
+                            WcsToolContractCatalog.CATALOG_SEARCH)),
                     null);
             case PURCHASE_LINK -> plan(
                     "PURCHASE_LINK",
                     ConversationExecutionAction.PURCHASE_LINK,
-                    List.of(step("purchase-link", "checkout-specialist", "payment-link")),
+                    List.of(toolStep(
+                            "purchase-link",
+                            "checkout-specialist",
+                            "payment-link",
+                            WcsToolContractCatalog.CHECKOUT_CREATE)),
                     null);
             case BUSINESS_HOURS -> plan(
                     "BUSINESS_HOURS",
                     ConversationExecutionAction.BUSINESS_HOURS,
-                    List.of(step("business-hours", "knowledge-specialist", "business-hours")),
+                    List.of(toolStep(
+                            "business-hours",
+                            "knowledge-specialist",
+                            "business-hours",
+                            WcsToolContractCatalog.KNOWLEDGE_RETRIEVE)),
                     null);
             case POLICY_QUERY -> plan(
                     "POLICY_QUERY",
                     ConversationExecutionAction.POLICY_QUERY,
-                    List.of(step("policy-query", "knowledge-specialist", "policy-query")),
+                    List.of(toolStep(
+                            "policy-query",
+                            "knowledge-specialist",
+                            "policy-query",
+                            WcsToolContractCatalog.KNOWLEDGE_RETRIEVE)),
                     null);
             case HUMAN_HANDOFF -> plan(
                     "HUMAN_HANDOFF",
                     ConversationExecutionAction.HUMAN_HANDOFF,
-                    List.of(step("human-handoff", "support-safety", "human-handoff")),
+                    List.of(toolStep(
+                            "human-handoff",
+                            "support-safety",
+                            "human-handoff",
+                            WcsToolContractCatalog.HUMAN_HANDOFF)),
                     null);
             case GENERAL_SUPPORT -> generalSupport(null);
             case UNKNOWN -> safeFallback("UNKNOWN_INTENT");
@@ -82,7 +103,11 @@ public class ConversationExecutionPlanFactory {
         return plan(
                 "CART",
                 ConversationExecutionAction.CART,
-                List.of(step("cart-management", "checkout-specialist", "cart-management")),
+                List.of(toolStep(
+                        "cart-management",
+                        "checkout-specialist",
+                        "cart-management",
+                        WcsToolContractCatalog.CART_MANAGE)),
                 null);
     }
 
@@ -98,7 +123,11 @@ public class ConversationExecutionPlanFactory {
         return plan(
                 "LOW_CONFIDENCE",
                 ConversationExecutionAction.LOW_CONFIDENCE,
-                List.of(step("low-confidence", "support-safety", "safe-fallback")),
+                List.of(toolStep(
+                        "low-confidence",
+                        "support-safety",
+                        "safe-fallback",
+                        WcsToolContractCatalog.SAFE_FALLBACK)),
                 reason);
     }
 
@@ -106,7 +135,11 @@ public class ConversationExecutionPlanFactory {
         return plan(
                 "SAFE_FALLBACK",
                 ConversationExecutionAction.SAFE_FALLBACK,
-                List.of(step("safe-fallback", "support-safety", "safe-fallback")),
+                List.of(toolStep(
+                        "safe-fallback",
+                        "support-safety",
+                        "safe-fallback",
+                        WcsToolContractCatalog.SAFE_FALLBACK)),
                 reason);
     }
 
@@ -115,7 +148,11 @@ public class ConversationExecutionPlanFactory {
                 "GENERAL_SUPPORT",
                 ConversationExecutionAction.GENERAL_SUPPORT,
                 List.of(
-                        step("knowledge-retrieval", "knowledge-specialist", "knowledge-retrieval"),
+                        toolStep(
+                                "knowledge-retrieval",
+                                "knowledge-specialist",
+                                "knowledge-retrieval",
+                                WcsToolContractCatalog.KNOWLEDGE_RETRIEVE),
                         step("response-generation", "response-humanizer", "response-generation")),
                 reason);
     }
@@ -137,5 +174,21 @@ public class ConversationExecutionPlanFactory {
 
     private static ConversationExecutionStep step(String stepId, String owner, String capability) {
         return new ConversationExecutionStep(stepId, owner, capability);
+    }
+
+    private static ConversationExecutionStep toolStep(
+            String stepId,
+            String owner,
+            String capability,
+            String toolName) {
+        var contract = WcsToolContractCatalog.find(toolName)
+                .orElseThrow(() -> new IllegalStateException("Unknown WCS tool contract: " + toolName));
+        return new ConversationExecutionStep(
+                stepId,
+                owner,
+                capability,
+                toolName,
+                contract.inputSchemaVersion(),
+                contract.outputSchemaVersion());
     }
 }

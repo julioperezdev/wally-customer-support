@@ -76,6 +76,26 @@ public class AgentEvaluationScenarioResultJpaEntity {
     @Column(name = "pricing_version", length = 80)
     private String pricingVersion;
 
+    @Column(name = "execution_routed_intent", length = 128)
+    private String executionRoutedIntent;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "execution_entity_types", columnDefinition = "jsonb")
+    private List<String> executionEntityTypes;
+
+    @Column(name = "execution_tool_name", length = 128)
+    private String executionToolName;
+
+    @Column(name = "execution_tool_succeeded")
+    private Boolean executionToolSucceeded;
+
+    @Column(name = "execution_grounded")
+    private Boolean executionGrounded;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "evaluated_dimensions", columnDefinition = "jsonb")
+    private List<String> evaluatedDimensions;
+
     protected AgentEvaluationScenarioResultJpaEntity() {
     }
 
@@ -89,6 +109,7 @@ public class AgentEvaluationScenarioResultJpaEntity {
         this.passed = result.passed();
         this.score = BigDecimal.valueOf(result.score());
         this.failureReasons = List.copyOf(result.reasons());
+        this.evaluatedDimensions = result.evaluatedDimensions();
         AgentEvaluationExecutionMetadata metadata = result.executionMetadata();
         if (metadata != null) {
             this.executionAgentId = metadata.agentId();
@@ -102,6 +123,11 @@ public class AgentEvaluationScenarioResultJpaEntity {
             this.totalTokens = metadata.totalTokens();
             this.estimatedCostUsd = metadata.estimatedCostUsd();
             this.pricingVersion = metadata.pricingVersion();
+            this.executionRoutedIntent = metadata.routedIntent();
+            this.executionEntityTypes = metadata.resolvedEntityTypes();
+            this.executionToolName = metadata.toolName();
+            this.executionToolSucceeded = metadata.toolSucceeded();
+            this.executionGrounded = metadata.grounded();
         }
     }
 
@@ -123,13 +149,19 @@ public class AgentEvaluationScenarioResultJpaEntity {
                         outputTokens,
                         totalTokens,
                         estimatedCostUsd,
-                        pricingVersion);
+                        pricingVersion,
+                        executionRoutedIntent,
+                        executionEntityTypes,
+                        executionToolName,
+                        executionToolSucceeded,
+                executionGrounded);
         return new AgentEvaluationResult(
                 scenarioId,
                 datasetVersion,
                 passed,
                 score.doubleValue(),
                 failureReasons,
-                metadata);
+                metadata,
+                evaluatedDimensions);
     }
 }

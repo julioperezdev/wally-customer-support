@@ -16,6 +16,8 @@ import com.wally.customersupport.catalog.application.service.CatalogConversation
 import com.wally.customersupport.catalog.application.service.CatalogFact;
 import com.wally.customersupport.catalog.application.service.CatalogSearchResult;
 import com.wally.customersupport.catalog.domain.model.CatalogQuery;
+import com.wally.customersupport.conversation.application.tool.CatalogSearchTool;
+import com.wally.customersupport.conversation.application.tool.WcsToolRegistry;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -29,7 +31,7 @@ class CatalogSpecialistExecutorTest {
 
     @Test
     void delegatesActiveDefinitionToTheDeterministicCatalogCapability() {
-        CatalogSpecialistExecutor executor = new CatalogSpecialistExecutor(catalogConversationService);
+        CatalogSpecialistExecutor executor = executor(catalogConversationService);
         CatalogSpecialistExecutionRequest request = request(definition(Set.of("catalog.search")));
         when(catalogConversationService.search(
                 request.catalogQuery(), request.recentMessages(), request.latestMessage()))
@@ -45,7 +47,7 @@ class CatalogSpecialistExecutorTest {
 
     @Test
     void refusesExecutionWhenTheDefinitionDoesNotAuthorizeTheCatalogTool() {
-        CatalogSpecialistExecutor executor = new CatalogSpecialistExecutor(catalogConversationService);
+        CatalogSpecialistExecutor executor = executor(catalogConversationService);
 
         CatalogSpecialistExecutionResult result = executor.execute(
                 request(definition(Set.of())));
@@ -57,7 +59,7 @@ class CatalogSpecialistExecutorTest {
 
     @Test
     void convertsAnEmptySpecialistResponseToFallback() {
-        CatalogSpecialistExecutor executor = new CatalogSpecialistExecutor(catalogConversationService);
+        CatalogSpecialistExecutor executor = executor(catalogConversationService);
         CatalogSpecialistExecutionRequest request = request(definition(Set.of("catalog.search")));
         when(catalogConversationService.search(
                 request.catalogQuery(), request.recentMessages(), request.latestMessage()))
@@ -91,6 +93,11 @@ class CatalogSpecialistExecutorTest {
                 new CatalogQuery("nullpointer", null, "M", "negro"),
                 List.of("Busco una remera negra talle M"),
                 "¿Está disponible?");
+    }
+
+    private static CatalogSpecialistExecutor executor(CatalogConversationService catalogConversationService) {
+        return new CatalogSpecialistExecutor(new WcsToolRegistry(
+                java.util.List.of(new CatalogSearchTool(catalogConversationService))));
     }
 
     private static AgentRuntimeDefinition definition(Set<String> allowedTools) {

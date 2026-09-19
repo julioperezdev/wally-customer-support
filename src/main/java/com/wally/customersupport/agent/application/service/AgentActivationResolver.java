@@ -21,12 +21,6 @@ public class AgentActivationResolver {
         this.featureFlags = featureFlags;
     }
 
-    /** Compatibility constructor for pure registry tests and callers that do not enable hot flags. */
-    public AgentActivationResolver(AgentRegistryRepository registry) {
-        this.registry = registry;
-        this.featureFlags = null;
-    }
-
     public AgentActivationResolution resolve(AgentActivationKey key) {
         Objects.requireNonNull(key, "key");
         try {
@@ -49,7 +43,7 @@ public class AgentActivationResolver {
         if (!activation.enabled()) {
             return AgentActivationResolution.fallback(AgentResolutionReason.DISABLED);
         }
-        if (featureFlags != null && !featureFlags.isAgentExecutionAllowed(new FeatureFlagContext(
+        if (!featureFlags.isAgentExecutionAllowed(new FeatureFlagContext(
                 key.environment(), key.channel(), key.useCase(), key.agentId(), activation.agentVersion()))) {
             return AgentActivationResolution.fallback(AgentResolutionReason.KILL_SWITCH);
         }

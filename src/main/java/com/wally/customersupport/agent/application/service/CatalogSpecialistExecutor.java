@@ -34,12 +34,6 @@ public class CatalogSpecialistExecutor {
         this.toolRegistry = toolRegistry;
     }
 
-    /** Compatibility constructor for unit tests and non-Spring callers. */
-    public CatalogSpecialistExecutor(
-            com.wally.customersupport.catalog.application.service.CatalogConversationService catalogConversationService) {
-        this(new WcsToolRegistry(java.util.List.of(new CatalogSearchTool(catalogConversationService))));
-    }
-
     public CatalogSpecialistExecutionResult execute(CatalogSpecialistExecutionRequest request) {
         long startedAt = System.nanoTime();
         AgentRuntimeDefinition definition = request.definition();
@@ -57,6 +51,8 @@ public class CatalogSpecialistExecutor {
         }
 
         try {
+            StructuredEventLog.info(log, "AGENT_TOOL_EXECUTION_STARTED",
+                    fields(request, "STARTED", "EXECUTING", null, startedAt));
             return tool.execute(new CatalogSearchTool.Input(
                             request.catalogQuery(),
                             request.recentMessages(),
@@ -86,6 +82,8 @@ public class CatalogSpecialistExecutor {
                 elapsedMillis(startedAt));
         StructuredEventLog.info(log, "AGENT_SPECIALIST_EXECUTION_COMPLETED",
                 fields(request, result.status().name(), result.reason(), structuredResult, startedAt));
+        StructuredEventLog.info(log, "AGENT_TOOL_EXECUTION_COMPLETED",
+                fields(request, result.status().name(), result.reason(), structuredResult, startedAt));
         return result;
     }
 
@@ -99,6 +97,8 @@ public class CatalogSpecialistExecutor {
                 null,
                 elapsedMillis(startedAt));
         StructuredEventLog.info(log, "AGENT_SPECIALIST_EXECUTION_FALLBACK",
+                fields(request, result.status().name(), result.reason(), null, startedAt));
+        StructuredEventLog.info(log, "AGENT_TOOL_EXECUTION_FALLBACK",
                 fields(request, result.status().name(), result.reason(), null, startedAt));
         return result;
     }
@@ -114,6 +114,9 @@ public class CatalogSpecialistExecutor {
         fields.put("agentVersion", request.definition().agentVersion());
         fields.put("useCase", USE_CASE);
         fields.put("executionMode", "DETERMINISTIC_TOOL");
+        fields.put("toolName", CatalogSearchTool.NAME);
+        fields.put("inputSchemaVersion", CatalogSearchTool.DESCRIPTOR.inputSchemaVersion());
+        fields.put("outputSchemaVersion", CatalogSearchTool.DESCRIPTOR.outputSchemaVersion());
         fields.put("outcome", outcome);
         fields.put("reason", reason);
         fields.put("resultStatus", result == null ? "FALLBACK" : result.status().name());

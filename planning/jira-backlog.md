@@ -18,6 +18,37 @@ orquestador, `mvn verify`, eventos `AI_USAGE_RECORDED` y
 `RESPONSE_POLICY_FALLBACK/APPLIED`; sin cambios de AppConfig ni despliegue en
 esta tarea.
 
+## Programa WCS-134 — Refactor conversacional y fundación de datos
+
+Roadmap operativo: [`docs/conversational-platform-refactor-roadmap.md`](../docs/conversational-platform-refactor-roadmap.md)
+Confluence: [WCS — Refactor conversacional y fundación de datos — Roadmap](https://julioperezdev.atlassian.net/wiki/spaces/SD/pages/13533186)
+Baseline: `wcs-baseline-2026-09-07`
+
+El programa se divide en pocas tareas grandes y cuatro PR de integración. Se
+ejecuta primero en local con PostgreSQL/Testcontainers y sólo después se
+promueve a AppConfig, Terraform o App Runner.
+
+| Jira | Entrega | Dependencias principales |
+| --- | --- | --- |
+| [WCS-135](https://julioperezdev.atlassian.net/browse/WCS-135) | Fundación de datos y estado conversacional para refinamientos | WCS-129 |
+| [WCS-136](https://julioperezdev.atlassian.net/browse/WCS-136) | Router semántico y resolución validada de entidades | WCS-130, WCS-131, WCS-132 |
+| [WCS-137](https://julioperezdev.atlassian.net/browse/WCS-137) | Agentes especialistas y tools provider-neutral | WCS-120, WCS-121, WCS-122, WCS-129, WCS-133 |
+| [WCS-138](https://julioperezdev.atlassian.net/browse/WCS-138) | Evaluación, observabilidad y scorecard de calidad | WCS-126, WCS-130, WCS-131, WCS-132 |
+| [WCS-139](https://julioperezdev.atlassian.net/browse/WCS-139) | Depuración legacy, activación controlada y cierre | WCS-135–WCS-138 |
+
+No se debe abrir una migración, eliminar una implementación legacy ni cambiar
+AppConfig sólo por avanzar el ticket. Cada tarea necesita tests, evidencia y
+rollback local; una tarea pasa a `In Progress` sólo cuando la implementación
+local comienza de forma explícita.
+
+WCS-139 tiene la implementación local completada: la validación pre-ejecución
+está centralizada en `AgentRuntimeDefinitionResolver`, se retiraron tres
+constructores de compatibilidad sin referencias productivas y el smoke cubre
+activación, kill switch por dimensiones y rollback. El inventario y la política
+de cleanup están documentados en
+`docs/decisions/041-legacy-cleanup-and-controlled-activation.md`. El estado
+remoto sigue pendiente de PR, AppConfig, despliegue y smoke post-deploy.
+
 ## Mapeo de keys reales
 
 | Blueprint | Jira |

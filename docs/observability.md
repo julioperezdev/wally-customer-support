@@ -48,8 +48,10 @@ operacional necesario para diagnóstico y costo, pero sin contenido de negocio.
 | `INBOUND_MESSAGE_PROCESSED` | `result`, `attempt`, `durationMs`, `correlationId` | Worker completó el procesamiento fuera del request |
 | `INBOUND_MESSAGE_RETRY_SCHEDULED` | `result`, `attempt`, `durationMs`, `errorType`, `correlationId` | Fallo transitorio con retry diferido |
 | `INBOUND_MESSAGE_FAILED` | `result`, `attempt`, `durationMs`, `errorType`, `correlationId` | Intentos agotados; se encola fallback seguro |
-| `INTENT_CLASSIFIED` | `intent`, `action`, `confidence`, `confidenceBucket`, `rawIntent`, `rawAction`, `rawConfidence`, `deterministicNormalization`, `catalogQueryPresent`, `catalogQueryFilterCount`, `catalogQueryFilters`, `catalogQueryProductType`, `missingParameterCount`, `historyMessageCount`, `durationMs`, `correlationId`, `channel`, `actorKey` opcional | Decisión efectiva del orquestador y evidencia sanitizada de cuánto fue normalizada |
-| `INTENT_DETERMINISTIC_OVERRIDE` | `fromIntent`, `fromConfidence`, `toIntent`, `reason`, `fromCatalogFilterCount`, `fromCatalogFilters`, `toCatalogFilterCount`, `toCatalogFilters`, `fromCatalogProductType`, `toCatalogProductType`, `correlationId`, `channel`, `actorKey` opcional | Rescue determinístico o corrección de una decisión ambigua; permite detectar cuándo el parser contradice al LLM |
+| `INTENT_CLASSIFIED` | `intent`, `action`, `confidence`, `confidenceBucket`, `rawIntent`, `rawAction`, `rawConfidence`, `deterministicNormalization`, `routingStrategy`, `resolvedEntityCount`, `resolvedEntityTypes`, `routingMissingParameterCount`, `catalogQueryPresent`, `catalogQueryFilterCount`, `catalogQueryFilters`, `catalogQueryProductType`, `missingParameterCount`, `historyMessageCount`, `durationMs`, `correlationId`, `channel`, `actorKey` opcional | Decisión efectiva del router y evidencia sanitizada de cuánto fue normalizada |
+| `ROUTER_CLASSIFICATION_FALLBACK` | `operation`, `stage`, `result`, `errorType`, `correlationId` | El clasificador Bedrock no pudo producir una decisión válida; no incluye prompt, respuesta ni texto del cliente |
+| `ROUTING_SAFE_FALLBACK` | `reason`, `rawIntent`, `rawAction` | La frontera de routing recibió una propuesta nula y falló cerrada |
+| `INTENT_DETERMINISTIC_OVERRIDE` | `fromIntent`, `fromAction`, `fromConfidence`, `toIntent`, `toAction`, `toConfidence`, `reason`, `fromCatalogFilterCount`, `fromCatalogFilters`, `toCatalogFilterCount`, `toCatalogFilters`, `fromCatalogProductType`, `toCatalogProductType`, `correlationId`, `channel` | Rescue determinístico o corrección de una decisión ambigua; permite detectar cuándo el parser contradice al LLM |
 | `CATALOG_SEARCH_COMPLETED` | `source`, `queryType`, `resultStatus`, `resultCount`, `imageCount`, `followUpKind`, `resultReason`, `executionDurationMs`, `queryPresent`, `queryFilterCount`, `queryFilters`, `queryProductType`, `correlationId`, `channel`, `actorKey` opcional | Resultado verificable de catálogo y forma sanitizada de la consulta que se ejecutó |
 | `INTENT_CLASSIFICATION_FAILED` | `errorType`, `durationMs` | Fallo del clasificador |
 | `INTENT_COMPOSED` | `primaryIntent`, `secondaryIntent`, `components`, `result` | Consulta acotada que combina catálogo con una política publicada |
@@ -77,6 +79,7 @@ operacional necesario para diagnóstico y costo, pero sin contenido de negocio.
 | `RESPONSE_POLICY_APPLIED` | `useCase`, `channel`, `policyId`, `policyVersion`, `resultStatus`, `resultCount`, `validationStage`, `generatedCharacters`, `expectedFactCount`, `preservedFactCount`, `missingFacts`, `unapprovedClaims`, `durationMs`, `promptVersion`, `promptHash` | Humanizador aprobado por la validación de hechos; las listas de diagnóstico deben estar vacías |
 | `RESPONSE_POLICY_FALLBACK` | `useCase`, `channel`, `policyId`, `policyVersion`, `resultStatus`, `resultCount`, `fallbackReason`, `validationStage`, `generatedCharacters`, `expectedFactCount`, `preservedFactCount`, `missingFacts`, `unapprovedClaims`, `durationMs`, `promptVersion`, `promptHash`, `errorType` | Fallback seguro; permite distinguir hechos faltantes de claims no aprobados sin almacenar el texto generado |
 | `AGENT_EVALUATION_COMPLETED` | `runId`, `datasetVersion`, `agentId`, `agentVersion`, `provider`, `model`, `totalScenarios`, `passedScenarios`, `failedScenarios`, `passRate`, `averageScore`, `durationMs` | Resultado agregado de una suite sintética, sin respuestas |
+| `AGENT_EVALUATION_SCORECARD` | `runId`, `datasetVersion`, `agentId`, `agentVersion`, `provider`, `model`, `evaluatedScenarios`, `responseValidityRate`, `responseGroundingRate`, `safetyRate`, `utilityRate`, `failureCounts`, `unavailableDimensions`, `durationMs` | Scorecard de calidad medible y dimensiones todavía no evaluadas, sin respuestas ni prompts |
 | `AGENT_EVALUATION_FAILED` | `runId`, `datasetVersion`, `agentId`, `agentVersion`, `provider`, `model`, `durationMs`, `errorType` | Fallo sanitizado de una ejecución de evaluación |
 | `AGENT_EVALUATION_TRIGGER_DENIED` | `status`, `reason`, `datasetVersion`, `agentId`, `agentVersion`, `provider`, `model` | Trigger rechazado antes de idempotencia y ejecución |
 | `AGENT_EVALUATION_TRIGGER_DUPLICATE` | `status`, `reason`, `datasetVersion`, `agentId`, `agentVersion`, `provider`, `model` | Key ya reclamada; no se repite la evaluación |
@@ -118,10 +121,12 @@ no existe una llamada de IA real y no se emite este evento.
 `INTENT_CLASSIFIED` conserva la decisión original del clasificador (`raw*`) y
 la decisión que efectivamente se ejecutó. `deterministicNormalization=true`
 indica que WCS tuvo que rescatar o normalizar la decisión antes de ejecutar el
-caso de uso. `catalogFilters` sólo contiene nombres de campos presentes, nunca
-valores; `catalogProductType` está limitado a la categoría normalizada. Esto
-permite medir prompts y orquestación sin registrar mensajes ni identificadores
-de productos.
+caso de uso. `routingStrategy` distingue la propuesta del modelo de una
+reconciliación determinística o un fallback seguro; `resolvedEntityTypes`
+contiene sólo nombres de campos, nunca valores. `catalogFilters` sólo contiene
+nombres de campos presentes, nunca valores; `catalogProductType` está limitado
+a la categoría normalizada. Esto permite medir prompts y orquestación sin
+registrar mensajes ni identificadores de productos.
 
 `CATALOG_SEARCH_COMPLETED` es la evidencia de negocio que faltaba en los logs
 anteriores: indica si hubo coincidencias, alternativas, ambigüedad o ausencia
@@ -319,6 +324,15 @@ Después de iniciar Grafana:
    revisar cada mensaje individual usar **Consultas · detalle por mensaje**.
 6. Usar el panel **App Runner · errores** sólo para diagnóstico y no compartir
    su contenido sin revisar PII.
+
+Las expresiones de Logs Insights del dashboard deben conservar las comillas
+normales del JSON, por ejemplo
+`/"eventType":"CONVERSATION_QUERY_COMPLETED"/`; no deben contener una barra
+invertida adicional antes de cada comilla. Una consulta puede finalizar en
+`Complete` y aun así estar mal filtrada si quedó sobre-escapada. La validación
+local del gate comprueba el JSON y Compose; la validación read-only contra
+CloudWatch debe confirmar además que las filas corresponden a eventos WCS y no
+a líneas de despliegue.
 
 La presencia de `INBOUND_MESSAGE_ENQUEUED` confirma que el webhook persistió el
 trabajo; `INBOUND_MESSAGE_PROCESSED` confirma que el worker terminó el

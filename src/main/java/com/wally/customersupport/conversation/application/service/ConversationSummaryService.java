@@ -137,6 +137,7 @@ public class ConversationSummaryService {
                 List.copyOf(messages),
                 updatedAt,
                 current.version(),
-                summary);
+                summary,
+                current.selection());
     }
 }

@@ -23,6 +23,7 @@ import com.wally.customersupport.agent.application.port.out.AgentEvaluationRunRe
 import com.wally.customersupport.agent.application.service.AgentEvaluationHistoryQueryService;
 import com.wally.customersupport.agent.application.service.AgentEvaluationComparisonApplicationService;
 import com.wally.customersupport.agent.application.service.AgentEvaluationEvidenceExportApplicationService;
+import com.wally.customersupport.agent.application.service.AgentSpecialistRegistry;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationExecution;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationExecutionMetadata;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationResult;
@@ -39,11 +40,15 @@ import com.wally.customersupport.conversation.application.service.ConversationOr
 import com.wally.customersupport.conversation.application.service.DeterministicResponseHumanizer;
 import com.wally.customersupport.conversation.application.service.ExplicitPreferenceCaptureService;
 import com.wally.customersupport.conversation.application.service.CustomerPreferenceService;
+import com.wally.customersupport.conversation.application.tool.WcsToolRegistry;
 import com.wally.customersupport.conversation.application.port.out.ConversationRepository;
 import com.wally.customersupport.conversation.domain.model.Channel;
 import com.wally.customersupport.conversation.domain.model.Conversation;
 import com.wally.customersupport.conversation.domain.model.ConversationMemoryConflictException;
 import com.wally.customersupport.conversation.domain.model.ConversationMemoryOwnershipException;
+import com.wally.customersupport.conversation.domain.model.ConversationAction;
+import com.wally.customersupport.conversation.domain.model.ConversationIntent;
+import com.wally.customersupport.conversation.domain.model.ConversationSelection;
 import com.wally.customersupport.conversation.domain.model.ConversationState;
 import com.wally.customersupport.conversation.domain.model.ConversationSummary;
 import com.wally.customersupport.conversation.domain.model.ConversationStatus;
@@ -58,6 +63,7 @@ import com.wally.customersupport.conversation.infrastructure.repository.postgres
 import com.wally.customersupport.support.application.service.SupportConfigurationQueryService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -86,6 +92,9 @@ class WallyCustomerSupportApplicationIntegrationTest {
 
     @Autowired
     private DataSource dataSource;
+
+    @Autowired
+    private ApplicationContext applicationContext;
 
     @Autowired
     private CatalogQueryService catalogQueryService;
@@ -122,6 +131,30 @@ class WallyCustomerSupportApplicationIntegrationTest {
 
     @Autowired
     private SupportConfigurationQueryService supportConfigurationQueryService;
+
+    @Test
+    void exposesOneSpringSpecialistRegistryAsTheRuntimeSourceOfTruth() {
+        assertEquals(1, applicationContext.getBeansOfType(AgentSpecialistRegistry.class).size());
+    }
+
+    @Autowired
+    private WcsToolRegistry wcsToolRegistry;
+
+    @Test
+    void registersAllSpecialistToolBoundariesInTheSpringRuntime() {
+        assertEquals(8, wcsToolRegistry.descriptors().size());
+        org.assertj.core.api.Assertions.assertThat(wcsToolRegistry.descriptors())
+                .extracting(descriptor -> descriptor.name())
+                .containsExactlyInAnyOrder(
+                        "catalog.search",
+                        "catalog.stock",
+                        "knowledge.retrieve",
+                        "conversation.state",
+                        "cart.manage",
+                        "checkout.create",
+                        "human-handoff",
+                        "safe-fallback");
+    }
 
     @Autowired
     private AgentEvaluationApplicationService agentEvaluationApplicationService;
@@ -359,6 +392,42 @@ class WallyCustomerSupportApplicationIntegrationTest {
         ConversationState loaded = conversationMemory.load(conversationId, "actor-summary").orElseThrow();
         assertEquals(summary, loaded.summary());
         assertEquals(saved.version(), loaded.version());
+    }
+
+    @Test
+    void persistsAndLoadsStructuredConversationSelectionInPostgres() {
+        Instant now = Instant.now();
+        UUID conversationId = UUID.randomUUID();
+        conversationRepository.save(new Conversation(
+                conversationId,
+                Channel.TELEGRAM,
+                "selection-chat-" + conversationId,
+                "telegram-user",
+                ConversationStatus.OPEN,
+                now,
+                now));
+
+        ConversationSelection selection = new ConversationSelection(
+                ConversationIntent.CATALOG_SEARCH,
+                ConversationAction.CATALOG_SEARCH,
+                new CatalogQuery(null, null, "M", "negro", "remera"),
+                null,
+                "CATALOG_SEARCH");
+        ConversationState saved = conversationMemory.save(new ConversationState(
+                conversationId,
+                "actor-selection",
+                List.of("la M"),
+                now,
+                0L,
+                null,
+                selection));
+
+        ConversationState loaded = conversationMemory.load(conversationId, "actor-selection").orElseThrow();
+
+        assertEquals(saved.selection(), loaded.selection());
+        assertEquals("remera", loaded.selection().catalogQuery().productType());
+        assertEquals("M", loaded.selection().catalogQuery().size());
+        assertEquals("negro", loaded.selection().catalogQuery().color());
     }
 
     @Test

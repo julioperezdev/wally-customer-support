@@ -51,7 +51,8 @@ public record ConversationMemoryPolicy(
                 boundedMessages.subList(firstMessage, boundedMessages.size()),
                 state.updatedAt(),
                 state.version(),
-                state.summary());
+                state.summary(),
+                state.selection());
     }
 
     public boolean isExpired(ConversationState state, Instant now) {

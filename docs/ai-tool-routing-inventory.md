@@ -3,8 +3,8 @@
 Owner: AI/Tech Lead
 Status: `Accepted`
 Last reviewed: 2026-09-18
-Related Jira: `WCS-130`, `WCS-131`, `WCS-133`
-Related decision: [`ADR-038`](decisions/038-internal-tool-routing-without-mcp.md)
+Related Jira: `WCS-130`, `WCS-131`, `WCS-133`, `WCS-137`
+Related decisions: [`ADR-038`](decisions/038-internal-tool-routing-without-mcp.md), [`ADR-039`](decisions/039-specialist-tool-contracts.md)
 
 Este documento cierra las cuatro fases del análisis de routing de tools sin
 incorporar MCP al runtime de WCS:
@@ -105,7 +105,7 @@ backoffice/runtime; el modelo no puede elevar permisos.
 ### Contrato de routing
 
 `conversation.route` es un contrato de inferencia: no ejecuta una operación.
-Su input estructurado está versionado como `conversation-route-input-v1` y
+Su input estructurado está versionado como `conversation-route-input-v2` y
 contiene únicamente los campos que el backend ya sabe validar. La primera
 implementación permite:
 
@@ -133,15 +133,61 @@ con input inválido no se sustituye por SQL genérico ni por una tool distinta.
 La capa está en
 `src/main/java/com/wally/customersupport/conversation/application/tool/`.
 
-`catalog.search` es el primer wrapper ejecutable. Delega en
-`CatalogConversationService`, por lo que conserva ownership, reglas de stock,
-normalización y repositorios existentes. `CatalogSpecialistExecutor` sólo lo
-usa cuando la definición activa del agente lo permite.
+WCS-137 agrega dos fronteras provider-neutral:
+
+- `WcsToolContractCatalog` centraliza el nombre lógico de la tool, su capacidad
+  y las versiones de los schemas de entrada y salida;
+- `AgentSpecialistRegistry` centraliza los especialistas, sus casos de uso y la
+  allowlist de tools que cada agente puede ejecutar.
+
+Los contratos no ejecutables ya no usan un objeto vacío genérico: cada uno
+declara campos obligatorios, enums y límites de cantidad/tamaño adecuados para
+su responsabilidad. Esto permite validar una propuesta de Bedrock y mostrarla
+en el backoffice antes de agregar el adapter de ejecución correspondiente.
+
+Cada step de `ConversationExecutionPlan` transporta ahora el `toolName` y sus
+versiones de schema. El resolver rechaza una definición con un agente
+desconocido, una tool no permitida o un contrato inexistente antes de ejecutar
+el plan. El orquestador aplica la misma validación al plan activo, para que una
+propuesta del modelo no amplíe los permisos en runtime.
+
+Los wrappers ejecutables actuales son `catalog.search`, `catalog.stock`,
+`knowledge.retrieve`, `conversation.state`, `cart.manage`, `checkout.create`,
+`human-handoff` y `safe-fallback`:
+
+- `catalog.search` delega en `CatalogConversationService`, por lo que conserva
+  ownership, reglas de stock, normalización y repositorios existentes.
+- `catalog.stock` delega en `CartCatalogReader` para consultar una única
+  variante activa por SKU y diferencia `AVAILABLE`, `OUT_OF_STOCK` y
+  `NOT_FOUND`.
+- `knowledge.retrieve` delega en `KnowledgeRetriever` y sólo devuelve metadata
+  de grounding (`GROUNDED`, `NO_EVIDENCE` o `ERROR`, cantidad y score promedio),
+  no el texto recuperado.
+- `safe-fallback` es determinístico y devuelve si una razón de error sugiere
+  handoff, sin ejecutar ninguna operación externa.
+- `conversation.state` proyecta, combina o reinicia filtros estructurados sin
+  convertirlos en hechos de catálogo; el caller persiste el `nextState` con
+  la política de memoria vigente.
+- `cart.manage` delega las operaciones del carrito al handler existente,
+  calcula un snapshot acotado desde el catálogo y vuelve a validar channel y
+  actor ownership antes de exponer cantidades o totales.
+- `checkout.create` exige confirmación explícita, ownership y versión exacta
+  del carrito; si ya existe un checkout pendiente devuelve `REUSED` y no crea
+  otro link.
+- `human-handoff` delega en el servicio idempotente de seguimiento y sólo
+  devuelve estado, prioridad y disponibilidad de contexto.
+
+Cada wrapper valida su input y registra `WCS_TOOL_EXECUTED` o
+`WCS_TOOL_FAILED` con metadata sanitizada. `CatalogSpecialistExecutor` sólo usa
+la búsqueda cuando la definición activa del agente lo permite y emite eventos
+estructurados de inicio, finalización o fallback.
 
 `conversation.route` es un contrato de clasificación y no se registra como
 tool ejecutable porque no debe poder disparar un caso de uso por sí mismo.
-Carrito, checkout, Knowledge Base y handoff mantienen sus fronteras hasta que
-se publiquen wrappers con contratos equivalentes.
+Carrito, checkout y handoff ahora tienen wrappers equivalentes sobre sus
+servicios existentes. La ejecución sigue siendo determinística y sus efectos
+continúan protegidos por ownership, confirmación, idempotencia y adapters; no
+se agregan implementaciones ficticias ni SQL generado por el modelo.
 
 ## Fase 4 — Bedrock Tool Use / Structured Outputs
 

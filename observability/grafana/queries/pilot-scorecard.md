@@ -87,6 +87,39 @@ fields @timestamp, @message
 | sort @timestamp asc
 ```
 
+## Scorecard de calidad de evaluaciones
+
+Esta consulta usa el evento agregado `AGENT_EVALUATION_SCORECARD`. Las tasas
+son comparables sólo entre runs con el mismo `datasetVersion`; las dimensiones
+que aparecen en `unavailableDimensions` no deben interpretarse como cero.
+
+```text
+fields @timestamp, @message
+| filter @message like /\"eventType\":\"AGENT_EVALUATION_SCORECARD\"/
+| parse @message /\"datasetVersion\":\"(?<datasetVersion>[^\"]+)\"/
+| parse @message /\"agentId\":\"(?<agentId>[^\"]+)\"/
+| parse @message /\"agentVersion\":\"(?<agentVersion>[^\"]+)\"/
+| parse @message /\"provider\":\"(?<provider>[^\"]+)\"/
+| parse @message /\"model\":\"(?<model>[^\"]+)\"/
+| parse @message /\"evaluatedScenarios\":(?<evaluatedScenarios>[0-9]+)/
+| parse @message /\"responseValidityRate\":(?<responseValidityRate>[0-9.]+)/
+| parse @message /\"responseGroundingRate\":(?<responseGroundingRate>[0-9.]+)/
+| parse @message /\"safetyRate\":(?<safetyRate>[0-9.]+)/
+| parse @message /\"utilityRate\":(?<utilityRate>[0-9.]+)/
+| stats count() as runs,
+        sum(evaluatedScenarios) as evaluatedScenarios,
+        avg(responseValidityRate) as responseValidityRate,
+        avg(responseGroundingRate) as responseGroundingRate,
+        avg(safetyRate) as safetyRate,
+        avg(utilityRate) as utilityRate
+  by datasetVersion, agentId, agentVersion, provider, model, bin(1h)
+| sort @timestamp desc
+```
+
+Este panel permite ver calidad observable, costo/latencia en los paneles de IA
+y comparaciones baseline/candidate por separado. No promociona una versión de
+forma automática.
+
 ## Seguridad y diagnóstico puntual
 
 La consulta de seguridad se hace con el panel de eventos operativos y revisión

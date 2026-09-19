@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 public class CatalogSearchTool implements WcsTool<CatalogSearchTool.Input, Optional<CatalogSearchResult>> {
 
     public static final String NAME = "catalog.search";
-    private static final WcsToolDescriptor DESCRIPTOR = new WcsToolDescriptor(
+    public static final WcsToolDescriptor DESCRIPTOR = new WcsToolDescriptor(
             NAME,
             "Busca productos, variantes, precio y stock con filtros comerciales validados.",
             "catalog-input-v1",
