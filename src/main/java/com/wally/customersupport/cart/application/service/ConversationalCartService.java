@@ -283,9 +283,11 @@ public class ConversationalCartService implements CartConversationHandler {
             }
             return Optional.empty();
         }
-        Optional<CatalogSearchResult> result = command.query() != null && !command.query().isEmpty()
+        boolean exactLookup = command.query() != null && !command.query().isEmpty();
+        Optional<CatalogSearchResult> result = exactLookup
                 ? catalogConversationService.searchExact(query.get())
                 : catalogConversationService.search(query.get(), context.recentMessages(), context.latestMessage());
+        logCatalogLookup(context, command, query.get(), exactLookup, result);
         if (result.isEmpty()
                 || result.get().status() != CatalogSearchResult.Status.MATCHED
                 || result.get().facts().isEmpty()) {
@@ -355,6 +357,37 @@ public class ConversationalCartService implements CartConversationHandler {
         return catalogConversationService.search(query.get(), context.recentMessages(), context.latestMessage())
                 .map(CatalogResponseFormatter::render)
                 .orElse(VARIANT_REQUIRED);
+    }
+
+    private void logCatalogLookup(
+            ConversationContext context,
+            CartCommandParser.Command command,
+            CatalogQuery query,
+            boolean exactLookup,
+            Optional<CatalogSearchResult> result) {
+        Map<String, Object> fields = new LinkedHashMap<>();
+        fields.put("operation", "conversation.cart.catalog_lookup");
+        fields.put("lookupMode", exactLookup ? "EXACT" : "CONTEXTUAL");
+        fields.put("action", command.action().name());
+        fields.put("quantity", command.quantity());
+        fields.put("queryFilterCount", query.presentFieldCount());
+        fields.put("queryFilters", query.presentFieldNames());
+        fields.put("queryName", query.name());
+        fields.put("querySize", query.size());
+        fields.put("queryColor", query.color());
+        fields.put("queryProductType", query.productType());
+        fields.put("querySku", query.sku());
+        fields.put("resultStatus", result.map(value -> value.status().name()).orElse("EMPTY"));
+        fields.put("resultCount", result.map(value -> value.facts().size()).orElse(0));
+        if (context != null) {
+            if (context.conversationId() != null) {
+                fields.put("correlationId", context.conversationId());
+            }
+            if (context.channel() != null) {
+                fields.put("channel", context.channel().name());
+            }
+        }
+        StructuredEventLog.info(log, "CART_CATALOG_LOOKUP", fields);
     }
 
     private String formatSummary(CartJpaEntity cart) {
