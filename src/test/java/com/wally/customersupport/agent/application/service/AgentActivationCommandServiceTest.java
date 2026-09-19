@@ -30,6 +30,7 @@ import com.wally.customersupport.agent.domain.model.AgentVersion;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -137,6 +138,33 @@ class AgentActivationCommandServiceTest {
         assertThat(result.status()).isEqualTo(AgentActivationMutationStatus.KILL_SWITCHED);
         assertThat(result.reason()).isEqualTo(AgentActivationMutationReason.KILL_SWITCH_PERSISTED);
         verify(registry).saveActivation(any());
+    }
+
+    @Test
+    void rollsBackToThePreviousApprovedVersionAndPersistsAnAuditableReference() {
+        AgentActivation current = new AgentActivation(
+                "catalog-specialist", 2, "prod", "telegram", "catalog-search",
+                "candidate rollout", 100, true, false, 1, CREATED_AT, ACTOR);
+        AgentActivationActionCommand command = actionCommand();
+        when(accessService.authorizeRegistryWrite(ACTOR, "prod")).thenReturn(authorized());
+        when(registry.findLatestActivation("catalog-specialist", "prod", "telegram", "catalog-search"))
+                .thenReturn(Optional.of(current));
+        when(registry.findVersion("catalog-specialist", 1)).thenReturn(Optional.of(approvedVersion()));
+        when(guard.tryAcquire(IDEMPOTENCY_KEY)).thenReturn(true);
+        when(registry.saveActivation(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = service.rollback(command, ACTOR, IDEMPOTENCY_KEY, true);
+
+        assertThat(result.status()).isEqualTo(AgentActivationMutationStatus.ROLLED_BACK);
+        assertThat(result.reason()).isEqualTo(AgentActivationMutationReason.ROLLBACK_PERSISTED);
+        assertThat(result.agentVersion()).isEqualTo(1);
+        ArgumentCaptor<AgentActivation> savedActivation = ArgumentCaptor.forClass(AgentActivation.class);
+        verify(registry).saveActivation(savedActivation.capture());
+        assertThat(savedActivation.getValue().agentVersion()).isEqualTo(1);
+        assertThat(savedActivation.getValue().previousVersion()).isEqualTo(2);
+        assertThat(savedActivation.getValue().reason()).isEqualTo("rollback");
+        assertThat(savedActivation.getValue().enabled()).isTrue();
+        assertThat(savedActivation.getValue().killSwitch()).isFalse();
     }
 
     private static AgentActivationCommand activateCommand() {

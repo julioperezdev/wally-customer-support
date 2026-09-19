@@ -28,6 +28,20 @@ La activación continúa cerrada por defecto y separada en dos niveles:
 
 No se cambia todavía la configuración remota ni se habilita tráfico candidato.
 
+## Smoke local y rollback
+
+El smoke local agrupado se ejecuta con:
+
+```bash
+./scripts/smoke-agent-runtime-local.sh
+```
+
+La suite verifica la activación autorizada, el kill switch, la validación del
+especialista, la restauración de la decisión anterior de feature flag y la
+persistencia de una activación de rollback en PostgreSQL/Testcontainers. El
+rollback se representa como una nueva referencia inmutable: no se edita la
+fila anterior ni se elimina historial.
+
 ## Inventario y disposición
 
 | Componente | Estado | Disposición |

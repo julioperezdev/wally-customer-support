@@ -96,6 +96,46 @@ class FeatureFlagRuntimeServiceTest {
                 "WCS feature flags rollback by operator");
     }
 
+    @Test
+    void rollbackRestoresThePreviousAgentExecutionDecision() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        FeatureFlagDefinition enabled = new FeatureFlagDefinition(
+                "wcs.agent.catalog-specialist.enabled", true, false,
+                List.of("prod"), List.of("telegram"), List.of("catalog-search"),
+                List.of("catalog-specialist"), List.of(2));
+        FeatureFlagDefinition disabled = new FeatureFlagDefinition(
+                "wcs.agent.catalog-specialist.enabled", false, true,
+                List.of("prod"), List.of("telegram"), List.of("catalog-search"),
+                List.of("catalog-specialist"), List.of(2));
+        FeatureFlagDocument v1 = new FeatureFlagDocument("1", "v1", List.of(enabled));
+        FeatureFlagDocument v2 = new FeatureFlagDocument("1", "v2", List.of(disabled));
+        String v1Json = mapper.writeValueAsString(v1);
+        String v2Json = mapper.writeValueAsString(v2);
+        FeatureFlagConfigurationPublisher publisher = mock(FeatureFlagConfigurationPublisher.class);
+        when(publisher.publish(v2Json, "WCS feature flags published by operator"))
+                .thenReturn(new FeatureFlagConfigurationPublisher.Publication("v2", "deployment-2"));
+        when(publisher.publish(v1Json, "WCS feature flags rollback by operator"))
+                .thenReturn(new FeatureFlagConfigurationPublisher.Publication("v3", "deployment-3"));
+        MutableSource source = new MutableSource();
+        source.next.set(v1Json.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        FeatureFlagRuntimeService service = service(source, publisher, true);
+        FeatureFlagContext context = new FeatureFlagContext(
+                "prod", "telegram", "catalog-search", "catalog-specialist", 2);
+
+        service.refresh();
+        assertThat(service.isAgentExecutionAllowed(context)).isTrue();
+
+        service.publish(v2, "operator");
+        assertThat(service.isAgentExecutionAllowed(context)).isFalse();
+
+        service.rollback("operator");
+
+        assertThat(service.view().effectiveVersion()).isEqualTo("v1");
+        assertThat(service.isAgentExecutionAllowed(context)).isTrue();
+        assertThat(service.view().audit()).anyMatch(entry ->
+                "rollback".equals(entry.operation()) && "ACCEPTED".equals(entry.result()));
+    }
+
     private static FeatureFlagRuntimeService service(String payload) {
         MutableSource source = new MutableSource();
         source.next.set(payload.getBytes(java.nio.charset.StandardCharsets.UTF_8));
