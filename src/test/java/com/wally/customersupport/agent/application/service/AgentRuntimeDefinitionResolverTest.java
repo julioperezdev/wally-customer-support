@@ -37,8 +37,7 @@ class AgentRuntimeDefinitionResolverTest {
         when(registry.findVersion("catalog-specialist", 2))
                 .thenReturn(Optional.of(version("catalog-specialist", 2, AgentLifecycleState.APPROVED)));
 
-        AgentRuntimeDefinitionResolution resolution = new AgentRuntimeDefinitionResolver(
-                activationResolver, registry).resolve(KEY);
+        AgentRuntimeDefinitionResolution resolution = resolver(activationResolver, registry).resolve(KEY);
 
         assertThat(resolution.status()).isEqualTo(AgentDefinitionResolutionStatus.ACTIVE);
         assertThat(resolution.reason()).isEqualTo(AgentDefinitionResolutionReason.ACTIVE);
@@ -59,7 +58,7 @@ class AgentRuntimeDefinitionResolverTest {
         when(registry.findVersion("catalog-specialist", 2))
                 .thenReturn(Optional.of(version("catalog-specialist", 2, AgentLifecycleState.APPROVED)));
 
-        AgentRuntimeDefinitionResolver resolver = new AgentRuntimeDefinitionResolver(activationResolver, registry);
+        AgentRuntimeDefinitionResolver resolver = resolver(activationResolver, registry);
         AgentRuntimeDefinitionResolution resolved = resolver.resolve(KEY);
         AgentRuntimeDefinitionResolution validated = resolver.validateForExecution(
                 resolved,
@@ -90,8 +89,7 @@ class AgentRuntimeDefinitionResolverTest {
         when(activationResolver.resolve(KEY))
                 .thenReturn(AgentActivationResolution.fallback(AgentResolutionReason.DISABLED));
 
-        AgentRuntimeDefinitionResolution resolution = new AgentRuntimeDefinitionResolver(
-                activationResolver, registry).resolve(KEY);
+        AgentRuntimeDefinitionResolution resolution = resolver(activationResolver, registry).resolve(KEY);
 
         assertThat(resolution.status()).isEqualTo(AgentDefinitionResolutionStatus.FALLBACK);
         assertThat(resolution.reason()).isEqualTo(AgentDefinitionResolutionReason.DISABLED);
@@ -106,8 +104,7 @@ class AgentRuntimeDefinitionResolverTest {
         when(activationResolver.resolve(KEY)).thenReturn(AgentActivationResolution.active("catalog-specialist", 2));
         when(registry.findVersion("catalog-specialist", 2)).thenReturn(Optional.empty());
 
-        AgentRuntimeDefinitionResolution resolution = new AgentRuntimeDefinitionResolver(
-                activationResolver, registry).resolve(KEY);
+        AgentRuntimeDefinitionResolution resolution = resolver(activationResolver, registry).resolve(KEY);
 
         assertThat(resolution.reason()).isEqualTo(AgentDefinitionResolutionReason.VERSION_NOT_FOUND);
         assertThat(resolution.definition()).isNull();
@@ -121,8 +118,7 @@ class AgentRuntimeDefinitionResolverTest {
         when(registry.findVersion("catalog-specialist", 2))
                 .thenReturn(Optional.of(version("catalog-specialist", 1, AgentLifecycleState.APPROVED)));
 
-        AgentRuntimeDefinitionResolution resolution = new AgentRuntimeDefinitionResolver(
-                activationResolver, registry).resolve(KEY);
+        AgentRuntimeDefinitionResolution resolution = resolver(activationResolver, registry).resolve(KEY);
 
         assertThat(resolution.reason()).isEqualTo(AgentDefinitionResolutionReason.VERSION_MISMATCH);
         assertThat(resolution.definition()).isNull();
@@ -136,8 +132,7 @@ class AgentRuntimeDefinitionResolverTest {
         when(registry.findVersion("catalog-specialist", 2))
                 .thenReturn(Optional.of(version("catalog-specialist", 2, AgentLifecycleState.CANDIDATE)));
 
-        AgentRuntimeDefinitionResolution resolution = new AgentRuntimeDefinitionResolver(
-                activationResolver, registry).resolve(KEY);
+        AgentRuntimeDefinitionResolution resolution = resolver(activationResolver, registry).resolve(KEY);
 
         assertThat(resolution.reason()).isEqualTo(AgentDefinitionResolutionReason.VERSION_NOT_PUBLISHABLE);
         assertThat(resolution.definition()).isNull();
@@ -151,8 +146,7 @@ class AgentRuntimeDefinitionResolverTest {
         when(registry.findVersion("catalog-specialist", 2))
                 .thenThrow(new IllegalStateException("database unavailable"));
 
-        AgentRuntimeDefinitionResolution resolution = new AgentRuntimeDefinitionResolver(
-                activationResolver, registry).resolve(KEY);
+        AgentRuntimeDefinitionResolution resolution = resolver(activationResolver, registry).resolve(KEY);
 
         assertThat(resolution.status()).isEqualTo(AgentDefinitionResolutionStatus.FALLBACK);
         assertThat(resolution.reason()).isEqualTo(AgentDefinitionResolutionReason.REGISTRY_UNAVAILABLE);
@@ -204,5 +198,14 @@ class AgentRuntimeDefinitionResolverTest {
 
     private static String hash() {
         return "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    }
+
+    private static AgentRuntimeDefinitionResolver resolver(
+            AgentActivationResolver activationResolver,
+            AgentRegistryRepository registry) {
+        return new AgentRuntimeDefinitionResolver(
+                activationResolver,
+                registry,
+                new AgentSpecialistRegistry());
     }
 }

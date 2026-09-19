@@ -16,7 +16,25 @@ public record AgentEvaluationScenario(
         ResponseHumanizationRequest request,
         ResponseHumanizationResult.Outcome expectedOutcome,
         List<String> requiredTextFragments,
-        List<String> forbiddenTextFragments) {
+        List<String> forbiddenTextFragments,
+        String expectedIntent,
+        List<String> expectedEntityTypes,
+        String expectedToolName,
+        Boolean expectedGrounded) {
+
+    /** Backwards-compatible scenario contract without routing/tool or RAG oracles. */
+    public AgentEvaluationScenario(
+            String scenarioId,
+            String datasetVersion,
+            String useCase,
+            Channel channel,
+            ResponseHumanizationRequest request,
+            ResponseHumanizationResult.Outcome expectedOutcome,
+            List<String> requiredTextFragments,
+            List<String> forbiddenTextFragments) {
+        this(scenarioId, datasetVersion, useCase, channel, request, expectedOutcome,
+                requiredTextFragments, forbiddenTextFragments, null, null, null, null);
+    }
 
     public AgentEvaluationScenario {
         scenarioId = required(scenarioId, "scenarioId");
@@ -26,6 +44,9 @@ public record AgentEvaluationScenario(
         expectedOutcome = Objects.requireNonNull(expectedOutcome, "expectedOutcome");
         requiredTextFragments = normalizeFragments(requiredTextFragments);
         forbiddenTextFragments = normalizeFragments(forbiddenTextFragments);
+        expectedIntent = normalizeOptional(expectedIntent);
+        expectedEntityTypes = normalizeOptionalFragments(expectedEntityTypes);
+        expectedToolName = normalizeOptional(expectedToolName);
         if (request == null && expectedOutcome != ResponseHumanizationResult.Outcome.FALLBACK) {
             throw new IllegalArgumentException("only fallback scenarios may omit the request");
         }
@@ -41,6 +62,18 @@ public record AgentEvaluationScenario(
                 .filter(value -> !value.isBlank())
                 .distinct()
                 .toList();
+    }
+
+    private static List<String> normalizeOptionalFragments(List<String> fragments) {
+        return fragments == null ? null : normalizeFragments(fragments);
+    }
+
+    private static String normalizeOptional(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.strip();
+        return normalized.isBlank() ? null : normalized;
     }
 
     private static String required(String value, String field) {

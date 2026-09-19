@@ -1,6 +1,6 @@
 # ADR-041 — Depuración legacy y activación controlada
 
-**Estado:** Accepted for local implementation  
+**Estado:** Implemented locally; awaiting integration and promotion
 **Fecha:** 2026-09-19  
 **Jira:** WCS-139
 
@@ -53,15 +53,20 @@ fila anterior ni se elimina historial.
 | `FeatureFlagRuntimeService` | Ruta activa | Mantener; refresca flags sin reiniciar y conserva rollback local. |
 | `NoOpAgentShadowExecutor` | Fallback intencional | Mantener; es el estado seguro cuando shadow está apagado. |
 | `MockLlmClient`, `MockKnowledgeRetriever`, adapters mock | Fallback de local/test | Mantener; permiten pruebas sin credenciales y no son rutas productivas. |
-| Constructores de compatibilidad para tests | Legacy controlado | Mantener temporalmente; retirar sólo después de migrar tests al wiring único. |
+| Constructores de compatibilidad de `AgentActivationResolver`, `AgentRuntimeDefinitionResolver` y `CatalogSpecialistExecutor` | Legacy sólo de tests | Eliminados; los tests usan el wiring explícito actual y Spring mantiene un único camino productivo. |
+| Constructores sobrecargados de `ConversationOrchestrator` | Compatibilidad de tests | Mantener temporalmente; todavía son usados por una suite amplia y no duplican una decisión de runtime. |
+| `CatalogConversationService.replyFor*` | Ruta activa de composición catálogo+envíos | Mantener; todavía se usa para construir respuestas compuestas desde hechos estructurados. |
+| `CartConversationHandler` parser textual y default command bridge | Fallback/ruta activa | Mantener; la orquestación actual aún lo utiliza para comandos y garantiza fallback seguro. |
 | `preview-token` y autorización legacy | Fuera de la ruta objetivo | No reintroducir; Cognito/JWT es la única autorización del backoffice. |
 
 ## Reglas para la siguiente limpieza
 
 - No eliminar un adapter mock/no-op sólo porque no se usa en producción: es
   parte del fallback y del aislamiento de tests.
-- No eliminar constructores de compatibilidad en el mismo cambio que la
-  activación remota; primero migrar tests y medir cobertura.
+- No eliminar adapters mock/no-op ni los bridges de catálogo/carrito mientras
+  sigan siendo rutas activas o fallback.
+- Los constructores retirados en esta iteración no tenían referencias
+  productivas; la suite fue migrada al wiring explícito antes de eliminarlos.
 - Toda eliminación debe ser un commit reversible y acompañarse de una prueba
   que demuestre el fallback equivalente.
 - La comparación shadow no puede publicar respuestas ni ejecutar operaciones
@@ -71,9 +76,52 @@ fila anterior ni se elimina historial.
 
 ## Alcance de esta iteración
 
-Este ADR sólo cubre la consolidación de la frontera de validación, el inventario
-y sus pruebas locales. También verifica que la activación dinámica pueda
-aplicar el kill switch en las dimensiones exactas de ambiente, canal, caso de
-uso, agente y versión, y que Spring exponga un único registry especialista. No
-agrega migraciones, recursos Terraform, cambios de AppConfig remoto ni
-despliegues.
+Este ADR cubre la consolidación de la frontera de validación, el inventario,
+la eliminación de compatibilidades sin referencias productivas y las pruebas
+locales de activación. La matriz verifica el kill switch en ambiente, canal,
+caso de uso, agente y versión; el rollback restaura sólo la versión efectiva
+anterior y no afecta dimensiones fuera de alcance. Spring expone un único
+registry especialista. No agrega migraciones, recursos Terraform, cambios de
+AppConfig remoto ni despliegues.
+
+## Evidencia de cierre local
+
+El gate reproducible queda disponible en:
+
+```bash
+./scripts/gate-final-local.sh
+```
+
+El 2026-09-19 se ejecutó completo con este resultado:
+
+| Control | Resultado | Evidencia |
+| --- | --- | --- |
+| `mvn -B verify` | PASS | 491 tests, 0 failures, 0 errors, 0 skipped; `BUILD SUCCESS`. |
+| Testcontainers | PASS | PostgreSQL 16; las suites de integración aplicaron Flyway sobre una base limpia. |
+| Smoke de runtime | PASS | Activación, kill switch por ambiente/canal/caso de uso/agente/versión, rollback, fallback seguro y shadow cerrado. |
+| Secuencias conversacionales | PASS | 47 tests dirigidos: orquestador, integración Spring/Testcontainers y fixtures de intención. |
+| Evaluación offline | PASS | 16 tests; dataset `catalog-response-v1`, 5 escenarios, pass rate 1.0 y scorecard base 1.0. |
+| Dashboard y Compose | PASS | JSON de Grafana válido y `docker compose config --quiet` válido. |
+| Migraciones | PASS | Archivos contiguos `V1..V25`; PostgreSQL de Testcontainers llegó a V25. |
+
+La validación read-only adicional contra CloudWatch confirmó que las consultas
+agregadas de IA y consultas aceptan la sintaxis y filtran eventos WCS. Se
+corregió el sobre-escape de comillas en las expresiones de Logs Insights que
+podía mostrar líneas de despliegue como si fueran eventos del dashboard. Los
+paneles de shadow y scorecard sin ejecuciones recientes quedan correctamente
+en cero, no se interpretan como error de consulta.
+
+La evaluación con Bedrock real no forma parte del gate automático: no se
+invocó, no generó costo y queda como smoke explícito posterior cuando se
+quieran usar credenciales y presupuesto AWS. Los tests de contrato del adapter
+Bedrock sí forman parte de `mvn -B verify`.
+
+Los logs de la suite muestran warnings conocidos de Mockito/JDK y de cierre
+de recursos de Testcontainers; no alteraron el código de salida ni el resultado
+de las pruebas. No se registran conversaciones completas ni secretos. El smoke
+cubre resolver, registry único, activación, kill switch por las cinco
+dimensiones, rollback de flags, rollback inmutable del registry, shadow cerrado
+y los adapters tipados de estado, carrito, checkout y handoff. La suite completa
+queda verde antes de abrir el PR de integración. El paso remoto posterior
+requiere revisar AppConfig, ejecutar rollout controlado y conservar el rollback
+por configuración.

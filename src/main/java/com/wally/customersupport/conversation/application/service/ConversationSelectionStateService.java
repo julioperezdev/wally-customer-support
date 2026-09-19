@@ -1,6 +1,8 @@
 package com.wally.customersupport.conversation.application.service;
 
 import java.time.Instant;
+import java.math.BigDecimal;
+import java.util.Objects;
 import java.util.Optional;
 
 import com.wally.customersupport.catalog.application.service.CatalogQueryParser;
@@ -22,6 +24,52 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class ConversationSelectionStateService {
+
+    public ConversationState read(ConversationState current) {
+        return Objects.requireNonNull(current, "current");
+    }
+
+    public ConversationState mergeSelection(
+            ConversationState current,
+            String selectionField,
+            String selectionValue,
+            Instant updatedAt) {
+        Objects.requireNonNull(current, "current");
+        Objects.requireNonNull(updatedAt, "updatedAt");
+        if (selectionField == null || selectionField.isBlank()) {
+            throw new IllegalArgumentException("selectionField must not be blank");
+        }
+        if (selectionValue == null || selectionValue.isBlank()) {
+            throw new IllegalArgumentException("selectionValue must not be blank");
+        }
+        CatalogQuery previous = current.selection().catalogQuery();
+        CatalogQuery patch = switch (selectionField) {
+            case "name" -> new CatalogQuery(selectionValue, null, null, null);
+            case "sku" -> new CatalogQuery(null, selectionValue, null, null);
+            case "productType" -> new CatalogQuery(null, null, null, null, selectionValue);
+            case "size" -> new CatalogQuery(null, null, selectionValue, null);
+            case "color" -> new CatalogQuery(null, null, null, selectionValue);
+            case "minPrice" -> new CatalogQuery(null, null, null, null, null,
+                    new BigDecimal(selectionValue), null);
+            case "maxPrice" -> new CatalogQuery(null, null, null, null, null,
+                    null, new BigDecimal(selectionValue));
+            default -> throw new IllegalArgumentException("unsupported selectionField: " + selectionField);
+        };
+        return withSelection(current, previous.merge(patch), updatedAt);
+    }
+
+    public ConversationState reset(ConversationState current, Instant updatedAt) {
+        Objects.requireNonNull(current, "current");
+        Objects.requireNonNull(updatedAt, "updatedAt");
+        return new ConversationState(
+                current.conversationId(),
+                current.actorId(),
+                current.recentMessages(),
+                updatedAt,
+                current.version(),
+                current.summary(),
+                ConversationSelection.empty());
+    }
 
     public ConversationState update(
             ConversationState current,
@@ -54,6 +102,26 @@ public class ConversationSelectionStateService {
                         activeQuery,
                         selectedSku,
                         result.useCase()));
+    }
+
+    private static ConversationState withSelection(
+            ConversationState current,
+            CatalogQuery query,
+            Instant updatedAt) {
+        ConversationSelection previous = current.selection();
+        return new ConversationState(
+                current.conversationId(),
+                current.actorId(),
+                current.recentMessages(),
+                updatedAt,
+                current.version(),
+                current.summary(),
+                new ConversationSelection(
+                        previous.intent(),
+                        previous.action(),
+                        query,
+                        query.sku() == null ? previous.selectedVariantSku() : query.sku(),
+                        previous.stage()));
     }
 
     private static ConversationIntent intentFor(String useCase, ConversationIntent previous) {

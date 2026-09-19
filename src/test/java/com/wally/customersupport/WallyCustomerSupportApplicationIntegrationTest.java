@@ -40,6 +40,7 @@ import com.wally.customersupport.conversation.application.service.ConversationOr
 import com.wally.customersupport.conversation.application.service.DeterministicResponseHumanizer;
 import com.wally.customersupport.conversation.application.service.ExplicitPreferenceCaptureService;
 import com.wally.customersupport.conversation.application.service.CustomerPreferenceService;
+import com.wally.customersupport.conversation.application.tool.WcsToolRegistry;
 import com.wally.customersupport.conversation.application.port.out.ConversationRepository;
 import com.wally.customersupport.conversation.domain.model.Channel;
 import com.wally.customersupport.conversation.domain.model.Conversation;
@@ -134,6 +135,25 @@ class WallyCustomerSupportApplicationIntegrationTest {
     @Test
     void exposesOneSpringSpecialistRegistryAsTheRuntimeSourceOfTruth() {
         assertEquals(1, applicationContext.getBeansOfType(AgentSpecialistRegistry.class).size());
+    }
+
+    @Autowired
+    private WcsToolRegistry wcsToolRegistry;
+
+    @Test
+    void registersAllSpecialistToolBoundariesInTheSpringRuntime() {
+        assertEquals(8, wcsToolRegistry.descriptors().size());
+        org.assertj.core.api.Assertions.assertThat(wcsToolRegistry.descriptors())
+                .extracting(descriptor -> descriptor.name())
+                .containsExactlyInAnyOrder(
+                        "catalog.search",
+                        "catalog.stock",
+                        "knowledge.retrieve",
+                        "conversation.state",
+                        "cart.manage",
+                        "checkout.create",
+                        "human-handoff",
+                        "safe-fallback");
     }
 
     @Autowired

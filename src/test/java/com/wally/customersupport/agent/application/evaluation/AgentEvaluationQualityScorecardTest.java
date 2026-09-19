@@ -3,7 +3,9 @@ package com.wally.customersupport.agent.application.evaluation;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import java.math.BigDecimal;
 
+import com.wally.customersupport.agent.domain.model.AgentEvaluationExecutionMetadata;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationQualityScorecard;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationResult;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationSuiteResult;
@@ -59,5 +61,25 @@ class AgentEvaluationQualityScorecardTest {
         assertThat(scorecard.safetyRate()).isEqualTo(1.0);
         assertThat(scorecard.utilityRate()).isLessThan(1.0);
         assertThat(scorecard.failureCounts()).containsEntry("REQUIRED_TEXT_MISSING", 1);
+    }
+
+    @Test
+    void exposesQualityRatesWhenExecutionSignalsAreAvailable() {
+        AgentEvaluationExecutionMetadata metadata = new AgentEvaluationExecutionMetadata(
+                "catalog-specialist", "v1", "bedrock", "model-a", 100, 80L, 10, 4, 14,
+                new BigDecimal("0.0012"), "pricing-v1", "CATALOG_SEARCH",
+                List.of("productType", "color"), "catalog.search", true, true);
+        AgentEvaluationResult result = new AgentEvaluationResult(
+                "scenario-with-signals", "dataset-v2", true, 1.0, List.of(), metadata,
+                List.of("intent_accuracy", "entity_extraction", "tool_success", "rag_grounding"));
+
+        AgentEvaluationQualityScorecard scorecard = AgentEvaluationQualityScorecard.fromResults(
+                List.of(result), 1.0);
+
+        assertThat(scorecard.intentAccuracyRate()).isEqualTo(1.0);
+        assertThat(scorecard.entityExtractionRate()).isEqualTo(1.0);
+        assertThat(scorecard.toolSuccessRate()).isEqualTo(1.0);
+        assertThat(scorecard.ragGroundingRate()).isEqualTo(1.0);
+        assertThat(scorecard.unavailableDimensions()).isEmpty();
     }
 }

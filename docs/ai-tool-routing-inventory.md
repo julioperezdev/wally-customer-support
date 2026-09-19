@@ -152,7 +152,8 @@ el plan. El orquestador aplica la misma validación al plan activo, para que una
 propuesta del modelo no amplíe los permisos en runtime.
 
 Los wrappers ejecutables actuales son `catalog.search`, `catalog.stock`,
-`knowledge.retrieve` y `safe-fallback`:
+`knowledge.retrieve`, `conversation.state`, `cart.manage`, `checkout.create`,
+`human-handoff` y `safe-fallback`:
 
 - `catalog.search` delega en `CatalogConversationService`, por lo que conserva
   ownership, reglas de stock, normalización y repositorios existentes.
@@ -164,6 +165,17 @@ Los wrappers ejecutables actuales son `catalog.search`, `catalog.stock`,
   no el texto recuperado.
 - `safe-fallback` es determinístico y devuelve si una razón de error sugiere
   handoff, sin ejecutar ninguna operación externa.
+- `conversation.state` proyecta, combina o reinicia filtros estructurados sin
+  convertirlos en hechos de catálogo; el caller persiste el `nextState` con
+  la política de memoria vigente.
+- `cart.manage` delega las operaciones del carrito al handler existente,
+  calcula un snapshot acotado desde el catálogo y vuelve a validar channel y
+  actor ownership antes de exponer cantidades o totales.
+- `checkout.create` exige confirmación explícita, ownership y versión exacta
+  del carrito; si ya existe un checkout pendiente devuelve `REUSED` y no crea
+  otro link.
+- `human-handoff` delega en el servicio idempotente de seguimiento y sólo
+  devuelve estado, prioridad y disponibilidad de contexto.
 
 Cada wrapper valida su input y registra `WCS_TOOL_EXECUTED` o
 `WCS_TOOL_FAILED` con metadata sanitizada. `CatalogSpecialistExecutor` sólo usa
@@ -172,11 +184,10 @@ estructurados de inicio, finalización o fallback.
 
 `conversation.route` es un contrato de clasificación y no se registra como
 tool ejecutable porque no debe poder disparar un caso de uso por sí mismo.
-Carrito, checkout y handoff ya tienen contratos declarados para validación y
-trazabilidad, con schemas concretos de operación y resultado, pero mantienen
-sus servicios existentes como frontera de ejecución hasta que se publiquen
-wrappers equivalentes. No se agregan implementaciones ficticias ni SQL
-generado por el modelo.
+Carrito, checkout y handoff ahora tienen wrappers equivalentes sobre sus
+servicios existentes. La ejecución sigue siendo determinística y sus efectos
+continúan protegidos por ownership, confirmación, idempotencia y adapters; no
+se agregan implementaciones ficticias ni SQL generado por el modelo.
 
 ## Fase 4 — Bedrock Tool Use / Structured Outputs
 

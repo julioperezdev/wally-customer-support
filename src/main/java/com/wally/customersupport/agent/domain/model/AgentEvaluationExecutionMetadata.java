@@ -1,6 +1,7 @@
 package com.wally.customersupport.agent.domain.model;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Objects;
 
 /** Safe operational metadata for one evaluation execution; it contains no response text. */
@@ -15,7 +16,30 @@ public record AgentEvaluationExecutionMetadata(
         Integer outputTokens,
         Integer totalTokens,
         BigDecimal estimatedCostUsd,
-        String pricingVersion) {
+        String pricingVersion,
+        String routedIntent,
+        List<String> resolvedEntityTypes,
+        String toolName,
+        Boolean toolSucceeded,
+        Boolean grounded) {
+
+    /** Backwards-compatible operational metadata without quality signals. */
+    public AgentEvaluationExecutionMetadata(
+            String agentId,
+            String agentVersion,
+            String provider,
+            String modelId,
+            long durationMs,
+            Long providerLatencyMs,
+            Integer inputTokens,
+            Integer outputTokens,
+            Integer totalTokens,
+            BigDecimal estimatedCostUsd,
+            String pricingVersion) {
+        this(agentId, agentVersion, provider, modelId, durationMs, providerLatencyMs,
+                inputTokens, outputTokens, totalTokens, estimatedCostUsd, pricingVersion,
+                null, null, null, null, null);
+    }
 
     public AgentEvaluationExecutionMetadata {
         agentId = normalize(agentId);
@@ -34,6 +58,17 @@ public record AgentEvaluationExecutionMetadata(
         }
         estimatedCostUsd = estimatedCostUsd == null ? null : estimatedCostUsd.stripTrailingZeros();
         pricingVersion = normalize(pricingVersion);
+        routedIntent = normalize(routedIntent);
+        resolvedEntityTypes = resolvedEntityTypes == null
+                ? null
+                : resolvedEntityTypes.stream()
+                        .filter(Objects::nonNull)
+                        .map(String::strip)
+                        .filter(value -> !value.isBlank())
+                        .distinct()
+                        .sorted()
+                        .toList();
+        toolName = normalize(toolName);
     }
 
     private static <T extends Number> T nonNegative(T value, String field) {

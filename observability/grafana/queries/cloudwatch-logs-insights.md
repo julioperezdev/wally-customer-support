@@ -15,17 +15,17 @@ descubrimiento automático de campos JSON.
 
 ```text
 fields @timestamp, @message
-| filter @message like /\"eventType\":\"HTTP_REQUEST_COMPLETED\"/
-| parse @message /\"httpMethod\":\"(?<parsedHttpMethod>[^\"]+)\"/
-| parse @message /\"route\":\"(?<parsedRoute>[^\"]+)\"/
-| parse @message /\"httpStatus\":(?<parsedHttpStatus>[0-9]+)/
-| parse @message /\"outcome\":\"(?<parsedOutcome>[^\"]+)\"/
-| parse @message /\"durationMs\":(?<parsedDurationMs>[0-9]+)/
+| filter @message like /"eventType":"HTTP_REQUEST_COMPLETED"/
+| parse @message /"httpMethod":"(?<parsedHttpMethod>[^"]+)"/
+| parse @message /"route":"(?<parsedRoute>[^"]+)"/
+| parse @message /"httpStatus":(?<parsedHttpStatus>[0-9]+)/
+| parse @message /"outcome":"(?<parsedOutcome>[^"]+)"/
+| parse @message /"durationMs":(?<parsedDurationMs>[0-9]+)/
 | stats count() as requests,
         avg(parsedDurationMs) as averageDurationMs,
         pct(parsedDurationMs, 50) as p50DurationMs,
         pct(parsedDurationMs, 95) as p95DurationMs,
-        sum(if(parsedOutcome = \"SERVER_ERROR\" or parsedOutcome = \"ERROR\", 1, 0)) as failures
+        sum(if(parsedOutcome = "SERVER_ERROR" or parsedOutcome = "ERROR", 1, 0)) as failures
   by parsedHttpMethod, parsedRoute, parsedHttpStatus, parsedOutcome, bin(1h)
 | sort @timestamp asc
 ```
@@ -44,10 +44,10 @@ no credenciales.
 
 ```text
 fields @timestamp, @message
-| filter @message like /\"eventType\":\"CONVERSATION_QUERY_COMPLETED\"/
-| parse @message /\"queryType\":\"(?<parsedQueryType>[^\"]+)\"/
-| parse @message /\"outcome\":\"(?<parsedOutcome>[^\"]+)\"/
-| parse @message /\"durationMs\":(?<parsedDurationMs>[0-9]+)/
+| filter @message like /"eventType":"CONVERSATION_QUERY_COMPLETED"/
+| parse @message /"queryType":"(?<parsedQueryType>[^"]+)"/
+| parse @message /"outcome":"(?<parsedOutcome>[^"]+)"/
+| parse @message /"durationMs":(?<parsedDurationMs>[0-9]+)/
 | stats count() as queries,
         avg(parsedDurationMs) as averageDurationMs,
         pct(parsedDurationMs, 95) as p95DurationMs
@@ -63,15 +63,15 @@ hasta 100 consultas recientes dentro de la ventana seleccionada.
 
 ```text
 fields @timestamp, @message
-| filter @message like /\"eventType\":\"CONVERSATION_QUERY_COMPLETED\"/
-| parse @message /\"channel\":\"(?<parsedChannel>[^\"]+)\"/
-| parse @message /\"actorKey\":\"(?<parsedActorKey>[^\"]+)\"/
-| parse @message /\"queryType\":\"(?<parsedQueryType>[^\"]+)\"/
-| parse @message /\"outcome\":\"(?<parsedOutcome>[^\"]+)\"/
-| parse @message /\"durationMs\":(?<parsedDurationMs>[0-9]+)/
-| parse @message /\"workflowVersion\":\"(?<parsedWorkflowVersion>[^\"]+)\"/
-| parse @message /\"correlationId\":\"(?<parsedCorrelationId>[^\"]+)\"/
-| parse @message /\"fallbackReason\":\"(?<parsedFallbackReason>[^\"]+)\"/
+| filter @message like /"eventType":"CONVERSATION_QUERY_COMPLETED"/
+| parse @message /"channel":"(?<parsedChannel>[^"]+)"/
+| parse @message /"actorKey":"(?<parsedActorKey>[^"]+)"/
+| parse @message /"queryType":"(?<parsedQueryType>[^"]+)"/
+| parse @message /"outcome":"(?<parsedOutcome>[^"]+)"/
+| parse @message /"durationMs":(?<parsedDurationMs>[0-9]+)/
+| parse @message /"workflowVersion":"(?<parsedWorkflowVersion>[^"]+)"/
+| parse @message /"correlationId":"(?<parsedCorrelationId>[^"]+)"/
+| parse @message /"fallbackReason":"(?<parsedFallbackReason>[^"]+)"/
 | sort @timestamp desc
 | limit 100
 | display @timestamp, parsedChannel, parsedActorKey, parsedQueryType,
@@ -91,20 +91,20 @@ dimensiones agregadas de alta cardinalidad.
 
 ```text
 fields @timestamp, @message
-| filter @message like /\"eventType\":\"AI_USAGE_RECORDED\"/
-| parse @message /\"stage\":\"(?<parsedStage>[^\"]+)\"/
-| parse @message /\"operation\":\"(?<parsedOperation>[^\"]+)\"/
-| parse @message /\"provider\":\"(?<parsedProvider>[^\"]+)\"/
-| parse @message /\"model\":\"(?<parsedModel>[^\"]+)\"/
-| parse @message /\"channel\":\"(?<parsedChannel>[^\"]+)\"/
-| parse @message /\"useCase\":\"(?<parsedUseCase>[^\"]+)\"/
-| parse @message /\"pricingVersion\":\"(?<parsedPricingVersion>[^\"]+)\"/
-| parse @message /\"success\":(?<parsedSuccess>true|false)/
-| parse @message /\"inputTokens\":(?<parsedInputTokens>[0-9]+)/
-| parse @message /\"outputTokens\":(?<parsedOutputTokens>[0-9]+)/
-| parse @message /\"totalTokens\":(?<parsedTotalTokens>[0-9]+)/
-| parse @message /\"estimatedCostUsd\":(?<parsedEstimatedCostUsd>[0-9.]+)/
-| parse @message /\"durationMs\":(?<parsedDurationMs>[0-9]+)/
+| filter @message like /"eventType":"AI_USAGE_RECORDED"/
+| parse @message /"stage":"(?<parsedStage>[^"]+)"/
+| parse @message /"operation":"(?<parsedOperation>[^"]+)"/
+| parse @message /"provider":"(?<parsedProvider>[^"]+)"/
+| parse @message /"model":"(?<parsedModel>[^"]+)"/
+| parse @message /"channel":"(?<parsedChannel>[^"]+)"/
+| parse @message /"useCase":"(?<parsedUseCase>[^"]+)"/
+| parse @message /"pricingVersion":"(?<parsedPricingVersion>[^"]+)"/
+| parse @message /"success":(?<parsedSuccess>true|false)/
+| parse @message /"inputTokens":(?<parsedInputTokens>[0-9]+)/
+| parse @message /"outputTokens":(?<parsedOutputTokens>[0-9]+)/
+| parse @message /"totalTokens":(?<parsedTotalTokens>[0-9]+)/
+| parse @message /"estimatedCostUsd":(?<parsedEstimatedCostUsd>[0-9.]+)/
+| parse @message /"durationMs":(?<parsedDurationMs>[0-9]+)/
 | stats count() as calls,
         sum(parsedInputTokens) as inputTokens,
         sum(parsedOutputTokens) as outputTokens,
@@ -126,14 +126,14 @@ adicionales.
 
 ```text
 fields @timestamp, @message
-| filter @message like /\"eventType\":\"AI_USAGE_RECORDED\"/
-| parse @message /\"operation\":\"(?<parsedOperation>[^\"]+)\"/
-| parse @message /\"provider\":\"(?<parsedProvider>[^\"]+)\"/
-| parse @message /\"model\":\"(?<parsedModel>[^\"]+)\"/
-| parse @message /\"totalTokens\":(?<parsedTotalTokens>[0-9]+)/
-| parse @message /\"estimatedCostUsd\":(?<parsedEstimatedCostUsd>[0-9.]+)/
-| parse @message /\"durationMs\":(?<parsedDurationMs>[0-9]+)/
-| parse @message /\"success\":(?<parsedSuccess>true|false)/
+| filter @message like /"eventType":"AI_USAGE_RECORDED"/
+| parse @message /"operation":"(?<parsedOperation>[^"]+)"/
+| parse @message /"provider":"(?<parsedProvider>[^"]+)"/
+| parse @message /"model":"(?<parsedModel>[^"]+)"/
+| parse @message /"totalTokens":(?<parsedTotalTokens>[0-9]+)/
+| parse @message /"estimatedCostUsd":(?<parsedEstimatedCostUsd>[0-9.]+)/
+| parse @message /"durationMs":(?<parsedDurationMs>[0-9]+)/
+| parse @message /"success":(?<parsedSuccess>true|false)/
 | display @timestamp, parsedOperation, parsedProvider, parsedModel, parsedSuccess,
           parsedTotalTokens, parsedEstimatedCostUsd, parsedDurationMs
 | sort @timestamp desc
@@ -148,10 +148,10 @@ proveedor real, por ejemplo `wcs.ai.provider=bedrock`.
 
 ```text
 fields @timestamp, @message
-| filter @message like /\"eventType\":\"INBOUND_MESSAGE_PROCESSED\"/
-| parse @message /\"channel\":\"(?<parsedChannel>[^\"]+)\"/
-| parse @message /\"result\":\"(?<parsedResult>[^\"]+)\"/
-| parse @message /\"durationMs\":(?<parsedDurationMs>[0-9]+)/
+| filter @message like /"eventType":"INBOUND_MESSAGE_PROCESSED"/
+| parse @message /"channel":"(?<parsedChannel>[^"]+)"/
+| parse @message /"result":"(?<parsedResult>[^"]+)"/
+| parse @message /"durationMs":(?<parsedDurationMs>[0-9]+)/
 | stats count() as messages, avg(parsedDurationMs) as averageDurationMs
   by parsedChannel, parsedResult, bin(1h)
 | sort @timestamp asc
@@ -161,9 +161,9 @@ fields @timestamp, @message
 
 ```text
 fields @timestamp, @message
-| filter @message like /\"eventType\":\"INTENT_CLASSIFIED\"/
-| parse @message /\"intent\":\"(?<parsedIntent>[^\"]+)\"/
-| parse @message /\"confidence\":(?<parsedConfidence>[0-9.]+)/
+| filter @message like /"eventType":"INTENT_CLASSIFIED"/
+| parse @message /"intent":"(?<parsedIntent>[^"]+)"/
+| parse @message /"confidence":(?<parsedConfidence>[0-9.]+)/
 | stats count() as classifications, avg(parsedConfidence) as averageConfidence by parsedIntent, bin(1h)
 | sort @timestamp asc
 ```
@@ -177,13 +177,13 @@ producto ni texto del cliente.
 
 ```text
 fields @timestamp, @message
-| filter @message like /\"eventType\":\"INTENT_CLASSIFIED\"/
-| parse @message /\"intent\":\"(?<parsedIntent>[^\"]+)\"/
-| parse @message /\"rawIntent\":\"(?<parsedRawIntent>[^\"]+)\"/
-| parse @message /\"confidenceBucket\":\"(?<parsedConfidenceBucket>[^\"]+)\"/
-| parse @message /\"deterministicNormalization\":(?<parsedNormalization>true|false)/
-| parse @message /\"catalogQueryFilterCount\":(?<parsedCatalogFilterCount>[0-9]+)/
-| parse @message /\"catalogQueryProductType\":\"(?<parsedCatalogProductType>[^\"]+)\"/
+| filter @message like /"eventType":"INTENT_CLASSIFIED"/
+| parse @message /"intent":"(?<parsedIntent>[^"]+)"/
+| parse @message /"rawIntent":"(?<parsedRawIntent>[^"]+)"/
+| parse @message /"confidenceBucket":"(?<parsedConfidenceBucket>[^"]+)"/
+| parse @message /"deterministicNormalization":(?<parsedNormalization>true|false)/
+| parse @message /"catalogQueryFilterCount":(?<parsedCatalogFilterCount>[0-9]+)/
+| parse @message /"catalogQueryProductType":"(?<parsedCatalogProductType>[^"]+)"/
 | stats count() as classifications,
         avg(parsedCatalogFilterCount) as averageCatalogFilters,
         sum(if(parsedNormalization = "true", 1, 0)) as normalizedDecisions
@@ -199,14 +199,14 @@ sin un dataset esperado.
 
 ```text
 fields @timestamp, @message
-| filter @message like /\"eventType\":\"CATALOG_SEARCH_COMPLETED\"/
-| parse @message /\"source\":\"(?<parsedSource>[^\"]+)\"/
-| parse @message /\"resultStatus\":\"(?<parsedResultStatus>[^\"]+)\"/
-| parse @message /\"resultCount\":(?<parsedResultCount>[0-9]+)/
-| parse @message /\"imageCount\":(?<parsedImageCount>[0-9]+)/
-| parse @message /\"queryFilterCount\":(?<parsedQueryFilterCount>[0-9]+)/
-| parse @message /\"queryProductType\":\"(?<parsedQueryProductType>[^\"]+)\"/
-| parse @message /\"executionDurationMs\":(?<parsedExecutionDurationMs>[0-9]+)/
+| filter @message like /"eventType":"CATALOG_SEARCH_COMPLETED"/
+| parse @message /"source":"(?<parsedSource>[^"]+)"/
+| parse @message /"resultStatus":"(?<parsedResultStatus>[^"]+)"/
+| parse @message /"resultCount":(?<parsedResultCount>[0-9]+)/
+| parse @message /"imageCount":(?<parsedImageCount>[0-9]+)/
+| parse @message /"queryFilterCount":(?<parsedQueryFilterCount>[0-9]+)/
+| parse @message /"queryProductType":"(?<parsedQueryProductType>[^"]+)"/
+| parse @message /"executionDurationMs":(?<parsedExecutionDurationMs>[0-9]+)/
 | stats count() as searches,
         sum(if(parsedResultStatus = "MATCHED", 1, 0)) as matched,
         sum(if(parsedResultStatus = "NO_MATCH", 1, 0)) as noMatch,
@@ -229,13 +229,13 @@ agregada del dashboard.
 
 ```text
 fields @timestamp, @message
-| filter @message like /\"eventType\":\"CATALOG_SEARCH_COMPLETED\"/
-| parse @message /\"correlationId\":\"(?<parsedCorrelationId>[^\"]+)\"/
-| parse @message /\"resultStatus\":\"(?<parsedResultStatus>[^\"]+)\"/
-| parse @message /\"queryFilters\":\[(?<parsedQueryFilters>[^\]]*)\]/
-| parse @message /\"queryProductType\":\"(?<parsedQueryProductType>[^\"]+)\"/
-| parse @message /\"resultCount\":(?<parsedResultCount>[0-9]+)/
-| parse @message /\"executionDurationMs\":(?<parsedExecutionDurationMs>[0-9]+)/
+| filter @message like /"eventType":"CATALOG_SEARCH_COMPLETED"/
+| parse @message /"correlationId":"(?<parsedCorrelationId>[^"]+)"/
+| parse @message /"resultStatus":"(?<parsedResultStatus>[^"]+)"/
+| parse @message /"queryFilters":\[(?<parsedQueryFilters>[^\]]*)\]/
+| parse @message /"queryProductType":"(?<parsedQueryProductType>[^"]+)"/
+| parse @message /"resultCount":(?<parsedResultCount>[0-9]+)/
+| parse @message /"executionDurationMs":(?<parsedExecutionDurationMs>[0-9]+)/
 | sort @timestamp desc
 | limit 100
 | display @timestamp, parsedCorrelationId, parsedResultStatus,
@@ -253,16 +253,16 @@ en la consulta anterior.
 
 ```text
 fields @timestamp, @message
-| filter @message like /\"eventType\":\"AI_USAGE_RECORDED\"/
-| parse @message /\"correlationId\":\"(?<parsedCorrelationId>[^\"]+)\"/
-| parse @message /\"stage\":\"(?<parsedStage>[^\"]+)\"/
-| parse @message /\"operation\":\"(?<parsedOperation>[^\"]+)\"/
-| parse @message /\"model\":\"(?<parsedModel>[^\"]+)\"/
-| parse @message /\"promptVersion\":\"(?<parsedPromptVersion>[^\"]+)\"/
-| parse @message /\"success\":(?<parsedSuccess>true|false)/
-| parse @message /\"totalTokens\":(?<parsedTotalTokens>[0-9]+)/
-| parse @message /\"estimatedCostUsd\":(?<parsedEstimatedCostUsd>[0-9.]+)/
-| parse @message /\"durationMs\":(?<parsedDurationMs>[0-9]+)/
+| filter @message like /"eventType":"AI_USAGE_RECORDED"/
+| parse @message /"correlationId":"(?<parsedCorrelationId>[^"]+)"/
+| parse @message /"stage":"(?<parsedStage>[^"]+)"/
+| parse @message /"operation":"(?<parsedOperation>[^"]+)"/
+| parse @message /"model":"(?<parsedModel>[^"]+)"/
+| parse @message /"promptVersion":"(?<parsedPromptVersion>[^"]+)"/
+| parse @message /"success":(?<parsedSuccess>true|false)/
+| parse @message /"totalTokens":(?<parsedTotalTokens>[0-9]+)/
+| parse @message /"estimatedCostUsd":(?<parsedEstimatedCostUsd>[0-9.]+)/
+| parse @message /"durationMs":(?<parsedDurationMs>[0-9]+)/
 | sort @timestamp desc
 | limit 100
 | display @timestamp, parsedCorrelationId, parsedStage, parsedOperation,
@@ -274,10 +274,10 @@ fields @timestamp, @message
 
 ```text
 fields @timestamp, @message
-| filter @message like /\"eventType\":\"OUTBOUND_MESSAGE_DISPATCHED\"/
-| parse @message /\"channel\":\"(?<parsedChannel>[^\"]+)\"/
-| parse @message /\"result\":\"(?<parsedResult>[^\"]+)\"/
-| parse @message /\"durationMs\":(?<parsedDurationMs>[0-9]+)/
+| filter @message like /"eventType":"OUTBOUND_MESSAGE_DISPATCHED"/
+| parse @message /"channel":"(?<parsedChannel>[^"]+)"/
+| parse @message /"result":"(?<parsedResult>[^"]+)"/
+| parse @message /"durationMs":(?<parsedDurationMs>[0-9]+)/
 | stats count() as deliveries, avg(parsedDurationMs) as averageDurationMs
   by parsedChannel, parsedResult, bin(1h)
 | sort @timestamp asc
@@ -287,9 +287,9 @@ fields @timestamp, @message
 
 ```text
 fields @timestamp, @message
-| filter @message like /\"eventType\":\"WEBHOOK_REJECTED\"/
-| parse @message /\"channel\":\"(?<parsedChannel>[^\"]+)\"/
-| parse @message /\"reason\":\"(?<parsedReason>[^\"]+)\"/
+| filter @message like /"eventType":"WEBHOOK_REJECTED"/
+| parse @message /"channel":"(?<parsedChannel>[^"]+)"/
+| parse @message /"reason":"(?<parsedReason>[^"]+)"/
 | stats count() as rejections by parsedChannel, parsedReason, bin(1h)
 | sort @timestamp asc
 ```
@@ -298,11 +298,11 @@ fields @timestamp, @message
 
 ```text
 fields @timestamp, @message
-| filter @message like /\"eventType\":\"RAG_RETRIEVAL_RECORDED\"/
-| parse @message /\"provider\":\"(?<parsedProvider>[^\"]+)\"/
-| parse @message /\"success\":(?<parsedSuccess>true|false)/
-| parse @message /\"resultCount\":(?<parsedResultCount>[0-9]+)/
-| parse @message /\"durationMs\":(?<parsedDurationMs>[0-9]+)/
+| filter @message like /"eventType":"RAG_RETRIEVAL_RECORDED"/
+| parse @message /"provider":"(?<parsedProvider>[^"]+)"/
+| parse @message /"success":(?<parsedSuccess>true|false)/
+| parse @message /"resultCount":(?<parsedResultCount>[0-9]+)/
+| parse @message /"durationMs":(?<parsedDurationMs>[0-9]+)/
 | stats count() as retrievals,
         avg(parsedResultCount) as averageResults,
         avg(parsedDurationMs) as averageDurationMs,
@@ -319,14 +319,14 @@ respuesta.
 
 ```text
 fields @timestamp, @message
-| filter @message like /\"eventType\":\"AGENT_TRAFFIC_COMPARISON_RECORDED\"/
-| parse @message /\"agentId\":\"(?<parsedAgentId>[^\"]+)\"/
-| parse @message /\"agentVersion\":(?<parsedAgentVersion>[0-9]+)/
-| parse @message /\"model\":\"(?<parsedModel>[^\"]+)\"/
-| parse @message /\"channel\":\"(?<parsedChannel>[^\"]+)\"/
-| parse @message /\"useCase\":\"(?<parsedUseCase>[^\"]+)\"/
-| parse @message /\"outcome\":\"(?<parsedOutcome>[^\"]+)\"/
-| parse @message /\"comparisonOutcome\":\"(?<parsedComparisonOutcome>[^\"]+)\"/
+| filter @message like /"eventType":"AGENT_TRAFFIC_COMPARISON_RECORDED"/
+| parse @message /"agentId":"(?<parsedAgentId>[^"]+)"/
+| parse @message /"agentVersion":(?<parsedAgentVersion>[0-9]+)/
+| parse @message /"model":"(?<parsedModel>[^"]+)"/
+| parse @message /"channel":"(?<parsedChannel>[^"]+)"/
+| parse @message /"useCase":"(?<parsedUseCase>[^"]+)"/
+| parse @message /"outcome":"(?<parsedOutcome>[^"]+)"/
+| parse @message /"comparisonOutcome":"(?<parsedComparisonOutcome>[^"]+)"/
 | stats count() as executions,
         sum(if(parsedComparisonOutcome = "MATCH", 1, 0)) as matches,
         sum(if(parsedComparisonOutcome = "MISMATCH", 1, 0)) as mismatches,
@@ -348,17 +348,17 @@ umbral aprobado.
 
 ```text
 fields @timestamp, @message
-| filter @message like /\"eventType\":\"AGENT_TRAFFIC_COMPARISON_RECORDED\"/
-| parse @message /\"agentId\":\"(?<parsedAgentId>[^\"]+)\"/
-| parse @message /\"agentVersion\":(?<parsedAgentVersion>[0-9]+)/
-| parse @message /\"model\":\"(?<parsedModel>[^\"]+)\"/
-| parse @message /\"channel\":\"(?<parsedChannel>[^\"]+)\"/
-| parse @message /\"useCase\":\"(?<parsedUseCase>[^\"]+)\"/
-| parse @message /\"latencyMs\":(?<parsedLatencyMs>[0-9]+)/
-| parse @message /\"inputTokens\":(?<parsedInputTokens>[0-9]+)/
-| parse @message /\"outputTokens\":(?<parsedOutputTokens>[0-9]+)/
-| parse @message /\"totalTokens\":(?<parsedTotalTokens>[0-9]+)/
-| parse @message /\"estimatedCostUsd\":(?<parsedEstimatedCostUsd>[0-9.]+)/
+| filter @message like /"eventType":"AGENT_TRAFFIC_COMPARISON_RECORDED"/
+| parse @message /"agentId":"(?<parsedAgentId>[^"]+)"/
+| parse @message /"agentVersion":(?<parsedAgentVersion>[0-9]+)/
+| parse @message /"model":"(?<parsedModel>[^"]+)"/
+| parse @message /"channel":"(?<parsedChannel>[^"]+)"/
+| parse @message /"useCase":"(?<parsedUseCase>[^"]+)"/
+| parse @message /"latencyMs":(?<parsedLatencyMs>[0-9]+)/
+| parse @message /"inputTokens":(?<parsedInputTokens>[0-9]+)/
+| parse @message /"outputTokens":(?<parsedOutputTokens>[0-9]+)/
+| parse @message /"totalTokens":(?<parsedTotalTokens>[0-9]+)/
+| parse @message /"estimatedCostUsd":(?<parsedEstimatedCostUsd>[0-9.]+)/
 | stats count() as executions,
         avg(parsedLatencyMs) as averageLatencyMs,
         pct(parsedLatencyMs, 50) as p50LatencyMs,

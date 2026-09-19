@@ -10,7 +10,19 @@ public record AgentEvaluationResult(
         boolean passed,
         double score,
         List<String> reasons,
-        AgentEvaluationExecutionMetadata executionMetadata) {
+        AgentEvaluationExecutionMetadata executionMetadata,
+        List<String> evaluatedDimensions) {
+
+    /** Backwards-compatible result without quality-dimension expectations. */
+    public AgentEvaluationResult(
+            String scenarioId,
+            String datasetVersion,
+            boolean passed,
+            double score,
+            List<String> reasons,
+            AgentEvaluationExecutionMetadata executionMetadata) {
+        this(scenarioId, datasetVersion, passed, score, reasons, executionMetadata, List.of());
+    }
 
     public AgentEvaluationResult {
         scenarioId = required(scenarioId, "scenarioId");
@@ -24,6 +36,16 @@ public record AgentEvaluationResult(
                 .filter(value -> !value.isBlank())
                 .distinct()
                 .toList();
+        evaluatedDimensions = evaluatedDimensions == null ? List.of() : evaluatedDimensions.stream()
+                .filter(Objects::nonNull)
+                .map(String::strip)
+                .filter(value -> !value.isBlank())
+                .distinct()
+                .sorted()
+                .toList();
+        if (evaluatedDimensions.stream().anyMatch(value -> !AgentEvaluationQualityDimensions.ALL.contains(value))) {
+            throw new IllegalArgumentException("unknown evaluated quality dimension");
+        }
         if (passed && !reasons.isEmpty()) {
             throw new IllegalArgumentException("passed result must not contain failure reasons");
         }

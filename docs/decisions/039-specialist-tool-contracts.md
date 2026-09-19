@@ -32,14 +32,13 @@ contrato inexistente. El orquestador vuelve a validar el plan antes de
 ejecutarlo, porque la definición o la propuesta del modelo no es autoridad de
 seguridad.
 
-Las primeras tools ejecutables son `catalog.search`, `catalog.stock`,
-`knowledge.retrieve` y `safe-fallback`. Delegan en los puertos y reglas ya
+Las tools ejecutables son `catalog.search`, `catalog.stock`,
+`knowledge.retrieve`, `conversation.state`, `cart.manage`, `checkout.create`,
+`human-handoff` y `safe-fallback`. Delegan en los puertos y reglas ya
 existentes, devuelven resultados acotados y emiten observabilidad sin contenido
-conversacional. Las demás capacidades ya tienen schemas versionados, acotados y
-con enums/límites explícitos para que puedan validarse antes de ejecutar:
-estado, carrito, checkout y handoff. Permanecen como metadata de contrato
-hasta que exista su wrapper tipado y sus pruebas contractuales, porque esos
-flujos tienen efectos de estado, ownership o pagos.
+conversacional. Estado, carrito, checkout y handoff conservan sus servicios
+existentes como dueños de persistencia y efectos; los wrappers no permiten
+saltarse ownership, confirmación ni idempotencia.
 
 ## Reglas
 
@@ -60,11 +59,15 @@ La allowlist y los schemas concretos se pueden probar sin Bedrock, y los nuevos
 proveedores pueden traducir estos contratos sin contaminar el dominio. El
 catálogo central también hace visible qué capacidades faltan por implementar.
 
-Los wrappers ejecutables actuales son deliberadamente pequeños: `knowledge.retrieve`
-devuelve sólo estado, cantidad de evidencias y score promedio; `catalog.stock`
-devuelve estado y stock de un SKU; `safe-fallback` determina si conviene sugerir
-handoff según una razón enumerada. Ninguno permite SQL, expone documentos o
-modifica carrito/pedido.
+Los wrappers ejecutables actuales son deliberadamente pequeños:
+`knowledge.retrieve` devuelve sólo estado, cantidad de evidencias y score
+promedio; `catalog.stock` devuelve estado y stock de un SKU;
+`conversation.state` mantiene una selección tipada; `cart.manage` expone
+operaciones de carrito con snapshot de total; `checkout.create` requiere
+confirmación y versión de carrito; `human-handoff` es idempotente; y
+`safe-fallback` determina si conviene sugerir handoff según una razón
+enumerada. Ninguno permite SQL, expone documentos o permite un checkout
+duplicado.
 
 El costo es mantener versiones de schemas y completar wrappers para cada
 capacidad antes de permitir su ejecución dinámica. Durante la transición,
@@ -74,6 +77,11 @@ actuales siguen siendo invocados por el orquestador.
 ## Evidencia
 
 - `WcsToolContractCatalogTest` verifica los contratos y sus schemas.
+- `ConversationStateToolTest`, `CartManageToolTest`,
+  `CheckoutCreateToolTest` y `HumanHandoffToolTest` verifican los adapters
+  tipados, ownership, reset, confirmación e idempotencia.
+- `WallyCustomerSupportApplicationIntegrationTest` verifica que Spring registre
+  las ocho fronteras sin duplicados.
 - `AgentSpecialistRegistryTest` verifica especialistas, allowlists y rechazo
   de tools o schemas incompatibles.
 - `ConversationExecutionPlanFactoryTest` verifica que los steps lleven tool y

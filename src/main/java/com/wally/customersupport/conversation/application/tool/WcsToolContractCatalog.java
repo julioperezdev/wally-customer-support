@@ -69,9 +69,9 @@ public final class WcsToolContractCatalog {
                 CART_MANAGE,
                 "Gestiona una operación validada del carrito del cliente.",
                 "cart-input-v1",
-                "{\"type\":\"object\",\"properties\":{\"operation\":{\"type\":\"string\",\"enum\":[\"ADD\",\"VIEW\",\"REMOVE\",\"CLEAR\",\"REVIEW\"]},\"sku\":{\"type\":[\"string\",\"null\"],\"maxLength\":64},\"quantity\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":100}},\"required\":[\"operation\",\"sku\",\"quantity\"],\"additionalProperties\":false}",
+                "{\"type\":\"object\",\"properties\":{\"operation\":{\"type\":\"string\",\"enum\":[\"ADD\",\"VIEW\",\"REMOVE\",\"CLEAR\",\"REVIEW\",\"CONFIRM\",\"CANCEL\",\"DEFER\"]},\"sku\":{\"type\":[\"string\",\"null\"],\"maxLength\":64},\"quantity\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":100}},\"required\":[\"operation\",\"sku\",\"quantity\"],\"additionalProperties\":false}",
                 "cart-output-v1",
-                "{\"type\":\"object\",\"properties\":{\"status\":{\"type\":\"string\",\"enum\":[\"UPDATED\",\"VIEWED\",\"CLEARED\",\"REJECTED\"]},\"itemCount\":{\"type\":\"integer\",\"minimum\":0},\"total\":{\"type\":\"number\",\"minimum\":0},\"requiresConfirmation\":{\"type\":\"boolean\"}},\"required\":[\"status\",\"itemCount\",\"total\",\"requiresConfirmation\"],\"additionalProperties\":false}",
+                "{\"type\":\"object\",\"properties\":{\"status\":{\"type\":\"string\",\"enum\":[\"UPDATED\",\"VIEWED\",\"CLEARED\",\"CHECKOUT_CREATED\",\"CANCELLED\",\"DEFERRED\",\"REJECTED\"]},\"itemCount\":{\"type\":\"integer\",\"minimum\":0},\"total\":{\"type\":[\"number\",\"null\"],\"minimum\":0},\"requiresConfirmation\":{\"type\":\"boolean\"},\"response\":{\"type\":\"string\",\"maxLength\":4000}},\"required\":[\"status\",\"itemCount\",\"total\",\"requiresConfirmation\",\"response\"],\"additionalProperties\":false}",
                 "cart.manage"));
         put(contracts, descriptor(
                 CHECKOUT_CREATE,
@@ -79,7 +79,7 @@ public final class WcsToolContractCatalog {
                 "checkout-input-v1",
                 "{\"type\":\"object\",\"properties\":{\"confirmed\":{\"type\":\"boolean\",\"const\":true},\"cartVersion\":{\"type\":\"integer\",\"minimum\":1}},\"required\":[\"confirmed\",\"cartVersion\"],\"additionalProperties\":false}",
                 "checkout-output-v1",
-                "{\"type\":\"object\",\"properties\":{\"status\":{\"type\":\"string\",\"enum\":[\"CREATED\",\"REUSED\",\"REJECTED\"]},\"orderCreated\":{\"type\":\"boolean\"},\"paymentLinkCreated\":{\"type\":\"boolean\"}},\"required\":[\"status\",\"orderCreated\",\"paymentLinkCreated\"],\"additionalProperties\":false}",
+                "{\"type\":\"object\",\"properties\":{\"status\":{\"type\":\"string\",\"enum\":[\"CREATED\",\"REUSED\",\"REJECTED\"]},\"orderCreated\":{\"type\":\"boolean\"},\"paymentLinkCreated\":{\"type\":\"boolean\"},\"response\":{\"type\":\"string\",\"maxLength\":4000}},\"required\":[\"status\",\"orderCreated\",\"paymentLinkCreated\",\"response\"],\"additionalProperties\":false}",
                 "checkout.create"));
         put(contracts, descriptor(
                 HUMAN_HANDOFF,

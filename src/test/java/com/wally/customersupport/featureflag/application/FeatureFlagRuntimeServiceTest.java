@@ -8,12 +8,16 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Stream;
 
 import com.wally.customersupport.featureflag.application.port.FeatureFlagConfigurationPublisher;
 import com.wally.customersupport.featureflag.application.port.FeatureFlagConfigurationSource;
 import com.wally.customersupport.featureflag.application.service.FeatureFlagRuntimeService;
 import com.wally.customersupport.featureflag.infrastructure.config.FeatureFlagProperties;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import tools.jackson.databind.ObjectMapper;
 
@@ -134,6 +138,81 @@ class FeatureFlagRuntimeServiceTest {
         assertThat(service.isAgentExecutionAllowed(context)).isTrue();
         assertThat(service.view().audit()).anyMatch(entry ->
                 "rollback".equals(entry.operation()) && "ACCEPTED".equals(entry.result()));
+    }
+
+    @ParameterizedTest(name = "kill switch scope {0} => allowed={1}")
+    @MethodSource("killSwitchScopeCases")
+    void appliesKillSwitchOnlyWhenEveryActivationDimensionMatches(
+            FeatureFlagContext context,
+            boolean expectedAllowed) throws Exception {
+        String payload = """
+                {"schemaVersion":"1","version":"kill-switch-v1","flags":[
+                  {"key":"wcs.agent.catalog-specialist.enabled","enabled":false,"killSwitch":true,
+                   "environments":["prod"],"channels":["telegram"],"useCases":["catalog-search"],
+                   "agentIds":["catalog-specialist"],"agentVersions":[2]}]}
+                """;
+        FeatureFlagRuntimeService service = service(payload);
+
+        service.refresh();
+
+        assertThat(service.isAgentExecutionAllowed(context)).isEqualTo(expectedAllowed);
+    }
+
+    @Test
+    void rollbackRestoresOnlyThePreviouslyActiveScopedDecision() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        FeatureFlagDefinition enabled = new FeatureFlagDefinition(
+                "wcs.agent.catalog-specialist.enabled", true, false,
+                List.of("prod"), List.of("telegram"), List.of("catalog-search"),
+                List.of("catalog-specialist"), List.of(2));
+        FeatureFlagDefinition disabled = new FeatureFlagDefinition(
+                "wcs.agent.catalog-specialist.enabled", false, true,
+                List.of("prod"), List.of("telegram"), List.of("catalog-search"),
+                List.of("catalog-specialist"), List.of(2));
+        FeatureFlagDocument v1 = new FeatureFlagDocument("1", "v1", List.of(enabled));
+        FeatureFlagDocument v2 = new FeatureFlagDocument("1", "v2", List.of(disabled));
+        String v1Json = mapper.writeValueAsString(v1);
+        String v2Json = mapper.writeValueAsString(v2);
+        FeatureFlagConfigurationPublisher publisher = mock(FeatureFlagConfigurationPublisher.class);
+        when(publisher.publish(v2Json, "WCS feature flags published by operator"))
+                .thenReturn(new FeatureFlagConfigurationPublisher.Publication("v2", "deployment-2"));
+        when(publisher.publish(v1Json, "WCS feature flags rollback by operator"))
+                .thenReturn(new FeatureFlagConfigurationPublisher.Publication("v3", "deployment-3"));
+        MutableSource source = new MutableSource();
+        source.next.set(v1Json.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        FeatureFlagRuntimeService service = service(source, publisher, true);
+        FeatureFlagContext exact = new FeatureFlagContext(
+                "prod", "telegram", "catalog-search", "catalog-specialist", 2);
+        FeatureFlagContext otherChannel = new FeatureFlagContext(
+                "prod", "whatsapp", "catalog-search", "catalog-specialist", 2);
+
+        service.refresh();
+        service.publish(v2, "operator");
+
+        assertThat(service.isAgentExecutionAllowed(exact)).isFalse();
+        assertThat(service.isAgentExecutionAllowed(otherChannel)).isTrue();
+
+        service.rollback("operator");
+
+        assertThat(service.isAgentExecutionAllowed(exact)).isTrue();
+        assertThat(service.isAgentExecutionAllowed(otherChannel)).isTrue();
+        assertThat(service.view().effectiveVersion()).isEqualTo("v1");
+    }
+
+    private static Stream<Arguments> killSwitchScopeCases() {
+        return Stream.of(
+                Arguments.of(new FeatureFlagContext(
+                        "prod", "telegram", "catalog-search", "catalog-specialist", 2), false),
+                Arguments.of(new FeatureFlagContext(
+                        "test", "telegram", "catalog-search", "catalog-specialist", 2), true),
+                Arguments.of(new FeatureFlagContext(
+                        "prod", "whatsapp", "catalog-search", "catalog-specialist", 2), true),
+                Arguments.of(new FeatureFlagContext(
+                        "prod", "telegram", "business-hours", "catalog-specialist", 2), true),
+                Arguments.of(new FeatureFlagContext(
+                        "prod", "telegram", "catalog-search", "knowledge-specialist", 2), true),
+                Arguments.of(new FeatureFlagContext(
+                        "prod", "telegram", "catalog-search", "catalog-specialist", 1), true));
     }
 
     private static FeatureFlagRuntimeService service(String payload) {

@@ -325,6 +325,15 @@ Después de iniciar Grafana:
 6. Usar el panel **App Runner · errores** sólo para diagnóstico y no compartir
    su contenido sin revisar PII.
 
+Las expresiones de Logs Insights del dashboard deben conservar las comillas
+normales del JSON, por ejemplo
+`/"eventType":"CONVERSATION_QUERY_COMPLETED"/`; no deben contener una barra
+invertida adicional antes de cada comilla. Una consulta puede finalizar en
+`Complete` y aun así estar mal filtrada si quedó sobre-escapada. La validación
+local del gate comprueba el JSON y Compose; la validación read-only contra
+CloudWatch debe confirmar además que las filas corresponden a eventos WCS y no
+a líneas de despliegue.
+
 La presencia de `INBOUND_MESSAGE_ENQUEUED` confirma que el webhook persistió el
 trabajo; `INBOUND_MESSAGE_PROCESSED` confirma que el worker terminó el
 procesamiento; `CONVERSATION_QUERY_COMPLETED` registra el resultado del orquestador;

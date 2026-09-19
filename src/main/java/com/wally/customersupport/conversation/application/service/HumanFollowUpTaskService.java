@@ -37,21 +37,49 @@ public class HumanFollowUpTaskService {
             return;
         }
 
+        createExplicitResult(conversation, sourceMessage, definition.reason(), definition.priority());
+    }
+
+    public HumanFollowUpTask createExplicit(
+            Conversation conversation,
+            Message sourceMessage,
+            String reason,
+            HumanFollowUpPriority priority) {
+        return createExplicitResult(conversation, sourceMessage, reason, priority).task();
+    }
+
+    public CreationResult createExplicitResult(
+            Conversation conversation,
+            Message sourceMessage,
+            String reason,
+            HumanFollowUpPriority priority) {
+        if (conversation == null || sourceMessage == null) {
+            throw new IllegalArgumentException("conversation and sourceMessage are required");
+        }
+        if (reason == null || reason.isBlank() || priority == null) {
+            throw new IllegalArgumentException("reason and priority are required");
+        }
+
         Instant now = clock.instant();
         HumanFollowUpTask task = HumanFollowUpTask.open(
                 conversation.id(),
                 sourceMessage.id(),
-                definition.reason(),
-                definition.priority(),
+                reason,
+                priority,
                 now.plus(DEFAULT_SLA),
                 now);
         HumanFollowUpTask persisted = repository.saveIfAbsent(task);
+        boolean created = persisted.id().equals(task.id());
         StructuredEventLog.info(log, "HUMAN_FOLLOW_UP_TASK_READY", java.util.Map.of(
                 "operation", "conversation.human_follow_up.create",
-                "result", persisted.id().equals(task.id()) ? "CREATED" : "ALREADY_EXISTS",
+                "result", created ? "CREATED" : "ALREADY_EXISTS",
                 "reason", persisted.reason(),
                 "priority", persisted.priority().name(),
                 "correlationId", conversation.id()));
+        return new CreationResult(persisted, created);
+    }
+
+    public record CreationResult(HumanFollowUpTask task, boolean created) {
     }
 
     private static FollowUpDefinition definitionFor(String outcome) {

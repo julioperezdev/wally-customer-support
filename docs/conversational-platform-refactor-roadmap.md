@@ -1,8 +1,8 @@
 # WCS — Roadmap de refactor conversacional y fundación de datos
 
 Owner: Product/Tech Lead
-Status: `Proposed`
-Last reviewed: 2026-09-18
+Status: `In Progress — local validation`
+Last reviewed: 2026-09-19
 Related epic: [`WCS-134`](https://julioperezdev.atlassian.net/browse/WCS-134)
 Baseline de rollback: [`wcs-baseline-2026-09-07`](baselines/wcs-baseline-2026-09-07.md)
 Fuente canónica detallada: [Confluence — WCS Refactor conversacional y fundación de datos](https://julioperezdev.atlassian.net/wiki/spaces/SD/pages/13533186)
@@ -257,10 +257,31 @@ Implementación local iniciada para WCS-138:
 - el scorecard no promociona agentes automáticamente ni cambia configuración
   remota.
 
+Implementación local completada para el alcance actual de WCS-137/WCS-138:
+
+- `conversation.state`, `cart.manage`, `checkout.create` y `human-handoff` ya
+  tienen wrappers tipados sobre servicios existentes, además de las tools de
+  catálogo, Knowledge Base y fallback.
+- Los wrappers registran ejecución sanitizada y mantienen ownership, reset de
+  estado, confirmación explícita, versión de carrito e idempotencia.
+- Las evaluaciones aceptan expectativas opcionales de intent, entidades, tool y
+  grounding; `ResponsePolicyEvaluator` genera razones estables de mismatch o
+  señal no disponible.
+- `AgentEvaluationQualityScorecard` calcula tasas separadas cuando hay señales
+  completas y conserva dimensiones no instrumentadas como `unavailable`.
+- Los logs `AGENT_EVALUATION_SCORECARD` incluyen las cuatro tasas nuevas sin
+  almacenar prompts, respuestas ni PII.
+- La prueba de contexto Spring verifica que las ocho tools estén registradas
+  sin duplicados.
+
+Este cierre es local y no implica todavía publicar agentes, cambiar AppConfig,
+ejecutar Terraform, migrar AWS ni desplegar App Runner. La promoción controlada
+remota permanece pendiente de un PR de integración y de evidencia post-deploy.
+
 **Gate:** no se promociona un modelo o prompt por percepción subjetiva. Debe
 existir evidencia comparable y un resultado de rollback.
 
-Implementación local iniciada para WCS-139:
+Implementación local completada para WCS-139:
 
 - `AgentRuntimeDefinitionResolver` es la única frontera que valida el plan
   contra el especialista, sus tools y los schemas versionados;
@@ -268,6 +289,12 @@ Implementación local iniciada para WCS-139:
 - la activación controlada verifica el kill switch por ambiente, canal, caso de
   uso, agente y versión, y el contexto Spring prueba que existe un único
   `AgentSpecialistRegistry`;
+- se eliminaron los constructores de compatibilidad que sólo eran usados por
+  tests y creaban registries o flags implícitos;
+- se conservaron explícitamente los bridges de catálogo/carrito y adapters
+  mock/no-op que todavía son rutas activas o fallbacks seguros;
+- el smoke local incluye integración Spring, PostgreSQL/Testcontainers,
+  shadow cerrado, activación, kill switch, rollback y tools especialistas;
 - el inventario y las disposiciones de cleanup están en
   [`ADR-041`](decisions/041-legacy-cleanup-and-controlled-activation.md);
 - los adapters mock/no-op se conservan como fallbacks explícitos y no como

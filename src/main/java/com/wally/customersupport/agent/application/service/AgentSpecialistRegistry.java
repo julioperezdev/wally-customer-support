@@ -25,7 +25,7 @@ public final class AgentSpecialistRegistry {
 
     @Autowired
     public AgentSpecialistRegistry() {
-        this(defaultRegistry().all());
+        this(standardDefinitions());
     }
 
     public AgentSpecialistRegistry(List<AgentSpecialistDefinition> definitions) {
@@ -45,8 +45,8 @@ public final class AgentSpecialistRegistry {
         this.definitions = Map.copyOf(indexed);
     }
 
-    public static AgentSpecialistRegistry defaultRegistry() {
-        return new AgentSpecialistRegistry(List.of(
+    private static List<AgentSpecialistDefinition> standardDefinitions() {
+        return List.of(
                 new AgentSpecialistDefinition(
                         "conversation-router",
                         "Mapea el mensaje y el contexto a un caso de uso estructurado.",
@@ -89,7 +89,7 @@ public final class AgentSpecialistRegistry {
                         "Adapta tono y formato sin modificar hechos validados.",
                         "validated-facts",
                         Set.of(),
-                        Set.of("GREETING", "GENERAL_SUPPORT", "CATALOG_SEARCH"))));
+                        Set.of("GREETING", "GENERAL_SUPPORT", "CATALOG_SEARCH")));
     }
 
     public List<AgentSpecialistDefinition> all() {

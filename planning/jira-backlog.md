@@ -41,11 +41,13 @@ AppConfig sólo por avanzar el ticket. Cada tarea necesita tests, evidencia y
 rollback local; una tarea pasa a `In Progress` sólo cuando la implementación
 local comienza de forma explícita.
 
-WCS-139 comenzó su implementación local con la consolidación de la validación
-pre-ejecución en `AgentRuntimeDefinitionResolver`. El inventario y la política
+WCS-139 tiene la implementación local completada: la validación pre-ejecución
+está centralizada en `AgentRuntimeDefinitionResolver`, se retiraron tres
+constructores de compatibilidad sin referencias productivas y el smoke cubre
+activación, kill switch por dimensiones y rollback. El inventario y la política
 de cleanup están documentados en
-`docs/decisions/041-legacy-cleanup-and-controlled-activation.md`; no implica
-todavía eliminar adapters mock/no-op, cambiar AppConfig remoto o desplegar.
+`docs/decisions/041-legacy-cleanup-and-controlled-activation.md`. El estado
+remoto sigue pendiente de PR, AppConfig, despliegue y smoke post-deploy.
 
 ## Mapeo de keys reales
 

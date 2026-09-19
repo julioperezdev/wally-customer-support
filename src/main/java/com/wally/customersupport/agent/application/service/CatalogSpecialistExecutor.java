@@ -34,12 +34,6 @@ public class CatalogSpecialistExecutor {
         this.toolRegistry = toolRegistry;
     }
 
-    /** Compatibility constructor for unit tests and non-Spring callers. */
-    public CatalogSpecialistExecutor(
-            com.wally.customersupport.catalog.application.service.CatalogConversationService catalogConversationService) {
-        this(new WcsToolRegistry(java.util.List.of(new CatalogSearchTool(catalogConversationService))));
-    }
-
     public CatalogSpecialistExecutionResult execute(CatalogSpecialistExecutionRequest request) {
         long startedAt = System.nanoTime();
         AgentRuntimeDefinition definition = request.definition();

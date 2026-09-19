@@ -8,9 +8,9 @@ import java.util.Objects;
 /**
  * Sanitized quality dimensions for one evaluation suite.
  *
- * <p>Only dimensions supported by the current response-policy evaluator are
- * calculated. Dimensions that need a routing, entity, tool or retrieval
- * oracle remain explicitly unavailable instead of being reported as zero.</p>
+ * <p>Dimensions are calculated only when every evaluated scenario provides the
+ * corresponding execution signal. Missing instrumentation is reported as
+ * unavailable instead of being confused with a score of zero.</p>
  */
 public record AgentEvaluationQualityScorecard(
         int evaluatedScenarios,
@@ -18,14 +18,30 @@ public record AgentEvaluationQualityScorecard(
         double responseGroundingRate,
         double safetyRate,
         double utilityRate,
+        Double intentAccuracyRate,
+        Double entityExtractionRate,
+        Double toolSuccessRate,
+        Double ragGroundingRate,
         Map<String, Integer> failureCounts,
         List<String> unavailableDimensions) {
 
-    public static final List<String> CURRENTLY_UNAVAILABLE_DIMENSIONS = List.of(
-            "intent_accuracy",
-            "entity_extraction",
-            "tool_success",
-            "rag_grounding");
+    public static final List<String> QUALITY_DIMENSIONS = AgentEvaluationQualityDimensions.ALL;
+
+    /** Retained as a compatibility alias for callers that display the old contract. */
+    public static final List<String> CURRENTLY_UNAVAILABLE_DIMENSIONS = QUALITY_DIMENSIONS;
+
+    /** Backwards-compatible scorecard without execution quality signals. */
+    public AgentEvaluationQualityScorecard(
+            int evaluatedScenarios,
+            double responseValidityRate,
+            double responseGroundingRate,
+            double safetyRate,
+            double utilityRate,
+            Map<String, Integer> failureCounts,
+            List<String> unavailableDimensions) {
+        this(evaluatedScenarios, responseValidityRate, responseGroundingRate, safetyRate, utilityRate,
+                null, null, null, null, failureCounts, unavailableDimensions);
+    }
 
     public AgentEvaluationQualityScorecard {
         if (evaluatedScenarios < 1) {
@@ -35,6 +51,10 @@ public record AgentEvaluationQualityScorecard(
         validateRate(responseGroundingRate, "responseGroundingRate");
         validateRate(safetyRate, "safetyRate");
         validateRate(utilityRate, "utilityRate");
+        validateOptionalRate(intentAccuracyRate, "intentAccuracyRate");
+        validateOptionalRate(entityExtractionRate, "entityExtractionRate");
+        validateOptionalRate(toolSuccessRate, "toolSuccessRate");
+        validateOptionalRate(ragGroundingRate, "ragGroundingRate");
         failureCounts = normalizeCounts(failureCounts);
         unavailableDimensions = unavailableDimensions == null
                 ? List.of()
@@ -63,14 +83,30 @@ public record AgentEvaluationQualityScorecard(
         long valid = safeResults.stream().filter(AgentEvaluationQualityScorecard::hasValidResponse).count();
         long grounded = safeResults.stream().filter(AgentEvaluationQualityScorecard::isGrounded).count();
         long safe = safeResults.stream().filter(AgentEvaluationQualityScorecard::isSafe).count();
+        List<AgentEvaluationResult> intentResults = eligible(safeResults, "intent_accuracy");
+        List<AgentEvaluationResult> entityResults = eligible(safeResults, "entity_extraction");
+        List<AgentEvaluationResult> toolResults = eligible(safeResults, "tool_success");
+        List<AgentEvaluationResult> ragResults = eligible(safeResults, "rag_grounding");
+        boolean intentAvailable = hasIntentSignal(intentResults);
+        boolean entitiesAvailable = hasEntitySignal(entityResults);
+        boolean toolAvailable = hasToolSignal(toolResults);
+        boolean ragAvailable = hasRagSignal(ragResults);
+        List<String> unavailable = QUALITY_DIMENSIONS.stream()
+                .filter(dimension -> !isAvailable(dimension, intentAvailable, entitiesAvailable,
+                        toolAvailable, ragAvailable))
+                .toList();
         return new AgentEvaluationQualityScorecard(
                 total,
                 rate(valid, total),
                 rate(grounded, total),
                 rate(safe, total),
                 averageScore,
+                intentAvailable ? rate(successes(intentResults, "INTENT_MISMATCH"), intentResults.size()) : null,
+                entitiesAvailable ? rate(successes(entityResults, "ENTITY_EXTRACTION_MISMATCH"), entityResults.size()) : null,
+                toolAvailable ? rate(successes(toolResults, "TOOL_SUCCESS_MISMATCH"), toolResults.size()) : null,
+                ragAvailable ? rate(successes(ragResults, "RAG_GROUNDING_MISMATCH"), ragResults.size()) : null,
                 failureCounts(safeResults),
-                CURRENTLY_UNAVAILABLE_DIMENSIONS);
+                unavailable);
     }
 
     private static boolean hasValidResponse(AgentEvaluationResult result) {
@@ -86,6 +122,54 @@ public record AgentEvaluationQualityScorecard(
         return hasValidResponse(result) && !result.reasons().contains("FORBIDDEN_TEXT_PRESENT");
     }
 
+    private static long successes(List<AgentEvaluationResult> results, String failureReason) {
+        return results.stream().filter(result -> !result.reasons().contains(failureReason)).count();
+    }
+
+    private static List<AgentEvaluationResult> eligible(
+            List<AgentEvaluationResult> results,
+            String dimension) {
+        return results.stream()
+                .filter(result -> result.evaluatedDimensions().contains(dimension))
+                .toList();
+    }
+
+    private static boolean hasIntentSignal(List<AgentEvaluationResult> results) {
+        return !results.isEmpty() && results.stream().allMatch(result -> result.executionMetadata() != null
+                && result.executionMetadata().routedIntent() != null);
+    }
+
+    private static boolean hasEntitySignal(List<AgentEvaluationResult> results) {
+        return !results.isEmpty() && results.stream().allMatch(result -> result.executionMetadata() != null
+                && result.executionMetadata().resolvedEntityTypes() != null);
+    }
+
+    private static boolean hasToolSignal(List<AgentEvaluationResult> results) {
+        return !results.isEmpty() && results.stream().allMatch(result -> result.executionMetadata() != null
+                && result.executionMetadata().toolName() != null
+                && result.executionMetadata().toolSucceeded() != null);
+    }
+
+    private static boolean hasRagSignal(List<AgentEvaluationResult> results) {
+        return !results.isEmpty() && results.stream().allMatch(result -> result.executionMetadata() != null
+                && result.executionMetadata().grounded() != null);
+    }
+
+    private static boolean isAvailable(
+            String dimension,
+            boolean intentAvailable,
+            boolean entitiesAvailable,
+            boolean toolAvailable,
+            boolean ragAvailable) {
+        return switch (dimension) {
+            case "intent_accuracy" -> intentAvailable;
+            case "entity_extraction" -> entitiesAvailable;
+            case "tool_success" -> toolAvailable;
+            case "rag_grounding" -> ragAvailable;
+            default -> false;
+        };
+    }
+
     private static Map<String, Integer> failureCounts(List<AgentEvaluationResult> results) {
         Map<String, Integer> counts = new LinkedHashMap<>();
         results.forEach(result -> result.reasons().forEach(reason -> counts.merge(reason, 1, Integer::sum)));
@@ -99,6 +183,12 @@ public record AgentEvaluationQualityScorecard(
     private static void validateRate(double value, String field) {
         if (Double.isNaN(value) || value < 0 || value > 1) {
             throw new IllegalArgumentException(field + " must be between 0 and 1");
+        }
+    }
+
+    private static void validateOptionalRate(Double value, String field) {
+        if (value != null) {
+            validateRate(value, field);
         }
     }
 

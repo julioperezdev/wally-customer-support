@@ -101,6 +101,10 @@ public class AgentEvaluationApplicationService {
         scorecardFields.put("responseGroundingRate", scorecard.responseGroundingRate());
         scorecardFields.put("safetyRate", scorecard.safetyRate());
         scorecardFields.put("utilityRate", scorecard.utilityRate());
+        scorecardFields.put("intentAccuracyRate", scorecard.intentAccuracyRate());
+        scorecardFields.put("entityExtractionRate", scorecard.entityExtractionRate());
+        scorecardFields.put("toolSuccessRate", scorecard.toolSuccessRate());
+        scorecardFields.put("ragGroundingRate", scorecard.ragGroundingRate());
         scorecardFields.put("failureCounts", scorecard.failureCounts());
         scorecardFields.put("unavailableDimensions", scorecard.unavailableDimensions());
         scorecardFields.put("durationMs", run.durationMs());

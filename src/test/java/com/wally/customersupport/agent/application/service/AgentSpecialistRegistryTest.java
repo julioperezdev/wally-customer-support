@@ -19,7 +19,7 @@ class AgentSpecialistRegistryTest {
 
     @Test
     void registersAllCoreSpecialistsWithBoundedResponsibilities() {
-        AgentSpecialistRegistry registry = AgentSpecialistRegistry.defaultRegistry();
+        AgentSpecialistRegistry registry = new AgentSpecialistRegistry();
 
         assertThat(registry.all())
                 .extracting(AgentSpecialistDefinition::agentId)
@@ -37,7 +37,7 @@ class AgentSpecialistRegistryTest {
 
     @Test
     void allowsCatalogSpecialistToExecuteOnlyItsVersionedTool() {
-        AgentSpecialistRegistry registry = AgentSpecialistRegistry.defaultRegistry();
+        AgentSpecialistRegistry registry = new AgentSpecialistRegistry();
         AgentRuntimeDefinition definition = definition(
                 "catalog-specialist",
                 Set.of(WcsToolContractCatalog.CATALOG_SEARCH));
@@ -61,7 +61,7 @@ class AgentSpecialistRegistryTest {
 
     @Test
     void rejectsAPlanToolOutsideTheActiveAgentAllowlist() {
-        AgentSpecialistRegistry registry = AgentSpecialistRegistry.defaultRegistry();
+        AgentSpecialistRegistry registry = new AgentSpecialistRegistry();
         AgentRuntimeDefinition definition = definition("catalog-specialist", Set.of());
         ConversationExecutionPlan plan = new ConversationExecutionPlan(
                 ConversationExecutionPlan.CURRENT_WORKFLOW_VERSION,
@@ -84,7 +84,7 @@ class AgentSpecialistRegistryTest {
 
     @Test
     void rejectsSchemaMismatchBeforeToolExecution() {
-        AgentSpecialistRegistry registry = AgentSpecialistRegistry.defaultRegistry();
+        AgentSpecialistRegistry registry = new AgentSpecialistRegistry();
         AgentRuntimeDefinition definition = definition(
                 "catalog-specialist",
                 Set.of(WcsToolContractCatalog.CATALOG_SEARCH));

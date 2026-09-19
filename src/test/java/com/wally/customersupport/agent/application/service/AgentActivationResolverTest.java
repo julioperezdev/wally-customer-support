@@ -1,6 +1,7 @@
 package com.wally.customersupport.agent.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -27,7 +28,8 @@ class AgentActivationResolverTest {
                 KEY.agentId(), KEY.environment(), KEY.channel(), KEY.useCase()))
                 .thenReturn(Optional.of(activation(true, false)));
 
-        AgentActivationResolution resolution = new AgentActivationResolver(registry).resolve(KEY);
+        AgentActivationResolution resolution = new AgentActivationResolver(registry, allowingFeatureFlags())
+                .resolve(KEY);
 
         assertThat(resolution.status()).isEqualTo(AgentResolutionStatus.ACTIVE);
         assertThat(resolution.reason()).isEqualTo(AgentResolutionReason.ACTIVE);
@@ -42,7 +44,8 @@ class AgentActivationResolverTest {
                 KEY.agentId(), KEY.environment(), KEY.channel(), KEY.useCase()))
                 .thenReturn(Optional.empty());
 
-        AgentActivationResolution resolution = new AgentActivationResolver(registry).resolve(KEY);
+        AgentActivationResolution resolution = new AgentActivationResolver(registry, allowingFeatureFlags())
+                .resolve(KEY);
 
         assertThat(resolution.status()).isEqualTo(AgentResolutionStatus.FALLBACK);
         assertThat(resolution.reason()).isEqualTo(AgentResolutionReason.NOT_CONFIGURED);
@@ -57,7 +60,8 @@ class AgentActivationResolverTest {
                 KEY.agentId(), KEY.environment(), KEY.channel(), KEY.useCase()))
                 .thenReturn(Optional.of(activation(false, true)));
 
-        AgentActivationResolution resolution = new AgentActivationResolver(registry).resolve(KEY);
+        AgentActivationResolution resolution = new AgentActivationResolver(registry, allowingFeatureFlags())
+                .resolve(KEY);
 
         assertThat(resolution.status()).isEqualTo(AgentResolutionStatus.FALLBACK);
         assertThat(resolution.reason()).isEqualTo(AgentResolutionReason.KILL_SWITCH);
@@ -93,7 +97,8 @@ class AgentActivationResolverTest {
                 KEY.agentId(), KEY.environment(), KEY.channel(), KEY.useCase()))
                 .thenReturn(Optional.of(activation(false, false)));
 
-        AgentActivationResolution resolution = new AgentActivationResolver(registry).resolve(KEY);
+        AgentActivationResolution resolution = new AgentActivationResolver(registry, allowingFeatureFlags())
+                .resolve(KEY);
 
         assertThat(resolution.status()).isEqualTo(AgentResolutionStatus.FALLBACK);
         assertThat(resolution.reason()).isEqualTo(AgentResolutionReason.DISABLED);
@@ -106,7 +111,8 @@ class AgentActivationResolverTest {
                 KEY.agentId(), KEY.environment(), KEY.channel(), KEY.useCase()))
                 .thenThrow(new IllegalStateException("database unavailable"));
 
-        AgentActivationResolution resolution = new AgentActivationResolver(registry).resolve(KEY);
+        AgentActivationResolution resolution = new AgentActivationResolver(registry, allowingFeatureFlags())
+                .resolve(KEY);
 
         assertThat(resolution.status()).isEqualTo(AgentResolutionStatus.FALLBACK);
         assertThat(resolution.reason()).isEqualTo(AgentResolutionReason.REGISTRY_UNAVAILABLE);
@@ -130,5 +136,11 @@ class AgentActivationResolverTest {
                 1,
                 ACTIVATED_AT,
                 "operator");
+    }
+
+    private static FeatureFlagRuntimeService allowingFeatureFlags() {
+        FeatureFlagRuntimeService featureFlags = mock(FeatureFlagRuntimeService.class);
+        when(featureFlags.isAgentExecutionAllowed(any())).thenReturn(true);
+        return featureFlags;
     }
 }

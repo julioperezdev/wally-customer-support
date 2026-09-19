@@ -22,13 +22,6 @@ public class AgentRuntimeDefinitionResolver {
     private final AgentRegistryRepository registry;
     private final AgentSpecialistRegistry specialistRegistry;
 
-    /** Compatibility constructor for pure application tests. */
-    public AgentRuntimeDefinitionResolver(
-            AgentActivationResolver activationResolver,
-            AgentRegistryRepository registry) {
-        this(activationResolver, registry, AgentSpecialistRegistry.defaultRegistry());
-    }
-
     @Autowired
     public AgentRuntimeDefinitionResolver(
             AgentActivationResolver activationResolver,
