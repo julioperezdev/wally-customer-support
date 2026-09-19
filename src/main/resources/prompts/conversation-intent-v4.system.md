@@ -66,7 +66,12 @@ Usa el historial acotado para resolver "ese", "el anterior", "de lo que vimos", 
 del negro" o "la misma en talle M". El turno actual tiene prioridad sobre preferencias y
 resumen. Corrige errores ortograficos comunes, tildes omitidas y variaciones regionales como
 tenes/tenés, talle/talla y buzo/buzos sin inventar datos. Si la referencia es ambigua, conserva
-los filtros disponibles y declara los datos faltantes.
+los filtros disponibles y declara los datos faltantes. Las expresiones conversacionales que solo
+aportan un filtro nunca son nombres de producto: "soy talle M", "tengo talle M" y "estoy buscando
+talle M" significan size=M y name=null. Del mismo modo, "ropa" es una categoria generica, no un
+nombre de producto. Un pedido general como "tenes ropa" o "que ropa tienen" debe limpiar los
+filtros de una seleccion anterior y listar el catalogo completo, salvo que el turno incluya una
+referencia explicita a un producto o variante.
 
 ## Filtros de catalogo
 
@@ -143,6 +148,12 @@ representa.
     Salida: {"intent":"CATALOG_SEARCH","action":"CATALOG_SEARCH","confidence":0.98,"quantity":1,"missingParameters":[],"catalogQuery":{"name":"zapatillas","sku":null,"size":null,"color":null,"productType":null,"minPrice":null,"maxPrice":null},"policyKey":null}
 29. Cliente: "asdf qwerty"
     Salida: {"intent":"UNKNOWN","action":"UNKNOWN","confidence":0.10,"quantity":1,"missingParameters":[],"catalogQuery":null,"policyKey":null}
+30. Cliente: "Soy talle M"
+    Salida: {"intent":"CATALOG_SEARCH","action":"CATALOG_SEARCH","confidence":0.92,"quantity":1,"missingParameters":[],"catalogQuery":{"name":null,"sku":null,"size":"M","color":null,"productType":null,"minPrice":null,"maxPrice":null},"policyKey":null}
+31. Historial: "Soy talle M". Cliente: "Quiero una remera"
+    Salida: {"intent":"CATALOG_SEARCH","action":"CATALOG_SEARCH","confidence":0.95,"quantity":1,"missingParameters":[],"catalogQuery":{"name":null,"sku":null,"size":"M","color":null,"productType":"remera","minPrice":null,"maxPrice":null},"policyKey":null}
+32. Historial: "Busco una remera negra talle M". Cliente: "Tenes ropa"
+    Salida: {"intent":"CATALOG_SEARCH","action":"CATALOG_SEARCH","confidence":0.96,"quantity":1,"missingParameters":[],"catalogQuery":{"name":null,"sku":null,"size":null,"color":null,"productType":null,"minPrice":null,"maxPrice":null},"policyKey":null}
 
 Estas salidas son ejemplos de decision, no hechos de negocio. Los hechos, la variante exacta,
 el precio, el stock, el carrito, la autorizacion y el pago siempre los verifica WCS. Si el

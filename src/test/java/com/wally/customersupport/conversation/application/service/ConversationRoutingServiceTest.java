@@ -86,6 +86,58 @@ class ConversationRoutingServiceTest {
     }
 
     @Test
+    void treatsSizeOnlyLanguageAsAFilterInsteadOfAProductName() {
+        ConversationContext context = context("Soy talle M", List.of("Que vendes"),
+                ConversationSelection.empty());
+        when(classifier.classify(context)).thenReturn(new ConversationIntentDecision(
+                ConversationIntent.CATALOG_SEARCH,
+                0.92,
+                new CatalogQuery("soy", null, "m", null, null),
+                null));
+
+        ConversationRoutingService.RoutingResult result = router.route(context);
+
+        assertEquals(ConversationIntent.CATALOG_SEARCH, result.decision().intent());
+        assertEquals("m", result.decision().catalogQuery().size());
+        assertEquals(null, result.decision().catalogQuery().name());
+    }
+
+    @Test
+    void generalCatalogQuestionClearsStaleSelectionFilters() {
+        ConversationSelection selection = selection(
+                new CatalogQuery("nullpointer", null, "m", "negro", "remera"),
+                ConversationIntent.CATALOG_SEARCH);
+        ConversationContext context = context("Tenes ropa",
+                List.of("Busco una remera negra talle M"), selection);
+        when(classifier.classify(context)).thenReturn(new ConversationIntentDecision(
+                ConversationIntent.CATALOG_SEARCH,
+                0.96,
+                new CatalogQuery("ropa", null, "m", "negro", "remera"),
+                null));
+
+        ConversationRoutingService.RoutingResult result = router.route(context);
+
+        assertTrue(result.decision().catalogQuery().isEmpty());
+    }
+
+    @Test
+    void preservesContextualSizeWhenCustomerSelectsAProductCategory() {
+        ConversationContext context = context("Quiero una remera", List.of("Soy talle M"),
+                ConversationSelection.empty());
+        when(classifier.classify(context)).thenReturn(new ConversationIntentDecision(
+                ConversationIntent.CATALOG_SEARCH,
+                0.95,
+                new CatalogQuery("remera", null, null, null, "remera"),
+                null));
+
+        ConversationRoutingService.RoutingResult result = router.route(context);
+
+        assertEquals("remera", result.decision().catalogQuery().productType());
+        assertEquals("m", result.decision().catalogQuery().size());
+        assertEquals(null, result.decision().catalogQuery().name());
+    }
+
+    @Test
     void newProductCategoryDoesNotInheritFiltersFromThePreviousCategory() {
         ConversationSelection selection = selection(
                 new CatalogQuery("nullpointer", "RP-REM-NP-NEG-M", "M", "negro", "remera"),

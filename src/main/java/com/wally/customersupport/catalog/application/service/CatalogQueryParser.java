@@ -50,7 +50,7 @@ public final class CatalogQueryParser {
                     + "economico|economica|mas conveniente)\\b");
     private static final Pattern NON_PRODUCT_DESCRIPTOR = Pattern.compile(
             "\\b(frio|abrigo|abrigado|abrigada|invierno|lindo|linda|bonito|bonita|"
-                    + "algo|lo|antes|anterior|anteriormente)\\b");
+                    + "algo|lo|antes|anterior|anteriormente|soy|tengo|estoy|ropa)\\b");
     private static final Pattern WARMTH_MARKER = Pattern.compile(
             "\\b(frio|abrigo|abrigado|abrigada|invierno|para el frio|para abrigo|"
                     + "para abrigarse|para el invierno)\\b");
@@ -88,6 +88,8 @@ public final class CatalogQueryParser {
     private static final Pattern GENERAL_CATALOG_REQUEST = Pattern.compile(
             "\\b(?:que|cuales?)\\s+(?:productos?|opciones?)\\s+(?:tienen|hay|ofrecen|venden|vendes|tenes|tienes)\\b|"
                     + "\\b(?:que|cuales?)\\s+(?:venden|vendes|ofrecen|tenes|tienes)\\b|"
+                    + "\\b(?:tenes|tienes|venden|vendes|ofrecen|ofrece|hay)\\s+(?:algo\\s+de\\s+)?ropa\\b|"
+                    + "\\b(?:que|cuales?)\\s+ropa\\s+(?:tienen|hay|ofrecen|venden|vendes|tenes|tienes)\\b|"
                     + "\\b(?:mostrame|muestrame|mostrar)\\s+(?:todo|el\\s+catalogo|los\\s+productos)\\b");
     private static final Pattern AVAILABILITY_FOLLOW_UP = Pattern.compile(
             "\\b(disponible|disponibilidad|hay stock|tiene stock)\\b");
@@ -98,7 +100,7 @@ public final class CatalogQueryParser {
     private static final Pattern COLOR_FOLLOW_UP = Pattern.compile(
             "\\b(que color|cual color|en que color)\\b");
     private static final Pattern STOP_WORDS = Pattern.compile(
-            "\\b(tienen|tienes|tenemos|tenes|hay|ofrece|ofrecen|dispone|disponen|venden|vende|quiero|busco|necesito|una|un|el|la|los|las|del|de|en|con|"
+            "\\b(tienen|tienes|tenemos|tenes|hay|ofrece|ofrecen|dispone|disponen|venden|vende|quiero|busco|necesito|soy|tengo|estoy|ropa|una|un|el|la|los|las|del|de|en|con|"
                     + "vendes|"
                     + "por|para|favor|me|podes|pueden|puedo|cuanto|cuál|cual|es|esta|tiene|stock|disponible|"
                     + "disponibilidad|precio|precios|color|talle|talla|tamano|size|sku|productos?|catalogo|"
