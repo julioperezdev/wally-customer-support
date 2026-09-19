@@ -32,13 +32,14 @@ contrato inexistente. El orquestador vuelve a validar el plan antes de
 ejecutarlo, porque la definición o la propuesta del modelo no es autoridad de
 seguridad.
 
-La primera tool ejecutable continúa siendo `catalog.search`, delegada al
-servicio de catálogo existente. Las demás capacidades ya tienen schemas
-versionados, acotados y con enums/límites explícitos para que puedan validarse
-antes de ejecutar: Knowledge Base, estado, carrito, checkout, handoff y
-seguridad. Eso no las convierte en implementaciones ficticias: permanecen
-metadata de contrato hasta que exista su wrapper tipado y sus pruebas
-contractuales.
+Las primeras tools ejecutables son `catalog.search`, `catalog.stock`,
+`knowledge.retrieve` y `safe-fallback`. Delegan en los puertos y reglas ya
+existentes, devuelven resultados acotados y emiten observabilidad sin contenido
+conversacional. Las demás capacidades ya tienen schemas versionados, acotados y
+con enums/límites explícitos para que puedan validarse antes de ejecutar:
+estado, carrito, checkout y handoff. Permanecen como metadata de contrato
+hasta que exista su wrapper tipado y sus pruebas contractuales, porque esos
+flujos tienen efectos de estado, ownership o pagos.
 
 ## Reglas
 
@@ -58,6 +59,12 @@ contractuales.
 La allowlist y los schemas concretos se pueden probar sin Bedrock, y los nuevos
 proveedores pueden traducir estos contratos sin contaminar el dominio. El
 catálogo central también hace visible qué capacidades faltan por implementar.
+
+Los wrappers ejecutables actuales son deliberadamente pequeños: `knowledge.retrieve`
+devuelve sólo estado, cantidad de evidencias y score promedio; `catalog.stock`
+devuelve estado y stock de un SKU; `safe-fallback` determina si conviene sugerir
+handoff según una razón enumerada. Ninguno permite SQL, expone documentos o
+modifica carrito/pedido.
 
 El costo es mantener versiones de schemas y completar wrappers para cada
 capacidad antes de permitir su ejecución dinámica. Durante la transición,
