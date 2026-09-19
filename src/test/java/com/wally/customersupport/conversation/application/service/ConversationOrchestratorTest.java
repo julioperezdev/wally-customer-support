@@ -158,11 +158,54 @@ class ConversationOrchestratorTest {
                 List.of(),
                 Channel.TELEGRAM);
         when(cartConversationHandler.recognizes(cartContext.latestMessage())).thenReturn(true);
-        when(cartConversationHandler.handle(cartContext))
+        when(cartConversationHandler.handle(eq(cartContext), any(CartCommandParser.Command.class)))
                 .thenReturn(Optional.of(new CartConversationHandler.Response("Tu carrito está vacío.")));
 
         assertEquals("Tu carrito está vacío.", cartOrchestrator.replyFor(cartContext));
-        verify(cartConversationHandler).handle(cartContext);
+        verify(cartConversationHandler).handle(eq(cartContext), argThat(command ->
+                command.action() == CartCommandParser.Action.VIEW));
+        verify(intentClassifier, never()).classify(any(ConversationContext.class));
+    }
+
+    @Test
+    void routesExplicitCartCommandWithDeterministicQueryBeforeCallingTheIntentClassifier() {
+        ConversationOrchestrator cartOrchestrator = new ConversationOrchestrator(
+                intentClassifier,
+                catalogConversationService,
+                supportConfigurationQueryService,
+                knowledgeRetriever,
+                llmClient,
+                new RagProperties("mock", 5, null, null),
+                new ConversationExecutionPlanFactory(),
+                agentActivationResolver,
+                agentRuntimeDefinitionResolver,
+                new AgentRuntimeProperties(false, "prod", false, Duration.ofSeconds(5), "noop", "test", 0),
+                catalogSpecialistExecutor,
+                responseHumanizer,
+                agentShadowRuntimeService,
+                new ActorKeyGenerator(new ObservabilityProperties("test-actor-key")),
+                purchaseLinkCreator,
+                cartConversationHandler);
+        ConversationContext cartContext = new ConversationContext(
+                context.conversationId(),
+                context.externalCustomerId(),
+                "Agrega 2 remeras NullPointer negras talle M al carrito",
+                List.of("Agrega 2 remeras NullPointer negras talle M al carrito"),
+                List.of(),
+                null,
+                List.of(),
+                Channel.TELEGRAM);
+        when(cartConversationHandler.recognizes(cartContext.latestMessage())).thenReturn(true);
+        when(cartConversationHandler.handle(eq(cartContext), any(CartCommandParser.Command.class)))
+                .thenReturn(Optional.of(new CartConversationHandler.Response("Agregué 2 al carrito.")));
+
+        assertEquals("Agregué 2 al carrito.", cartOrchestrator.replyFor(cartContext));
+        verify(cartConversationHandler).handle(eq(cartContext), argThat(command ->
+                command.action() == CartCommandParser.Action.ADD
+                        && command.quantity() == 2
+                        && "nullpointer".equals(command.query().name())
+                        && "negro".equals(command.query().color())
+                        && "m".equals(command.query().size())));
         verify(intentClassifier, never()).classify(any(ConversationContext.class));
     }
 
