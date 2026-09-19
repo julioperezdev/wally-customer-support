@@ -7,6 +7,7 @@ import java.util.Optional;
 
 import com.wally.customersupport.agent.application.port.out.AgentRegistryRepository;
 import com.wally.customersupport.agent.domain.model.AgentVersion;
+import com.wally.customersupport.conversation.domain.model.ConversationExecutionPlan;
 import com.wally.customersupport.shared.infrastructure.observability.StructuredEventLog;
 import org.springframework.beans.factory.annotation.Autowired;
 import lombok.extern.slf4j.Slf4j;
@@ -95,6 +96,34 @@ public class AgentRuntimeDefinitionResolver {
             return record(key, AgentRuntimeDefinitionResolution.fallback(
                     AgentDefinitionResolutionReason.INVALID_DEFINITION));
         }
+    }
+
+    /**
+     * Applies the same specialist boundary used while resolving a definition
+     * immediately before the conversation plan can execute. Keeping this gate
+     * here avoids a second specialist registry in the conversation layer.
+     */
+    public AgentRuntimeDefinitionResolution validateForExecution(
+            AgentRuntimeDefinitionResolution resolution,
+            ConversationExecutionPlan plan) {
+        if (resolution == null || !resolution.isActive()) {
+            return resolution;
+        }
+
+        AgentSpecialistRegistry.Validation validation = specialistRegistry.validateExecution(
+                resolution.definition(), plan);
+        if (validation.valid()) {
+            return resolution;
+        }
+
+        Map<String, Object> fields = new LinkedHashMap<>();
+        fields.put("agentId", resolution.definition().agentId());
+        fields.put("agentVersion", resolution.definition().agentVersion());
+        fields.put("useCase", plan == null ? "unknown" : plan.useCase());
+        fields.put("reason", validation.reason());
+        fields.put("toolName", validation.toolName() == null ? "none" : validation.toolName());
+        StructuredEventLog.warn(log, "AGENT_SPECIALIST_PLAN_REJECTED", fields);
+        return AgentRuntimeDefinitionResolution.fallback(AgentDefinitionResolutionReason.INVALID_DEFINITION);
     }
 
     private AgentRuntimeDefinitionResolution record(

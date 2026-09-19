@@ -10,6 +10,8 @@ import java.util.Optional;
 
 import com.wally.customersupport.agent.application.port.out.AgentRegistryRepository;
 import com.wally.customersupport.agent.domain.model.AgentActivation;
+import com.wally.customersupport.featureflag.application.FeatureFlagContext;
+import com.wally.customersupport.featureflag.application.service.FeatureFlagRuntimeService;
 import org.junit.jupiter.api.Test;
 
 class AgentActivationResolverTest {
@@ -61,6 +63,27 @@ class AgentActivationResolverTest {
         assertThat(resolution.reason()).isEqualTo(AgentResolutionReason.KILL_SWITCH);
         assertThat(resolution.agentId()).isNull();
         assertThat(resolution.agentVersion()).isNull();
+    }
+
+    @Test
+    void appliesTheHotKillSwitchForTheExactEnvironmentChannelAndUseCase() {
+        AgentRegistryRepository registry = mock(AgentRegistryRepository.class);
+        FeatureFlagRuntimeService featureFlags = mock(FeatureFlagRuntimeService.class);
+        when(registry.findLatestActivation(
+                KEY.agentId(), KEY.environment(), KEY.channel(), KEY.useCase()))
+                .thenReturn(Optional.of(activation(true, false)));
+        when(featureFlags.isAgentExecutionAllowed(new FeatureFlagContext(
+                KEY.environment(), KEY.channel(), KEY.useCase(), KEY.agentId(), 2)))
+                .thenReturn(false);
+
+        AgentActivationResolution resolution = new AgentActivationResolver(registry, featureFlags).resolve(KEY);
+
+        assertThat(resolution.status()).isEqualTo(AgentResolutionStatus.FALLBACK);
+        assertThat(resolution.reason()).isEqualTo(AgentResolutionReason.KILL_SWITCH);
+        assertThat(resolution.agentId()).isNull();
+        assertThat(resolution.agentVersion()).isNull();
+        verify(featureFlags).isAgentExecutionAllowed(new FeatureFlagContext(
+                KEY.environment(), KEY.channel(), KEY.useCase(), KEY.agentId(), 2));
     }
 
     @Test

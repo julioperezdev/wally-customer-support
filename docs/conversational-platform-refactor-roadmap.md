@@ -260,6 +260,20 @@ Implementación local iniciada para WCS-138:
 **Gate:** no se promociona un modelo o prompt por percepción subjetiva. Debe
 existir evidencia comparable y un resultado de rollback.
 
+Implementación local iniciada para WCS-139:
+
+- `AgentRuntimeDefinitionResolver` es la única frontera que valida el plan
+  contra el especialista, sus tools y los schemas versionados;
+- `ConversationOrchestrator` dejó de crear un registry paralelo;
+- la activación controlada verifica el kill switch por ambiente, canal, caso de
+  uso, agente y versión, y el contexto Spring prueba que existe un único
+  `AgentSpecialistRegistry`;
+- el inventario y las disposiciones de cleanup están en
+  [`ADR-041`](decisions/041-legacy-cleanup-and-controlled-activation.md);
+- los adapters mock/no-op se conservan como fallbacks explícitos y no como
+  rutas productivas;
+- no se modificaron migraciones, Terraform, AppConfig remoto ni despliegues.
+
 ### Fase 5 — Depuración, activación controlada y cierre
 
 **Jira:** [`WCS-139`](https://julioperezdev.atlassian.net/browse/WCS-139)

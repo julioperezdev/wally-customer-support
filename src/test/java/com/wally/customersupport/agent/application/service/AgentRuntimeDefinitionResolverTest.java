@@ -18,6 +18,9 @@ import com.wally.customersupport.agent.domain.model.AgentActivation;
 import com.wally.customersupport.agent.domain.model.AgentInferenceParameters;
 import com.wally.customersupport.agent.domain.model.AgentLifecycleState;
 import com.wally.customersupport.agent.domain.model.AgentVersion;
+import com.wally.customersupport.conversation.domain.model.ConversationExecutionAction;
+import com.wally.customersupport.conversation.domain.model.ConversationExecutionPlan;
+import com.wally.customersupport.conversation.domain.model.ConversationExecutionStep;
 import org.junit.jupiter.api.Test;
 
 class AgentRuntimeDefinitionResolverTest {
@@ -46,6 +49,38 @@ class AgentRuntimeDefinitionResolverTest {
         assertThatThrownBy(() -> resolution.definition().allowedTools().add("unsafe.tool"))
                 .isInstanceOf(UnsupportedOperationException.class);
         verify(registry).findVersion("catalog-specialist", 2);
+    }
+
+    @Test
+    void rejectsAPlanOutsideTheResolvedSpecialistBoundaryBeforeExecution() {
+        AgentActivationResolver activationResolver = mock(AgentActivationResolver.class);
+        AgentRegistryRepository registry = mock(AgentRegistryRepository.class);
+        when(activationResolver.resolve(KEY)).thenReturn(AgentActivationResolution.active("catalog-specialist", 2));
+        when(registry.findVersion("catalog-specialist", 2))
+                .thenReturn(Optional.of(version("catalog-specialist", 2, AgentLifecycleState.APPROVED)));
+
+        AgentRuntimeDefinitionResolver resolver = new AgentRuntimeDefinitionResolver(activationResolver, registry);
+        AgentRuntimeDefinitionResolution resolved = resolver.resolve(KEY);
+        AgentRuntimeDefinitionResolution validated = resolver.validateForExecution(
+                resolved,
+                new ConversationExecutionPlan(
+                        ConversationExecutionPlan.CURRENT_WORKFLOW_VERSION,
+                        "CATALOG_SEARCH",
+                        ConversationExecutionAction.CATALOG_SEARCH,
+                        java.util.List.of(new ConversationExecutionStep(
+                                "catalog-search",
+                                "catalog-specialist",
+                                "catalog-query",
+                                "catalog.search",
+                                "catalog-input-v0",
+                                "catalog-output-v1")),
+                        3,
+                        false,
+                        null));
+
+        assertThat(validated.status()).isEqualTo(AgentDefinitionResolutionStatus.FALLBACK);
+        assertThat(validated.reason()).isEqualTo(AgentDefinitionResolutionReason.INVALID_DEFINITION);
+        assertThat(validated.definition()).isNull();
     }
 
     @Test

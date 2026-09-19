@@ -41,6 +41,12 @@ AppConfig sólo por avanzar el ticket. Cada tarea necesita tests, evidencia y
 rollback local; una tarea pasa a `In Progress` sólo cuando la implementación
 local comienza de forma explícita.
 
+WCS-139 comenzó su implementación local con la consolidación de la validación
+pre-ejecución en `AgentRuntimeDefinitionResolver`. El inventario y la política
+de cleanup están documentados en
+`docs/decisions/041-legacy-cleanup-and-controlled-activation.md`; no implica
+todavía eliminar adapters mock/no-op, cambiar AppConfig remoto o desplegar.
+
 ## Mapeo de keys reales
 
 | Blueprint | Jira |

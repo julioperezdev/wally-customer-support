@@ -23,6 +23,7 @@ import com.wally.customersupport.agent.application.port.out.AgentEvaluationRunRe
 import com.wally.customersupport.agent.application.service.AgentEvaluationHistoryQueryService;
 import com.wally.customersupport.agent.application.service.AgentEvaluationComparisonApplicationService;
 import com.wally.customersupport.agent.application.service.AgentEvaluationEvidenceExportApplicationService;
+import com.wally.customersupport.agent.application.service.AgentSpecialistRegistry;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationExecution;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationExecutionMetadata;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationResult;
@@ -61,6 +62,7 @@ import com.wally.customersupport.conversation.infrastructure.repository.postgres
 import com.wally.customersupport.support.application.service.SupportConfigurationQueryService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -89,6 +91,9 @@ class WallyCustomerSupportApplicationIntegrationTest {
 
     @Autowired
     private DataSource dataSource;
+
+    @Autowired
+    private ApplicationContext applicationContext;
 
     @Autowired
     private CatalogQueryService catalogQueryService;
@@ -125,6 +130,11 @@ class WallyCustomerSupportApplicationIntegrationTest {
 
     @Autowired
     private SupportConfigurationQueryService supportConfigurationQueryService;
+
+    @Test
+    void exposesOneSpringSpecialistRegistryAsTheRuntimeSourceOfTruth() {
+        assertEquals(1, applicationContext.getBeansOfType(AgentSpecialistRegistry.class).size());
+    }
 
     @Autowired
     private AgentEvaluationApplicationService agentEvaluationApplicationService;
