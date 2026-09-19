@@ -44,6 +44,9 @@ import com.wally.customersupport.conversation.domain.model.Channel;
 import com.wally.customersupport.conversation.domain.model.Conversation;
 import com.wally.customersupport.conversation.domain.model.ConversationMemoryConflictException;
 import com.wally.customersupport.conversation.domain.model.ConversationMemoryOwnershipException;
+import com.wally.customersupport.conversation.domain.model.ConversationAction;
+import com.wally.customersupport.conversation.domain.model.ConversationIntent;
+import com.wally.customersupport.conversation.domain.model.ConversationSelection;
 import com.wally.customersupport.conversation.domain.model.ConversationState;
 import com.wally.customersupport.conversation.domain.model.ConversationSummary;
 import com.wally.customersupport.conversation.domain.model.ConversationStatus;
@@ -359,6 +362,42 @@ class WallyCustomerSupportApplicationIntegrationTest {
         ConversationState loaded = conversationMemory.load(conversationId, "actor-summary").orElseThrow();
         assertEquals(summary, loaded.summary());
         assertEquals(saved.version(), loaded.version());
+    }
+
+    @Test
+    void persistsAndLoadsStructuredConversationSelectionInPostgres() {
+        Instant now = Instant.now();
+        UUID conversationId = UUID.randomUUID();
+        conversationRepository.save(new Conversation(
+                conversationId,
+                Channel.TELEGRAM,
+                "selection-chat-" + conversationId,
+                "telegram-user",
+                ConversationStatus.OPEN,
+                now,
+                now));
+
+        ConversationSelection selection = new ConversationSelection(
+                ConversationIntent.CATALOG_SEARCH,
+                ConversationAction.CATALOG_SEARCH,
+                new CatalogQuery(null, null, "M", "negro", "remera"),
+                null,
+                "CATALOG_SEARCH");
+        ConversationState saved = conversationMemory.save(new ConversationState(
+                conversationId,
+                "actor-selection",
+                List.of("la M"),
+                now,
+                0L,
+                null,
+                selection));
+
+        ConversationState loaded = conversationMemory.load(conversationId, "actor-selection").orElseThrow();
+
+        assertEquals(saved.selection(), loaded.selection());
+        assertEquals("remera", loaded.selection().catalogQuery().productType());
+        assertEquals("M", loaded.selection().catalogQuery().size());
+        assertEquals("negro", loaded.selection().catalogQuery().color());
     }
 
     @Test

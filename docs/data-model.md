@@ -176,7 +176,7 @@ Se agregan cuando el producto acepta el alcance de conocimiento:
 
 Si se elige pgvector, la columna vectorial se agrega en una migración posterior cuando estén aprobados modelo de embeddings y dimensión. Knowledge Bases no requiere almacenar embeddings en WCS.
 
-### Estado conversacional — contrato en `WCS-34`, persistencia en `WCS-35` y resumen en `WCS-36`
+### Estado conversacional — contrato en `WCS-34`, persistencia en `WCS-35`, resumen en `WCS-36` y selección en `WCS-135`
 
 La primera entrega reconstruye los filtros activos a partir de una ventana
 acotada de mensajes inbound persistidos. `WCS-34` define el contrato
@@ -192,16 +192,21 @@ separado del historial, mediante la tabla `wcs.conversation_memory_states`:
 * `conversation_summary` opcional con el resumen del prefijo antiguo;
 * `summary_version` y `summarized_message_count` como checkpoint versionado;
 * `summary_updated_at` para aplicar la retención del estado completo.
+* `selection_context` JSONB con la selección activa tipada: intención, acción,
+  filtros de catálogo, SKU seleccionado y etapa conversacional.
 
 La carga elimina de forma transaccional un estado vencido. El guardado valida
 ownership y versión; una versión obsoleta se rechaza como conflicto. La tabla
 se crea con `V6__create_conversation_memory_states.sql` y se amplía con
-`V7__add_conversation_summary.sql`. El adapter se puede activar sólo con
+`V7__add_conversation_summary.sql` y `V24__add_conversation_selection_context.sql`.
+El contrato JSON de persistencia es propio de infraestructura y no serializa
+los métodos calculados del dominio. El adapter se puede activar sólo con
 `wcs.conversation.memory.enabled=true`; el resumen adicional permanece
 desactivado por defecto.
 
-El resumen conserva únicamente contexto conversacional y no será fuente de
-verdad para filtros tipados, stock, precio, carrito ni pedidos.
+La selección conserva únicamente contexto de la conversación y no es fuente
+de verdad para stock, precio, carrito ni pedidos. Los datos dinámicos siguen
+resolviéndose en PostgreSQL mediante los servicios de catálogo y checkout.
 
 ### Preferencias explícitas — contrato en `WCS-37`, persistencia en `V8`
 
@@ -384,6 +389,20 @@ persiste tokens, claims ni idempotency keys.
 - `human_handoff`.
 - `knowledge_source` y versiones de contenido.
 - `ai_usage_metric`.
+
+### Evolución del modelo y próximos pasos
+
+La evolución no reemplaza el schema actual de una sola vez. El plan está
+documentado en
+[`conversational-platform-refactor-roadmap.md`](conversational-platform-refactor-roadmap.md)
+y la primera etapa de selección conversacional se implementa en `V24`. Las
+etapas siguientes deben agregar nuevas migraciones Flyway, probarse con
+PostgreSQL/Testcontainers y mantener separadas las entidades dinámicas de
+catálogo, carrito y pedidos de la memoria resumida de la conversación.
+
+El objetivo es permitir refinamientos como “la M”, “ese en negro” o “agrega
+otro” con contexto acotado y trazable, sin guardar prompts, respuestas
+completas ni PII innecesaria.
 
 ## Reglas
 

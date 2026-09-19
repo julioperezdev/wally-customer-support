@@ -954,7 +954,8 @@ public class ConversationOrchestrator {
                     knowledge,
                     context.conversationSummary(),
                     context.preferences(),
-                    context.channel());
+                    context.channel(),
+                    context.selection());
             if (definitionResolution != null && definitionResolution.isActive()) {
                 return llmClient.generateReply(groundedContext, definitionResolution.definition());
             }

@@ -309,6 +309,16 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
             userPrompt.append("</customer_preferences>\n");
             userPrompt.append("Las preferencias son contexto auxiliar y nunca reemplazan filtros explícitos del turno actual.");
         }
+        if (context.selection() != null && context.selection().hasCatalogSelection()) {
+            CatalogQuery selection = context.selection().catalogQuery();
+            userPrompt.append("\n<active_selection>\n")
+                    .append("stage=").append(context.selection().stage()).append("\n")
+                    .append("intent=").append(context.selection().intent()).append("\n")
+                    .append("action=").append(context.selection().action()).append("\n")
+                    .append("catalogQuery=").append(selection).append("\n")
+                    .append("</active_selection>\n")
+                    .append("La selección activa es contexto auxiliar. Validá el turno actual y no inventes hechos.");
+        }
         return userPrompt.toString();
     }
 

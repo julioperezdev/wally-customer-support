@@ -3,6 +3,7 @@
 ## Dirección y producto
 
 - [`roadmap.md`](roadmap.md)
+- [`conversational-platform-refactor-roadmap.md`](conversational-platform-refactor-roadmap.md): plan por fases para contexto, routing semántico, agentes especialistas, datos, evaluación y depuración.
 - [`agent-platform-roadmap.md`](agent-platform-roadmap.md): propuesta de plataforma de agentes, registry, evaluación, feature flags y backoffice.
 - [`agent-platform-delivery-plan.md`](agent-platform-delivery-plan.md): agrupación de entregas grandes para el control plane y el runtime.
 - [`functional-requirements.md`](functional-requirements.md)

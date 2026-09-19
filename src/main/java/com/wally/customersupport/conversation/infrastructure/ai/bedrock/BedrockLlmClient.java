@@ -91,6 +91,9 @@ public class BedrockLlmClient implements LlmClient {
                 <conversation_summary>
                 %s
                 </conversation_summary>
+                <active_selection>
+                %s
+                </active_selection>
                 <customer_preferences>
                 %s
                 </customer_preferences>
@@ -105,6 +108,7 @@ public class BedrockLlmClient implements LlmClient {
                         .map(value -> limit(value, inputCharacterLimit))
                         .collect(Collectors.joining("\n")),
                 limit(context.conversationSummary(), responseProperties.effectiveMaxSummaryCharacters()),
+                formatSelection(context),
                 limit(context.preferences().stream()
                         .map(preference -> preference.key() + "=" + preference.value())
                         .collect(Collectors.joining("\n")), 1_000),
@@ -163,6 +167,16 @@ public class BedrockLlmClient implements LlmClient {
                         prompt.sha256(),
                         definition,
                         correlationId);
+    }
+
+    private String formatSelection(ConversationContext context) {
+        if (context.selection() == null || !context.selection().hasCatalogSelection()) {
+            return "none";
+        }
+        return "stage=" + context.selection().stage()
+                + "\nintent=" + context.selection().intent()
+                + "\naction=" + context.selection().action()
+                + "\nquery=" + context.selection().catalogQuery();
     }
 
     private int effectiveInputCharacterLimit(AgentRuntimeDefinition definition) {

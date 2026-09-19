@@ -5,6 +5,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
+import com.wally.customersupport.conversation.domain.model.ConversationSelection;
 import com.wally.customersupport.conversation.domain.model.ConversationState;
 import com.wally.customersupport.conversation.domain.model.ConversationSummary;
 import jakarta.persistence.Column;
@@ -49,6 +50,10 @@ public class ConversationMemoryJpaEntity {
     @Column(name = "summary_updated_at")
     private Instant summaryUpdatedAt;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "selection_context", nullable = false, columnDefinition = "jsonb")
+    private ConversationSelectionJson selection;
+
     protected ConversationMemoryJpaEntity() {
     }
 
@@ -58,12 +63,14 @@ public class ConversationMemoryJpaEntity {
         this.recentMessages = state.recentMessages();
         this.updatedAt = databaseTimestamp(state.updatedAt());
         updateSummaryFrom(state.summary());
+        this.selection = ConversationSelectionJson.fromDomain(state.selection());
     }
 
     public void updateFrom(ConversationState state) {
         this.recentMessages = state.recentMessages();
         this.updatedAt = databaseTimestamp(state.updatedAt());
         updateSummaryFrom(state.summary());
+        this.selection = ConversationSelectionJson.fromDomain(state.selection());
     }
 
     public ConversationState toDomain() {
@@ -82,7 +89,8 @@ public class ConversationMemoryJpaEntity {
                 recentMessages,
                 updatedAt,
                 version == null ? 0L : version,
-                summary);
+                summary,
+                selection == null ? ConversationSelection.empty() : selection.toDomain());
     }
 
     public UUID conversationId() {

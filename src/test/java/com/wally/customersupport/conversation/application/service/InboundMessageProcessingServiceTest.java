@@ -24,6 +24,7 @@ import com.wally.customersupport.conversation.application.port.out.ProcessingAtt
 import com.wally.customersupport.conversation.domain.model.Channel;
 import com.wally.customersupport.conversation.domain.model.Conversation;
 import com.wally.customersupport.conversation.domain.model.ConversationExecutionResult;
+import com.wally.customersupport.conversation.domain.model.ConversationSelection;
 import com.wally.customersupport.conversation.domain.model.ConversationStatus;
 import com.wally.customersupport.conversation.domain.model.DeliveryType;
 import com.wally.customersupport.conversation.domain.model.Message;
@@ -87,6 +88,7 @@ class InboundMessageProcessingServiceTest {
                 outboxRepository,
                 conversationOrchestrator,
                 conversationSummaryService,
+                new ConversationSelectionStateService(),
                 customerPreferenceService,
                 explicitPreferenceCaptureService,
                 optOutDetector,
@@ -196,7 +198,8 @@ class InboundMessageProcessingServiceTest {
         verify(conversationMemory).save(org.mockito.ArgumentMatchers.argThat(state ->
                 state.conversationId().equals(conversation.id())
                         && state.recentMessages().isEmpty()
-                        && state.summary() == null));
+                        && state.summary() == null
+                        && state.selection().equals(ConversationSelection.empty())));
         verify(outboxRepository).save(any());
         verify(conversationOrchestrator, never()).replyForDetailed(any());
         verify(processingAttemptRepository).markCompleted(attempt.id(), NOW);

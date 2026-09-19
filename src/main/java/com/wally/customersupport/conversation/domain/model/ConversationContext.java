@@ -13,7 +13,8 @@ public record ConversationContext(
         List<KnowledgeChunk> knowledge,
         String conversationSummary,
         List<CustomerPreference> preferences,
-        Channel channel) {
+        Channel channel,
+        ConversationSelection selection) {
 
     public ConversationContext(
             UUID conversationId,
@@ -21,7 +22,8 @@ public record ConversationContext(
             String latestMessage,
             List<String> recentMessages,
             List<KnowledgeChunk> knowledge) {
-        this(conversationId, externalCustomerId, latestMessage, recentMessages, knowledge, null, List.of(), null);
+        this(conversationId, externalCustomerId, latestMessage, recentMessages, knowledge, null, List.of(), null,
+                ConversationSelection.empty());
     }
 
     public ConversationContext(
@@ -31,7 +33,21 @@ public record ConversationContext(
             List<String> recentMessages,
             List<KnowledgeChunk> knowledge,
             String conversationSummary) {
-        this(conversationId, externalCustomerId, latestMessage, recentMessages, knowledge, conversationSummary, List.of(), null);
+        this(conversationId, externalCustomerId, latestMessage, recentMessages, knowledge, conversationSummary,
+                List.of(), null, ConversationSelection.empty());
+    }
+
+    public ConversationContext(
+            UUID conversationId,
+            String externalCustomerId,
+            String latestMessage,
+            List<String> recentMessages,
+            List<KnowledgeChunk> knowledge,
+            String conversationSummary,
+            List<CustomerPreference> preferences,
+            Channel channel) {
+        this(conversationId, externalCustomerId, latestMessage, recentMessages, knowledge, conversationSummary,
+                preferences, channel, ConversationSelection.empty());
     }
 
     public ConversationContext {
@@ -39,5 +55,6 @@ public record ConversationContext(
         knowledge = knowledge == null ? List.of() : List.copyOf(knowledge);
         conversationSummary = conversationSummary == null ? null : conversationSummary.strip();
         preferences = preferences == null ? List.of() : List.copyOf(preferences);
+        selection = selection == null ? ConversationSelection.empty() : selection;
     }
 }

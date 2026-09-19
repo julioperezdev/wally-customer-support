@@ -18,14 +18,15 @@ public record ConversationState(
         List<String> recentMessages,
         Instant updatedAt,
         long version,
-        ConversationSummary summary) {
+        ConversationSummary summary,
+        ConversationSelection selection) {
 
     public ConversationState(
             UUID conversationId,
             String actorId,
             List<String> recentMessages,
             Instant updatedAt) {
-        this(conversationId, actorId, recentMessages, updatedAt, 0L, null);
+        this(conversationId, actorId, recentMessages, updatedAt, 0L, null, ConversationSelection.empty());
     }
 
     public ConversationState(
@@ -34,7 +35,17 @@ public record ConversationState(
             List<String> recentMessages,
             Instant updatedAt,
             long version) {
-        this(conversationId, actorId, recentMessages, updatedAt, version, null);
+        this(conversationId, actorId, recentMessages, updatedAt, version, null, ConversationSelection.empty());
+    }
+
+    public ConversationState(
+            UUID conversationId,
+            String actorId,
+            List<String> recentMessages,
+            Instant updatedAt,
+            long version,
+            ConversationSummary summary) {
+        this(conversationId, actorId, recentMessages, updatedAt, version, summary, ConversationSelection.empty());
     }
 
     public ConversationState {
@@ -48,5 +59,6 @@ public record ConversationState(
         if (version < 0) {
             throw new IllegalArgumentException("version must not be negative");
         }
+        selection = selection == null ? ConversationSelection.empty() : selection;
     }
 }

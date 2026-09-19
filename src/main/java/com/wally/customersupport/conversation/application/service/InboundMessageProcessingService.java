@@ -42,6 +42,7 @@ public class InboundMessageProcessingService {
     private final OutboxRepository outboxRepository;
     private final ConversationOrchestrator conversationOrchestrator;
     private final ConversationSummaryService conversationSummaryService;
+    private final ConversationSelectionStateService conversationSelectionStateService;
     private final CustomerPreferenceService customerPreferenceService;
     private final ExplicitPreferenceCaptureService explicitPreferenceCaptureService;
     private final OptOutDetector optOutDetector;
@@ -123,24 +124,31 @@ public class InboundMessageProcessingService {
                 explicitPreferenceCaptureService.capture(actorId, inboundMessage.body(), now);
         var preferences = customerPreferenceService.findForContext(conversation.id().toString(), conversation.id());
         ConversationExecutionResult executionResult = null;
+        ConversationContext context = new ConversationContext(
+                conversation.id(),
+                conversation.externalCustomerId(),
+                inboundMessage.body(),
+                conversationState.recentMessages(),
+                List.of(),
+                conversationSummaryService.summaryForContext(conversationState),
+                preferences,
+                inboundMessage.channel(),
+                conversationState.selection());
         String reply;
         if (preferenceCapture.shouldAcknowledge()) {
             reply = preferenceReply(preferenceCapture);
         } else {
-            executionResult = conversationOrchestrator.replyForDetailed(new ConversationContext(
-                        conversation.id(),
-                        conversation.externalCustomerId(),
-                        inboundMessage.body(),
-                        conversationState.recentMessages(),
-                        List.of(),
-                        conversationSummaryService.summaryForContext(conversationState),
-                        preferences,
-                        inboundMessage.channel()));
+            executionResult = conversationOrchestrator.replyForDetailed(context);
             reply = executionResult.response();
         }
 
-        saveConversationMemory(conversationSummaryService.appendAndMaybeSummarize(
+        ConversationState updatedSelection = conversationSelectionStateService.update(
                 conversationState,
+                context,
+                executionResult,
+                now);
+        saveConversationMemory(conversationSummaryService.appendAndMaybeSummarize(
+                updatedSelection,
                 inboundMessage.body(),
                 now));
 
