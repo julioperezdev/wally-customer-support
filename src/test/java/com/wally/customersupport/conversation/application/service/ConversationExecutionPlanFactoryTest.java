@@ -26,6 +26,9 @@ class ConversationExecutionPlanFactoryTest {
         assertEquals("CATALOG_SEARCH", plan.useCase());
         assertEquals(1, plan.stepCount());
         assertEquals("catalog-specialist", plan.steps().getFirst().owner());
+        assertEquals("catalog.search", plan.steps().getFirst().toolName());
+        assertEquals("catalog-input-v1", plan.steps().getFirst().inputSchemaVersion());
+        assertEquals("catalog-output-v1", plan.steps().getFirst().outputSchemaVersion());
     }
 
     @Test
@@ -37,6 +40,7 @@ class ConversationExecutionPlanFactoryTest {
         assertEquals("PURCHASE_LINK", plan.useCase());
         assertEquals("checkout-specialist", plan.steps().getFirst().owner());
         assertEquals("payment-link", plan.steps().getFirst().capability());
+        assertEquals("checkout.create", plan.steps().getFirst().toolName());
     }
 
     @Test

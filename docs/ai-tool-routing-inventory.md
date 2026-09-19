@@ -3,8 +3,8 @@
 Owner: AI/Tech Lead
 Status: `Accepted`
 Last reviewed: 2026-09-18
-Related Jira: `WCS-130`, `WCS-131`, `WCS-133`
-Related decision: [`ADR-038`](decisions/038-internal-tool-routing-without-mcp.md)
+Related Jira: `WCS-130`, `WCS-131`, `WCS-133`, `WCS-137`
+Related decisions: [`ADR-038`](decisions/038-internal-tool-routing-without-mcp.md), [`ADR-039`](decisions/039-specialist-tool-contracts.md)
 
 Este documento cierra las cuatro fases del análisis de routing de tools sin
 incorporar MCP al runtime de WCS:
@@ -133,15 +133,31 @@ con input inválido no se sustituye por SQL genérico ni por una tool distinta.
 La capa está en
 `src/main/java/com/wally/customersupport/conversation/application/tool/`.
 
+WCS-137 agrega dos fronteras provider-neutral:
+
+- `WcsToolContractCatalog` centraliza el nombre lógico de la tool, su capacidad
+  y las versiones de los schemas de entrada y salida;
+- `AgentSpecialistRegistry` centraliza los especialistas, sus casos de uso y la
+  allowlist de tools que cada agente puede ejecutar.
+
+Cada step de `ConversationExecutionPlan` transporta ahora el `toolName` y sus
+versiones de schema. El resolver rechaza una definición con un agente
+desconocido, una tool no permitida o un contrato inexistente antes de ejecutar
+el plan. El orquestador aplica la misma validación al plan activo, para que una
+propuesta del modelo no amplíe los permisos en runtime.
+
 `catalog.search` es el primer wrapper ejecutable. Delega en
 `CatalogConversationService`, por lo que conserva ownership, reglas de stock,
 normalización y repositorios existentes. `CatalogSpecialistExecutor` sólo lo
-usa cuando la definición activa del agente lo permite.
+usa cuando la definición activa del agente lo permite y emite eventos
+estructurados de inicio, finalización o fallback.
 
 `conversation.route` es un contrato de clasificación y no se registra como
 tool ejecutable porque no debe poder disparar un caso de uso por sí mismo.
-Carrito, checkout, Knowledge Base y handoff mantienen sus fronteras hasta que
-se publiquen wrappers con contratos equivalentes.
+Carrito, checkout, Knowledge Base y handoff ya tienen contratos declarados para
+validación y trazabilidad, pero mantienen sus servicios existentes como frontera
+de ejecución hasta que se publiquen wrappers equivalentes. No se agregan
+implementaciones ficticias ni SQL generado por el modelo.
 
 ## Fase 4 — Bedrock Tool Use / Structured Outputs
 

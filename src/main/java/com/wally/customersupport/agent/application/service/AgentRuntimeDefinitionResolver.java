@@ -8,18 +8,35 @@ import java.util.Optional;
 import com.wally.customersupport.agent.application.port.out.AgentRegistryRepository;
 import com.wally.customersupport.agent.domain.model.AgentVersion;
 import com.wally.customersupport.shared.infrastructure.observability.StructuredEventLog;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 /** Resolves a validated immutable execution snapshot without executing it. */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class AgentRuntimeDefinitionResolver {
 
     private final AgentActivationResolver activationResolver;
     private final AgentRegistryRepository registry;
+    private final AgentSpecialistRegistry specialistRegistry;
+
+    /** Compatibility constructor for pure application tests. */
+    public AgentRuntimeDefinitionResolver(
+            AgentActivationResolver activationResolver,
+            AgentRegistryRepository registry) {
+        this(activationResolver, registry, AgentSpecialistRegistry.defaultRegistry());
+    }
+
+    @Autowired
+    public AgentRuntimeDefinitionResolver(
+            AgentActivationResolver activationResolver,
+            AgentRegistryRepository registry,
+            AgentSpecialistRegistry specialistRegistry) {
+        this.activationResolver = activationResolver;
+        this.registry = registry;
+        this.specialistRegistry = specialistRegistry;
+    }
 
     public AgentRuntimeDefinitionResolution resolve(AgentActivationKey key) {
         Objects.requireNonNull(key, "key");
@@ -61,8 +78,19 @@ public class AgentRuntimeDefinitionResolver {
                 return record(key, AgentRuntimeDefinitionResolution.fallback(
                         AgentDefinitionResolutionReason.VERSION_NOT_PUBLISHABLE));
             }
-            return record(key, AgentRuntimeDefinitionResolution.active(
-                    AgentRuntimeDefinition.from(version)));
+            AgentRuntimeDefinition definition = AgentRuntimeDefinition.from(version);
+            AgentSpecialistRegistry.Validation validation = specialistRegistry.validateDefinition(definition);
+            if (!validation.valid()) {
+                Map<String, Object> fields = new LinkedHashMap<>();
+                fields.put("agentId", definition.agentId());
+                fields.put("agentVersion", definition.agentVersion());
+                fields.put("reason", validation.reason());
+                fields.put("invalidTools", validation.invalidTools());
+                StructuredEventLog.warn(log, "AGENT_SPECIALIST_DEFINITION_REJECTED", fields);
+                return record(key, AgentRuntimeDefinitionResolution.fallback(
+                        AgentDefinitionResolutionReason.INVALID_DEFINITION));
+            }
+            return record(key, AgentRuntimeDefinitionResolution.active(definition));
         } catch (RuntimeException exception) {
             return record(key, AgentRuntimeDefinitionResolution.fallback(
                     AgentDefinitionResolutionReason.INVALID_DEFINITION));

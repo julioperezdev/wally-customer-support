@@ -15,6 +15,7 @@ import com.wally.customersupport.agent.application.service.CatalogSpecialistExec
 import com.wally.customersupport.agent.application.service.CatalogSpecialistExecutor;
 import com.wally.customersupport.agent.application.service.AgentRuntimeDefinitionResolution;
 import com.wally.customersupport.agent.application.service.AgentRuntimeDefinitionResolver;
+import com.wally.customersupport.agent.application.service.AgentSpecialistRegistry;
 import com.wally.customersupport.agent.application.service.AgentShadowRuntimeService;
 import com.wally.customersupport.agent.application.service.AgentExecutionTraceRecorder;
 import com.wally.customersupport.catalog.application.service.CatalogConversationService;
@@ -90,6 +91,7 @@ public class ConversationOrchestrator {
     private final PurchaseLinkCreator purchaseLinkCreator;
     private final CartConversationHandler cartConversationHandler;
     private final ConversationRoutingService conversationRoutingService;
+    private final AgentSpecialistRegistry agentSpecialistRegistry;
 
     @Autowired
     public ConversationOrchestrator(
@@ -201,6 +203,7 @@ public class ConversationOrchestrator {
         this.purchaseLinkCreator = purchaseLinkCreator;
         this.cartConversationHandler = cartConversationHandler;
         this.conversationRoutingService = new ConversationRoutingService(intentClassifier);
+        this.agentSpecialistRegistry = AgentSpecialistRegistry.defaultRegistry();
     }
 
     public ConversationOrchestrator(
@@ -372,6 +375,20 @@ public class ConversationOrchestrator {
         AgentActivationKey activationKey = resolveActivationKey(context, plan);
         AgentActivationResolution activation = resolveActivation(activationKey, plan);
         AgentRuntimeDefinitionResolution definition = resolveDefinition(activationKey);
+        if (definition != null && definition.isActive()) {
+            AgentSpecialistRegistry.Validation validation = agentSpecialistRegistry.validateExecution(
+                    definition.definition(), plan);
+            if (!validation.valid()) {
+                StructuredEventLog.warn(log, "AGENT_SPECIALIST_PLAN_REJECTED", Map.of(
+                        "agentId", definition.definition().agentId(),
+                        "agentVersion", definition.definition().agentVersion(),
+                        "useCase", plan.useCase(),
+                        "reason", validation.reason(),
+                        "toolName", validation.toolName() == null ? "none" : validation.toolName()));
+                definition = AgentRuntimeDefinitionResolution.fallback(
+                        com.wally.customersupport.agent.application.service.AgentDefinitionResolutionReason.INVALID_DEFINITION);
+            }
+        }
         Map<String, Object> routeFields = new LinkedHashMap<>();
         routeFields.put("workflowVersion", plan.workflowVersion());
         routeFields.put("useCase", plan.useCase());
