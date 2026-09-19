@@ -488,10 +488,25 @@ public class ConversationOrchestrator {
         if (action == null) {
             return Optional.empty();
         }
+        CartCommandParser.Command deterministicCommand = CartCommandParser.parse(context.latestMessage());
+        CatalogQuery effectiveQuery = decision.catalogQuery();
+        int effectiveQuantity = decision.quantity();
+        if ((action == CartCommandParser.Action.ADD || action == CartCommandParser.Action.REMOVE)
+                && deterministicCommand.action() == action
+                && deterministicCommand.query() != null
+                && !deterministicCommand.query().isEmpty()
+                && deterministicCommand.query().hasPrimarySelector()) {
+            // The router decides which allow-listed operation to execute, but
+            // explicit product, variant and quantity words must remain
+            // deterministic. This protects cart mutations when the model
+            // returns the right action with an empty or incomplete query.
+            effectiveQuery = deterministicCommand.query();
+            effectiveQuantity = deterministicCommand.quantity();
+        }
         try {
             return cartConversationHandler.handle(
                     context,
-                    new CartCommandParser.Command(action, decision.catalogQuery(), decision.quantity()));
+                    new CartCommandParser.Command(action, effectiveQuery, effectiveQuantity));
         } catch (RuntimeException exception) {
             StructuredEventLog.warn(log, "CONVERSATIONAL_CART_FAILED", Map.of(
                     "errorType", exception.getClass().getSimpleName(),
