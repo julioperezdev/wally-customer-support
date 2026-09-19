@@ -454,7 +454,10 @@ public class ConversationOrchestrator {
             return Optional.empty();
         }
         try {
-            return cartConversationHandler.handle(context);
+            // Keep explicit product, variant and quantity data deterministic
+            // even when this legacy fast path handles the command before the
+            // structured router is invoked.
+            return cartConversationHandler.handle(context, CartCommandParser.parse(context.latestMessage()));
         } catch (RuntimeException exception) {
             StructuredEventLog.warn(log, "CONVERSATIONAL_CART_FAILED", Map.of(
                     "errorType", exception.getClass().getSimpleName()));
