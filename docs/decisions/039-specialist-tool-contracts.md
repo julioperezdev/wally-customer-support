@@ -33,10 +33,12 @@ ejecutarlo, porque la definición o la propuesta del modelo no es autoridad de
 seguridad.
 
 La primera tool ejecutable continúa siendo `catalog.search`, delegada al
-servicio de catálogo existente. Los contratos de Knowledge Base, estado,
-carrito, checkout, handoff y seguridad quedan declarados para validación y
-observabilidad, pero no se convierten en implementaciones ficticias: cada uno
-se habilitará cuando exista su wrapper tipado y sus pruebas contractuales.
+servicio de catálogo existente. Las demás capacidades ya tienen schemas
+versionados, acotados y con enums/límites explícitos para que puedan validarse
+antes de ejecutar: Knowledge Base, estado, carrito, checkout, handoff y
+seguridad. Eso no las convierte en implementaciones ficticias: permanecen
+metadata de contrato hasta que exista su wrapper tipado y sus pruebas
+contractuales.
 
 ## Reglas
 
@@ -53,7 +55,7 @@ se habilitará cuando exista su wrapper tipado y sus pruebas contractuales.
 
 ## Consecuencias
 
-La allowlist y los schemas se pueden probar sin Bedrock, y los nuevos
+La allowlist y los schemas concretos se pueden probar sin Bedrock, y los nuevos
 proveedores pueden traducir estos contratos sin contaminar el dominio. El
 catálogo central también hace visible qué capacidades faltan por implementar.
 

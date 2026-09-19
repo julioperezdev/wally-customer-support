@@ -140,6 +140,11 @@ WCS-137 agrega dos fronteras provider-neutral:
 - `AgentSpecialistRegistry` centraliza los especialistas, sus casos de uso y la
   allowlist de tools que cada agente puede ejecutar.
 
+Los contratos no ejecutables ya no usan un objeto vacío genérico: cada uno
+declara campos obligatorios, enums y límites de cantidad/tamaño adecuados para
+su responsabilidad. Esto permite validar una propuesta de Bedrock y mostrarla
+en el backoffice antes de agregar el adapter de ejecución correspondiente.
+
 Cada step de `ConversationExecutionPlan` transporta ahora el `toolName` y sus
 versiones de schema. El resolver rechaza una definición con un agente
 desconocido, una tool no permitida o un contrato inexistente antes de ejecutar
@@ -155,9 +160,10 @@ estructurados de inicio, finalización o fallback.
 `conversation.route` es un contrato de clasificación y no se registra como
 tool ejecutable porque no debe poder disparar un caso de uso por sí mismo.
 Carrito, checkout, Knowledge Base y handoff ya tienen contratos declarados para
-validación y trazabilidad, pero mantienen sus servicios existentes como frontera
-de ejecución hasta que se publiquen wrappers equivalentes. No se agregan
-implementaciones ficticias ni SQL generado por el modelo.
+validación y trazabilidad, con schemas concretos de operación y resultado, pero
+mantienen sus servicios existentes como frontera de ejecución hasta que se
+publiquen wrappers equivalentes. No se agregan implementaciones ficticias ni
+SQL generado por el modelo.
 
 ## Fase 4 — Bedrock Tool Use / Structured Outputs
 
