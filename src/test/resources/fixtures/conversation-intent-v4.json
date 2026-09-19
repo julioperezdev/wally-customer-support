@@ -177,6 +177,29 @@
     "expectedMissingParameter": "product"
   },
   {
+    "name": "size_only_is_not_product_name",
+    "message": "Soy talle M",
+    "expectedIntent": "CATALOG_SEARCH",
+    "expectedAction": "CATALOG_SEARCH",
+    "expectedSize": "M"
+  },
+  {
+    "name": "category_after_size_keeps_context",
+    "history": ["Soy talle M"],
+    "message": "Quiero una remera",
+    "expectedIntent": "CATALOG_SEARCH",
+    "expectedAction": "CATALOG_SEARCH",
+    "expectedProductType": "remera",
+    "expectedSize": "M"
+  },
+  {
+    "name": "generic_ropa_question_clears_previous_filters",
+    "history": ["Busco una remera negra talle M"],
+    "message": "Tenes ropa",
+    "expectedIntent": "CATALOG_SEARCH",
+    "expectedAction": "CATALOG_SEARCH"
+  },
+  {
     "name": "unknown_message",
     "message": "asdf qwerty",
     "expectedIntent": "UNKNOWN",

@@ -65,6 +65,17 @@ class CatalogQueryParserTest {
     }
 
     @Test
+    void doesNotTurnConversationalFillerIntoAProductName() {
+        CatalogQuery sizeOnly = CatalogQueryParser.parse("Soy talle M").orElseThrow();
+        CatalogQuery categoryOnly = CatalogQueryParser.parse("Quiero una remera").orElseThrow();
+
+        assertNull(sizeOnly.name());
+        assertEquals("m", sizeOnly.size());
+        assertNull(categoryOnly.name());
+        assertEquals("remera", categoryOnly.productType());
+    }
+
+    @Test
     void combinesFiltersAcrossMultiTurnCatalogConversation() {
         CatalogQuery query = CatalogQueryParser.parseConversation(
                 List.of("que sea nullpointer", "pero quiero buzo", "tenes algo negro"),
@@ -93,6 +104,9 @@ class CatalogQueryParserTest {
         assertTrue(CatalogQueryParser.isGeneralCatalogRequest("¿Qué opciones ofrecen?"));
         assertTrue(CatalogQueryParser.isGeneralCatalogRequest("¿Qué vendés?"));
         assertTrue(CatalogQueryParser.isGeneralCatalogRequest("¿Qué tenés?"));
+        assertTrue(CatalogQueryParser.isGeneralCatalogRequest("Tenes ropa"));
+        assertTrue(CatalogQueryParser.isGeneralCatalogRequest("¿Qué ropa tienen?"));
+        assertTrue(CatalogQueryParser.isGeneralCatalogRequest("Venden ropa?"));
         assertFalse(CatalogQueryParser.isGeneralCatalogRequest("Quiero la talla M"));
     }
 

@@ -242,6 +242,14 @@ interés de catálogo y operaciones de compra. Por ejemplo, `quiero un buzo` es
 acción de checkout. El dataset se valida sin llamar a AWS y no contiene
 conversaciones reales, teléfonos ni otros datos personales.
 
+La interpretación semántica de Bedrock también debe distinguir filtros
+conversacionales de nombres de productos. Expresiones como `soy talle M` sólo
+producen `size=M`; palabras genéricas como `ropa` no se convierten en
+`catalogQuery.name`. Una pregunta general como `tenes ropa` limpia la selección
+anterior y solicita el catálogo completo. El parser determinista sólo normaliza
+y valida esta decisión, evitando que residuos del lenguaje (`soy`, `tengo`,
+`ropa`) creen filtros que luego produzcan falsos `NO_MATCH`.
+
 Como segunda barrera, el orquestador puede rescatar de forma determinística una
 consulta estructurada de catálogo si Bedrock la clasifica erróneamente como
 `PURCHASE_LINK`, siempre que el mensaje no contenga un marcador explícito de

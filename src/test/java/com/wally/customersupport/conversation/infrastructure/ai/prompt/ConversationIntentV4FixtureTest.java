@@ -38,6 +38,12 @@ class ConversationIntentV4FixtureTest {
                 .path("expectedIntent").asText());
         assertEquals("PURCHASE_LINK", scenario(scenarios, "explicit_single_variant_purchase")
                 .path("expectedIntent").asText());
+        assertEquals("M", scenario(scenarios, "size_only_is_not_product_name")
+                .path("expectedSize").asText());
+        assertEquals("remera", scenario(scenarios, "category_after_size_keeps_context")
+                .path("expectedProductType").asText());
+        assertEquals("CATALOG_SEARCH", scenario(scenarios, "generic_ropa_question_clears_previous_filters")
+                .path("expectedAction").asText());
 
         for (JsonNode scenario : scenarios) {
             assertFalse(scenario.path("name").asText().isBlank());
@@ -55,6 +61,8 @@ class ConversationIntentV4FixtureTest {
         assertEquals("conversation-intent-v4", definition.version());
         assertTrue(definition.content().contains("Quiero un buzo"));
         assertTrue(definition.content().contains("Quiero comprar el buzo negro talle XL"));
+        assertTrue(definition.content().contains("Soy talle M"));
+        assertTrue(definition.content().contains("Tenes ropa"));
         assertTrue(definition.content().contains("interes no es compra"));
         assertEquals(64, definition.sha256().length());
     }
