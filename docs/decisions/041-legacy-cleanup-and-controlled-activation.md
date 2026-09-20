@@ -48,14 +48,20 @@ fila anterior ni se elimina historial.
 | --- | --- | --- |
 | `ConversationRoutingService` y `ConversationIntentClassifier` | Ruta activa | Mantener; son la frontera única de interpretación. |
 | `ConversationExecutionPlanFactory` | Ruta activa | Mantener; produce planes acotados y fallback seguro. |
+| `CatalogConversationUseCase` | Ruta activa | Mantener como frontera única de catálogo: especialista, fallback determinístico, hechos estructurados y presentación. |
+| `ConversationSupportUseCase` | Ruta activa | Mantener como frontera única de Knowledge Base, políticas y horarios. |
+| `ConversationCartUseCase` | Ruta activa | Mantener como dueño de comandos determinísticos y operaciones de carrito antes y después del routing. |
+| `ConversationPurchaseUseCase` | Ruta activa | Mantener como dueño de validación de variante/stock, idempotencia y creación de links de pago. |
+| `ConversationExecutionTelemetry` | Ruta activa | Mantener como dueño de eventos de ejecución, identidad sanitizada y trazas de agentes. |
+| `AgentExecutionBoundary` | Ruta activa | Mantener como única frontera de activación, validación de definición y ejecución shadow fail-safe. |
 | `AgentRuntimeDefinitionResolver` | Ruta activa | Mantener y centralizar la validación pre-ejecución. |
 | `AgentSpecialistRegistry` | Fuente activa | Mantener una instancia Spring; no crear registries paralelos en la orquestación. |
 | `FeatureFlagRuntimeService` | Ruta activa | Mantener; refresca flags sin reiniciar y conserva rollback local. |
 | `NoOpAgentShadowExecutor` | Fallback intencional | Mantener; es el estado seguro cuando shadow está apagado. |
 | `MockLlmClient`, `MockKnowledgeRetriever`, adapters mock | Fallback de local/test | Mantener; permiten pruebas sin credenciales y no son rutas productivas. |
 | Constructores de compatibilidad de `AgentActivationResolver`, `AgentRuntimeDefinitionResolver` y `CatalogSpecialistExecutor` | Legacy sólo de tests | Eliminados; los tests usan el wiring explícito actual y Spring mantiene un único camino productivo. |
-| Constructores sobrecargados de `ConversationOrchestrator` | Compatibilidad de tests | Mantener temporalmente; todavía son usados por una suite amplia y no duplican una decisión de runtime. |
-| `CatalogConversationService.replyFor*` | Ruta activa de composición catálogo+envíos | Mantener; todavía se usa para construir respuestas compuestas desde hechos estructurados. |
+| Constructores sobrecargados de `ConversationOrchestrator` | Compatibilidad de tests | Eliminados del runtime; la aplicación usa un único wiring por inyección y los tests usan un factory explícito. |
+| `CatalogConversationService.replyFor*` | Puente de texto legacy | Eliminados; `search`/`CatalogSearchResult` es el único límite de aplicación y cada caller decide cómo presentar los hechos. |
 | `CartConversationHandler` parser textual y default command bridge | Fallback/ruta activa | Mantener; la orquestación actual aún lo utiliza para comandos y garantiza fallback seguro. |
 | `preview-token` y autorización legacy | Fuera de la ruta objetivo | No reintroducir; Cognito/JWT es la única autorización del backoffice. |
 
@@ -63,26 +69,41 @@ fila anterior ni se elimina historial.
 
 - No eliminar un adapter mock/no-op sólo porque no se usa en producción: es
   parte del fallback y del aislamiento de tests.
-- No eliminar adapters mock/no-op ni los bridges de catálogo/carrito mientras
-  sigan siendo rutas activas o fallback.
+- No eliminar adapters mock/no-op ni el bridge textual del carrito mientras
+  sigan siendo rutas activas o fallback. El bridge textual del catálogo ya fue
+  retirado porque toda la orquestación y la suite consumen hechos estructurados.
 - Los constructores retirados en esta iteración no tenían referencias
   productivas; la suite fue migrada al wiring explícito antes de eliminarlos.
 - Toda eliminación debe ser un commit reversible y acompañarse de una prueba
   que demuestre el fallback equivalente.
+- Una propuesta de catálogo de baja confianza sin filtros, selección ni
+  evidencia lexical no puede elevarse a búsqueda determinística; permanece en
+  el fallback seguro.
 - La comparación shadow no puede publicar respuestas ni ejecutar operaciones
   mutantes.
+- `ConversationOrchestrator` sólo coordina routing, activación, plan y entrega;
+  no debe volver a incorporar consultas de catálogo, retrieval/presentación de
+  soporte ni construcción de eventos de telemetría.
+- Los comandos de carrito y checkout deben permanecer detrás de
+  `ConversationCartUseCase` y `ConversationPurchaseUseCase`; el orquestador no
+  debe volver a parsear cantidades, variantes, stock o idempotencia.
+- `AgentExecutionBoundary` debe ser la única puerta de activación, validación
+  de definición y shadow; una nueva ruta no puede consultar flags, registry o
+  shadow directamente.
+- Las respuestas intermedias deben usar `ConversationRenderedResponse` para
+  conservar texto y media sin acoplar el orquestador a un canal concreto.
 - La promoción remota requiere evidencia separada de backend, AppConfig,
   restart y smoke post-deploy.
 
 ## Alcance de esta iteración
 
 Este ADR cubre la consolidación de la frontera de validación, el inventario,
-la eliminación de compatibilidades sin referencias productivas y las pruebas
-locales de activación. La matriz verifica el kill switch en ambiente, canal,
-caso de uso, agente y versión; el rollback restaura sólo la versión efectiva
-anterior y no afecta dimensiones fuera de alcance. Spring expone un único
-registry especialista. No agrega migraciones, recursos Terraform, cambios de
-AppConfig remoto ni despliegues.
+la eliminación de compatibilidades sin referencias productivas, la separación
+de catálogo/soporte/telemetría y las pruebas locales de activación. La matriz
+verifica el kill switch en ambiente, canal, caso de uso, agente y versión; el
+rollback restaura sólo la versión efectiva anterior y no afecta dimensiones
+fuera de alcance. Spring expone un único registry especialista. No agrega
+migraciones, recursos Terraform, cambios de AppConfig remoto ni despliegues.
 
 ## Evidencia de cierre local
 
@@ -92,11 +113,11 @@ El gate reproducible queda disponible en:
 ./scripts/gate-final-local.sh
 ```
 
-El 2026-09-19 se ejecutó completo con este resultado:
+El 2026-09-20 se ejecutó completo con este resultado:
 
 | Control | Resultado | Evidencia |
 | --- | --- | --- |
-| `mvn -B verify` | PASS | 491 tests, 0 failures, 0 errors, 0 skipped; `BUILD SUCCESS`. |
+| `mvn -B verify` | PASS | 550 tests, 0 failures, 0 errors, 0 skipped; `BUILD SUCCESS`. |
 | Testcontainers | PASS | PostgreSQL 16; las suites de integración aplicaron Flyway sobre una base limpia. |
 | Smoke de runtime | PASS | Activación, kill switch por ambiente/canal/caso de uso/agente/versión, rollback, fallback seguro y shadow cerrado. |
 | Secuencias conversacionales | PASS | 47 tests dirigidos: orquestador, integración Spring/Testcontainers y fixtures de intención. |

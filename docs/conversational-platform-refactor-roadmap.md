@@ -285,14 +285,29 @@ Implementación local completada para WCS-139:
 
 - `AgentRuntimeDefinitionResolver` es la única frontera que valida el plan
   contra el especialista, sus tools y los schemas versionados;
-- `ConversationOrchestrator` dejó de crear un registry paralelo;
+- `ConversationOrchestrator` dejó de crear un registry paralelo y ahora sólo
+  coordina routing, activación, plan, shadow y entrega;
+- `CatalogConversationUseCase` concentra especialista, fallback determinístico,
+  hechos estructurados, humanización e imagen de catálogo;
+- `ConversationSupportUseCase` concentra Knowledge Base, políticas y horarios;
+- `ConversationCartUseCase` concentra comandos determinísticos y operaciones de
+  carrito antes y después del routing;
+- `ConversationPurchaseUseCase` concentra validación de variante/stock,
+  idempotencia y creación de links de pago;
+- `ConversationExecutionTelemetry` concentra eventos sanitizados, identidad,
+  métricas de ejecución y trazas de agentes;
+- `AgentExecutionBoundary` concentra activación, validación de definiciones y
+  shadow fail-safe;
 - la activación controlada verifica el kill switch por ambiente, canal, caso de
   uso, agente y versión, y el contexto Spring prueba que existe un único
   `AgentSpecialistRegistry`;
-- se eliminaron los constructores de compatibilidad que sólo eran usados por
-  tests y creaban registries o flags implícitos;
-- se conservaron explícitamente los bridges de catálogo/carrito y adapters
-  mock/no-op que todavía son rutas activas o fallbacks seguros;
+- se eliminó el wiring productivo duplicado: `ConversationOrchestrator` recibe
+  un único `ConversationRoutingService` y los constructores de compatibilidad
+  quedaron sólo en un factory de tests;
+- el catálogo quedó detrás de `search`/`CatalogSearchResult`; se retiraron los
+  puentes `replyFor*` que mezclaban hechos y presentación. Se conservaron el
+  parser/bridge textual del carrito y los adapters mock/no-op que todavía son
+  rutas activas o fallbacks seguros;
 - el smoke local incluye integración Spring, PostgreSQL/Testcontainers,
   shadow cerrado, activación, kill switch, rollback y tools especialistas;
 - el inventario y las disposiciones de cleanup están en
@@ -312,6 +327,9 @@ Entregables:
 - inventario final de clases, adapters, heurísticas y configuraciones sin
   referencias;
 - eliminación incremental de código muerto, manteniendo un commit reversible;
+- separación verificable entre routing, resolución de hechos y presentación;
+- un único límite estructurado para las búsquedas de catálogo, con una prueba
+  explícita que evita elevar propuestas de baja confianza sin evidencia;
 - activación por ambiente/canal/caso de uso mediante AppConfig;
 - shadow/canary sólo para rutas no mutantes y con kill switch;
 - smoke funcional por Telegram y backoffice; WhatsApp queda independiente de

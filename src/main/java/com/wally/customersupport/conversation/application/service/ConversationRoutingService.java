@@ -17,6 +17,7 @@ import com.wally.customersupport.conversation.domain.model.ConversationIntentDec
 import com.wally.customersupport.conversation.domain.model.ConversationSelection;
 import com.wally.customersupport.shared.infrastructure.observability.StructuredEventLog;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
 
 /**
  * Single validation boundary between language interpretation and WCS use cases.
@@ -27,6 +28,7 @@ import lombok.extern.slf4j.Slf4j;
  * never generates SQL and never resolves catalog facts.</p>
  */
 @Slf4j
+@Service
 public final class ConversationRoutingService {
 
     private static final Set<String> CATEGORY_NAMES = Set.of("remera", "buzo", "campera", "abrigo");
@@ -104,6 +106,15 @@ public final class ConversationRoutingService {
         boolean unsupportedCategory = CatalogQueryParser.isUnsupportedCatalogCategory(latest);
         boolean catalogIntent = raw.intent() == ConversationIntent.CATALOG_SEARCH
                 || raw.action() == ConversationAction.CATALOG_SEARCH;
+
+        // A model proposal alone is not enough to turn an uncertain message
+        // into a catalog query. Require evidence from the current turn or the
+        // persisted selection before the deterministic boundary overrides the
+        // model. This keeps ambiguous messages on the safe fallback path.
+        if (catalogIntent && raw.catalogQuery() == null && deterministic.isEmpty()
+                && !generalCatalog && !catalogFollowUp && !catalogRefinement && !unsupportedCategory) {
+            return raw;
+        }
 
         if (!generalCatalog && deterministic.isEmpty() && !catalogFollowUp && !catalogRefinement
                 && !unsupportedCategory && !catalogIntent) {

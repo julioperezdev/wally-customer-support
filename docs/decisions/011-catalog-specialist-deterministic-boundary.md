@@ -21,8 +21,9 @@ tipado contiene `CatalogQuery`, historial acotado y el último mensaje; no
 contiene SQL ni instrucciones ejecutables.
 
 El executor delega en `CatalogConversationService`, que conserva las
-consultas parametrizadas y el formateo de respuestas existente. No invoca
-Bedrock adicionalmente, no genera SQL y no altera la fuente de verdad.
+consultas parametrizadas y devuelve `CatalogSearchResult` con hechos
+estructurados. La presentación se realiza fuera del servicio de catálogo. No
+invoca Bedrock adicionalmente, no genera SQL y no altera la fuente de verdad.
 
 Si el límite no puede ejecutarse, el orquestador vuelve a la ruta determinística
 legacy. El usuario nunca recibe una excepción, SQL, secreto ni contenido
@@ -40,7 +41,9 @@ Positivas:
 
 Costos:
 
-- Existe temporalmente una ruta especialista y una ruta legacy.
+- La ruta especialista y el fallback determinístico comparten el mismo
+  contrato estructurado; ya no existe un puente de texto paralelo en el
+  servicio de catálogo.
 - El contrato todavía no ejecuta prompts o tool use de Bedrock; eso requiere
   una tarea posterior con evaluación y activación controlada.
 

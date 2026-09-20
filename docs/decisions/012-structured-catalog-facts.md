@@ -36,8 +36,8 @@ Positivas:
 
 Costos:
 
-- Se mantienen temporalmente métodos legacy que devuelven texto para los
-  canales existentes.
+- Los callers deben renderizar explícitamente los hechos antes de enviarlos a
+  un canal o a un humanizador.
 - Los estados y campos del contrato deben versionarse antes de habilitar
   generación dinámica.
 

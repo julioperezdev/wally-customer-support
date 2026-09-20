@@ -16,8 +16,7 @@ import org.springframework.stereotype.Service;
  * Executes the deterministic catalog use case from structured filters.
  *
  * <p>The structured {@link CatalogSearchResult} is the application boundary.
- * The legacy reply methods remain as a compatibility facade for channels
- * while callers migrate to facts plus an independent formatter.</p>
+ * Presentation is handled by the caller after the facts have been validated.</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -26,19 +25,6 @@ public class CatalogConversationService {
     private static final int MAX_GENERAL_RESULTS = 5;
 
     private final CatalogQueryService catalogQueryService;
-
-    public Optional<String> replyFor(String message) {
-        return CatalogQueryParser.parse(message)
-                .flatMap(query -> replyFor(query, List.of(), message));
-    }
-
-    public Optional<String> replyFor(CatalogQuery query) {
-        return replyFor(query, List.of(), null);
-    }
-
-    public Optional<String> replyFor(CatalogQuery query, List<String> recentMessages, String latestMessage) {
-        return search(query, recentMessages, latestMessage).map(CatalogResponseFormatter::render);
-    }
 
     public Optional<CatalogSearchResult> search(
             CatalogQuery query,
