@@ -95,7 +95,7 @@ class ConversationOrchestratorTest {
 
     @BeforeEach
     void setUp() {
-        orchestrator = new ConversationOrchestrator(
+        orchestrator = ConversationOrchestratorTestSupport.create(
                 intentClassifier,
                 catalogConversationService,
                 supportConfigurationQueryService,
@@ -131,7 +131,7 @@ class ConversationOrchestratorTest {
 
     @Test
     void routesRecognizedCartCommandBeforeCallingTheIntentClassifier() {
-        ConversationOrchestrator cartOrchestrator = new ConversationOrchestrator(
+        ConversationOrchestrator cartOrchestrator = ConversationOrchestratorTestSupport.create(
                 intentClassifier,
                 catalogConversationService,
                 supportConfigurationQueryService,
@@ -169,7 +169,7 @@ class ConversationOrchestratorTest {
 
     @Test
     void routesExplicitCartCommandWithDeterministicQueryBeforeCallingTheIntentClassifier() {
-        ConversationOrchestrator cartOrchestrator = new ConversationOrchestrator(
+        ConversationOrchestrator cartOrchestrator = ConversationOrchestratorTestSupport.create(
                 intentClassifier,
                 catalogConversationService,
                 supportConfigurationQueryService,
@@ -211,7 +211,7 @@ class ConversationOrchestratorTest {
 
     @Test
     void executesStructuredCartActionProposedByTheRouter() {
-        ConversationOrchestrator cartOrchestrator = new ConversationOrchestrator(
+        ConversationOrchestrator cartOrchestrator = ConversationOrchestratorTestSupport.create(
                 intentClassifier,
                 catalogConversationService,
                 supportConfigurationQueryService,
@@ -259,7 +259,7 @@ class ConversationOrchestratorTest {
 
     @Test
     void preservesExplicitCartVariantWhenRouterOmitsTheModelQuery() {
-        ConversationOrchestrator cartOrchestrator = new ConversationOrchestrator(
+        ConversationOrchestrator cartOrchestrator = ConversationOrchestratorTestSupport.create(
                 intentClassifier,
                 catalogConversationService,
                 supportConfigurationQueryService,
@@ -318,7 +318,7 @@ class ConversationOrchestratorTest {
                 context.conversationSummary(),
                 context.preferences(),
                 Channel.TELEGRAM);
-        ConversationOrchestrator enabledOrchestrator = new ConversationOrchestrator(
+        ConversationOrchestrator enabledOrchestrator = ConversationOrchestratorTestSupport.create(
                 intentClassifier,
                 catalogConversationService,
                 supportConfigurationQueryService,
@@ -357,7 +357,7 @@ class ConversationOrchestratorTest {
                 context.conversationSummary(),
                 context.preferences(),
                 Channel.TELEGRAM);
-        ConversationOrchestrator enabledOrchestrator = new ConversationOrchestrator(
+        ConversationOrchestrator enabledOrchestrator = ConversationOrchestratorTestSupport.create(
                 intentClassifier,
                 catalogConversationService,
                 supportConfigurationQueryService,
@@ -643,7 +643,7 @@ class ConversationOrchestratorTest {
                 null,
                 List.of(),
                 Channel.TELEGRAM);
-        ConversationOrchestrator checkoutOrchestrator = new ConversationOrchestrator(
+        ConversationOrchestrator checkoutOrchestrator = ConversationOrchestratorTestSupport.create(
                 intentClassifier,
                 catalogConversationService,
                 supportConfigurationQueryService,
@@ -697,7 +697,7 @@ class ConversationOrchestratorTest {
         ConversationContext purchaseContext = new ConversationContext(
                 context.conversationId(), context.externalCustomerId(), "Quiero comprarla",
                 List.of("Quiero comprarla", "¿Qué remeras tienen?"), List.of(), null, List.of(), Channel.TELEGRAM);
-        ConversationOrchestrator checkoutOrchestrator = new ConversationOrchestrator(
+        ConversationOrchestrator checkoutOrchestrator = ConversationOrchestratorTestSupport.create(
                 intentClassifier,
                 catalogConversationService,
                 supportConfigurationQueryService,
@@ -738,7 +738,7 @@ class ConversationOrchestratorTest {
                 context.conversationSummary(),
                 context.preferences(),
                 Channel.TELEGRAM);
-        ConversationOrchestrator enabledOrchestrator = new ConversationOrchestrator(
+        ConversationOrchestrator enabledOrchestrator = ConversationOrchestratorTestSupport.create(
                 intentClassifier,
                 catalogConversationService,
                 supportConfigurationQueryService,
@@ -798,7 +798,7 @@ class ConversationOrchestratorTest {
         assertEquals("wcs/catalog/product/remera.jpg", detailedResult.mediaReference());
 
         verify(catalogSpecialistExecutor).execute(any());
-        verify(catalogConversationService, never()).replyFor(
+        verify(catalogConversationService, never()).search(
                 any(CatalogQuery.class), any(), any());
     }
 
@@ -846,12 +846,19 @@ class ConversationOrchestratorTest {
         when(intentClassifier.classify(any(ConversationContext.class)))
                 .thenReturn(new ConversationIntentDecision(
                         ConversationIntent.POLICY_QUERY, 0.97, null, "shipping"));
-        when(catalogConversationService.replyFor(
+        when(catalogConversationService.search(
                 argThat(query -> "buzo".equals(query.productType()) && "negro".equals(query.color())
                         && "l".equalsIgnoreCase(query.size())),
                 any(),
                 any()))
-                .thenReturn(Optional.of("El precio actual es 42.900,00 ARS."));
+                .thenReturn(Optional.of(new CatalogSearchResult(
+                        CatalogSearchResult.Status.MATCHED,
+                        List.of(new CatalogFact(
+                                "Buzo Spring Boot", "RP-BUZ-SB-NEG-L", "L", "Negro",
+                                new BigDecimal("42900.00"), "ARS", 3)),
+                        null,
+                        CatalogSearchResult.FollowUpKind.PRICE,
+                        "PRICE_QUERY")));
         when(supportConfigurationQueryService.activePolicy("shipping"))
                 .thenReturn(Optional.of(new SupportPolicy(
                         UUID.randomUUID(), "shipping", "Envíos", "Se confirma antes de finalizar la compra.",
@@ -861,7 +868,7 @@ class ConversationOrchestratorTest {
 
         assertTrue(reply.contains("42.900,00 ARS"));
         assertTrue(reply.contains("Se confirma antes de finalizar la compra."));
-        verify(catalogConversationService).replyFor(any(CatalogQuery.class), any(), any());
+        verify(catalogConversationService).search(any(CatalogQuery.class), any(), any());
         verify(supportConfigurationQueryService).activePolicy("shipping");
     }
 
@@ -876,7 +883,7 @@ class ConversationOrchestratorTest {
 
         verify(knowledgeRetriever).retrieve(any());
         verify(llmClient).generateReply(any());
-        verify(catalogConversationService, never()).replyFor(any(CatalogQuery.class));
+        verify(catalogConversationService, never()).search(any(CatalogQuery.class), any(), any());
     }
 
     @Test
@@ -904,7 +911,7 @@ class ConversationOrchestratorTest {
         when(llmClient.generateReply(any(ConversationContext.class), any(AgentRuntimeDefinition.class)))
                 .thenReturn("respuesta de la version activa");
 
-        ConversationOrchestrator enabledOrchestrator = new ConversationOrchestrator(
+        ConversationOrchestrator enabledOrchestrator = ConversationOrchestratorTestSupport.create(
                 intentClassifier,
                 catalogConversationService,
                 supportConfigurationQueryService,
@@ -933,7 +940,7 @@ class ConversationOrchestratorTest {
         assertEquals("No estoy seguro de haber entendido tu consulta. Podés preguntarme por productos, stock, "
                 + "horarios, envíos o cambios.", orchestrator.replyFor(context));
 
-        verify(catalogConversationService, never()).replyFor(any(CatalogQuery.class));
+        verify(catalogConversationService, never()).search(any(CatalogQuery.class), any(), any());
         verify(knowledgeRetriever, never()).retrieve(any());
         verify(llmClient, never()).generateReply(any());
     }

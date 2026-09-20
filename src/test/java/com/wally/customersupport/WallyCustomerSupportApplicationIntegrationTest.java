@@ -30,6 +30,8 @@ import com.wally.customersupport.agent.domain.model.AgentEvaluationResult;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationScenario;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationSuiteResult;
 import com.wally.customersupport.catalog.application.service.CatalogConversationService;
+import com.wally.customersupport.catalog.application.service.CatalogResponseFormatter;
+import com.wally.customersupport.catalog.application.service.CatalogQueryParser;
 import com.wally.customersupport.catalog.application.service.CatalogQueryService;
 import com.wally.customersupport.catalog.domain.model.CatalogQuery;
 import com.wally.customersupport.conversation.application.port.out.ConversationMemory;
@@ -259,9 +261,7 @@ class WallyCustomerSupportApplicationIntegrationTest {
 
     @Test
     void answersAConversationCatalogQueryUsingTheDemoDatabase() {
-        String reply = catalogConversationService
-                .replyFor("¿Tienen remera negra talle M?")
-                .orElseThrow();
+        String reply = catalogReply("¿Tienen remera negra talle M?");
 
         assertTrue(reply.contains("Remera NullPointer"));
         assertTrue(reply.contains("18.900,00 ARS"));
@@ -270,9 +270,7 @@ class WallyCustomerSupportApplicationIntegrationTest {
 
     @Test
     void answersGeneralCatalogListingFromPostgresWithAnApplicationLimit() {
-        String reply = catalogConversationService
-                .replyFor("¿Qué productos tienen?")
-                .orElseThrow();
+        String reply = catalogReply("¿Qué productos tienen?");
 
         assertTrue(reply.startsWith("Encontré estos productos:"));
         assertTrue(reply.contains("Remera NullPointer"));
@@ -282,9 +280,7 @@ class WallyCustomerSupportApplicationIntegrationTest {
 
     @Test
     void appliesMaximumPriceTogetherWithCatalogFilters() {
-        String reply = catalogConversationService
-                .replyFor("Busco una remera negra talle M que cueste menos de 20.000 pesos")
-                .orElseThrow();
+        String reply = catalogReply("Busco una remera negra talle M que cueste menos de 20.000 pesos");
 
         assertTrue(reply.contains("Remera NullPointer"));
         assertTrue(reply.contains("18.900,00 ARS"));
@@ -309,6 +305,13 @@ class WallyCustomerSupportApplicationIntegrationTest {
         assertTrue(reply.contains("está disponible"));
         assertTrue(reply.contains("RP-REM-NP-NEG-M"));
         assertTrue(reply.contains("12 unidades"));
+    }
+
+    private String catalogReply(String message) {
+        CatalogQuery query = CatalogQueryParser.parse(message).orElse(CatalogQuery.empty());
+        return catalogConversationService.search(query, List.of(), message)
+                .map(CatalogResponseFormatter::render)
+                .orElseThrow();
     }
 
     @Test

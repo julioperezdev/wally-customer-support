@@ -32,8 +32,7 @@ class CatalogConversationServiceTest {
                         && "remera".equals(query.productType()))))
                 .thenReturn(List.of(product));
 
-        java.util.Optional<String> reply = new CatalogConversationService(catalogQueryService)
-                .replyFor("¿Tienen remera negra talle M?");
+        java.util.Optional<String> reply = replyFor("¿Tienen remera negra talle M?");
 
         assertTrue(reply.isPresent());
         assertTrue(reply.get().contains("Remera NullPointer"));
@@ -87,8 +86,7 @@ class CatalogConversationServiceTest {
                 "fantasma".equals(query.name()) && "remera".equals(query.productType()))))
                 .thenReturn(List.of());
 
-        String reply = new CatalogConversationService(catalogQueryService)
-                .replyFor("Busco Remera Fantasma")
+        String reply = replyFor("Busco Remera Fantasma")
                 .orElseThrow();
 
         assertEquals(
@@ -104,8 +102,7 @@ class CatalogConversationServiceTest {
                         product("Buzo Spring Boot", "RP-BUZ-SB-GRI-L", "L", "Gris", 5),
                         product("Remera NullPointer", "RP-REM-NP-NEG-M", "M", "Negro", 12)));
 
-        String reply = new CatalogConversationService(catalogQueryService)
-                .replyFor("¿Qué productos tienen?")
+        String reply = replyFor("¿Qué productos tienen?")
                 .orElseThrow();
 
         assertTrue(reply.startsWith("Encontré estos productos:"));
@@ -137,8 +134,7 @@ class CatalogConversationServiceTest {
                         && "negro".equalsIgnoreCase(query.color()))))
                 .thenReturn(List.of(product));
 
-        String reply = new CatalogConversationService(catalogQueryService)
-                .replyFor(
+        String reply = replyFor(
                         new com.wally.customersupport.catalog.domain.model.CatalogQuery(
                                 "nullpointer", null, "M", "negro"),
                         List.of("Busco una remera NullPointer negra talle M"),
@@ -158,8 +154,7 @@ class CatalogConversationServiceTest {
                         && "negro".equalsIgnoreCase(query.color()))))
                 .thenReturn(List.of(product));
 
-        String reply = new CatalogConversationService(catalogQueryService)
-                .replyFor(
+        String reply = replyFor(
                         new CatalogQuery("nullpointer", null, "M", "negro"),
                         List.of("Busco una remera NullPointer negra talle M"),
                         "¿Cuánto cuesta?")
@@ -265,8 +260,7 @@ class CatalogConversationServiceTest {
                         product("Remera NullPointer", "RP-REM-NP-NEG-M", "M", "Negro", 12),
                         product("Remera NullPointer", "RP-REM-NP-NEG-L", "L", "Negro", 7)));
 
-        String reply = new CatalogConversationService(catalogQueryService)
-                .replyFor(
+        String reply = replyFor(
                         new com.wally.customersupport.catalog.domain.model.CatalogQuery(
                                 null, null, null, null, "remera"),
                         List.of("¿Qué remeras tienen?"),
@@ -280,8 +274,7 @@ class CatalogConversationServiceTest {
 
     @Test
     void asksForProductWhenAvailabilityHasNoConversationContext() {
-        String reply = new CatalogConversationService(catalogQueryService)
-                .replyFor(new com.wally.customersupport.catalog.domain.model.CatalogQuery(
+        String reply = replyFor(new com.wally.customersupport.catalog.domain.model.CatalogQuery(
                                 null, null, null, null),
                         List.of(),
                         "¿Está disponible?")
@@ -296,8 +289,7 @@ class CatalogConversationServiceTest {
                 "buzo".equals(query.productType()) && query.name() == null)))
                 .thenReturn(List.of(product("Buzo Spring Boot", "RP-BUZ-SB-GRI-L", "L", "Gris", 5)));
 
-        String reply = new CatalogConversationService(catalogQueryService)
-                .replyFor(
+        String reply = replyFor(
                         new CatalogQuery(null, null, null, null),
                         List.of("Mejor un buzo"),
                         "¿Qué opciones tienen?")
@@ -333,14 +325,29 @@ class CatalogConversationServiceTest {
 
     @Test
     void explainsWhenTheRequestedCatalogCategoryIsNotSupported() {
-        String reply = new CatalogConversationService(catalogQueryService)
-                .replyFor("¿Venden gorras?")
+        String reply = replyFor("¿Venden gorras?")
                 .orElseThrow();
 
         assertEquals(
                 "Por ahora no ofrecemos gorras. Nuestro catálogo actual incluye remeras, buzos y camperas. "
                         + "Si querés, puedo mostrarte esas opciones.",
                 reply);
+    }
+
+    private java.util.Optional<String> replyFor(String message) {
+        CatalogQuery query = CatalogQueryParser.parse(message).orElse(CatalogQuery.empty());
+        return new CatalogConversationService(catalogQueryService)
+                .search(query, List.of(), message)
+                .map(CatalogResponseFormatter::render);
+    }
+
+    private java.util.Optional<String> replyFor(
+            CatalogQuery query,
+            List<String> recentMessages,
+            String latestMessage) {
+        return new CatalogConversationService(catalogQueryService)
+                .search(query, recentMessages, latestMessage)
+                .map(CatalogResponseFormatter::render);
     }
 
     private static CatalogProduct product(String name, String sku, String size, String color, int stock) {

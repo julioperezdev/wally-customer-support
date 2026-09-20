@@ -224,6 +224,23 @@ class ConversationRoutingServiceTest {
         assertTrue(result.resolvedFields().isEmpty());
     }
 
+    @Test
+    void preservesLowConfidenceCatalogProposalWithoutCatalogEvidence() {
+        ConversationContext context = context("consulta", List.of(), ConversationSelection.empty());
+        ConversationIntentDecision proposal = new ConversationIntentDecision(
+                ConversationIntent.CATALOG_SEARCH,
+                0.40,
+                null,
+                null);
+        when(classifier.classify(context)).thenReturn(proposal);
+
+        ConversationRoutingService.RoutingResult result = router.route(context);
+
+        assertEquals(proposal, result.decision());
+        assertEquals("MODEL_PROPOSAL", result.strategy());
+        assertEquals(0.40, result.decision().confidence());
+    }
+
     private static ConversationContext context(
             String latest,
             List<String> recentMessages,

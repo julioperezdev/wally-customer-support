@@ -428,6 +428,17 @@ son un catálogo cerrado; no son SQL ni nombres libres de herramientas. El
 orquestador valida la decisión y delega en el caso de uso correspondiente; no
 ejecuta acciones derivadas directamente de texto libre.
 
+La coordinación se mantiene deliberadamente pequeña: `CatalogConversationUseCase`
+es dueño de la búsqueda estructurada, el especialista de catálogo, el fallback
+determinístico y la presentación de hechos/imágenes; `ConversationSupportUseCase`
+es dueño de Knowledge Base, políticas y horarios; `ConversationCartUseCase` y
+`ConversationPurchaseUseCase` son dueños de carrito, checkout, stock e
+idempotencia; y `ConversationExecutionTelemetry` es dueño de eventos
+sanitizados, identidad, métricas y trazas de ejecución. `AgentExecutionBoundary`
+concentra activación, validación de definiciones y shadow fail-safe. Estos
+componentes no conocen los adapters de Telegram o WhatsApp: entregan un
+`ConversationRenderedResponse` y el límite de canal decide cómo enviarlo.
+
 Desde `WCS-50`, el contexto interno conserva el canal de entrada y el
 orquestador puede consultar el registry mediante `AgentActivationResolver`
 antes de ejecutar el plan. Esta frontera sólo agrega metadatos sanitizados de

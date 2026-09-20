@@ -1,0 +1,1259 @@
+{
+  "suite": "conversation-regression-v1",
+  "datasetVersion": "conversation-regression-v1",
+  "description": "Matriz sintética para validar routing, filtros, contexto y checkout sin PII ni credenciales.",
+  "scenarios": [
+    {
+      "id": "E-001",
+      "difficulty": "easy",
+      "category": "greeting",
+      "messages": [
+        "Hola"
+      ],
+      "expectedWorkflow": "GREETING",
+      "route": {
+        "intent": "GREETING",
+        "action": "GREETING",
+        "confidence": 0.98,
+        "quantity": 1,
+        "catalogQuery": null,
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "E-002",
+      "difficulty": "easy",
+      "category": "greeting",
+      "messages": [
+        "Buen día"
+      ],
+      "expectedWorkflow": "GREETING",
+      "route": {
+        "intent": "GREETING",
+        "action": "GREETING",
+        "confidence": 0.95,
+        "quantity": 1,
+        "catalogQuery": null,
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "E-003",
+      "difficulty": "easy",
+      "category": "catalog",
+      "messages": [
+        "¿Qué venden?"
+      ],
+      "expectedWorkflow": "CATALOG_SEARCH",
+      "route": {
+        "intent": "CATALOG_SEARCH",
+        "action": "CATALOG_SEARCH",
+        "confidence": 0.95,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": null,
+          "sku": null,
+          "size": null,
+          "color": null,
+          "productType": null,
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "E-004",
+      "difficulty": "easy",
+      "category": "catalog",
+      "messages": [
+        "Mostrame el catálogo"
+      ],
+      "expectedWorkflow": "CATALOG_SEARCH",
+      "route": {
+        "intent": "CATALOG_SEARCH",
+        "action": "CATALOG_SEARCH",
+        "confidence": 0.96,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": null,
+          "sku": null,
+          "size": null,
+          "color": null,
+          "productType": null,
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "E-005",
+      "difficulty": "easy",
+      "category": "catalog",
+      "messages": [
+        "Quiero una remera negra talle M"
+      ],
+      "expectedWorkflow": "CATALOG_SEARCH",
+      "route": {
+        "intent": "CATALOG_SEARCH",
+        "action": "CATALOG_SEARCH",
+        "confidence": 0.98,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": null,
+          "sku": null,
+          "size": "M",
+          "color": "negro",
+          "productType": "remera",
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "E-006",
+      "difficulty": "easy",
+      "category": "catalog",
+      "messages": [
+        "¿Hay stock de RP-REM-NP-NEG-M?"
+      ],
+      "expectedWorkflow": "CATALOG_SEARCH",
+      "route": {
+        "intent": "CATALOG_SEARCH",
+        "action": "CATALOG_SEARCH",
+        "confidence": 0.98,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": null,
+          "sku": "rp-rem-np-neg-m",
+          "size": null,
+          "color": null,
+          "productType": null,
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "E-007",
+      "difficulty": "easy",
+      "category": "policy",
+      "messages": [
+        "¿Cómo funcionan los envíos?"
+      ],
+      "expectedWorkflow": "POLICY_QUERY",
+      "route": {
+        "intent": "POLICY_QUERY",
+        "action": "POLICY_QUERY",
+        "confidence": 0.95,
+        "quantity": 1,
+        "catalogQuery": null,
+        "policyKey": "shipping",
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "E-008",
+      "difficulty": "easy",
+      "category": "business_hours",
+      "messages": [
+        "¿A qué hora abren el sábado?"
+      ],
+      "expectedWorkflow": "BUSINESS_HOURS",
+      "route": {
+        "intent": "BUSINESS_HOURS",
+        "action": "BUSINESS_HOURS",
+        "confidence": 0.96,
+        "quantity": 1,
+        "catalogQuery": null,
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "E-009",
+      "difficulty": "easy",
+      "category": "general_support",
+      "messages": [
+        "¿Dónde están ubicados?"
+      ],
+      "expectedWorkflow": "GENERAL_SUPPORT",
+      "route": {
+        "intent": "GENERAL_SUPPORT",
+        "action": "GENERAL_SUPPORT",
+        "confidence": 0.86,
+        "quantity": 1,
+        "catalogQuery": null,
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "E-010",
+      "difficulty": "easy",
+      "category": "human_handoff",
+      "messages": [
+        "Necesito hablar con una persona"
+      ],
+      "expectedWorkflow": "HUMAN_HANDOFF",
+      "route": {
+        "intent": "HUMAN_HANDOFF",
+        "action": "HUMAN_HANDOFF",
+        "confidence": 0.97,
+        "quantity": 1,
+        "catalogQuery": null,
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "E-011",
+      "difficulty": "easy",
+      "category": "purchase",
+      "messages": [
+        "Quiero comprar la remera NullPointer negra talle M"
+      ],
+      "expectedWorkflow": "PURCHASE_LINK",
+      "route": {
+        "intent": "PURCHASE_LINK",
+        "action": "PURCHASE_LINK",
+        "confidence": 0.98,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": "nullpointer",
+          "sku": null,
+          "size": "M",
+          "color": "negro",
+          "productType": "remera",
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "E-012",
+      "difficulty": "easy",
+      "category": "cart",
+      "messages": [
+        "Agregá una remera NullPointer negra talle M al carrito"
+      ],
+      "expectedWorkflow": "ADD_TO_CART",
+      "route": {
+        "intent": "CATALOG_SEARCH",
+        "action": "ADD_TO_CART",
+        "confidence": 0.97,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": "nullpointer",
+          "sku": null,
+          "size": "M",
+          "color": "negro",
+          "productType": "remera",
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "E-013",
+      "difficulty": "easy",
+      "category": "cart",
+      "messages": [
+        "¿Qué hay en mi carrito?"
+      ],
+      "expectedWorkflow": "VIEW_CART",
+      "route": {
+        "intent": "CATALOG_SEARCH",
+        "action": "VIEW_CART",
+        "confidence": 0.98,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": null,
+          "sku": null,
+          "size": null,
+          "color": null,
+          "productType": null,
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "E-014",
+      "difficulty": "easy",
+      "category": "cart",
+      "messages": [
+        "Sacá una remera del carrito"
+      ],
+      "expectedWorkflow": "REMOVE_FROM_CART",
+      "route": {
+        "intent": "CATALOG_SEARCH",
+        "action": "REMOVE_FROM_CART",
+        "confidence": 0.93,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": "remera",
+          "sku": null,
+          "size": null,
+          "color": null,
+          "productType": "remera",
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "E-015",
+      "difficulty": "easy",
+      "category": "cart",
+      "messages": [
+        "Vacía mi carrito"
+      ],
+      "expectedWorkflow": "CLEAR_CART",
+      "route": {
+        "intent": "CATALOG_SEARCH",
+        "action": "CLEAR_CART",
+        "confidence": 0.98,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": null,
+          "sku": null,
+          "size": null,
+          "color": null,
+          "productType": null,
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "E-016",
+      "difficulty": "easy",
+      "category": "checkout",
+      "messages": [
+        "Confirmar compra"
+      ],
+      "expectedWorkflow": "CONFIRM_CHECKOUT",
+      "route": {
+        "intent": "PURCHASE_LINK",
+        "action": "CONFIRM_CHECKOUT",
+        "confidence": 0.95,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": null,
+          "sku": null,
+          "size": null,
+          "color": null,
+          "productType": null,
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "E-017",
+      "difficulty": "easy",
+      "category": "catalog_negative",
+      "messages": [
+        "¿Venden zapatillas?"
+      ],
+      "expectedWorkflow": "CATALOG_SEARCH",
+      "route": {
+        "intent": "CATALOG_SEARCH",
+        "action": "CATALOG_SEARCH",
+        "confidence": 0.94,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": "zapatillas",
+          "sku": null,
+          "size": null,
+          "color": null,
+          "productType": "zapatillas",
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "M-001",
+      "difficulty": "medium",
+      "category": "catalog",
+      "messages": [
+        "Quiero algo para el frío"
+      ],
+      "expectedWorkflow": "CATALOG_SEARCH",
+      "route": {
+        "intent": "CATALOG_SEARCH",
+        "action": "CATALOG_SEARCH",
+        "confidence": 0.86,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": null,
+          "sku": null,
+          "size": null,
+          "color": null,
+          "productType": null,
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "M-002",
+      "difficulty": "medium",
+      "category": "catalog",
+      "messages": [
+        "¿Qué buzos tienen?"
+      ],
+      "expectedWorkflow": "CATALOG_SEARCH",
+      "route": {
+        "intent": "CATALOG_SEARCH",
+        "action": "CATALOG_SEARCH",
+        "confidence": 0.97,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": null,
+          "sku": null,
+          "size": null,
+          "color": null,
+          "productType": "buzo",
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "M-003",
+      "difficulty": "medium",
+      "category": "catalog",
+      "messages": [
+        "Busco una remera oscura en mediano"
+      ],
+      "expectedWorkflow": "CATALOG_SEARCH",
+      "route": {
+        "intent": "CATALOG_SEARCH",
+        "action": "CATALOG_SEARCH",
+        "confidence": 0.91,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": null,
+          "sku": null,
+          "size": "M",
+          "color": "negro",
+          "productType": "remera",
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "M-004",
+      "difficulty": "medium",
+      "category": "catalog",
+      "messages": [
+        "¿Tenés el buzo Spring Boot negro?"
+      ],
+      "expectedWorkflow": "CATALOG_SEARCH",
+      "route": {
+        "intent": "CATALOG_SEARCH",
+        "action": "CATALOG_SEARCH",
+        "confidence": 0.96,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": "spring boot",
+          "sku": null,
+          "size": null,
+          "color": "negro",
+          "productType": "buzo",
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "M-005",
+      "difficulty": "medium",
+      "category": "normalization",
+      "messages": [
+        "tenes la remera nullpinter en negro?"
+      ],
+      "expectedWorkflow": "CATALOG_SEARCH",
+      "route": {
+        "intent": "CATALOG_SEARCH",
+        "action": "CATALOG_SEARCH",
+        "confidence": 0.88,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": "nullpointer",
+          "sku": null,
+          "size": null,
+          "color": "negro",
+          "productType": "remera",
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "M-006",
+      "difficulty": "medium",
+      "category": "catalog",
+      "messages": [
+        "Quiero una remera negra de menos de 20.000 pesos"
+      ],
+      "expectedWorkflow": "CATALOG_SEARCH",
+      "route": {
+        "intent": "CATALOG_SEARCH",
+        "action": "CATALOG_SEARCH",
+        "confidence": 0.98,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": null,
+          "sku": null,
+          "size": null,
+          "color": "negro",
+          "productType": "remera",
+          "minPrice": null,
+          "maxPrice": 20000
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "M-007",
+      "difficulty": "medium",
+      "category": "catalog",
+      "messages": [
+        "¿Está disponible la NullPointer negra M?"
+      ],
+      "expectedWorkflow": "CATALOG_SEARCH",
+      "route": {
+        "intent": "CATALOG_SEARCH",
+        "action": "CATALOG_SEARCH",
+        "confidence": 0.96,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": "nullpointer",
+          "sku": null,
+          "size": "M",
+          "color": "negro",
+          "productType": "remera",
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "M-008",
+      "difficulty": "medium",
+      "category": "catalog",
+      "messages": [
+        "¿Cuánto cuesta el buzo Spring Boot?"
+      ],
+      "expectedWorkflow": "CATALOG_SEARCH",
+      "route": {
+        "intent": "CATALOG_SEARCH",
+        "action": "CATALOG_SEARCH",
+        "confidence": 0.95,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": "spring boot",
+          "sku": null,
+          "size": null,
+          "color": null,
+          "productType": "buzo",
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "M-009",
+      "difficulty": "medium",
+      "category": "catalog",
+      "messages": [
+        "¿Qué talle es la variante RP-REM-NP-NEG-M?"
+      ],
+      "expectedWorkflow": "CATALOG_SEARCH",
+      "route": {
+        "intent": "CATALOG_SEARCH",
+        "action": "CATALOG_SEARCH",
+        "confidence": 0.98,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": null,
+          "sku": "rp-rem-np-neg-m",
+          "size": null,
+          "color": null,
+          "productType": null,
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "M-010",
+      "difficulty": "medium",
+      "category": "cart",
+      "messages": [
+        "Agregame dos remeras NullPointer negras talle M"
+      ],
+      "expectedWorkflow": "ADD_TO_CART",
+      "route": {
+        "intent": "CATALOG_SEARCH",
+        "action": "ADD_TO_CART",
+        "confidence": 0.97,
+        "quantity": 2,
+        "catalogQuery": {
+          "name": "nullpointer",
+          "sku": null,
+          "size": "M",
+          "color": "negro",
+          "productType": "remera",
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "M-011",
+      "difficulty": "medium",
+      "category": "cart",
+      "messages": [
+        "Sacá una remera NullPointer del carrito"
+      ],
+      "expectedWorkflow": "REMOVE_FROM_CART",
+      "route": {
+        "intent": "CATALOG_SEARCH",
+        "action": "REMOVE_FROM_CART",
+        "confidence": 0.96,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": "nullpointer",
+          "sku": null,
+          "size": null,
+          "color": null,
+          "productType": "remera",
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "M-012",
+      "difficulty": "medium",
+      "category": "checkout",
+      "messages": [
+        "Quiero pagar"
+      ],
+      "expectedWorkflow": "REVIEW_CHECKOUT",
+      "route": {
+        "intent": "PURCHASE_LINK",
+        "action": "REVIEW_CHECKOUT",
+        "confidence": 0.91,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": null,
+          "sku": null,
+          "size": null,
+          "color": null,
+          "productType": null,
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": [
+          "confirmation"
+        ]
+      }
+    },
+    {
+      "id": "M-013",
+      "difficulty": "medium",
+      "category": "checkout",
+      "messages": [
+        "Pasame el link de pago"
+      ],
+      "expectedWorkflow": "REVIEW_CHECKOUT",
+      "route": {
+        "intent": "PURCHASE_LINK",
+        "action": "REVIEW_CHECKOUT",
+        "confidence": 0.92,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": null,
+          "sku": null,
+          "size": null,
+          "color": null,
+          "productType": null,
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": [
+          "confirmation"
+        ]
+      }
+    },
+    {
+      "id": "M-014",
+      "difficulty": "medium",
+      "category": "checkout",
+      "messages": [
+        "No quiero comprar todavía"
+      ],
+      "expectedWorkflow": "CANCEL_CHECKOUT",
+      "route": {
+        "intent": "PURCHASE_LINK",
+        "action": "CANCEL_CHECKOUT",
+        "confidence": 0.96,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": null,
+          "sku": null,
+          "size": null,
+          "color": null,
+          "productType": null,
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "M-015",
+      "difficulty": "medium",
+      "category": "policy",
+      "messages": [
+        "¿Aceptan cambios?"
+      ],
+      "expectedWorkflow": "POLICY_QUERY",
+      "route": {
+        "intent": "POLICY_QUERY",
+        "action": "POLICY_QUERY",
+        "confidence": 0.94,
+        "quantity": 1,
+        "catalogQuery": null,
+        "policyKey": "changes",
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "M-016",
+      "difficulty": "medium",
+      "category": "catalog_negative",
+      "messages": [
+        "¿Venden gorras?"
+      ],
+      "expectedWorkflow": "CATALOG_SEARCH",
+      "route": {
+        "intent": "CATALOG_SEARCH",
+        "action": "CATALOG_SEARCH",
+        "confidence": 0.93,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": "gorras",
+          "sku": null,
+          "size": null,
+          "color": null,
+          "productType": "gorras",
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "M-017",
+      "difficulty": "medium",
+      "category": "opt_out",
+      "messages": [
+        "BAJA"
+      ],
+      "expectedWorkflow": "OPT_OUT",
+      "route": null
+    },
+    {
+      "id": "H-001",
+      "difficulty": "hard",
+      "category": "context_refinement",
+      "messages": [
+        "Quiero un buzo",
+        "Que sea negro",
+        "¿Hay talle XL?"
+      ],
+      "expectedWorkflow": "CATALOG_SEARCH",
+      "route": {
+        "intent": "CATALOG_SEARCH",
+        "action": "CATALOG_SEARCH",
+        "confidence": 0.94,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": null,
+          "sku": null,
+          "size": "XL",
+          "color": "negro",
+          "productType": "buzo",
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "H-002",
+      "difficulty": "hard",
+      "category": "context_refinement",
+      "messages": [
+        "Busco una remera negra",
+        "La M"
+      ],
+      "expectedWorkflow": "CATALOG_SEARCH",
+      "route": {
+        "intent": "CATALOG_SEARCH",
+        "action": "CATALOG_SEARCH",
+        "confidence": 0.94,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": null,
+          "sku": null,
+          "size": "M",
+          "color": "negro",
+          "productType": "remera",
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "H-003",
+      "difficulty": "hard",
+      "category": "context_refinement",
+      "messages": [
+        "Mostrame los buzos",
+        "De lo anterior, el negro"
+      ],
+      "expectedWorkflow": "CATALOG_SEARCH",
+      "route": {
+        "intent": "CATALOG_SEARCH",
+        "action": "CATALOG_SEARCH",
+        "confidence": 0.91,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": null,
+          "sku": null,
+          "size": null,
+          "color": "negro",
+          "productType": "buzo",
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "H-004",
+      "difficulty": "hard",
+      "category": "context_refinement",
+      "messages": [
+        "Busco la remera NullPointer negra talle M",
+        "¿Está disponible?"
+      ],
+      "expectedWorkflow": "CATALOG_SEARCH",
+      "route": {
+        "intent": "CATALOG_SEARCH",
+        "action": "CATALOG_SEARCH",
+        "confidence": 0.96,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": "nullpointer",
+          "sku": null,
+          "size": "M",
+          "color": "negro",
+          "productType": "remera",
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "H-005",
+      "difficulty": "hard",
+      "category": "context_refinement",
+      "messages": [
+        "Quiero algo para el frío",
+        "Algo como lo de antes pero más barato"
+      ],
+      "expectedWorkflow": "CATALOG_SEARCH",
+      "route": {
+        "intent": "CATALOG_SEARCH",
+        "action": "CATALOG_SEARCH",
+        "confidence": 0.82,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": null,
+          "sku": null,
+          "size": null,
+          "color": null,
+          "productType": null,
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "H-006",
+      "difficulty": "hard",
+      "category": "cart_context",
+      "messages": [
+        "Busco un buzo Spring Boot",
+        "Sumame dos de esos, el negro talle XL"
+      ],
+      "expectedWorkflow": "ADD_TO_CART",
+      "route": {
+        "intent": "CATALOG_SEARCH",
+        "action": "ADD_TO_CART",
+        "confidence": 0.95,
+        "quantity": 2,
+        "catalogQuery": {
+          "name": "spring boot",
+          "sku": null,
+          "size": "XL",
+          "color": "negro",
+          "productType": "buzo",
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "H-007",
+      "difficulty": "hard",
+      "category": "cart_context",
+      "messages": [
+        "Agregá dos remeras NullPointer negras M",
+        "Saca una de esas"
+      ],
+      "expectedWorkflow": "REMOVE_FROM_CART",
+      "route": {
+        "intent": "CATALOG_SEARCH",
+        "action": "REMOVE_FROM_CART",
+        "confidence": 0.92,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": "nullpointer",
+          "sku": null,
+          "size": "M",
+          "color": "negro",
+          "productType": "remera",
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "H-008",
+      "difficulty": "hard",
+      "category": "checkout_context",
+      "messages": [
+        "Agregá una remera NullPointer negra M",
+        "También un buzo Spring Boot negro XL",
+        "Confirmar compra"
+      ],
+      "expectedWorkflow": "CONFIRM_CHECKOUT",
+      "route": {
+        "intent": "PURCHASE_LINK",
+        "action": "CONFIRM_CHECKOUT",
+        "confidence": 0.96,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": null,
+          "sku": null,
+          "size": null,
+          "color": null,
+          "productType": null,
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "H-009",
+      "difficulty": "hard",
+      "category": "checkout_context",
+      "messages": [
+        "Prepará el pago de la remera negra M",
+        "Mejor no, después"
+      ],
+      "expectedWorkflow": "CANCEL_CHECKOUT",
+      "route": {
+        "intent": "PURCHASE_LINK",
+        "action": "CANCEL_CHECKOUT",
+        "confidence": 0.94,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": null,
+          "sku": null,
+          "size": null,
+          "color": null,
+          "productType": null,
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "H-010",
+      "difficulty": "hard",
+      "category": "catalog_filter",
+      "messages": [
+        "Quiero algo lindo para el frío, negro y que no pase de 45 lucas"
+      ],
+      "expectedWorkflow": "CATALOG_SEARCH",
+      "route": {
+        "intent": "CATALOG_SEARCH",
+        "action": "CATALOG_SEARCH",
+        "confidence": 0.86,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": null,
+          "sku": null,
+          "size": null,
+          "color": "negro",
+          "productType": null,
+          "minPrice": null,
+          "maxPrice": 45000
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "H-011",
+      "difficulty": "hard",
+      "category": "normalization",
+      "messages": [
+        "mandame la negra en m, la de null pointer"
+      ],
+      "expectedWorkflow": "CATALOG_SEARCH",
+      "route": {
+        "intent": "CATALOG_SEARCH",
+        "action": "CATALOG_SEARCH",
+        "confidence": 0.88,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": "nullpointer",
+          "sku": null,
+          "size": "M",
+          "color": "negro",
+          "productType": "remera",
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "H-012",
+      "difficulty": "hard",
+      "category": "normalization",
+      "messages": [
+        "q vendes?",
+        "tenes buzo?"
+      ],
+      "expectedWorkflow": "CATALOG_SEARCH",
+      "route": {
+        "intent": "CATALOG_SEARCH",
+        "action": "CATALOG_SEARCH",
+        "confidence": 0.84,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": null,
+          "sku": null,
+          "size": null,
+          "color": null,
+          "productType": "buzo",
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "H-013",
+      "difficulty": "hard",
+      "category": "ambiguity",
+      "messages": [
+        "Quiero comprar"
+      ],
+      "expectedWorkflow": "REVIEW_CHECKOUT",
+      "route": {
+        "intent": "PURCHASE_LINK",
+        "action": "REVIEW_CHECKOUT",
+        "confidence": 0.78,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": null,
+          "sku": null,
+          "size": null,
+          "color": null,
+          "productType": null,
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": [
+          "product",
+          "confirmation"
+        ]
+      }
+    },
+    {
+      "id": "H-014",
+      "difficulty": "hard",
+      "category": "ambiguity",
+      "messages": [
+        "Quiero pagar esa"
+      ],
+      "expectedWorkflow": "REVIEW_CHECKOUT",
+      "route": {
+        "intent": "PURCHASE_LINK",
+        "action": "REVIEW_CHECKOUT",
+        "confidence": 0.74,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": null,
+          "sku": null,
+          "size": null,
+          "color": null,
+          "productType": null,
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": [
+          "product",
+          "confirmation"
+        ]
+      }
+    },
+    {
+      "id": "H-015",
+      "difficulty": "hard",
+      "category": "catalog_negative",
+      "messages": [
+        "Busco zapatillas negras talle 42"
+      ],
+      "expectedWorkflow": "CATALOG_SEARCH",
+      "route": {
+        "intent": "CATALOG_SEARCH",
+        "action": "CATALOG_SEARCH",
+        "confidence": 0.91,
+        "quantity": 1,
+        "catalogQuery": {
+          "name": null,
+          "sku": null,
+          "size": "42",
+          "color": "negro",
+          "productType": "zapatillas",
+          "minPrice": null,
+          "maxPrice": null
+        },
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "H-016",
+      "difficulty": "hard",
+      "category": "unknown",
+      "messages": [
+        "asdf qwerty no sé qué"
+      ],
+      "expectedWorkflow": "UNKNOWN",
+      "route": {
+        "intent": "UNKNOWN",
+        "action": "UNKNOWN",
+        "confidence": 0.05,
+        "quantity": 1,
+        "catalogQuery": null,
+        "policyKey": null,
+        "missingParameters": []
+      }
+    },
+    {
+      "id": "H-017",
+      "difficulty": "hard",
+      "category": "opt_out",
+      "messages": [
+        "No me escribas más"
+      ],
+      "expectedWorkflow": "OPT_OUT",
+      "route": null
+    }
+  ]
+}
