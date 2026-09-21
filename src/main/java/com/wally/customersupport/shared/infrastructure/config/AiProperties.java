@@ -15,7 +15,8 @@ public record AiProperties(
         BigDecimal inputPriceUsdPerMillionTokens,
         BigDecimal outputPriceUsdPerMillionTokens,
         Duration requestTimeout,
-        StructuredToolCalling structuredToolCalling) {
+        StructuredToolCalling structuredToolCalling,
+        Router router) {
 
     @ConstructorBinding
     public AiProperties {
@@ -36,7 +37,8 @@ public record AiProperties(
                 inputPriceUsdPerMillionTokens,
                 outputPriceUsdPerMillionTokens,
                 Duration.ofSeconds(30),
-                new StructuredToolCalling(false));
+                new StructuredToolCalling(false),
+                new Router(null, null, null, null, null));
     }
 
     public AiProperties(
@@ -55,7 +57,8 @@ public record AiProperties(
                 inputPriceUsdPerMillionTokens,
                 outputPriceUsdPerMillionTokens,
                 requestTimeout,
-                new StructuredToolCalling(false));
+                new StructuredToolCalling(false),
+                new Router(null, null, null, null, null));
     }
 
     public AiProperties(
@@ -75,7 +78,30 @@ public record AiProperties(
                 inputPriceUsdPerMillionTokens,
                 outputPriceUsdPerMillionTokens,
                 requestTimeout,
-                new StructuredToolCalling(structuredToolCallingEnabled));
+                new StructuredToolCalling(structuredToolCallingEnabled),
+                new Router(null, null, null, null, null));
+    }
+
+    public AiProperties(
+            String provider,
+            String model,
+            String region,
+            String pricingVersion,
+            BigDecimal inputPriceUsdPerMillionTokens,
+            BigDecimal outputPriceUsdPerMillionTokens,
+            Duration requestTimeout,
+            boolean structuredToolCallingEnabled,
+            Router router) {
+        this(
+                provider,
+                model,
+                region,
+                pricingVersion,
+                inputPriceUsdPerMillionTokens,
+                outputPriceUsdPerMillionTokens,
+                requestTimeout,
+                new StructuredToolCalling(structuredToolCallingEnabled),
+                router);
     }
 
     public boolean structuredToolCallingEnabled() {
@@ -85,8 +111,54 @@ public record AiProperties(
     public record StructuredToolCalling(boolean enabled) {
     }
 
+    /**
+     * Model selection for the semantic conversation router. It is deliberately
+     * separate from the default model so changing routing does not silently
+     * change response generation or any other Bedrock call.
+     */
+    public record Router(
+            String model,
+            String version,
+            String pricingVersion,
+            BigDecimal inputPriceUsdPerMillionTokens,
+            BigDecimal outputPriceUsdPerMillionTokens) {
+    }
+
+    public record ModelSettings(
+            String modelId,
+            String version,
+            String pricingVersion,
+            BigDecimal inputPriceUsdPerMillionTokens,
+            BigDecimal outputPriceUsdPerMillionTokens,
+            String agentId,
+            String agentVersion) {
+    }
+
     public String effectiveModel() {
         return model == null || model.isBlank() ? "openai.gpt-oss-20b-1:0" : model;
+    }
+
+    public ModelSettings effectiveDefaultModelSettings() {
+        return new ModelSettings(
+                effectiveModel(),
+                null,
+                effectivePricingVersion(),
+                effectiveInputPriceUsdPerMillionTokens(),
+                effectiveOutputPriceUsdPerMillionTokens(),
+                null,
+                null);
+    }
+
+    public ModelSettings effectiveRouterModelSettings() {
+        Router configured = router == null ? new Router(null, null, null, null, null) : router;
+        return new ModelSettings(
+                nonBlank(configured.model(), effectiveModel()),
+                nonBlank(configured.version(), "conversation-router-v1"),
+                nonBlank(configured.pricingVersion(), effectivePricingVersion()),
+                nonNegative(configured.inputPriceUsdPerMillionTokens(), effectiveInputPriceUsdPerMillionTokens()),
+                nonNegative(configured.outputPriceUsdPerMillionTokens(), effectiveOutputPriceUsdPerMillionTokens()),
+                "conversation-router",
+                nonBlank(configured.version(), "conversation-router-v1"));
     }
 
     public String effectiveRegion() {
@@ -120,5 +192,13 @@ public record AiProperties(
 
     private static BigDecimal nonNegative(BigDecimal value) {
         return value == null || value.signum() < 0 ? BigDecimal.ZERO : value;
+    }
+
+    private static BigDecimal nonNegative(BigDecimal value, BigDecimal fallback) {
+        return value == null || value.signum() < 0 ? fallback : value;
+    }
+
+    private static String nonBlank(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value.trim();
     }
 }

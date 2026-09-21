@@ -199,8 +199,34 @@ sensible. El modelo no puede generar SQL, seleccionar un repositorio
 arbitrario ni ejecutar herramientas por su cuenta.
 
 El prompt de routing está versionado como `conversation-intent-v4` y el
-texto del cliente se envía como datos delimitados y acotados. El modelo real es
-`openai.gpt-oss-20b-1:0`, seleccionado por `wcs.ai.model`.
+texto del cliente se envía como datos delimitados y acotados. La generación de
+respuestas conserva el modelo general seleccionado por `wcs.ai.model`. En esta
+prueba el router semántico usa por defecto la candidata
+`conversation-router-v2` con `us.openai.gpt-5.6-luna`; sus valores están en el
+`application.properties` versionado y no se agregan claves específicas del
+router a AppConfig.
+
+GPT-5.6 Luna está pensado para clasificación, routing y tareas de alta
+frecuencia. En `bedrock-runtime` el identificador `us.openai.gpt-5.6-luna` es
+un perfil de inferencia cross-Region para Estados Unidos; no se debe cambiar a
+`openai.gpt-5.6-luna` mientras el adapter use AWS SDK Converse. El precio
+configurado para el contexto corto es USD 0.22 por millón de tokens de entrada
+y USD 1.32 por millón de tokens de salida. Se mantienen separados en la
+configuración interna del router para que el costo de routing no se mezcle con
+el de generación de respuestas.
+
+El cambio es reversible mediante una nueva versión de código o, cuando el
+router se integre al Agent Registry, mediante una activación hacia otra
+versión del agente. Los eventos `AI_USAGE_RECORDED` incluyen `agentId`,
+`agentVersion`, `model`, `pricingVersion`, tokens, costo y latencia para
+comparar las versiones sin registrar prompts ni conversaciones.
+
+La implementación usa client-side tool use cuando está habilitado. El backend
+continúa validando el resultado y ejecutando únicamente la operación
+allow-listed; Luna no obtiene autoridad para ejecutar SQL, pagar o modificar
+el carrito. Bedrock documenta Converse y client-side tool use para este modelo,
+pero no structured outputs ni server-side tool use en `bedrock-runtime`, por
+eso el contrato JSON/tool de WCS sigue siendo validado en la aplicación.
 GPT-OSS puede emitir un bloque de razonamiento antes del resultado final; por
 eso el routing y la redacción usan un presupuesto de salida de `1024`
 tokens. `maxTokens` incluye razonamiento y respuesta, y el adapter sólo extrae
@@ -256,6 +282,22 @@ consulta estructurada de catálogo si Bedrock la clasifica erróneamente como
 compra. Una solicitud explícita de comprar, pagar, confirmar o pedir un link
 conserva la ruta operacional y sus validaciones de stock, ownership,
 idempotencia y pago.
+
+### Perfil de configuración del router
+
+```properties
+wcs.ai.model=openai.gpt-oss-20b-1:0
+wcs.ai.router.model=us.openai.gpt-5.6-luna
+wcs.ai.router.version=conversation-router-v2
+wcs.ai.router.pricing-version=aws-bedrock-us-east-1-standard-2026-09-gpt-5.6-luna
+wcs.ai.router.input-price-usd-per-million-tokens=0.22
+wcs.ai.router.output-price-usd-per-million-tokens=1.32
+```
+
+`wcs.ai.model` y sus precios siguen siendo la configuración de la respuesta
+generada y de los agentes que todavía no tienen un perfil dedicado. No se debe
+reemplazar globalmente ese valor para probar el router: eso impediría separar
+la mejora de interpretación del resto del flujo.
 
 ## Datos dinámicos y tools
 

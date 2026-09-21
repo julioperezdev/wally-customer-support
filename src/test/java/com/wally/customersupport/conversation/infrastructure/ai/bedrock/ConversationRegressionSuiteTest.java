@@ -83,7 +83,7 @@ class ConversationRegressionSuiteTest {
     void structuredRouteContractParsesEveryRegressionScenario(String id, JsonNode scenario) throws Exception {
         JsonNode route = scenario.path("route");
         BedrockConverseClient converseClient = mock(BedrockConverseClient.class);
-        when(converseClient.complete(
+        when(converseClient.completeForRouter(
                 anyString(), anyString(), anyString(), anyString(), anyInt(), anyFloat(), anyString(), anyString()))
                 .thenReturn(MAPPER.writeValueAsString(route));
 

@@ -95,7 +95,7 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
                 String structuredSystemPrompt = structuredToolUsePrompt();
                 String structuredPromptHash = sha256(structuredSystemPrompt);
                 BedrockConverseClient.ToolUseCompletion completion = correlationId == null
-                        ? converseClient.completeWithToolUse(
+                        ? converseClient.completeWithToolUseForRouter(
                                 "intent-classification",
                                 "conversation.intent.classify",
                                 structuredSystemPrompt,
@@ -105,7 +105,7 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
                                 prompt.version(),
                                 structuredPromptHash,
                                 ConversationRouteToolContract.DESCRIPTOR)
-                        : converseClient.completeWithToolUse(
+                        : converseClient.completeWithToolUseForRouter(
                                 "intent-classification",
                                 "conversation.intent.classify",
                                 structuredSystemPrompt,
@@ -119,7 +119,7 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
                 output = completion.inputJson();
             } else {
                 output = correlationId == null
-                        ? converseClient.complete(
+                        ? converseClient.completeForRouter(
                                 "intent-classification",
                                 "conversation.intent.classify",
                                 prompt.content(),
@@ -128,7 +128,7 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
                                 promptProperties.effectiveIntentTemperature(),
                                 prompt.version(),
                                 prompt.sha256())
-                        : converseClient.complete(
+                        : converseClient.completeForRouter(
                                 "intent-classification",
                                 "conversation.intent.classify",
                                 prompt.content(),

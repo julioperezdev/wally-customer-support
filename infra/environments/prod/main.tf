@@ -319,11 +319,16 @@ module "backend_apprunner" {
   vpc_connector_arn             = var.backend_vpc_connector_arn
   enable_bedrock_access         = var.enable_bedrock_access
   enable_appconfig_management   = var.enable_appconfig_management
-  bedrock_model_arns            = var.bedrock_model_arns
-  bedrock_prompt_arns           = var.bedrock_prompt_arns
-  bedrock_knowledge_base_arns   = var.enable_bedrock_access ? [module.wcs_knowledge_base.knowledge_base_arn] : []
-  media_object_arn              = module.backoffice_media.object_arn
-  tags                          = local.common_tags
+  bedrock_model_arns = setunion(
+    var.bedrock_model_arns,
+    var.enable_bedrock_access ? toset([
+      "arn:${data.aws_partition.current.partition}:bedrock:${var.aws_region}:${data.aws_caller_identity.current.account_id}:project/default"
+    ]) : toset([])
+  )
+  bedrock_prompt_arns         = var.bedrock_prompt_arns
+  bedrock_knowledge_base_arns = var.enable_bedrock_access ? [module.wcs_knowledge_base.knowledge_base_arn] : []
+  media_object_arn            = module.backoffice_media.object_arn
+  tags                        = local.common_tags
 }
 
 module "github_backend_deploy" {
