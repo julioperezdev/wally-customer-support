@@ -218,8 +218,9 @@ Implementación local ampliada para WCS-136:
 - los comandos de carrito admiten adiciones implícitas como “también quiero
   un buzo” únicamente después de establecer el contexto del carrito. Las
   búsquedas sin coincidencia pueden devolver alternativas reales tras relajar
-  un filtro explícito, y los atributos aún no modelados generan una aclaración
-  útil en lugar de una respuesta genérica;
+  un filtro explícito conservando primero la categoría solicitada, y los
+  atributos aún no modelados generan una aclaración útil en lugar de una
+  respuesta genérica;
 - no se modificaron migraciones, contratos de PostgreSQL, Terraform, AppConfig
   ni adapters de infraestructura.
 

@@ -107,6 +107,14 @@ public class CatalogConversationService {
         if (!facts.isEmpty()) {
             return matched(query, facts, images(products));
         }
+        // Preserve the requested product type before offering alternatives
+        // from another category. For example, "buzo negro talle L" should
+        // first try the real black XL sweater before returning a black L
+        // t-shirt from a different category.
+        CatalogSearchResult relaxed = relaxedAlternative(query);
+        if (relaxed != null) {
+            return relaxed;
+        }
         if (query.productType() != null) {
             List<CatalogProduct> alternativeProducts = catalogQueryService.search(query.withoutProductType());
             List<CatalogFact> alternatives = facts(alternativeProducts);
@@ -119,10 +127,6 @@ public class CatalogConversationService {
                         "PRODUCT_TYPE_ALTERNATIVES",
                         images(alternativeProducts));
             }
-        }
-        CatalogSearchResult relaxed = relaxedAlternative(query);
-        if (relaxed != null) {
-            return relaxed;
         }
         return noMatch();
     }
