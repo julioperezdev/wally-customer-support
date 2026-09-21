@@ -49,6 +49,13 @@ de cleanup están documentados en
 `docs/decisions/041-legacy-cleanup-and-controlled-activation.md`. El estado
 remoto sigue pendiente de PR, AppConfig, despliegue y smoke post-deploy.
 
+WCS-136 continúa en `In Progress` con la implementación local de su siguiente
+corte: parser de conversación dividido, routing LLM separado de la
+reconciliación determinística, composición catálogo/política aislada y matriz
+de lenguaje natural. El alcance preserva los contratos de BD y la
+infraestructura; la evidencia requerida es la matriz de tests, `mvn verify` y
+el smoke posterior sólo después de integrar el PR.
+
 ## Mapeo de keys reales
 
 | Blueprint | Jira |

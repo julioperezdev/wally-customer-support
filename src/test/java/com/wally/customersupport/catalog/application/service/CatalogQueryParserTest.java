@@ -35,7 +35,7 @@ class CatalogQueryParserTest {
         CatalogQuery deterministic = CatalogQueryParser.parse("Quiero un buzo").orElseThrow();
         CatalogQuery modelProposal = new CatalogQuery("buzo", null, null, null, null);
 
-        CatalogQuery result = CatalogQueryParser.reconcile(deterministic, modelProposal);
+        CatalogQuery result = CatalogQueryReconciler.reconcile(deterministic, modelProposal);
 
         assertNull(result.name());
         assertEquals("buzo", result.productType());
@@ -47,7 +47,7 @@ class CatalogQueryParserTest {
                 "Busco una remera negra talle M que cueste menos de 20000").orElseThrow();
         CatalogQuery modelProposal = new CatalogQuery("nullpointer", null, "L", "blanco", null);
 
-        CatalogQuery result = CatalogQueryParser.reconcile(deterministic, modelProposal);
+        CatalogQuery result = CatalogQueryReconciler.reconcile(deterministic, modelProposal);
 
         assertEquals("nullpointer", result.name());
         assertEquals("remera", result.productType());

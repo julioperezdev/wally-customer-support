@@ -3,9 +3,8 @@ package com.wally.customersupport.conversation.application.service;
 import java.util.Map;
 import java.util.Optional;
 
+import com.wally.customersupport.agent.application.service.AgentExecutionBoundary;
 import com.wally.customersupport.agent.application.service.AgentRuntimeDefinitionResolution;
-import com.wally.customersupport.catalog.application.service.CatalogQueryParser;
-import com.wally.customersupport.catalog.domain.model.CatalogQuery;
 import com.wally.customersupport.cart.application.port.in.CartConversationHandler;
 import com.wally.customersupport.conversation.domain.model.ConversationContext;
 import com.wally.customersupport.conversation.domain.model.ConversationExecutionPlan;
@@ -28,11 +27,12 @@ public class ConversationOrchestrator {
     private static final String PURCHASE_DEFERRED = "Entendido, no hay problema. No genero ningún pedido. "
             + "Cuando quieras comprarla, avisame y te preparo el link de pago.";
     private final CatalogConversationUseCase catalogConversationUseCase;
+    private final CatalogPolicyCompositionUseCase catalogPolicyCompositionUseCase;
     private final ConversationSupportUseCase supportUseCase;
     private final ConversationCartUseCase cartUseCase;
     private final ConversationPurchaseUseCase purchaseUseCase;
     private final ConversationExecutionPlanFactory executionPlanFactory;
-    private final com.wally.customersupport.agent.application.service.AgentExecutionBoundary agentExecutionBoundary;
+    private final AgentExecutionBoundary agentExecutionBoundary;
     private final ConversationExecutionTelemetry telemetry;
     private final ConversationRoutingService conversationRoutingService;
 
@@ -40,14 +40,16 @@ public class ConversationOrchestrator {
     public ConversationOrchestrator(
             ConversationRoutingService conversationRoutingService,
             CatalogConversationUseCase catalogConversationUseCase,
+            CatalogPolicyCompositionUseCase catalogPolicyCompositionUseCase,
             ConversationSupportUseCase supportUseCase,
             ConversationCartUseCase cartUseCase,
             ConversationPurchaseUseCase purchaseUseCase,
             ConversationExecutionPlanFactory executionPlanFactory,
-            com.wally.customersupport.agent.application.service.AgentExecutionBoundary agentExecutionBoundary,
+            AgentExecutionBoundary agentExecutionBoundary,
             ConversationExecutionTelemetry telemetry) {
         this.conversationRoutingService = conversationRoutingService;
         this.catalogConversationUseCase = catalogConversationUseCase;
+        this.catalogPolicyCompositionUseCase = catalogPolicyCompositionUseCase;
         this.supportUseCase = supportUseCase;
         this.cartUseCase = cartUseCase;
         this.purchaseUseCase = purchaseUseCase;
@@ -133,8 +135,7 @@ public class ConversationOrchestrator {
             ConversationIntentDecision decision,
             long startedAt,
             ConversationRenderedResponse preparedResponse) {
-        com.wally.customersupport.agent.application.service.AgentExecutionBoundary.Resolution boundary =
-                agentExecutionBoundary.resolve(context, plan);
+        AgentExecutionBoundary.Resolution boundary = agentExecutionBoundary.resolve(context, plan);
         AgentRuntimeDefinitionResolution definition = boundary.definition();
         telemetry.logAgentRouted(context, plan, decision, boundary.activation(), definition);
         telemetry.logAgentExecutionStarted(context, plan, boundary.activation(), definition);
@@ -143,23 +144,22 @@ public class ConversationOrchestrator {
         try {
             ConversationRenderedResponse rendered = preparedResponse != null
                     ? preparedResponse
-                    : isCatalogShippingComposite(context, decision)
-                    ? executeCatalogShippingComposite(context, decision, definition)
-                    : switch (plan.action()) {
-                case DIRECT_RESPONSE -> ConversationRenderedResponse.text(GREETING);
-                case CART -> cartUseCase.execute(context);
-                case PURCHASE_DEFERRED -> ConversationRenderedResponse.text(PURCHASE_DEFERRED);
-                case CATALOG_SEARCH -> executeCatalogSearch(context, decision, definition);
-                case PURCHASE_LINK -> purchaseUseCase.createLink(context, decision);
-                case BUSINESS_HOURS -> ConversationRenderedResponse.text(supportUseCase.businessHours());
-                case POLICY_QUERY -> ConversationRenderedResponse.text(
-                        supportUseCase.policy(decision == null ? null : decision.policyKey()));
-                case HUMAN_HANDOFF -> ConversationRenderedResponse.text(HUMAN_HANDOFF);
-                case GENERAL_SUPPORT -> ConversationRenderedResponse.text(
-                        supportUseCase.generalSupport(context, definition));
-                case LOW_CONFIDENCE -> catalogConversationUseCase.lowConfidenceResponse();
-                case SAFE_FALLBACK -> ConversationRenderedResponse.text(SAFE_FALLBACK);
-            };
+                    : catalogPolicyCompositionUseCase.compose(context, decision, definition)
+                            .orElseGet(() -> switch (plan.action()) {
+                                case DIRECT_RESPONSE -> ConversationRenderedResponse.text(GREETING);
+                                case CART -> cartUseCase.execute(context);
+                                case PURCHASE_DEFERRED -> ConversationRenderedResponse.text(PURCHASE_DEFERRED);
+                                case CATALOG_SEARCH -> executeCatalogSearch(context, decision, definition);
+                                case PURCHASE_LINK -> purchaseUseCase.createLink(context, decision);
+                                case BUSINESS_HOURS -> ConversationRenderedResponse.text(supportUseCase.businessHours());
+                                case POLICY_QUERY -> ConversationRenderedResponse.text(
+                                        supportUseCase.policy(decision == null ? null : decision.policyKey()));
+                                case HUMAN_HANDOFF -> ConversationRenderedResponse.text(HUMAN_HANDOFF);
+                                case GENERAL_SUPPORT -> ConversationRenderedResponse.text(
+                                        supportUseCase.generalSupport(context, definition));
+                                case LOW_CONFIDENCE -> catalogConversationUseCase.lowConfidenceResponse();
+                                case SAFE_FALLBACK -> ConversationRenderedResponse.text(SAFE_FALLBACK);
+                            });
             String reply = rendered.text();
             result = SAFE_FALLBACK.equals(reply)
                     ? ConversationExecutionResult.fallback(
@@ -175,49 +175,6 @@ public class ConversationOrchestrator {
         agentExecutionBoundary.executeShadowSafely(
                 boundary, context, plan.useCase(), decision, result.response());
         return telemetry.complete(context, result, startedAt, definition);
-    }
-
-    private boolean isCatalogShippingComposite(
-            ConversationContext context,
-            ConversationIntentDecision decision) {
-        if (context == null
-                || CatalogQueryParser.isPurchaseRequest(context.latestMessage())
-                || !CatalogQueryParser.isShippingQuestion(context.latestMessage())) {
-            return false;
-        }
-        return resolveCatalogQuery(context, decision)
-                .map(query -> !query.isEmpty())
-                .orElse(false);
-    }
-
-    private ConversationRenderedResponse executeCatalogShippingComposite(
-            ConversationContext context,
-            ConversationIntentDecision decision,
-            AgentRuntimeDefinitionResolution definition) {
-        ConversationRenderedResponse catalogResponse = catalogConversationUseCase
-                .searchResponse(context, decision, definition)
-                .orElseGet(catalogConversationUseCase::lowConfidenceResponse);
-        String shippingReply = supportUseCase.policy("shipping");
-        StructuredEventLog.info(log, "INTENT_COMPOSED", Map.of(
-                "primaryIntent", decision.intent().name(),
-                "secondaryIntent", "POLICY_QUERY",
-                "components", "CATALOG_SEARCH+SHIPPING",
-                "result", "COMPOSED"));
-        return new ConversationRenderedResponse(
-                catalogResponse.text() + "\n\n" + shippingReply,
-                catalogResponse.mediaReference());
-    }
-
-    private java.util.Optional<CatalogQuery> resolveCatalogQuery(
-            ConversationContext context,
-            ConversationIntentDecision decision) {
-        if (decision != null && decision.catalogQuery() != null && !decision.catalogQuery().isEmpty()) {
-            return java.util.Optional.of(decision.catalogQuery());
-        }
-        return CatalogQueryParser.parseConversation(context.recentMessages(), context.latestMessage())
-                .filter(query -> !query.isEmpty())
-                .or(() -> CatalogQueryParser.parse(context.latestMessage())
-                        .filter(query -> !query.isEmpty()));
     }
 
     private ConversationRenderedResponse executeCatalogSearch(

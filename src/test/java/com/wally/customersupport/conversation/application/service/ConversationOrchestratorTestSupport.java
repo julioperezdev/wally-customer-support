@@ -149,8 +149,11 @@ final class ConversationOrchestratorTestSupport {
                 agentRuntimeProperties,
                 agentShadowRuntimeService);
         return new ConversationOrchestrator(
-                new ConversationRoutingService(intentClassifier),
+                new ConversationRoutingService(
+                        new ConversationIntentRouter(intentClassifier),
+                        new ConversationDecisionReconciler()),
                 catalogUseCase,
+                new CatalogPolicyCompositionUseCase(catalogUseCase, supportUseCase),
                 supportUseCase,
                 cartUseCase,
                 purchaseUseCase,

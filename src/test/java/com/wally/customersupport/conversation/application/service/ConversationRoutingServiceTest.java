@@ -31,7 +31,9 @@ class ConversationRoutingServiceTest {
 
     @BeforeEach
     void setUp() {
-        router = new ConversationRoutingService(classifier);
+        router = new ConversationRoutingService(
+                new ConversationIntentRouter(classifier),
+                new ConversationDecisionReconciler());
     }
 
     @Test

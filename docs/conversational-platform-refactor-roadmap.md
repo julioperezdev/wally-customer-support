@@ -194,6 +194,24 @@ Entregables:
 cuando el modelo responde correctamente y un fallback seguro cuando responde
 JSON inválido o ambiguo.
 
+Implementación local ampliada para WCS-136:
+
+- `CatalogConversationQueryResolver` reconstruye únicamente la selección
+  bounded de la conversación y el contexto de checkout;
+- `CatalogQueryReconciler` aplica la precedencia determinística entre filtros
+  explícitos, selección activa y propuesta del modelo;
+- `ConversationIntentRouter` contiene sólo la invocación al clasificador LLM,
+  mientras `ConversationDecisionReconciler` valida intención, acción, entidades
+  y parámetros antes de crear el plan;
+- `CatalogPolicyCompositionUseCase` compone catálogo dinámico y política de
+  envíos sin volver a mezclar esa decisión dentro del orquestador;
+- la matriz `CatalogNaturalLanguageMatrixTest` cubre mensajes completos,
+  incompletos, coloquiales y errores acotados de escritura. Las correcciones de
+  vocabulario son explícitas y limitadas; no se usa fuzzy matching ni se
+  inventan nombres de productos;
+- no se modificaron migraciones, contratos de PostgreSQL, Terraform, AppConfig
+  ni adapters de infraestructura.
+
 ### Fase 3 — Agentes especialistas y herramientas de negocio
 
 **Jira:** [`WCS-137`](https://julioperezdev.atlassian.net/browse/WCS-137)

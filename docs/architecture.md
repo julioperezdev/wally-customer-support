@@ -161,6 +161,15 @@ historial acotado y dirigirla a catálogo. Las frases explícitas de comprar,
 pagar, confirmar o pedir un link no se rescatan: permanecen en el flujo de
 checkout y sus validaciones.
 
+La implementación mantiene separadas las dos etapas de esa decisión:
+`ConversationIntentRouter` sólo llama al clasificador LLM, y
+`ConversationDecisionReconciler` aplica las reglas determinísticas sobre el
+turno actual y la selección persistida. `CatalogConversationQueryResolver`
+reconstruye filtros multi-turno; `CatalogQueryReconciler` evita que una
+propuesta del modelo reemplace filtros explícitos. La composición de una
+consulta de catálogo con una política de envíos vive en
+`CatalogPolicyCompositionUseCase`, fuera de `ConversationOrchestrator`.
+
 Los horarios y políticas que gobiernan reglas operativas permanecen en datos
 estructurados y versionados. La Knowledge Base puede contener una copia
 editorial para responder preguntas generales sólo si se mantiene sincronizada

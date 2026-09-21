@@ -178,7 +178,7 @@ public class CatalogConversationService {
             // Explicit words in the current turn and its bounded catalog
             // context win over a model-proposed query. The model may still
             // contribute a non-conflicting product name.
-            return CatalogQueryParser.reconcile(deterministicQuery.get(), query);
+            return CatalogQueryReconciler.reconcile(deterministicQuery.get(), query);
         }
         return query;
     }
