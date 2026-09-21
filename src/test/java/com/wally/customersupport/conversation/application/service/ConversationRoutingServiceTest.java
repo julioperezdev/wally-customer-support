@@ -243,6 +243,109 @@ class ConversationRoutingServiceTest {
         assertEquals(0.40, result.decision().confidence());
     }
 
+    @Test
+    void routesAnExplicitCatalogMessageWhenTheModelReturnsUnknown() {
+        ConversationContext context = context("Quiero una remera", List.of(), ConversationSelection.empty());
+        when(classifier.classify(context)).thenReturn(ConversationIntentDecision.unknown());
+
+        ConversationRoutingService.RoutingResult result = router.route(context);
+
+        assertEquals(ConversationIntent.CATALOG_SEARCH, result.decision().intent());
+        assertEquals(ConversationAction.CATALOG_SEARCH, result.decision().action());
+        assertEquals("remera", result.decision().catalogQuery().productType());
+        assertEquals("DETERMINISTIC_MESSAGE_SIGNAL", result.strategy());
+    }
+
+    @Test
+    void routesAProductAvailabilityQuestionWhenTheModelReturnsUnknown() {
+        ConversationContext context = context("Tienes un buzo", List.of(), ConversationSelection.empty());
+        when(classifier.classify(context)).thenReturn(ConversationIntentDecision.unknown());
+
+        ConversationRoutingService.RoutingResult result = router.route(context);
+
+        assertEquals(ConversationIntent.CATALOG_SEARCH, result.decision().intent());
+        assertEquals("buzo", result.decision().catalogQuery().productType());
+    }
+
+    @Test
+    void routesAStandaloneSizeRefinementWhenTheModelReturnsUnknown() {
+        ConversationContext context = context("Soy talle m", List.of("Que vendes"), ConversationSelection.empty());
+        when(classifier.classify(context)).thenReturn(ConversationIntentDecision.unknown());
+
+        ConversationRoutingService.RoutingResult result = router.route(context);
+
+        assertEquals(ConversationIntent.CATALOG_SEARCH, result.decision().intent());
+        assertEquals("m", result.decision().catalogQuery().size());
+    }
+
+    @Test
+    void routesAConversationalSizeMessageAsCatalogContextWhenTheModelReturnsUnknown() {
+        ConversationContext context = context(
+                "Soy talle mediano",
+                List.of("Quiero una remera"),
+                ConversationSelection.empty());
+        when(classifier.classify(context)).thenReturn(ConversationIntentDecision.unknown());
+
+        ConversationRoutingService.RoutingResult result = router.route(context);
+
+        assertEquals(ConversationIntent.CATALOG_SEARCH, result.decision().intent());
+        assertEquals("remera", result.decision().catalogQuery().productType());
+        assertEquals("m", result.decision().catalogQuery().size());
+    }
+
+    @Test
+    void routesGeneralSupportWhenTheModelReturnsUnknown() {
+        ConversationContext context = context("¿Dónde están ubicados?", List.of(), ConversationSelection.empty());
+        when(classifier.classify(context)).thenReturn(ConversationIntentDecision.unknown());
+
+        ConversationRoutingService.RoutingResult result = router.route(context);
+
+        assertEquals(ConversationIntent.GENERAL_SUPPORT, result.decision().intent());
+        assertEquals(ConversationAction.GENERAL_SUPPORT, result.decision().action());
+        assertEquals(0.99, result.decision().confidence());
+    }
+
+    @Test
+    void routesBusinessHoursWhenTheModelReturnsUnknown() {
+        ConversationContext context = context("¿A qué hora abren el sábado?", List.of(), ConversationSelection.empty());
+        when(classifier.classify(context)).thenReturn(ConversationIntentDecision.unknown());
+
+        ConversationRoutingService.RoutingResult result = router.route(context);
+
+        assertEquals(ConversationIntent.BUSINESS_HOURS, result.decision().intent());
+        assertEquals(ConversationAction.BUSINESS_HOURS, result.decision().action());
+    }
+
+    @Test
+    void routesShippingPolicyWhenTheModelReturnsUnknown() {
+        ConversationContext context = context("¿Cómo funcionan los envíos?", List.of(), ConversationSelection.empty());
+        when(classifier.classify(context)).thenReturn(ConversationIntentDecision.unknown());
+
+        ConversationRoutingService.RoutingResult result = router.route(context);
+
+        assertEquals(ConversationIntent.POLICY_QUERY, result.decision().intent());
+        assertEquals("shipping", result.decision().policyKey());
+    }
+
+    @Test
+    void fillsMissingPolicyKeyFromAnExplicitMessageSignal() {
+        ConversationContext context = context("¿Cómo funcionan los envíos?", List.of(), ConversationSelection.empty());
+        when(classifier.classify(context)).thenReturn(new ConversationIntentDecision(
+                ConversationIntent.POLICY_QUERY,
+                ConversationAction.POLICY_QUERY,
+                0.90,
+                null,
+                null,
+                1,
+                List.of()));
+
+        ConversationRoutingService.RoutingResult result = router.route(context);
+
+        assertEquals(ConversationIntent.POLICY_QUERY, result.decision().intent());
+        assertEquals("shipping", result.decision().policyKey());
+        assertTrue(result.normalized());
+    }
+
     private static ConversationContext context(
             String latest,
             List<String> recentMessages,

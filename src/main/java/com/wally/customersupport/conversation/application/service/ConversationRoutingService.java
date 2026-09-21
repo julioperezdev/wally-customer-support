@@ -33,9 +33,7 @@ public final class ConversationRoutingService {
 
     public RoutingResult route(ConversationContext context) {
         ConversationIntentDecision raw = intentRouter.classify(context);
-        if (raw == null) {
-            return fallback(ConversationIntentDecision.unknown(), "NULL_CLASSIFIER_DECISION");
-        }
+        raw = raw == null ? ConversationIntentDecision.unknown() : raw;
 
         ConversationDecisionReconciler.ReconciliationResult reconciliation =
                 decisionReconciler.reconcile(context, raw);
@@ -48,15 +46,6 @@ public final class ConversationRoutingService {
                 reconciliation.strategy(),
                 reconciliation.resolvedFields(),
                 reconciliation.missingFields());
-    }
-
-    private RoutingResult fallback(ConversationIntentDecision raw, String reason) {
-        StructuredEventLog.warn(log, "ROUTING_SAFE_FALLBACK", Map.of(
-                "reason", reason,
-                "rawIntent", raw.intent().name(),
-                "rawAction", raw.action().name()));
-        return new RoutingResult(raw, ConversationIntentDecision.unknown(),
-                "SAFE_FALLBACK", List.of(), List.of());
     }
 
     private void logNormalization(

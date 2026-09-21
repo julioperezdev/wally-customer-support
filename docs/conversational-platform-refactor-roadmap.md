@@ -203,6 +203,12 @@ Implementación local ampliada para WCS-136:
 - `ConversationIntentRouter` contiene sólo la invocación al clasificador LLM,
   mientras `ConversationDecisionReconciler` valida intención, acción, entidades
   y parámetros antes de crear el plan;
+- `ConversationDeterministicSignalResolver` rescata señales inequívocas de
+  lectura cuando el LLM devuelve `UNKNOWN`, baja confianza o una intención
+  incompatible. El fallback cubre catálogo, horarios, políticas, saludo y
+  handoff, pero nunca compra ni carrito; las consultas de catálogo se vuelven a
+  reconciliar con la selección activa y las solicitudes generales limpian los
+  filtros anteriores;
 - `CatalogPolicyCompositionUseCase` compone catálogo dinámico y política de
   envíos sin volver a mezclar esa decisión dentro del orquestador;
 - la matriz `CatalogNaturalLanguageMatrixTest` cubre mensajes completos,

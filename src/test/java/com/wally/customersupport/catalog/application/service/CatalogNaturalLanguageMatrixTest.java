@@ -67,6 +67,8 @@ class CatalogNaturalLanguageMatrixTest {
                 Arguments.of("q tenes de remera?", "remera", null, null, null),
                 Arguments.of("Busco una remera negra", "remera", null, null, "negro"),
                 Arguments.of("algo negro para el frio", "abrigo", null, null, "negro"),
+                Arguments.of("Quiero una camiseta mediana", "remera", null, "m", null),
+                Arguments.of("Busco una sudadera grande", "buzo", null, "l", null),
                 Arguments.of("Remera NullPointer negra talle M", "remera", "nullpointer", "m", "negro"));
     }
 
