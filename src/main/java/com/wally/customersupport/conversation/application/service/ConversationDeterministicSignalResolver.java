@@ -94,6 +94,7 @@ public final class ConversationDeterministicSignalResolver {
         String latest = context.latestMessage();
         boolean generalRequest = CatalogQueryParser.isGeneralCatalogRequest(latest);
         boolean unsupportedCategory = CatalogQueryParser.isUnsupportedCatalogCategory(latest);
+        boolean unsupportedAttribute = CatalogQueryParser.isUnsupportedCatalogAttribute(latest);
         boolean followUp = CatalogQueryParser.followUpKind(latest) != CatalogQueryParser.FollowUpKind.NONE;
         boolean refinement = CatalogQueryParser.isFilterOnlyRefinement(latest)
                 || CatalogQueryParser.isContextualContinuation(latest);
@@ -101,7 +102,7 @@ public final class ConversationDeterministicSignalResolver {
                 context.recentMessages(), latest);
         Optional<CatalogQuery> currentTurn = CatalogQueryParser.parse(latest);
 
-        if (!generalRequest && !unsupportedCategory && !followUp && !refinement
+        if (!generalRequest && !unsupportedCategory && !unsupportedAttribute && !followUp && !refinement
                 && parsed.filter(query -> !query.isEmpty()).isEmpty()
                 && currentTurn.filter(query -> !query.isEmpty()).isEmpty()) {
             return Optional.empty();

@@ -268,6 +268,21 @@ class ConversationRoutingServiceTest {
     }
 
     @Test
+    void routesUnsupportedCatalogAttributesToTheCatalogBoundary() {
+        ConversationContext context = context(
+                "Quiero una remera de manga larga",
+                List.of(),
+                ConversationSelection.empty());
+        when(classifier.classify(context)).thenReturn(ConversationIntentDecision.unknown());
+
+        ConversationRoutingService.RoutingResult result = router.route(context);
+
+        assertEquals(ConversationIntent.CATALOG_SEARCH, result.decision().intent());
+        assertEquals(ConversationAction.CATALOG_SEARCH, result.decision().action());
+        assertEquals("CATALOG_SEARCH", result.decision().intent().name());
+    }
+
+    @Test
     void routesAStandaloneSizeRefinementWhenTheModelReturnsUnknown() {
         ConversationContext context = context("Soy talle m", List.of("Que vendes"), ConversationSelection.empty());
         when(classifier.classify(context)).thenReturn(ConversationIntentDecision.unknown());

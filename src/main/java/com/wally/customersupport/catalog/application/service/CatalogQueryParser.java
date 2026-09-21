@@ -86,7 +86,7 @@ public final class CatalogQueryParser {
                     + "tienen|tienes|tenes|hay|ofrece|ofrecen|dispone|disponen|camiseta|camisetas|"
                     + "sudadera|sudaderas|gorra|gorras|zapatilla|zapatillas|zapato|zapatos|pantalon|pantalones|"
                     + "camisa|camisas|short|shorts|accesorio|accesorios|bufanda|bufandas|"
-                    + "media|medias)\\b");
+                    + "media|medias|manga|capucha|material|estampado|estampada|tela|marca)\\b");
     private static final Pattern GENERAL_CATALOG_REQUEST = Pattern.compile(
             "\\b(?:que|cuales?)\\s+(?:productos?|opciones?)\\s+(?:tienen|hay|ofrecen|venden|vendes|tenes|tienes)\\b|"
                     + "\\b(?:que|cuales?)\\s+(?:venden|vendes|ofrecen|tenes|tienes)\\b|"
@@ -115,7 +115,7 @@ public final class CatalogQueryParser {
                     + "despacho|pesos?|ars|comprar|comprarla|comprarlo|comprame|compro|adquirir|llevarme|"
                     + "llevar|llevarme|llevo|pasame|generame|link|enlace|pago|pagar|pagarla|compra|unidades?|u|"
                     + "suma|sumame|agrega|agregame|agregar|anade|anademe|anadir|al|carrito|camiseta|camisetas|"
-                    + "sudadera|sudaderas|"
+                    + "sudadera|sudaderas|preferentemente|preferible|preferencia|"
                     + "dos|tres|cuatro|cinco|ese|esos|misma|mismo)\\b");
 
     private static final CatalogConversationQueryResolver CONVERSATION_RESOLVER =

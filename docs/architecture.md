@@ -489,7 +489,8 @@ filtros no existe, `CatalogConversationService` puede relajar un filtro
 explícito de forma acotada y presentar alternativas reales. Si el mensaje usa
 un atributo que todavía no forma parte del schema, como “manga larga”, responde
 con una aclaración sobre los filtros soportados en lugar de convertirlo en un
-`NO_MATCH` genérico.
+`NO_MATCH` genérico. La recuperación conserva primero el tipo de producto
+solicitado antes de ofrecer una alternativa de otra categoría.
 Las imágenes se modelan como referencias de objeto S3 y su envío por WhatsApp
 queda fuera del MVP.
 

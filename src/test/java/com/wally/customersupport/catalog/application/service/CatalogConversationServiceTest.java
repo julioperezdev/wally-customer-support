@@ -117,6 +117,35 @@ class CatalogConversationServiceTest {
     }
 
     @Test
+    void prefersTheSameProductTypeBeforeOfferingAnotherCategory() {
+        CatalogProduct blackXl = product("Buzo Spring Boot", "RP-BUZ-SB-NEG-XL", "XL", "Negro", 3);
+        CatalogProduct blackLShirt = product("Remera NullPointer", "RP-REM-NP-NEG-L", "L", "Negro", 7);
+        when(catalogQueryService.search(any(CatalogQuery.class)))
+                .thenAnswer(invocation -> {
+                    CatalogQuery query = invocation.getArgument(0);
+                    if ("buzo".equals(query.productType()) && "negro".equals(query.color())
+                            && query.size() == null) {
+                        return List.of(blackXl);
+                    }
+                    if (query.productType() == null && "negro".equals(query.color())
+                            && "l".equals(query.size())) {
+                        return List.of(blackLShirt);
+                    }
+                    return List.of();
+                });
+
+        String reply = replyFor(
+                        new CatalogQuery(null, null, "L", "negro", "buzo"),
+                        List.of("Quiero un buzo", "Que sea negro"),
+                        "¿Hay talle L?")
+                .orElseThrow();
+
+        assertTrue(reply.contains("Buzo Spring Boot"));
+        assertTrue(reply.contains("talle XL"));
+        assertTrue(!reply.contains("Remera NullPointer"));
+    }
+
+    @Test
     void explainsWhenTheCustomerUsesAnUnsupportedCatalogAttribute() {
         String reply = replyFor("Quiero una remera de manga larga")
                 .orElseThrow();
@@ -282,6 +311,22 @@ class CatalogConversationServiceTest {
 
         assertEquals(CatalogSearchResult.Status.MATCHED, result.status());
         assertEquals(2, result.resultCount());
+    }
+
+    @Test
+    void ignoresPreferenceWordsWhenFilteringWarmClothingBySize() {
+        when(catalogQueryService.search(argThat(query ->
+                query != null && "buzo".equals(query.productType()) && "l".equals(query.size()))))
+                .thenReturn(List.of(product("Buzo Spring Boot", "RP-BUZ-SB-GRI-L", "L", "Gris", 5)));
+        when(catalogQueryService.search(argThat(query ->
+                query != null && "campera".equals(query.productType()) && "l".equals(query.size()))))
+                .thenReturn(List.of());
+
+        String reply = replyFor("Quiero algo para el frío, preferentemente talle L")
+                .orElseThrow();
+
+        assertTrue(reply.contains("Buzo Spring Boot"));
+        assertTrue(!reply.contains("preferentemente"));
     }
 
     @Test
