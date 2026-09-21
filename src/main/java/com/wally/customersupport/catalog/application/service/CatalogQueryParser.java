@@ -20,9 +20,9 @@ public final class CatalogQueryParser {
         COLOR
     }
 
-    private static final Pattern SKU = Pattern.compile("\\b[a-z]{2}(?:-[a-z0-9]+){2,}\\b");
-    private static final Pattern SIZE = Pattern.compile("\\b(?:talle|talla|tamano|size)?\\s*(xxl|xl|xs|l|m|s)\\b");
-    private static final Pattern COLOR = Pattern.compile(
+    static final Pattern SKU = Pattern.compile("\\b[a-z]{2}(?:-[a-z0-9]+){2,}\\b");
+    static final Pattern SIZE = Pattern.compile("\\b(?:talle|talla|tamano|size)?\\s*(xxl|xl|xs|l|m|s)\\b");
+    static final Pattern COLOR = Pattern.compile(
             "\\b(negro|negra|negros|negras|blanco|blanca|blancos|blancas|gris|grises|azul|azules|"
                     + "rojo|roja|rojos|rojas|verde|verdes)\\b");
     private static final Pattern PRODUCT_TYPE = Pattern.compile("\\b(remera|remeras|buzo|buzos|campera|camperas)\\b");
@@ -37,7 +37,7 @@ public final class CatalogQueryParser {
     private static final Pattern BETWEEN_PRICE = Pattern.compile(
             "\\bentre\\s*\\$?\\s*([0-9][0-9\\s.,]*)\\s+(?:y|a)\\s*\\$?\\s*([0-9][0-9\\s.,]*)",
             Pattern.CASE_INSENSITIVE);
-    private static final Pattern REFINEMENT_MARKER = Pattern.compile(
+    static final Pattern REFINEMENT_MARKER = Pattern.compile(
             "\\b(que|sea|tambien|también|ahora|solo|sólo|pero|mejor|tipo)\\b");
     private static final Pattern CONTINUATION_MARKER = Pattern.compile(
             "\\b(opcion|opciones|alternativa|alternativas|mostrame|muestrame|mostrar|"
@@ -48,9 +48,6 @@ public final class CatalogQueryParser {
     private static final Pattern CHEAPER_CONTINUATION_MARKER = Pattern.compile(
             "\\b(mas barato|mas barata|mas baratos|mas baratas|menor precio|"
                     + "economico|economica|mas conveniente)\\b");
-    private static final Pattern NON_PRODUCT_DESCRIPTOR = Pattern.compile(
-            "\\b(frio|abrigo|abrigado|abrigada|invierno|lindo|linda|bonito|bonita|"
-                    + "algo|lo|antes|anterior|anteriormente|soy|tengo|estoy|ropa)\\b");
     private static final Pattern WARMTH_MARKER = Pattern.compile(
             "\\b(frio|abrigo|abrigado|abrigada|invierno|para el frio|para abrigo|"
                     + "para abrigarse|para el invierno)\\b");
@@ -67,17 +64,17 @@ public final class CatalogQueryParser {
                     + "\\btodavia\\s+no\\s+(?:quiero\\s+)?(?:comprar|pagar|llevar)\\b|"
                     + "\\bno\\s+(?:la|lo)\\s+(?:compro|llevo)\\b|"
                     + "\\bno\\s+(?:comprar|comprarla|comprarlo|pagar|pagarla|llevar|llevarme|adquirir)\\b");
-    private static final Pattern PURCHASE_QUANTITY_AFTER_VERB = Pattern.compile(
+    static final Pattern PURCHASE_QUANTITY_AFTER_VERB = Pattern.compile(
             "\\b(?:quiero|necesito|comprar|llevar|llevarme)\\s+([1-9][0-9]?)\\b");
-    private static final Pattern PURCHASE_QUANTITY_WITH_UNIT = Pattern.compile(
+    static final Pattern PURCHASE_QUANTITY_WITH_UNIT = Pattern.compile(
             "\\b([1-9][0-9]?)\\s*(?:unidades?|u)\\b");
-    private static final Pattern PURCHASE_QUANTITY_X = Pattern.compile(
+    static final Pattern PURCHASE_QUANTITY_X = Pattern.compile(
             "\\bx\\s*([1-9][0-9]?)\\b");
     private static final Pattern UNSUPPORTED_CATALOG_CATEGORY = Pattern.compile(
             "\\b(gorra|gorras|zapatilla|zapatillas|zapato|zapatos|pantalon|pantalones|"
                     + "camisa|camisas|short|shorts|accesorio|accesorios|bufanda|bufandas|"
                     + "media|medias)\\b");
-    private static final Pattern CATALOG_MARKER = Pattern.compile(
+    static final Pattern CATALOG_MARKER = Pattern.compile(
             "\\b(remera|remeras|buzo|buzos|campera|camperas|producto|productos|catalogo|stock|disponible|"
                     + "disponibilidad|talle|talla|tamano|size|sku|precio|precios|cuesta|cueste|color|barato|barata|"
                     + "caro|cara|menos|mas|hasta|debajo|encima|entre|frio|abrigo|invierno|"
@@ -101,7 +98,7 @@ public final class CatalogQueryParser {
             "\\b(que color|cual color|en que color)\\b");
     private static final Pattern STOP_WORDS = Pattern.compile(
             "\\b(tienen|tienes|tenemos|tenes|hay|ofrece|ofrecen|dispone|disponen|venden|vende|quiero|busco|necesito|soy|tengo|estoy|ropa|una|un|el|la|los|las|del|de|en|con|"
-                    + "vendes|"
+                    + "vendes|q|onda|"
                     + "por|para|favor|me|podes|pueden|puedo|cuanto|cuál|cual|es|esta|tiene|stock|disponible|"
                     + "disponibilidad|precio|precios|color|talle|talla|tamano|size|sku|productos?|catalogo|"
                     + "este|estos|esto|algo|"
@@ -114,6 +111,9 @@ public final class CatalogQueryParser {
                     + "llevar|llevarme|llevo|pasame|generame|link|enlace|pago|pagar|pagarla|compra|unidades?|u|"
                     + "suma|sumame|agrega|agregame|agregar|anade|anademe|anadir|al|carrito|"
                     + "dos|tres|cuatro|cinco|ese|esos|misma|mismo)\\b");
+
+    private static final CatalogConversationQueryResolver CONVERSATION_RESOLVER =
+            new CatalogConversationQueryResolver();
 
     private CatalogQueryParser() {
     }
@@ -165,91 +165,7 @@ public final class CatalogQueryParser {
      * The latest turn must be a catalog turn or an explicit refinement.
      */
     public static Optional<CatalogQuery> parseConversation(List<String> recentMessages, String latestMessage) {
-        if (latestMessage == null || latestMessage.isBlank()) {
-            return Optional.empty();
-        }
-        List<String> boundedHistory = recentMessages == null ? List.of() : recentMessages;
-        boolean continuation = isContextualContinuation(latestMessage);
-        if (!looksLikeCatalogTurn(latestMessage) && !continuation) {
-            return Optional.empty();
-        }
-        Optional<CatalogQuery> latestQuery = parse(latestMessage).or(() -> parseRefinement(latestMessage));
-        if (latestQuery.isEmpty()
-                && (continuation || followUpKind(latestMessage) != FollowUpKind.NONE)) {
-            latestQuery = Optional.of(CatalogQuery.empty());
-        }
-        if (latestQuery.isEmpty()) {
-            return Optional.empty();
-        }
-
-        // Start from the latest turn and walk backwards only through the
-        // current catalog selection. The previous implementation merged the
-        // entire bounded history first, so a sequence such as "remera negra"
-        // -> "buzo" -> "talle M" could become the impossible filter
-        // "buzo + negro + M". A different explicit product type is a boundary
-        // and older filters must not cross it.
-        CatalogQuery activeQuery = latestQuery.get();
-        boolean skippedLatestFromHistory = false;
-        for (String message : boundedHistory.reversed()) {
-            if (!skippedLatestFromHistory && java.util.Objects.equals(message, latestMessage)) {
-                skippedLatestFromHistory = true;
-                continue;
-            }
-            Optional<CatalogQuery> parsed = parse(message);
-            if (parsed.isEmpty()) {
-                continue;
-            }
-            CatalogQuery candidate = parsed.get();
-            if (startsNewProductSelection(activeQuery, candidate)) {
-                break;
-            }
-            activeQuery = activeQuery.mergeMissing(candidate);
-        }
-        return Optional.of(activeQuery);
-    }
-
-    /**
-     * Reconciles model-proposed filters with values extracted deterministically
-     * from the current conversation. Explicit lexical filters win over model
-     * guesses, while non-conflicting model fields remain available for future
-     * entity-resolution capabilities. Category names are never duplicated as
-     * free-text product names (for example, "quiero un buzo").
-     */
-    public static CatalogQuery reconcile(CatalogQuery deterministic, CatalogQuery proposed) {
-        if (deterministic == null) {
-            return proposed;
-        }
-        if (proposed == null) {
-            return deterministic;
-        }
-        String productType = firstNonBlank(deterministic.productType(), proposed.productType());
-        String proposedName = isNonProductDescriptor(proposed.name()) ? null : proposed.name();
-        String name = firstNonBlank(deterministic.name(), proposedName);
-        if (name != null && productType != null && name.equalsIgnoreCase(productType)) {
-            name = null;
-        }
-        return new CatalogQuery(
-                name,
-                firstNonBlank(deterministic.sku(), proposed.sku()),
-                firstNonBlank(deterministic.size(), proposed.size()),
-                firstNonBlank(deterministic.color(), proposed.color()),
-                productType,
-                deterministic.minPrice() == null ? proposed.minPrice() : deterministic.minPrice(),
-                deterministic.maxPrice() == null ? proposed.maxPrice() : deterministic.maxPrice());
-    }
-
-    private static String firstNonBlank(String preferred, String fallback) {
-        return preferred == null || preferred.isBlank() ? fallback : preferred;
-    }
-
-    private static boolean isNonProductDescriptor(String value) {
-        if (value == null || value.isBlank()) {
-            return true;
-        }
-        return NON_PRODUCT_DESCRIPTOR.matcher(normalize(value)).replaceAll(" ")
-                .replaceAll("\\s+", " ")
-                .trim()
-                .isBlank();
+        return CONVERSATION_RESOLVER.parseConversation(recentMessages, latestMessage);
     }
 
     public static boolean isContextualContinuation(String message) {
@@ -350,39 +266,12 @@ public final class CatalogQueryParser {
     public static Optional<CatalogQuery> parsePurchaseConversation(
             List<String> recentMessages,
             String latestMessage) {
-        if (!isPurchaseRequest(latestMessage)) {
-            return Optional.empty();
-        }
-
-        CatalogQuery latestQuery = parsePurchaseMessage(latestMessage).orElse(CatalogQuery.empty());
-        CatalogQuery previousQuery = latestCatalogQuery(recentMessages, latestMessage);
-        if (previousQuery == null || previousQuery.isEmpty()) {
-            return latestQuery.isEmpty() ? Optional.empty() : Optional.of(latestQuery);
-        }
-        return Optional.of(previousQuery.merge(latestQuery));
+        return CONVERSATION_RESOLVER.parsePurchaseConversation(recentMessages, latestMessage);
     }
 
     /** Returns the requested quantity, defaulting to one for checkout. */
     public static int purchaseQuantity(String message) {
-        if (message == null || message.isBlank()) {
-            return 1;
-        }
-        String normalized = normalize(message);
-        Matcher matcher = PURCHASE_QUANTITY_AFTER_VERB.matcher(normalized);
-        if (!matcher.find()) {
-            matcher = PURCHASE_QUANTITY_WITH_UNIT.matcher(normalized);
-            if (!matcher.find()) {
-                matcher = PURCHASE_QUANTITY_X.matcher(normalized);
-                if (!matcher.find()) {
-                    return 1;
-                }
-            }
-        }
-        try {
-            return Integer.parseInt(matcher.group(1));
-        } catch (NumberFormatException exception) {
-            return 1;
-        }
+        return CONVERSATION_RESOLVER.purchaseQuantity(message);
     }
 
     public static boolean isUnsupportedCatalogCategory(String message) {
@@ -412,7 +301,7 @@ public final class CatalogQueryParser {
         return FollowUpKind.NONE;
     }
 
-    private static Optional<CatalogQuery> parseRefinement(String message) {
+    static Optional<CatalogQuery> parseRefinement(String message) {
         String normalized = normalize(message);
         String size = extract(SIZE, normalized);
         String color = normalizeColor(extract(COLOR, normalized));
@@ -437,51 +326,7 @@ public final class CatalogQueryParser {
                 priceRange.maxPrice()));
     }
 
-    private static Optional<CatalogQuery> parsePurchaseMessage(String message) {
-        String normalized = normalize(message);
-        normalized = PURCHASE_QUANTITY_AFTER_VERB.matcher(normalized).replaceAll(" ");
-        normalized = PURCHASE_QUANTITY_WITH_UNIT.matcher(normalized).replaceAll(" ");
-        normalized = PURCHASE_QUANTITY_X.matcher(normalized).replaceAll(" ");
-        return parse(normalized);
-    }
-
-    private static CatalogQuery latestCatalogQuery(List<String> recentMessages, String latestMessage) {
-        if (recentMessages == null) {
-            return null;
-        }
-        boolean skippedLatest = false;
-        for (String message : recentMessages) {
-            if (!skippedLatest && java.util.Objects.equals(message, latestMessage)) {
-                skippedLatest = true;
-                continue;
-            }
-            if (!looksLikeCatalogTurn(message) && !isContextualContinuation(message)) {
-                continue;
-            }
-            Optional<CatalogQuery> query = parseConversation(recentMessages, message)
-                    .filter(parsed -> !parsed.isEmpty());
-            if (query.isPresent()) {
-                return query.get();
-            }
-        }
-        return null;
-    }
-
-    private static boolean looksLikeCatalogTurn(String message) {
-        if (message == null || message.isBlank()) {
-            return false;
-        }
-        String normalized = normalize(message);
-        return CATALOG_MARKER.matcher(normalized).find()
-                || SKU.matcher(normalized).find()
-                || SIZE.matcher(normalized).find()
-                || COLOR.matcher(normalized).find()
-                || REFINEMENT_MARKER.matcher(normalized).find()
-                || !extractPriceRange(message).isEmpty()
-                || followUpKind(normalized) != FollowUpKind.NONE;
-    }
-
-    private static PriceRange extractPriceRange(String message) {
+    static PriceRange extractPriceRange(String message) {
         String normalized = normalizeKeepingPriceSeparators(message);
         Matcher betweenMatcher = BETWEEN_PRICE.matcher(normalized);
         if (betweenMatcher.find()) {
@@ -564,16 +409,18 @@ public final class CatalogQueryParser {
         };
     }
 
-    private static boolean startsNewProductSelection(CatalogQuery activeQuery, CatalogQuery candidate) {
-        return activeQuery.productType() != null
-                && candidate.productType() != null
-                && !activeQuery.productType().equalsIgnoreCase(candidate.productType());
-    }
-
-    private static String normalize(String value) {
+    static String normalize(String value) {
         return Normalizer.normalize(value, Normalizer.Form.NFD)
                 .replaceAll("\\p{M}+", "")
                 .toLowerCase(Locale.ROOT)
+                // Small, explicit store-vocabulary corrections keep common
+                // chat typos bounded; this is not fuzzy matching and never
+                // invents a product name.
+                .replaceAll("\\bremra\\b", "remera")
+                .replaceAll("\\bremras\\b", "remeras")
+                .replaceAll("\\bbuso\\b", "buzo")
+                .replaceAll("\\bbusos\\b", "buzos")
+                .replaceAll("\\btaya\\b", "talla")
                 .replaceAll("[¿?¡!.,;:()\\[\\]{}]", " ")
                 .replaceAll("\\s+", " ")
                 .trim();
@@ -590,9 +437,9 @@ public final class CatalogQueryParser {
                 .trim();
     }
 
-    private record PriceRange(BigDecimal minPrice, BigDecimal maxPrice) {
+    record PriceRange(BigDecimal minPrice, BigDecimal maxPrice) {
 
-        private boolean isEmpty() {
+        boolean isEmpty() {
             return minPrice == null && maxPrice == null;
         }
     }
