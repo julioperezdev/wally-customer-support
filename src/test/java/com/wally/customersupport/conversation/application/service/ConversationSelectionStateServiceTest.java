@@ -63,4 +63,46 @@ class ConversationSelectionStateServiceTest {
         assertEquals(ConversationIntent.CATALOG_SEARCH, updated.selection().intent());
         assertEquals("CATALOG_SEARCH", updated.selection().stage());
     }
+
+    @Test
+    void clearsStaleCatalogSelectionWhenCustomerRequestsTheWholeCatalog() {
+        UUID conversationId = UUID.randomUUID();
+        ConversationSelection selection = new ConversationSelection(
+                ConversationIntent.CATALOG_SEARCH,
+                ConversationAction.CATALOG_SEARCH,
+                new CatalogQuery("nullpointer", null, "M", "negro", "remera"),
+                "RP-REM-NP-NEG-M",
+                "CATALOG_SEARCH");
+        ConversationState current = new ConversationState(
+                conversationId,
+                "actor-1",
+                List.of("Tenes ropa", "Busco una remera negra talle M"),
+                NOW,
+                0L,
+                null,
+                selection);
+        ConversationContext context = new ConversationContext(
+                conversationId,
+                "customer",
+                "Tenes ropa",
+                current.recentMessages(),
+                List.of(),
+                null,
+                List.of(),
+                Channel.TELEGRAM,
+                selection);
+        ConversationExecutionResult result = new ConversationExecutionResult(
+                "wcs-agent-runtime-v1",
+                "CATALOG_SEARCH",
+                "REPLIED",
+                "catalogo",
+                null,
+                1);
+
+        ConversationState updated = new ConversationSelectionStateService()
+                .update(current, context, result, NOW.plusSeconds(1));
+
+        assertEquals(true, updated.selection().catalogQuery().isEmpty());
+        assertEquals(null, updated.selection().selectedVariantSku());
+    }
 }

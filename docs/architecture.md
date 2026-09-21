@@ -170,6 +170,16 @@ propuesta del modelo reemplace filtros explícitos. La composición de una
 consulta de catálogo con una política de envíos vive en
 `CatalogPolicyCompositionUseCase`, fuera de `ConversationOrchestrator`.
 
+Cuando el clasificador devuelve `UNKNOWN`, JSON incompleto o una propuesta que
+contradice una señal inequívoca del turno, `ConversationDeterministicSignalResolver`
+aplica un fallback acotado para lecturas seguras: saludo, catálogo, horarios,
+políticas y handoff humano. No decide compras ni operaciones de carrito. Para
+catálogo, la señal se vuelve a reconciliar con la selección activa antes de
+ejecutar la búsqueda; de ese modo una frase como “la M” no pierde el producto
+seleccionado y una solicitud general como “qué productos tienen” limpia filtros
+viejos. El modelo sigue siendo útil para interpretar lenguaje, pero no tiene
+autoridad para reemplazar hechos explícitos ni para ejecutar operaciones.
+
 Los horarios y políticas que gobiernan reglas operativas permanecen en datos
 estructurados y versionados. La Knowledge Base puede contener una copia
 editorial para responder preguntas generales sólo si se mantiene sincronizada

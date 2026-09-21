@@ -21,11 +21,14 @@ public final class CatalogQueryParser {
     }
 
     static final Pattern SKU = Pattern.compile("\\b[a-z]{2}(?:-[a-z0-9]+){2,}\\b");
-    static final Pattern SIZE = Pattern.compile("\\b(?:talle|talla|tamano|size)?\\s*(xxl|xl|xs|l|m|s)\\b");
+    static final Pattern SIZE = Pattern.compile(
+            "\\b(?:talle|talla|tamano|size)?\\s*(xxl|extra\\s+grande|extra\\s+small|xl|xs|large|medium|"
+                    + "mediano|mediana|grande|pequeno|pequena|chico|chica|small|l|m|s)\\b");
     static final Pattern COLOR = Pattern.compile(
             "\\b(negro|negra|negros|negras|blanco|blanca|blancos|blancas|gris|grises|azul|azules|"
                     + "rojo|roja|rojos|rojas|verde|verdes)\\b");
-    private static final Pattern PRODUCT_TYPE = Pattern.compile("\\b(remera|remeras|buzo|buzos|campera|camperas)\\b");
+    private static final Pattern PRODUCT_TYPE = Pattern.compile(
+            "\\b(remera|remeras|camiseta|camisetas|buzo|buzos|sudadera|sudaderas|campera|camperas)\\b");
     private static final Pattern MAX_PRICE = Pattern.compile(
             "\\b(?:menos\\s+de|menor\\s+(?:que|a)?|mas\\s+barat(?:o|a|os|as)\\s+(?:que|a)|por\\s+debajo\\s+de|hasta|como\\s+maximo(?:\\s+de)?|maximo(?:\\s+de)?|tope(?:\\s+de)?)"
                     + "\\s*\\$?\\s*([0-9][0-9\\s.,]*)",
@@ -78,8 +81,8 @@ public final class CatalogQueryParser {
             "\\b(remera|remeras|buzo|buzos|campera|camperas|producto|productos|catalogo|stock|disponible|"
                     + "disponibilidad|talle|talla|tamano|size|sku|precio|precios|cuesta|cueste|color|barato|barata|"
                     + "caro|cara|menos|mas|hasta|debajo|encima|entre|frio|abrigo|invierno|"
-                    + "tienen|tienes|tenes|hay|ofrece|ofrecen|dispone|disponen|"
-                    + "gorra|gorras|zapatilla|zapatillas|zapato|zapatos|pantalon|pantalones|"
+                    + "tienen|tienes|tenes|hay|ofrece|ofrecen|dispone|disponen|camiseta|camisetas|"
+                    + "sudadera|sudaderas|gorra|gorras|zapatilla|zapatillas|zapato|zapatos|pantalon|pantalones|"
                     + "camisa|camisas|short|shorts|accesorio|accesorios|bufanda|bufandas|"
                     + "media|medias)\\b");
     private static final Pattern GENERAL_CATALOG_REQUEST = Pattern.compile(
@@ -109,7 +112,8 @@ public final class CatalogQueryParser {
                     + "anteriores|antes|eso|esa|esas|asi|algo|lo|y|como|hace|hacen|se|envio|envios|entrega|"
                     + "despacho|pesos?|ars|comprar|comprarla|comprarlo|comprame|compro|adquirir|llevarme|"
                     + "llevar|llevarme|llevo|pasame|generame|link|enlace|pago|pagar|pagarla|compra|unidades?|u|"
-                    + "suma|sumame|agrega|agregame|agregar|anade|anademe|anadir|al|carrito|"
+                    + "suma|sumame|agrega|agregame|agregar|anade|anademe|anadir|al|carrito|camiseta|camisetas|"
+                    + "sudadera|sudaderas|"
                     + "dos|tres|cuatro|cinco|ese|esos|misma|mismo)\\b");
 
     private static final CatalogConversationQueryResolver CONVERSATION_RESOLVER =
@@ -126,7 +130,7 @@ public final class CatalogQueryParser {
         String normalized = normalize(message);
         Matcher skuMatcher = SKU.matcher(normalized);
         String sku = skuMatcher.find() ? skuMatcher.group() : null;
-        String size = extract(SIZE, normalized);
+        String size = normalizeSize(extract(SIZE, normalized));
         String color = normalizeColor(extract(COLOR, normalized));
         String productType = normalizeProductType(extract(PRODUCT_TYPE, normalized));
         if (productType == null && WARMTH_MARKER.matcher(normalized).find()) {
@@ -303,7 +307,7 @@ public final class CatalogQueryParser {
 
     static Optional<CatalogQuery> parseRefinement(String message) {
         String normalized = normalize(message);
-        String size = extract(SIZE, normalized);
+        String size = normalizeSize(extract(SIZE, normalized));
         String color = normalizeColor(extract(COLOR, normalized));
         String productType = normalizeProductType(extract(PRODUCT_TYPE, normalized));
         PriceRange priceRange = extractPriceRange(message);
@@ -403,9 +407,23 @@ public final class CatalogQueryParser {
         }
         return switch (productType) {
             case "remeras" -> "remera";
+            case "camiseta", "camisetas" -> "remera";
             case "buzos" -> "buzo";
+            case "sudadera", "sudaderas" -> "buzo";
             case "camperas" -> "campera";
             default -> productType;
+        };
+    }
+
+    private static String normalizeSize(String size) {
+        if (size == null) {
+            return null;
+        }
+        return switch (size) {
+            case "extra grande", "large", "grande" -> "l";
+            case "extra small", "small", "pequeno", "pequena", "chico", "chica" -> "s";
+            case "medium", "mediano", "mediana" -> "m";
+            default -> size;
         };
     }
 

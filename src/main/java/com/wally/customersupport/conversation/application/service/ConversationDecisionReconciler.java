@@ -24,6 +24,9 @@ import org.springframework.stereotype.Service;
 @Service
 public final class ConversationDecisionReconciler {
 
+    private final ConversationDeterministicSignalResolver deterministicSignalResolver =
+            new ConversationDeterministicSignalResolver();
+
     public ReconciliationResult reconcile(
             ConversationContext context,
             ConversationIntentDecision raw) {
@@ -41,12 +44,44 @@ public final class ConversationDecisionReconciler {
             return result(purchase, "DETERMINISTIC_PURCHASE", "EXPLICIT_PURCHASE_MARKER");
         }
 
+        Optional<ConversationIntentDecision> deterministicSignal = deterministicSignalResolver.resolve(context)
+                .map(signal -> signal.intent() == ConversationIntent.CATALOG_SEARCH
+                        ? normalizeCatalogDecision(context, signal)
+                        : signal);
+        if (deterministicSignal.isPresent() && shouldPreferDeterministicSignal(raw, deterministicSignal.get())) {
+            return result(
+                    deterministicSignal.get(),
+                    "DETERMINISTIC_MESSAGE_SIGNAL",
+                    "EXPLICIT_MESSAGE_SIGNAL");
+        }
+
         ConversationIntentDecision normalized = normalizeCatalogDecision(context, raw);
         String strategy = normalized.equals(raw) ? "MODEL_PROPOSAL" : "DETERMINISTIC_RECONCILIATION";
         if (normalized.intent() == ConversationIntent.UNKNOWN) {
             strategy = "SAFE_FALLBACK";
         }
         return result(normalized, strategy, "CURRENT_TURN_AND_SELECTION_RECONCILIATION");
+    }
+
+    private static boolean shouldPreferDeterministicSignal(
+            ConversationIntentDecision raw,
+            ConversationIntentDecision deterministic) {
+        if (raw == null) {
+            return true;
+        }
+        // Cart and checkout operations retain the model action because the cart
+        // boundary validates their command and required parameters separately.
+        if (raw.action().isCartOperation() || raw.intent() == ConversationIntent.PURCHASE_LINK) {
+            return false;
+        }
+        if (raw.intent() == ConversationIntent.UNKNOWN || raw.confidence() < 0.65) {
+            return true;
+        }
+        if (raw.intent() != deterministic.intent()) {
+            return true;
+        }
+        return raw.intent() == ConversationIntent.POLICY_QUERY
+                && (raw.policyKey() == null || raw.policyKey().isBlank());
     }
 
     private ConversationIntentDecision purchaseDecision(

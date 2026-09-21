@@ -81,11 +81,18 @@ public class ConversationSelectionStateService {
         }
 
         ConversationSelection previous = current.selection();
-        Optional<CatalogQuery> parsedQuery = CatalogQueryParser.parseConversation(
-                context.recentMessages(), context.latestMessage())
-                .filter(query -> !query.isEmpty());
-        CatalogQuery activeQuery = parsedQuery.orElse(previous.catalogQuery());
-        String selectedSku = parsedQuery.map(CatalogQuery::sku)
+        boolean generalCatalogRequest = CatalogQueryParser.isGeneralCatalogRequest(context.latestMessage())
+                && !CatalogQueryParser.isContextualContinuation(context.latestMessage());
+        Optional<CatalogQuery> parsedQuery = generalCatalogRequest
+                ? Optional.of(CatalogQuery.empty())
+                : CatalogQueryParser.parseConversation(context.recentMessages(), context.latestMessage())
+                        .filter(query -> !query.isEmpty());
+        CatalogQuery activeQuery = generalCatalogRequest
+                ? CatalogQuery.empty()
+                : parsedQuery.orElse(previous.catalogQuery());
+        String selectedSku = generalCatalogRequest
+                ? null
+                : parsedQuery.map(CatalogQuery::sku)
                 .filter(value -> value != null && !value.isBlank())
                 .orElse(previous.selectedVariantSku());
 
