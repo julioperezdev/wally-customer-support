@@ -11,5 +11,18 @@ public record CatalogVariant(
         BigDecimal price,
         String currency,
         int stock,
-        boolean active) {
+        boolean active,
+        String imageObjectKey) {
+
+    public CatalogVariant(
+            UUID id,
+            String sku,
+            String size,
+            String color,
+            BigDecimal price,
+            String currency,
+            int stock,
+            boolean active) {
+        this(id, sku, size, color, price, currency, stock, active, null);
+    }
 }

@@ -337,6 +337,7 @@ export type BackofficeCatalogVariant = {
   currency: string;
   stock: number;
   active: boolean;
+  imageObjectKey: string | null;
 };
 
 export type BackofficeCatalogProduct = {

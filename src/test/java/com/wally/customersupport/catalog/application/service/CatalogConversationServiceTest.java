@@ -62,6 +62,27 @@ class CatalogConversationServiceTest {
     }
 
     @Test
+    void prefersTheVariantImageOverTheProductFallback() {
+        CatalogProduct product = productWithVariantImage(
+                "Remera NullPointer",
+                "RP-REM-NP-BLA-M",
+                "M",
+                "Blanco",
+                4,
+                "wcs/catalog/product/default.png",
+                "wcs/catalog/product/RP-REM-NP-BLA-M.png");
+        when(catalogQueryService.search(any(CatalogQuery.class))).thenReturn(List.of(product));
+
+        CatalogSearchResult result = new CatalogConversationService(catalogQueryService)
+                .search(new CatalogQuery("nullpointer", null, "M", "blanco"), List.of(), null)
+                .orElseThrow();
+
+        assertEquals(
+                "wcs/catalog/product/RP-REM-NP-BLA-M.png",
+                result.singleImageReference().orElseThrow());
+    }
+
+    @Test
     void exactSearchDoesNotReconstructQuantityAsPartOfProductName() {
         CatalogProduct product = product("Remera NullPointer", "RP-REM-NP-NEG-M", "M", "Negro", 12);
         when(catalogQueryService.search(argThat(query ->
@@ -461,6 +482,28 @@ class CatalogConversationServiceTest {
         CatalogVariant variant = new CatalogVariant(
                 UUID.randomUUID(), sku, size, color, new BigDecimal(price), "ARS", stock, true);
         return new CatalogProduct(UUID.randomUUID(), name, "demo", imageObjectKey, true, true, List.of(variant));
+    }
+
+    private static CatalogProduct productWithVariantImage(
+            String name,
+            String sku,
+            String size,
+            String color,
+            int stock,
+            String productImageObjectKey,
+            String variantImageObjectKey) {
+        CatalogVariant variant = new CatalogVariant(
+                UUID.randomUUID(),
+                sku,
+                size,
+                color,
+                new BigDecimal("18900.00"),
+                "ARS",
+                stock,
+                true,
+                variantImageObjectKey);
+        return new CatalogProduct(
+                UUID.randomUUID(), name, "demo", productImageObjectKey, true, true, List.of(variant));
     }
 
 }

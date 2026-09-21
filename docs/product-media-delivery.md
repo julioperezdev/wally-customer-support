@@ -1,5 +1,28 @@
 # Entrega de imágenes de producto por canales
 
+## Resolución por variante
+
+La imagen visible debe corresponder a la variante seleccionada, no sólo al
+producto. `catalog_variants.image_object_key` es la referencia preferida para
+el SKU; `catalog_products.image_object_key` se utiliza como fallback cuando la
+variante no tiene una imagen propia. Esto permite que Remera NullPointer negro
+y blanco, por ejemplo, compartan producto pero no imagen.
+
+El catálogo demo mantiene cinco assets en S3:
+
+| SKU | Key |
+|---|---|
+| `RP-REM-NP-NEG-M` y `RP-REM-NP-NEG-L` | `wcs/catalog/10000000-0000-0000-0000-000000000001/RP-REM-NP-NEG-M.png` |
+| `RP-REM-NP-BLA-M` | `wcs/catalog/10000000-0000-0000-0000-000000000001/RP-REM-NP-BLA-M.png` |
+| `RP-BUZ-SB-GRI-L` | `wcs/catalog/10000000-0000-0000-0000-000000000002/RP-BUZ-SB-GRI-L.png` |
+| `RP-BUZ-SB-NEG-XL` | `wcs/catalog/10000000-0000-0000-0000-000000000002/RP-BUZ-SB-NEG-XL.png` |
+| `RP-CAM-DF-AZU-M` | `wcs/catalog/10000000-0000-0000-0000-000000000003/RP-CAM-DF-AZU-M.png` |
+
+La migración `V26` asigna estas referencias y deja la referencia de producto
+como fallback para variantes sin media propia. Los adapters de Telegram y WhatsApp reciben una referencia opaca y
+la convierten en una URL prefirmada de corta duración; si el objeto no está
+disponible, conservan el fallback textual.
+
 Estado: `Implemented` para el catálogo demo; pendiente de validación manual en
 Telegram y de la activación productiva de WhatsApp.
 
@@ -22,7 +45,8 @@ La política actual es deliberadamente conservadora:
 ## Flujo
 
 ```text
-catalog_products.image_object_key
+catalog_variants.image_object_key
+              | (fallback: catalog_products.image_object_key)
               |
               v
 CatalogSearchResult (facts + imagen por SKU)

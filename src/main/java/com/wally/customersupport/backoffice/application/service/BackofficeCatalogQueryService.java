@@ -63,7 +63,8 @@ public class BackofficeCatalogQueryService {
                                 variant.price(),
                                 variant.currency(),
                                 variant.stock(),
-                                variant.active()))
+                                variant.active(),
+                                variant.imageObjectKey()))
                         .toList());
     }
 

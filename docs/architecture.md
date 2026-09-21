@@ -491,8 +491,12 @@ un atributo que todavía no forma parte del schema, como “manga larga”, resp
 con una aclaración sobre los filtros soportados en lugar de convertirlo en un
 `NO_MATCH` genérico. La recuperación conserva primero el tipo de producto
 solicitado antes de ofrecer una alternativa de otra categoría.
-Las imágenes se modelan como referencias de objeto S3 y su envío por WhatsApp
-queda fuera del MVP.
+Las imágenes se modelan como referencias de objeto S3. La referencia de la
+variante/SKU tiene prioridad sobre la referencia fallback del producto, para
+que color y diseño no se mezclen al responder. El adapter del canal resuelve
+la referencia a una URL prefirmada sólo al entregar una imagen; el dominio no
+conoce S3 ni expone sus keys. El envío depende del adapter del canal y puede
+usarse tanto desde Telegram como desde WhatsApp cuando ese canal se habilite.
 
 ## Configuración por ambiente
 
