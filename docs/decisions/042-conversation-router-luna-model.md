@@ -43,7 +43,10 @@ costo y latencia.
 1. Ejecutar tests locales y la evaluación offline con el mismo dataset que el
    baseline.
 2. Verificar que el role de App Runner permite el inference profile de Luna y
-   los recursos de modelo requeridos por AWS.
+   los recursos de modelo requeridos por AWS. El ARN del inference profile debe
+   incluir el account ID (`arn:aws:bedrock:*:<account-id>:inference-profile/...`);
+   la variante sin account ID (`...:*::inference-profile/...`) no autoriza el
+   perfil account-scoped que recibe la llamada runtime.
 3. Comparar `conversation-router-v2` contra el baseline por intención,
    entidades, fallback, latencia y costo.
 4. Si aparece una regresión, volver mediante una nueva configuración de código
