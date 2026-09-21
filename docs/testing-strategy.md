@@ -31,6 +31,35 @@ y `Channel.TELEGRAM`. Los contratos de cada canal verifican sólo la traducción
 del payload, autenticación del webhook y request outbound; no duplican reglas de
 catálogo, IA, ownership o idempotencia.
 
+## Auditoría de la suite — 2026-09-21
+
+El conteo de ejecuciones no es un objetivo de calidad. La suite fue auditada
+por comportamiento protegido y no por cobertura de líneas. Se conservaron como
+núcleo: secuencias conversacionales, parser y routing de lenguaje natural,
+catálogo, carrito, checkout/pagos, memoria y retención, handoff, adapters de
+canal, Testcontainers/PostgreSQL/Flyway, seguridad JWT/Cognito, activación de
+agentes, kill switch, rollback, shadow/canary, evaluaciones y observabilidad.
+
+Se eliminaron tests que sólo cubrían constructores de propiedades ya validados
+por el arranque Spring, respuestas del adapter mock, contexto del adapter no-op,
+delegaciones de lectura sin reglas propias, un contexto de configuración
+duplicado y un controller de registry cubierto por el contrato Spring con
+Testcontainers. La suite no debe volver a crecer por cada método trivial: un
+test nuevo debe proteger una regla de negocio, un contrato externo, una
+propiedad de seguridad o una regresión conversacional reproducible.
+
+La calidad se evalúa con cuatro evidencias separadas: escenarios conversacionales
+representativos, integración real con PostgreSQL, contratos de seguridad/adapters
+y evaluación offline/real de Bedrock. Los tests unitarios de Bedrock continúan
+siendo tests de contrato con dobles; no simulan consumo real ni sustituyen el
+smoke controlado desde Telegram.
+
+La poda de esta auditoría redujo la suite de 123 a 112 archivos de test y de
+583 a 557 ejecuciones Maven. La validación local final fue `mvn -B verify`: 557
+tests, 0 fallos y 0 errores. La reducción no elimina las pruebas que explican
+el comportamiento core; elimina duplicación de wiring, mocks sin reglas y
+delegaciones sin decisión propia.
+
 Los tests de integración que arrancan el contexto Spring y acceden a
 persistencia usan un contenedor PostgreSQL 16 administrado por Testcontainers.
 El datasource se inyecta con `@DynamicPropertySource`, por lo que la suite no
