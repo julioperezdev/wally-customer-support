@@ -43,14 +43,18 @@ public class ConversationCartUseCase {
     }
 
     public Optional<CartConversationHandler.Response> handleBeforeRouting(ConversationContext context) {
-        if (!cartConversationHandler.recognizes(context.latestMessage())
+        boolean explicitCartCommand = cartConversationHandler.recognizes(context.latestMessage());
+        boolean implicitCartAddition = isImplicitCartAddition(context);
+        if (!explicitCartCommand && !implicitCartAddition
                 && !isPurchaseDeferral(context.latestMessage())) {
             return Optional.empty();
         }
         try {
             // Keep explicit product, variant and quantity data deterministic
             // even when this fast path runs before model classification.
-            return cartConversationHandler.handle(context, CartCommandParser.parse(context.latestMessage()));
+            return cartConversationHandler.handle(
+                    context,
+                    CartCommandParser.parse(context.latestMessage(), implicitCartAddition));
         } catch (RuntimeException exception) {
             StructuredEventLog.warn(log, "CONVERSATIONAL_CART_FAILED", java.util.Map.of(
                     "errorType", exception.getClass().getSimpleName()));
@@ -116,5 +120,23 @@ public class ConversationCartUseCase {
             case CANCEL_CHECKOUT -> CartCommandParser.Action.CANCEL_CHECKOUT;
             default -> null;
         };
+    }
+
+    private static boolean isImplicitCartAddition(ConversationContext context) {
+        if (context == null || !CartCommandParser.isImplicitAddRequest(context.latestMessage())) {
+            return false;
+        }
+        // "También quiero ..." is a cart mutation only when the bounded
+        // conversation already contains a cart command. Without this guard,
+        // a normal catalog request could unexpectedly create a cart.
+        return context.recentMessages().stream()
+                .filter(message -> !java.util.Objects.equals(message, context.latestMessage()))
+                .map(CartCommandParser::parse)
+                .anyMatch(command -> command.action() == CartCommandParser.Action.ADD
+                        || command.action() == CartCommandParser.Action.REMOVE
+                        || command.action() == CartCommandParser.Action.VIEW
+                        || command.action() == CartCommandParser.Action.REVIEW_CHECKOUT
+                        || command.action() == CartCommandParser.Action.CONFIRM
+                        || command.action() == CartCommandParser.Action.CANCEL_CHECKOUT);
     }
 }

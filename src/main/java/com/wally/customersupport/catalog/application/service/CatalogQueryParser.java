@@ -77,6 +77,8 @@ public final class CatalogQueryParser {
             "\\b(gorra|gorras|zapatilla|zapatillas|zapato|zapatos|pantalon|pantalones|"
                     + "camisa|camisas|short|shorts|accesorio|accesorios|bufanda|bufandas|"
                     + "media|medias)\\b");
+    private static final Pattern UNSUPPORTED_CATALOG_ATTRIBUTE = Pattern.compile(
+            "\\b(manga\\s+(?:larga|corta)|con\\s+capucha|material|estampad[oa]|tela|marca)\\b");
     static final Pattern CATALOG_MARKER = Pattern.compile(
             "\\b(remera|remeras|buzo|buzos|campera|camperas|producto|productos|catalogo|stock|disponible|"
                     + "disponibilidad|talle|talla|tamano|size|sku|precio|precios|cuesta|cueste|color|barato|barata|"
@@ -283,6 +285,13 @@ public final class CatalogQueryParser {
             return false;
         }
         return UNSUPPORTED_CATALOG_CATEGORY.matcher(normalize(message)).find();
+    }
+
+    public static boolean isUnsupportedCatalogAttribute(String message) {
+        if (message == null || message.isBlank()) {
+            return false;
+        }
+        return UNSUPPORTED_CATALOG_ATTRIBUTE.matcher(normalize(message)).find();
     }
 
     public static FollowUpKind followUpKind(String message) {

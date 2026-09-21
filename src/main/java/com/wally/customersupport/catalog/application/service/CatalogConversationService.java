@@ -41,6 +41,9 @@ public class CatalogConversationService {
             String requestedCategory = parsedLatest.name() == null ? query.name() : parsedLatest.name();
             return Optional.of(unsupportedCategory(requestedCategory));
         }
+        if (CatalogQueryParser.isUnsupportedCatalogAttribute(latestMessage)) {
+            return Optional.of(clarification("UNSUPPORTED_ATTRIBUTE"));
+        }
         CatalogQuery activeQuery = resolveActiveQuery(effectiveQuery, recentMessages, latestMessage);
         if (CatalogQueryParser.isRelativeCheaperContinuation(latestMessage)) {
             return Optional.of(searchCheaper(activeQuery));
@@ -117,7 +120,36 @@ public class CatalogConversationService {
                         images(alternativeProducts));
             }
         }
+        CatalogSearchResult relaxed = relaxedAlternative(query);
+        if (relaxed != null) {
+            return relaxed;
+        }
         return noMatch();
+    }
+
+    private CatalogSearchResult relaxedAlternative(CatalogQuery query) {
+        List<CatalogQuery> relaxedQueries = List.of(
+                query.withoutSize(),
+                query.withoutColor(),
+                query.withoutPriceRange(),
+                query.withoutSizeAndColor());
+        for (CatalogQuery relaxedQuery : relaxedQueries) {
+            if (relaxedQuery.equals(query)) {
+                continue;
+            }
+            List<CatalogProduct> products = searchProducts(relaxedQuery);
+            List<CatalogFact> alternatives = facts(products);
+            if (!alternatives.isEmpty()) {
+                return new CatalogSearchResult(
+                        CatalogSearchResult.Status.ALTERNATIVES,
+                        alternatives,
+                        displayCategory(query),
+                        CatalogSearchResult.FollowUpKind.NONE,
+                        "RELAXED_FILTERS",
+                        images(products));
+            }
+        }
+        return null;
     }
 
     private CatalogSearchResult searchFollowUp(
@@ -240,6 +272,16 @@ public class CatalogConversationService {
                 null,
                 CatalogSearchResult.FollowUpKind.NONE,
                 reason);
+    }
+
+    private static String displayCategory(CatalogQuery query) {
+        if (query == null) {
+            return null;
+        }
+        if ("abrigo".equalsIgnoreCase(query.productType())) {
+            return "prendas de abrigo";
+        }
+        return query.productType();
     }
 
     private static CatalogSearchResult noMatch() {

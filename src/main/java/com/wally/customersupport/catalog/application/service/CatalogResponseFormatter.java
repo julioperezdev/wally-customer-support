@@ -31,11 +31,13 @@ public final class CatalogResponseFormatter {
             case MATCHED -> result.followUpKind() == CatalogSearchResult.FollowUpKind.NONE
                     ? format(result.facts())
                     : formatFollowUp(result.facts().getFirst(), result.followUpKind());
-            case ALTERNATIVES -> "No encontré " + result.requestedProductType()
+            case ALTERNATIVES -> "No encontré " + requestedDescription(result)
                     + " para esa consulta. Como alternativa, encontré:\n"
                     + format(result.facts());
             case CLARIFICATION -> "FOLLOW_UP".equals(result.reason())
                     ? FOLLOW_UP_CLARIFICATION
+                    : "UNSUPPORTED_ATTRIBUTE".equals(result.reason())
+                            ? "Todavía no puedo filtrar por ese atributo. Puedo buscar por producto, talle, color, precio y stock."
                     : CATALOG_CLARIFICATION;
             case AMBIGUOUS -> MULTIPLE_FOLLOW_UP_RESULTS;
             case NO_MATCH -> NO_MATCH;
@@ -50,6 +52,12 @@ public final class CatalogResponseFormatter {
         StringBuilder response = new StringBuilder("Encontré estos productos:\n");
         facts.forEach(fact -> appendFact(response, fact));
         return response.toString().trim();
+    }
+
+    private static String requestedDescription(CatalogSearchResult result) {
+        return result.requestedProductType() == null || result.requestedProductType().isBlank()
+                ? "esa combinación"
+                : result.requestedProductType();
     }
 
     private static String formatFollowUp(

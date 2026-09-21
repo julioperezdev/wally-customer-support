@@ -2,6 +2,7 @@ package com.wally.customersupport.catalog.application.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -92,6 +93,36 @@ class CatalogConversationServiceTest {
         assertEquals(
                 "No encontré coincidencias en el catálogo demo para esa consulta. "
                         + "No puedo confirmar disponibilidad fuera de los datos registrados.",
+                reply);
+    }
+
+    @Test
+    void returnsAUsefulAlternativeWhenOneExplicitFilterHasNoMatch() {
+        CatalogProduct blackXl = product("Buzo Spring Boot", "RP-BUZ-SB-NEG-XL", "XL", "Negro", 3);
+        when(catalogQueryService.search(any(CatalogQuery.class)))
+                .thenAnswer(invocation -> {
+                    CatalogQuery query = invocation.getArgument(0);
+                    return query != null && "buzo".equals(query.productType())
+                            && "negro".equals(query.color()) && query.size() == null
+                            ? List.of(blackXl)
+                            : List.of();
+                });
+
+        String reply = replyFor("Busco un buzo negro talle L")
+                .orElseThrow();
+
+        assertTrue(reply.contains("No encontré buzo para esa consulta"));
+        assertTrue(reply.contains("Buzo Spring Boot"));
+        assertTrue(reply.contains("talle XL"));
+    }
+
+    @Test
+    void explainsWhenTheCustomerUsesAnUnsupportedCatalogAttribute() {
+        String reply = replyFor("Quiero una remera de manga larga")
+                .orElseThrow();
+
+        assertEquals(
+                "Todavía no puedo filtrar por ese atributo. Puedo buscar por producto, talle, color, precio y stock.",
                 reply);
     }
 

@@ -29,6 +29,17 @@ class CartCommandParserTest {
     }
 
     @Test
+    void parsesImplicitAdditionOnlyWhenTheCartBoundaryAllowsIt() {
+        CartCommandParser.Command command = CartCommandParser.parse(
+                "También quiero 1 buzo Spring Boot negro talle XL", true);
+
+        assertEquals(CartCommandParser.Action.ADD, command.action());
+        assertEquals(1, command.quantity());
+        assertEquals(new CatalogQuery("spring boot", null, "xl", "negro", "buzo", null, null), command.query());
+        assertEquals(CartCommandParser.Action.NONE, CartCommandParser.parse("Quiero un buzo").action());
+    }
+
+    @Test
     void recognizesCartLifecycleCommandsWithoutCatalogQuery() {
         assertEquals(CartCommandParser.Action.VIEW, CartCommandParser.parse("¿Qué hay en mi carrito?").action());
         assertEquals(CartCommandParser.Action.REMOVE, CartCommandParser.parse("Sacá 1 del carrito").action());

@@ -39,13 +39,16 @@ public final class CartCommandParser {
             "\\b(confirmar|confirmo|confirmá|confirmame|finalizar|finalizo)\\b.*\\b(compra|pedido|carrito|pago)?\\b|"
                     + "\\b(generar|genera|generame|pasame)\\b.*\\b(link|enlace)\\b.*\\b(pago|carrito|compra)?\\b");
     private static final Pattern ADD = Pattern.compile(
-            "\\b(agregar|agrega|agregame|sumar|suma|sumame|anadir|anade|añadir|añade)\\b|"
+            "\\b(agregar|agrega|agregame|agregue|sumar|suma|sumame|sume|anadir|anade|añadir|añade)\\b|"
                     + "\\b(al|a)\\s+(mi\\s+)?carrito\\b");
+    private static final Pattern IMPLICIT_ADD = Pattern.compile(
+            "\\b(?:tambien|ademas)\\s+(?:quiero|necesito|me\\s+llevo)\\b");
     private static final Pattern REMOVE = Pattern.compile(
             "\\b(sacar|saca|quita|quitar|eliminar|elimina|bajar|restar|resta|remove)\\b");
     private static final Pattern QUANTITY = Pattern.compile(
-            "\\b(?:agregar|agrega|agregame|sumar|suma|sumame|anadir|anade|añadir|añade|"
+            "\\b(?:agregar|agrega|agregame|agregue|sumar|suma|sumame|sume|anadir|anade|añadir|añade|"
                     + "sacar|saca|quita|quitar|eliminar|elimina|bajar|restar|resta|remove)\\s+([1-9][0-9]?)\\b|"
+                    + "\\b(?:quiero|necesito|me\\s+llevo)\\s+([1-9][0-9]?)\\b|"
                     + "\\b([1-9][0-9]?)\\s*(?:unidades?|u)\\b|\\bx\\s*([1-9][0-9]?)\\b");
     private static final Pattern DEFER = Pattern.compile(
             "\\bno\\s+(?:quiero|necesito|voy\\s+a)\\s+(?:comprar|comprarla|comprarlo|pagar|llevar|llevarme)\\b|"
@@ -56,6 +59,15 @@ public final class CartCommandParser {
     }
 
     public static Command parse(String message) {
+        return parse(message, false);
+    }
+
+    /**
+     * Parses an implicit addition such as "también quiero un buzo" only when
+     * the caller has already established that the conversation is managing a
+     * cart. A plain "quiero un buzo" remains a catalog search.
+     */
+    public static Command parse(String message, boolean allowImplicitAdd) {
         if (message == null || message.isBlank()) {
             return new Command(Action.NONE, null, 1);
         }
@@ -78,6 +90,9 @@ public final class CartCommandParser {
         if (ADD.matcher(normalized).find()) {
             return new Command(Action.ADD, itemQuery(normalized), quantity(normalized));
         }
+        if (allowImplicitAdd && IMPLICIT_ADD.matcher(normalized).find()) {
+            return new Command(Action.ADD, itemQuery(normalized), quantity(normalized));
+        }
         if (REMOVE.matcher(normalized).find()) {
             return new Command(Action.REMOVE, itemQuery(normalized), quantity(normalized));
         }
@@ -91,11 +106,19 @@ public final class CartCommandParser {
         return parse(message).action() != Action.NONE;
     }
 
+    public static boolean isImplicitAddRequest(String message) {
+        if (message == null || message.isBlank()) {
+            return false;
+        }
+        return IMPLICIT_ADD.matcher(normalize(message)).find();
+    }
+
     private static CatalogQuery itemQuery(String normalized) {
         String itemMessage = normalized
-                .replaceAll("\\b(?:agregar|agrega|agregame|sumar|suma|sumame|anadir|anade|añadir|añade|"
+                .replaceAll("\\b(?:agregar|agrega|agregame|agregue|sumar|suma|sumame|sume|anadir|anade|añadir|añade|"
                         + "sacar|saca|quita|quitar|eliminar|elimina|bajar|restar|resta|remove)\\b", " ")
-                .replaceAll("\\b(?:al|a|mi|el|la|un|una|por|favor|tambien|también|carrito|cesta)\\b", " ")
+                .replaceAll("\\b(?:quiero|necesito|llevo|tambien|también|ademas|además|otro|otra|"
+                        + "al|a|mi|el|la|un|una|por|favor|carrito|cesta)\\b", " ")
                 .replaceAll("\\b[1-9][0-9]?\\b", " ")
                 .replaceAll("\\s+", " ")
                 .trim();
