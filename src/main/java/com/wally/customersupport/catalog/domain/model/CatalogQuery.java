@@ -125,6 +125,22 @@ public record CatalogQuery(
         return new CatalogQuery(name, sku, size, color, null, minPrice, maxPrice);
     }
 
+    public CatalogQuery withoutSize() {
+        return new CatalogQuery(name, sku, null, color, productType, minPrice, maxPrice);
+    }
+
+    public CatalogQuery withoutColor() {
+        return new CatalogQuery(name, sku, size, null, productType, minPrice, maxPrice);
+    }
+
+    public CatalogQuery withoutPriceRange() {
+        return new CatalogQuery(name, sku, size, color, productType, null, null);
+    }
+
+    public CatalogQuery withoutSizeAndColor() {
+        return new CatalogQuery(name, sku, null, null, productType, minPrice, maxPrice);
+    }
+
     public CatalogQuery withProductType(String replacementProductType) {
         return new CatalogQuery(name, sku, size, color, replacementProductType, minPrice, maxPrice);
     }

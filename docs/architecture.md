@@ -481,7 +481,15 @@ En `CATALOG_SEARCH`, el router sólo extrae filtros
 carrito también puede extraer cantidad y parámetros faltantes. El caso de uso
 valida esos datos, consulta el catálogo con filtros parametrizados y aplica las
 reglas de ownership, stock, precio e idempotencia. El LLM no genera SQL ni
-inventa precio, stock, políticas u horarios.
+inventa precio, stock, políticas u horarios. `ConversationCartUseCase` sólo
+interpreta una adición implícita como “también quiero un buzo” cuando la
+conversación ya tiene una operación de carrito; así una búsqueda normal como
+“quiero un buzo” no muta el carrito accidentalmente. Cuando una combinación de
+filtros no existe, `CatalogConversationService` puede relajar un filtro
+explícito de forma acotada y presentar alternativas reales. Si el mensaje usa
+un atributo que todavía no forma parte del schema, como “manga larga”, responde
+con una aclaración sobre los filtros soportados en lugar de convertirlo en un
+`NO_MATCH` genérico.
 Las imágenes se modelan como referencias de objeto S3 y su envío por WhatsApp
 queda fuera del MVP.
 

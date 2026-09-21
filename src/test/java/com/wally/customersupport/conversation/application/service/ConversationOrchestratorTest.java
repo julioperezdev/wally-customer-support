@@ -308,6 +308,51 @@ class ConversationOrchestratorTest {
     }
 
     @Test
+    void recognizesAnImplicitSecondCartItemFromTheExistingCartConversation() {
+        ConversationOrchestrator cartOrchestrator = ConversationOrchestratorTestSupport.create(
+                intentClassifier,
+                catalogConversationService,
+                supportConfigurationQueryService,
+                knowledgeRetriever,
+                llmClient,
+                new RagProperties("mock", 5, null, null),
+                new ConversationExecutionPlanFactory(),
+                agentActivationResolver,
+                agentRuntimeDefinitionResolver,
+                new AgentRuntimeProperties(false, "prod", false, Duration.ofSeconds(5), "noop", "test", 0),
+                catalogSpecialistExecutor,
+                responseHumanizer,
+                agentShadowRuntimeService,
+                new ActorKeyGenerator(new ObservabilityProperties("test-actor-key")),
+                purchaseLinkCreator,
+                cartConversationHandler);
+        ConversationContext cartContext = new ConversationContext(
+                context.conversationId(),
+                context.externalCustomerId(),
+                "También quiero 1 buzo Spring Boot negro talle XL",
+                List.of(
+                        "Agrega 2 remeras NullPointer negras talle M",
+                        "También quiero 1 buzo Spring Boot negro talle XL"),
+                List.of(),
+                null,
+                List.of(),
+                Channel.TELEGRAM);
+        when(cartConversationHandler.recognizes(cartContext.latestMessage())).thenReturn(false);
+        when(cartConversationHandler.handle(eq(cartContext), any(CartCommandParser.Command.class)))
+                .thenReturn(Optional.of(new CartConversationHandler.Response("Agregué 1 al carrito.")));
+
+        assertEquals("Agregué 1 al carrito.", cartOrchestrator.replyFor(cartContext));
+        verify(cartConversationHandler).handle(eq(cartContext), argThat(command ->
+                command.action() == CartCommandParser.Action.ADD
+                        && command.quantity() == 1
+                        && "spring boot".equals(command.query().name())
+                        && "buzo".equals(command.query().productType())
+                        && "negro".equals(command.query().color())
+                        && "xl".equals(command.query().size())));
+        verify(intentClassifier, never()).classify(any(ConversationContext.class));
+    }
+
+    @Test
     void resolvesActiveAgentWithoutChangingTheDeterministicResponse() {
         ConversationContext channelContext = new ConversationContext(
                 context.conversationId(),
