@@ -9,6 +9,7 @@ import java.util.Optional;
 
 import com.wally.customersupport.catalog.domain.model.CatalogProduct;
 import com.wally.customersupport.catalog.domain.model.CatalogQuery;
+import com.wally.customersupport.catalog.domain.model.CatalogVariant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -234,10 +235,20 @@ public class CatalogConversationService {
             return List.of();
         }
         return products.stream()
-                .filter(product -> product.imageObjectKey() != null && !product.imageObjectKey().isBlank())
                 .flatMap(product -> product.variants().stream()
-                        .map(variant -> new CatalogImage(variant.sku(), product.imageObjectKey())))
+                        .map(variant -> imageReference(product, variant)
+                                .map(reference -> new CatalogImage(variant.sku(), reference)))
+                        .flatMap(Optional::stream))
                 .toList();
+    }
+
+    private static Optional<String> imageReference(CatalogProduct product, CatalogVariant variant) {
+        if (variant.imageObjectKey() != null && !variant.imageObjectKey().isBlank()) {
+            return Optional.of(variant.imageObjectKey());
+        }
+        return product.imageObjectKey() == null || product.imageObjectKey().isBlank()
+                ? Optional.empty()
+                : Optional.of(product.imageObjectKey());
     }
 
     private static CatalogSearchResult matched(

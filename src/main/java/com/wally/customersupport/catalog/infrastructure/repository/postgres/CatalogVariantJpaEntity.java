@@ -46,6 +46,9 @@ public class CatalogVariantJpaEntity {
     @Column(nullable = false)
     private boolean active;
 
+    @Column(name = "image_object_key", length = 512)
+    private String imageObjectKey;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -60,7 +63,7 @@ public class CatalogVariantJpaEntity {
     }
 
     public CatalogVariant toDomain() {
-        return new CatalogVariant(id, sku, sizeLabel, color, price, currency, stock, active);
+        return new CatalogVariant(id, sku, sizeLabel, color, price, currency, stock, active, imageObjectKey);
     }
 
     public boolean isActive() {
@@ -93,6 +96,10 @@ public class CatalogVariantJpaEntity {
 
     public int getStock() {
         return stock;
+    }
+
+    public String getImageObjectKey() {
+        return imageObjectKey;
     }
 
     public void adjustStock(int newStock, Instant now) {

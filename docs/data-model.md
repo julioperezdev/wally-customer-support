@@ -90,13 +90,15 @@ outbound. `@Async` sin persistencia no es el mecanismo productivo.
 El catálogo demo de **Ropa de Programador** se separa en producto y variante:
 
 * `catalog_products`: nombre, descripción, referencia `image_object_key` para
-  un objeto en S3, estado `active` y marca `demo`. Una referencia válida puede
-  acompañar una coincidencia única con una entrega de imagen; la URL temporal
-  se genera sólo en el despacho.
+  una imagen fallback del producto, estado `active` y marca `demo`. Una
+  referencia válida puede acompañar una coincidencia única con una entrega de
+  imagen; la URL temporal se genera sólo en el despacho.
 * `product_type`: tipo normalizado (`remera`, `buzo`, `campera` u `other`),
   utilizado para no confundir el tipo de prenda con el nombre del diseño.
-* `catalog_variants`: SKU único, talle, color, importe, moneda, stock y estado
-  `active`.
+* `catalog_variants`: SKU único, talle, color, importe, moneda, stock, estado
+  `active` y referencia opcional `image_object_key`. La variante tiene
+  prioridad sobre la imagen fallback del producto, por lo que dos colores del
+  mismo producto pueden mostrar diseños distintos sin duplicar el producto.
 * El acceso se realiza mediante `CatalogRepository` y filtros determinísticos
   por nombre, tipo, SKU, talle y color. El adapter no recibe SQL ni datos
   generados por el LLM.
@@ -272,8 +274,11 @@ NULL` para que la retención pueda eliminar metadatos sin destruir la tarea.
 `wcs.catalog_stock_adjustments`. Cada ajuste guarda sólo SKU, stock anterior,
 delta, stock resultante, motivo, actor técnico, clave idempotente y timestamp.
 La variante usa una versión JPA y lock pesimista para evitar perder ajustes
-concurrentes. La migración no guarda imágenes: `catalog_products.image_object_key`
-continúa siendo la referencia a la key de S3 después de confirmar un upload.
+concurrentes. `V26__add_catalog_variant_media.sql` agrega la referencia por
+variante y conserva `catalog_products.image_object_key` como fallback para
+productos antiguos o variantes que todavía no tienen media propia. Las keys
+apuntan al bucket privado de S3 y nunca se envían al cliente final: el adapter
+genera una URL prefirmada sólo al entregar la imagen.
 
 ### Retención operativa — job en `WCS-26`
 

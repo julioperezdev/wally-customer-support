@@ -94,6 +94,7 @@ create table wcs.catalog_variants (
     currency varchar(3) not null,
     stock integer not null,
     active boolean not null,
+    image_object_key varchar(512),
     created_at timestamp with time zone not null,
     updated_at timestamp with time zone not null,
     constraint uq_catalog_variants_sku unique (sku),

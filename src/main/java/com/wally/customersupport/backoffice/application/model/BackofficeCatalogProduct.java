@@ -26,6 +26,7 @@ public record BackofficeCatalogProduct(
             BigDecimal price,
             String currency,
             int stock,
-            boolean active) {
+            boolean active,
+            String imageObjectKey) {
     }
 }

@@ -158,6 +158,7 @@ exclusivamente con el perfil `feature-flags`.
 | `MAN-039` | Opt-out | `BAJA` o `STOP` | Suprime el contacto, no llama a IA y no envía una respuesta automática posterior | `PENDIENTE` |
 | `MAN-040` | Reactivación | `ALTA`, `REANUDAR` o `/start` después de una baja | Reactiva el chat, limpia memoria/preferencias y carrito, cancela checkout pendiente y permite una nueva conversación | `PENDIENTE` |
 | `MAN-041` | Catálogo con una única variante e imagen cargada | `Busco la remera NullPointer negra talle M` | Telegram entrega una imagen del producto y el texto como caption | `PENDIENTE` |
+| `MAN-041A` | Media asignada por variante/SKU | Reiniciar y probar `Busco la remera NullPointer blanca talle M`; luego probar la negra talle M | Cada respuesta entrega la imagen del color solicitado: blanco usa `RP-REM-NP-BLA-M.png` y negro usa `RP-REM-NP-NEG-M.png`; no se intercambian imágenes | `PENDIENTE` |
 | `MAN-042` | Catálogo con varias variantes | `¿Qué remeras tienen?` | Telegram entrega un listado textual sin enviar una imagen por cada variante | `PENDIENTE` |
 | `MAN-043` | Seguimiento de una variante | `¿Está disponible?` después de una búsqueda única | La respuesta de stock es textual y no repite la imagen | `PENDIENTE` |
 
