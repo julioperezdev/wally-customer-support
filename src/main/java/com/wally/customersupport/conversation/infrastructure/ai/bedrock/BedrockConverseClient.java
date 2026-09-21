@@ -42,7 +42,6 @@ final class BedrockConverseClient implements MeasuredLlmClient {
     private final BedrockRuntimeClient client;
     private final AiProperties properties;
     private final ObjectMapper objectMapper;
-    private final String modelId;
 
     BedrockConverseClient(BedrockRuntimeClient client, AiProperties properties) {
         this(client, properties, new ObjectMapper());
@@ -52,7 +51,6 @@ final class BedrockConverseClient implements MeasuredLlmClient {
         this.client = client;
         this.properties = properties;
         this.objectMapper = objectMapper;
-        this.modelId = properties.effectiveModel();
     }
 
     ToolUseCompletion completeWithToolUse(
@@ -67,7 +65,7 @@ final class BedrockConverseClient implements MeasuredLlmClient {
             WcsToolDescriptor descriptor) {
         return completeWithToolUse(
                 stage, operation, systemPrompt, userPrompt, maxTokens, temperature,
-                promptVersion, promptHash, null, descriptor);
+                promptVersion, promptHash, null, descriptor, properties.effectiveDefaultModelSettings());
     }
 
     ToolUseCompletion completeWithToolUse(
@@ -81,6 +79,56 @@ final class BedrockConverseClient implements MeasuredLlmClient {
             String promptHash,
             String correlationId,
             WcsToolDescriptor descriptor) {
+        return completeWithToolUse(
+                stage, operation, systemPrompt, userPrompt, maxTokens, temperature,
+                promptVersion, promptHash, correlationId, descriptor,
+                properties.effectiveDefaultModelSettings());
+    }
+
+    ToolUseCompletion completeWithToolUseForRouter(
+            String stage,
+            String operation,
+            String systemPrompt,
+            String userPrompt,
+            int maxTokens,
+            float temperature,
+            String promptVersion,
+            String promptHash,
+            WcsToolDescriptor descriptor) {
+        return completeWithToolUse(
+                stage, operation, systemPrompt, userPrompt, maxTokens, temperature,
+                promptVersion, promptHash, null, descriptor, properties.effectiveRouterModelSettings());
+    }
+
+    ToolUseCompletion completeWithToolUseForRouter(
+            String stage,
+            String operation,
+            String systemPrompt,
+            String userPrompt,
+            int maxTokens,
+            float temperature,
+            String promptVersion,
+            String promptHash,
+            String correlationId,
+            WcsToolDescriptor descriptor) {
+        return completeWithToolUse(
+                stage, operation, systemPrompt, userPrompt, maxTokens, temperature,
+                promptVersion, promptHash, correlationId, descriptor,
+                properties.effectiveRouterModelSettings());
+    }
+
+    private ToolUseCompletion completeWithToolUse(
+            String stage,
+            String operation,
+            String systemPrompt,
+            String userPrompt,
+            int maxTokens,
+            float temperature,
+            String promptVersion,
+            String promptHash,
+            String correlationId,
+            WcsToolDescriptor descriptor,
+            AiProperties.ModelSettings modelSettings) {
         Objects.requireNonNull(descriptor, "descriptor");
         String providerToolName = providerToolName(descriptor.name());
         Message message = Message.builder()
@@ -98,12 +146,12 @@ final class BedrockConverseClient implements MeasuredLlmClient {
                                 .build())
                         .build())
                 ;
-        if (supportsSpecificToolChoice(modelId)) {
+        if (supportsSpecificToolChoice(modelSettings.modelId())) {
             toolConfigurationBuilder.toolChoice(choice(providerToolName));
         }
         ToolConfiguration toolConfiguration = toolConfigurationBuilder.build();
         ConverseRequest request = ConverseRequest.builder()
-                .modelId(modelId)
+                .modelId(modelSettings.modelId())
                 .system(SystemContentBlock.fromText(systemPrompt))
                 .messages(message)
                 .toolConfig(toolConfiguration)
@@ -132,19 +180,19 @@ final class BedrockConverseClient implements MeasuredLlmClient {
                 throw new IllegalStateException("Bedrock did not return the requested tool call");
             }
             String inputJson = objectMapper.writeValueAsString(toolUse.input().unwrap());
-            LlmCompletion completion = completion(null, response, startedAt, modelId);
+            LlmCompletion completion = completion(null, response, startedAt, modelSettings);
             recordUsage(stage, operation, completion, response.stopReason(), true, null,
-                    promptVersion, promptHash, correlationId, null, properties.effectiveRequestTimeout());
+                    promptVersion, promptHash, correlationId, null, properties.effectiveRequestTimeout(), modelSettings);
             recordToolCall(stage, operation, descriptor, inputJson, correlationId, true, null);
             return new ToolUseCompletion(descriptor.name(), inputJson, completion);
         } catch (RuntimeException exception) {
             LlmCompletion completion = response == null
                     ? null
-                    : completion(null, response, startedAt, modelId);
+                    : completion(null, response, startedAt, modelSettings);
             recordUsage(stage, operation, completion,
                     response == null ? null : response.stopReason(), false,
                     exception.getClass().getSimpleName(), promptVersion, promptHash,
-                    correlationId, null, properties.effectiveRequestTimeout());
+                    correlationId, null, properties.effectiveRequestTimeout(), modelSettings);
             recordToolCall(stage, operation, descriptor, null, correlationId, false,
                     exception.getClass().getSimpleName());
             throw exception;
@@ -168,7 +216,7 @@ final class BedrockConverseClient implements MeasuredLlmClient {
                 null,
                 null,
                 null,
-                modelId,
+                properties.effectiveDefaultModelSettings(),
                 0.9f,
                 null,
                 properties.effectiveRequestTimeout()).text();
@@ -186,7 +234,7 @@ final class BedrockConverseClient implements MeasuredLlmClient {
             String correlationId) {
         return completeMeasured(
                 stage, operation, systemPrompt, userPrompt, maxTokens, temperature,
-                promptVersion, promptHash, correlationId, modelId, 0.9f, null,
+                promptVersion, promptHash, correlationId, properties.effectiveDefaultModelSettings(), 0.9f, null,
                 properties.effectiveRequestTimeout()).text();
     }
 
@@ -209,10 +257,41 @@ final class BedrockConverseClient implements MeasuredLlmClient {
                 promptVersion,
                 promptHash,
                 null,
-                modelId,
+                properties.effectiveDefaultModelSettings(),
                 0.9f,
                 null,
                 properties.effectiveRequestTimeout()).text();
+    }
+
+    String completeForRouter(
+            String stage,
+            String operation,
+            String systemPrompt,
+            String userPrompt,
+            int maxTokens,
+            float temperature,
+            String promptVersion,
+            String promptHash) {
+        return completeMeasured(
+                stage, operation, systemPrompt, userPrompt, maxTokens, temperature,
+                promptVersion, promptHash, null, properties.effectiveRouterModelSettings(), 0.9f,
+                null, properties.effectiveRequestTimeout()).text();
+    }
+
+    String completeForRouter(
+            String stage,
+            String operation,
+            String systemPrompt,
+            String userPrompt,
+            int maxTokens,
+            float temperature,
+            String promptVersion,
+            String promptHash,
+            String correlationId) {
+        return completeMeasured(
+                stage, operation, systemPrompt, userPrompt, maxTokens, temperature,
+                promptVersion, promptHash, correlationId, properties.effectiveRouterModelSettings(), 0.9f,
+                null, properties.effectiveRequestTimeout()).text();
     }
 
     String completeForAgent(
@@ -236,7 +315,7 @@ final class BedrockConverseClient implements MeasuredLlmClient {
                 promptVersion,
                 promptHash,
                 null,
-                definition.modelId(),
+                agentModelSettings(definition),
                 topP,
                 definition,
                 effectiveTimeout(definition.timeout())).text();
@@ -256,7 +335,7 @@ final class BedrockConverseClient implements MeasuredLlmClient {
             String correlationId) {
         return completeMeasured(
                 stage, operation, systemPrompt, userPrompt, maxTokens, temperature,
-                promptVersion, promptHash, correlationId, definition.modelId(), topP,
+                promptVersion, promptHash, correlationId, agentModelSettings(definition), topP,
                 definition, effectiveTimeout(definition.timeout())).text();
     }
 
@@ -278,7 +357,7 @@ final class BedrockConverseClient implements MeasuredLlmClient {
                 null,
                 null,
                 null,
-                modelId,
+                properties.effectiveDefaultModelSettings(),
                 0.9f,
                 null,
                 properties.effectiveRequestTimeout());
@@ -294,7 +373,7 @@ final class BedrockConverseClient implements MeasuredLlmClient {
             String promptVersion,
             String promptHash,
             String correlationId,
-            String requestedModelId,
+            AiProperties.ModelSettings modelSettings,
             float topP,
             AgentRuntimeDefinition definition,
             Duration requestTimeout) {
@@ -303,7 +382,7 @@ final class BedrockConverseClient implements MeasuredLlmClient {
                 .content(ContentBlock.fromText(userPrompt))
                 .build();
         ConverseRequest request = ConverseRequest.builder()
-                .modelId(requestedModelId)
+                .modelId(modelSettings.modelId())
                 .system(SystemContentBlock.fromText(systemPrompt))
                 .messages(message)
                 .overrideConfiguration(AwsRequestOverrideConfiguration.builder()
@@ -331,7 +410,7 @@ final class BedrockConverseClient implements MeasuredLlmClient {
             if (text.isBlank()) {
                 throw new IllegalStateException("Bedrock returned an empty message");
             }
-            LlmCompletion completion = completion(text, response, startedAt, requestedModelId);
+            LlmCompletion completion = completion(text, response, startedAt, modelSettings);
             recordUsage(
                     stage,
                     operation,
@@ -343,12 +422,13 @@ final class BedrockConverseClient implements MeasuredLlmClient {
                     promptHash,
                     correlationId,
                     definition,
-                    requestTimeout);
+                    requestTimeout,
+                    modelSettings);
             return completion;
         } catch (RuntimeException exception) {
             LlmCompletion completion = response == null
                     ? null
-                    : completion(null, response, startedAt, requestedModelId);
+                    : completion(null, response, startedAt, modelSettings);
             recordUsage(
                     stage,
                     operation,
@@ -360,7 +440,8 @@ final class BedrockConverseClient implements MeasuredLlmClient {
                     promptHash,
                     correlationId,
                     definition,
-                    requestTimeout);
+                    requestTimeout,
+                    modelSettings);
             throw exception;
         }
     }
@@ -369,7 +450,7 @@ final class BedrockConverseClient implements MeasuredLlmClient {
             String text,
             ConverseResponse response,
             long startedAt,
-            String responseModelId) {
+            AiProperties.ModelSettings modelSettings) {
         var usage = response == null ? null : response.usage();
         Integer inputTokens = usage == null ? null : usage.inputTokens();
         Integer outputTokens = usage == null ? null : usage.outputTokens();
@@ -382,19 +463,19 @@ final class BedrockConverseClient implements MeasuredLlmClient {
                 : AiPricingCalculator.estimatedCostUsd(
                         inputTokens,
                         outputTokens,
-                        properties.effectiveInputPriceUsdPerMillionTokens(),
-                        properties.effectiveOutputPriceUsdPerMillionTokens());
+                        modelSettings.inputPriceUsdPerMillionTokens(),
+                        modelSettings.outputPriceUsdPerMillionTokens());
         return new LlmCompletion(
                 text,
                 "bedrock",
-                responseModelId,
+                modelSettings.modelId(),
                 elapsedMillis(startedAt),
                 providerLatency,
                 inputTokens,
                 outputTokens,
                 totalTokens,
                 estimatedCost,
-                properties.effectivePricingVersion());
+                modelSettings.pricingVersion());
     }
 
     private void recordUsage(
@@ -408,7 +489,8 @@ final class BedrockConverseClient implements MeasuredLlmClient {
             String promptHash,
             String correlationId,
             AgentRuntimeDefinition definition,
-            Duration requestTimeout) {
+            Duration requestTimeout,
+            AiProperties.ModelSettings modelSettings) {
 
         Map<String, Object> fields = new LinkedHashMap<>();
         fields.put("stage", stage);
@@ -418,7 +500,7 @@ final class BedrockConverseClient implements MeasuredLlmClient {
             fields.put("correlationId", correlationId);
         }
         fields.put("model", completion == null
-                ? definition == null ? modelId : definition.modelId()
+                ? modelSettings.modelId()
                 : completion.modelId());
         fields.put("success", success);
         fields.put("tokenUsageAvailable", completion != null && completion.inputTokens() != null
@@ -427,7 +509,7 @@ final class BedrockConverseClient implements MeasuredLlmClient {
         fields.put("outputTokens", completion == null ? null : completion.outputTokens());
         fields.put("totalTokens", completion == null ? null : completion.totalTokens());
         fields.put("estimatedCostUsd", completion == null ? null : completion.estimatedCostUsd());
-        fields.put("pricingVersion", completion == null ? properties.effectivePricingVersion() : completion.pricingVersion());
+        fields.put("pricingVersion", completion == null ? modelSettings.pricingVersion() : completion.pricingVersion());
         fields.put("durationMs", completion == null ? null : completion.durationMs());
         fields.put("timeoutMs", requestTimeout.toMillis());
         if (completion != null && completion.providerLatencyMs() != null) {
@@ -454,6 +536,10 @@ final class BedrockConverseClient implements MeasuredLlmClient {
             fields.put("agentMaxInputTokens", definition.maxInputTokens());
             fields.put("agentMaxOutputTokens", definition.maxOutputTokens());
             fields.put("agentBudgetLimitUsd", definition.budgetLimitUsd());
+        }
+        if (modelSettings.agentId() != null) {
+            fields.put("agentId", modelSettings.agentId());
+            fields.put("agentVersion", modelSettings.agentVersion());
         }
 
         if (success) {
@@ -562,6 +648,17 @@ final class BedrockConverseClient implements MeasuredLlmClient {
         return agentTimeout.compareTo(properties.effectiveRequestTimeout()) < 0
                 ? agentTimeout
                 : properties.effectiveRequestTimeout();
+    }
+
+    private AiProperties.ModelSettings agentModelSettings(AgentRuntimeDefinition definition) {
+        return new AiProperties.ModelSettings(
+                definition.modelId(),
+                definition.systemPromptVersion(),
+                properties.effectivePricingVersion(),
+                properties.effectiveInputPriceUsdPerMillionTokens(),
+                properties.effectiveOutputPriceUsdPerMillionTokens(),
+                null,
+                null);
     }
 
     record ToolUseCompletion(String toolName, String inputJson, LlmCompletion completion) {

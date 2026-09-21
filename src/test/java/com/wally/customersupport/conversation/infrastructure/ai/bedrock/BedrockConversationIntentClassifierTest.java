@@ -28,7 +28,7 @@ class BedrockConversationIntentClassifierTest {
     @Test
     void parsesStructuredCatalogDecisionWithoutAllowingModelDataToBecomeSql() {
         BedrockConverseClient converseClient = mock(BedrockConverseClient.class);
-        when(converseClient.complete(
+        when(converseClient.completeForRouter(
                 anyString(), anyString(), anyString(), anyString(), anyInt(), anyFloat(), anyString(), anyString()))
                 .thenReturn("""
                         {"intent":"CATALOG_SEARCH","confidence":0.94,
@@ -46,7 +46,7 @@ class BedrockConversationIntentClassifierTest {
         assertEquals("M", decision.catalogQuery().size());
         assertEquals("negro", decision.catalogQuery().color());
         assertEquals(new BigDecimal("20000"), decision.catalogQuery().maxPrice());
-        verify(converseClient).complete(
+        verify(converseClient).completeForRouter(
                 anyString(), anyString(), anyString(), anyString(), eq(1_024), eq(0.0f),
                 eq("conversation-intent-v4"), anyString());
     }
@@ -54,7 +54,7 @@ class BedrockConversationIntentClassifierTest {
     @Test
     void sendsBoundedConversationHistoryToResolveRefinements() {
         BedrockConverseClient converseClient = mock(BedrockConverseClient.class);
-        when(converseClient.complete(
+        when(converseClient.completeForRouter(
                 anyString(), anyString(), anyString(), anyString(), anyInt(), anyFloat(), anyString(), anyString()))
                 .thenReturn("{\"intent\":\"CATALOG_SEARCH\",\"confidence\":0.94,"
                         + "\"catalogQuery\":{\"name\":\"nullpointer\",\"sku\":null,\"size\":null,"
@@ -66,7 +66,7 @@ class BedrockConversationIntentClassifierTest {
 
         assertEquals("buzo", decision.catalogQuery().productType());
         org.mockito.ArgumentCaptor<String> prompt = org.mockito.ArgumentCaptor.forClass(String.class);
-        verify(converseClient).complete(
+        verify(converseClient).completeForRouter(
                 anyString(), anyString(), anyString(), prompt.capture(), eq(1_024), eq(0.0f),
                 eq("conversation-intent-v4"), anyString());
         assertTrue(prompt.getValue().contains("quiero un buzo"));
@@ -76,7 +76,7 @@ class BedrockConversationIntentClassifierTest {
     @Test
     void convertsMalformedModelOutputToUnknownDecision() {
         BedrockConverseClient converseClient = mock(BedrockConverseClient.class);
-        when(converseClient.complete(
+        when(converseClient.completeForRouter(
                 anyString(), anyString(), anyString(), anyString(), anyInt(), anyFloat(), anyString(), anyString()))
                 .thenReturn("not-json");
 
@@ -90,7 +90,7 @@ class BedrockConversationIntentClassifierTest {
     @Test
     void usesBoundedConfidenceWhenGeneralSupportOmitsConfidence() {
         BedrockConverseClient converseClient = mock(BedrockConverseClient.class);
-        when(converseClient.complete(
+        when(converseClient.completeForRouter(
                 anyString(), anyString(), anyString(), anyString(), anyInt(), anyFloat(), anyString(), anyString()))
                 .thenReturn("{\"intent\":\"GENERAL_SUPPORT\",\"catalogQuery\":null,\"policyKey\":null}");
 
@@ -104,7 +104,7 @@ class BedrockConversationIntentClassifierTest {
     @Test
     void usesSafeDefaultConfidenceWhenHumanHandoffOmitsConfidence() {
         BedrockConverseClient converseClient = mock(BedrockConverseClient.class);
-        when(converseClient.complete(
+        when(converseClient.completeForRouter(
                 anyString(), anyString(), anyString(), anyString(), anyInt(), anyFloat(), anyString(), anyString()))
                 .thenReturn("{\"intent\":\"HUMAN_HANDOFF\",\"action\":\"HUMAN_HANDOFF\","
                         + "\"confidence\":0.0}");
@@ -120,7 +120,7 @@ class BedrockConversationIntentClassifierTest {
     @Test
     void usesSafeDefaultConfidenceWhenPolicyQueryOmitsConfidence() {
         BedrockConverseClient converseClient = mock(BedrockConverseClient.class);
-        when(converseClient.complete(
+        when(converseClient.completeForRouter(
                 anyString(), anyString(), anyString(), anyString(), anyInt(), anyFloat(), anyString(), anyString()))
                 .thenReturn("{\"intent\":\"POLICY_QUERY\",\"action\":\"POLICY_QUERY\","
                         + "\"confidence\":0.0,\"policyKey\":\"shipping\"}");
@@ -137,7 +137,7 @@ class BedrockConversationIntentClassifierTest {
     @Test
     void parsesPurchaseIntentAndCatalogSelection() {
         BedrockConverseClient converseClient = mock(BedrockConverseClient.class);
-        when(converseClient.complete(
+        when(converseClient.completeForRouter(
                 anyString(), anyString(), anyString(), anyString(), anyInt(), anyFloat(), anyString(), anyString()))
                 .thenReturn("{\"intent\":\"PURCHASE_LINK\",\"confidence\":0.98,"
                         + "\"catalogQuery\":{\"name\":\"nullpointer\",\"sku\":null,\"size\":\"M\","
@@ -155,7 +155,7 @@ class BedrockConversationIntentClassifierTest {
     @Test
     void parsesStructuredCartActionAndBoundedQuantity() {
         BedrockConverseClient converseClient = mock(BedrockConverseClient.class);
-        when(converseClient.complete(
+        when(converseClient.completeForRouter(
                 anyString(), anyString(), anyString(), anyString(), anyInt(), anyFloat(), anyString(), anyString()))
                 .thenReturn("""
                         {"intent":"CATALOG_SEARCH","action":"ADD_TO_CART","confidence":0.96,
@@ -177,7 +177,7 @@ class BedrockConversationIntentClassifierTest {
     @Test
     void derivesLegacyActionWhenManagedPromptDoesNotReturnAction() {
         BedrockConverseClient converseClient = mock(BedrockConverseClient.class);
-        when(converseClient.complete(
+        when(converseClient.completeForRouter(
                 anyString(), anyString(), anyString(), anyString(), anyInt(), anyFloat(), anyString(), anyString()))
                 .thenReturn("{" +
                         "\"intent\":\"CATALOG_SEARCH\",\"confidence\":0.90," +
@@ -192,7 +192,7 @@ class BedrockConversationIntentClassifierTest {
     @Test
     void usesBedrockToolUseWhenStructuredRoutingIsEnabled() {
         BedrockConverseClient converseClient = mock(BedrockConverseClient.class);
-        when(converseClient.completeWithToolUse(
+        when(converseClient.completeWithToolUseForRouter(
                 anyString(), anyString(), anyString(), anyString(), anyInt(), anyFloat(), anyString(), anyString(),
                 any(com.wally.customersupport.conversation.application.tool.WcsToolDescriptor.class)))
                 .thenReturn(new BedrockConverseClient.ToolUseCompletion(
@@ -222,7 +222,7 @@ class BedrockConversationIntentClassifierTest {
         assertEquals(ConversationIntent.CATALOG_SEARCH, decision.intent());
         assertEquals(ConversationAction.CATALOG_SEARCH, decision.action());
         assertEquals("buzo", decision.catalogQuery().productType());
-        verify(converseClient).completeWithToolUse(
+        verify(converseClient).completeWithToolUseForRouter(
                 anyString(), anyString(), anyString(), anyString(), eq(1_024), eq(0.0f),
                 eq("conversation-intent-v4"), anyString(), eq(ConversationRouteToolContract.DESCRIPTOR));
     }

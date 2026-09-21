@@ -142,6 +142,55 @@ class BedrockConverseClientTest {
     }
 
     @Test
+    void usesDedicatedRouterModelPricingAndVersionWithoutChangingDefaultModel(CapturedOutput output) {
+        BedrockRuntimeClient client = mock(BedrockRuntimeClient.class);
+        when(client.converse(any(ConverseRequest.class))).thenReturn(ConverseResponse.builder()
+                .output(ConverseOutput.fromMessage(Message.builder()
+                        .role(ConversationRole.ASSISTANT)
+                        .content(ContentBlock.fromText("{\"intent\":\"GREETING\"}"))
+                        .build()))
+                .usage(TokenUsage.builder().inputTokens(100).outputTokens(50).totalTokens(150).build())
+                .build());
+        AiProperties properties = new AiProperties(
+                "bedrock",
+                "openai.gpt-oss-20b-1:0",
+                "us-east-1",
+                "pricing-default-v1",
+                new BigDecimal("0.0721"),
+                new BigDecimal("0.3090"),
+                Duration.ofSeconds(30),
+                false,
+                new AiProperties.Router(
+                        "us.openai.gpt-5.6-luna",
+                        "conversation-router-v2",
+                        "aws-bedrock-us-east-1-standard-2026-09-gpt-5.6-luna",
+                        new BigDecimal("0.22"),
+                        new BigDecimal("1.32")));
+
+        String result = new BedrockConverseClient(client, properties).completeForRouter(
+                "intent-classification",
+                "conversation.intent.classify",
+                "system",
+                "user",
+                512,
+                0.0f,
+                "conversation-intent-v4",
+                "hash-v4");
+
+        assertEquals("{\"intent\":\"GREETING\"}", result);
+        org.mockito.ArgumentCaptor<ConverseRequest> request =
+                org.mockito.ArgumentCaptor.forClass(ConverseRequest.class);
+        org.mockito.Mockito.verify(client).converse(request.capture());
+        assertEquals("us.openai.gpt-5.6-luna", request.getValue().modelId());
+        assertTrue(output.getOut().contains("\"model\":\"us.openai.gpt-5.6-luna\""));
+        assertTrue(output.getOut().contains("\"agentId\":\"conversation-router\""));
+        assertTrue(output.getOut().contains("\"agentVersion\":\"conversation-router-v2\""));
+        assertTrue(output.getOut().contains("\"estimatedCostUsd\":0.000088000000"));
+        assertTrue(output.getOut().contains(
+                "\"pricingVersion\":\"aws-bedrock-us-east-1-standard-2026-09-gpt-5.6-luna\""));
+    }
+
+    @Test
     void sendsBoundedToolSchemaAndExtractsStructuredToolInput(CapturedOutput output) {
         BedrockRuntimeClient client = mock(BedrockRuntimeClient.class);
         Map<String, Document> route = new LinkedHashMap<>();
