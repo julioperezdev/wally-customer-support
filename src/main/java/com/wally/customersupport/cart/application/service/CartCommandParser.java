@@ -46,11 +46,14 @@ public final class CartCommandParser {
     private static final Pattern REMOVE = Pattern.compile(
             "\\b(sacar|saca|sacala|sacalo|quita|quitame|quitamela|quitamelo|quitar|eliminar|elimina|"
                     + "bajar|restar|resta|remove)\\b");
+    private static final String QUANTITY_VALUE =
+            "(?:[1-9][0-9]?|uno|un|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)";
     private static final Pattern QUANTITY = Pattern.compile(
             "\\b(?:agregar|agrega|agregame|agregue|sumar|suma|sumame|sume|anadir|anade|añadir|añade|"
-                    + "sacar|saca|quita|quitar|eliminar|elimina|bajar|restar|resta|remove)\\s+([1-9][0-9]?)\\b|"
-                    + "\\b(?:quiero|necesito|me\\s+llevo)\\s+([1-9][0-9]?)\\b|"
-                    + "\\b([1-9][0-9]?)\\s*(?:unidades?|u)\\b|\\bx\\s*([1-9][0-9]?)\\b");
+                    + "sacar|saca|quita|quitar|eliminar|elimina|bajar|restar|resta|remove)\\s+(" + QUANTITY_VALUE
+                    + ")\\b|"
+                    + "\\b(?:quiero|necesito|me\\s+llevo)\\s+(" + QUANTITY_VALUE + ")\\b|"
+                    + "\\b(" + QUANTITY_VALUE + ")\\s*(?:unidades?|u)\\b|\\bx\\s*(" + QUANTITY_VALUE + ")\\b");
     private static final Pattern DEFER = Pattern.compile(
             "\\bno\\s+(?:quiero|necesito|voy\\s+a)\\s+(?:comprar|comprarla|comprarlo|pagar|llevar|llevarme)\\b|"
                     + "\\btodavia\\s+no\\s+(?:quiero\\s+)?(?:comprar|pagar|llevar)\\b|"
@@ -120,6 +123,7 @@ public final class CartCommandParser {
                         + "sacar|saca|sacala|sacalo|quita|quitame|quitamela|quitamelo|quitar|eliminar|elimina|bajar|restar|resta|remove)\\b", " ")
                 .replaceAll("\\b(?:quiero|necesito|llevo|tambien|también|ademas|además|otro|otra|"
                         + "al|a|mi|el|la|un|una|por|favor|carrito|cesta)\\b", " ")
+                .replaceAll("\\b(?:uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\\b", " ")
                 .replaceAll("\\b[1-9][0-9]?\\b", " ")
                 .replaceAll("\\s+", " ")
                 .trim();
@@ -133,14 +137,32 @@ public final class CartCommandParser {
         }
         for (int index = 1; index <= matcher.groupCount(); index++) {
             if (matcher.group(index) != null) {
-                try {
-                    return Integer.parseInt(matcher.group(index));
-                } catch (NumberFormatException ignored) {
-                    return 1;
-                }
+                return quantityValue(matcher.group(index));
             }
         }
         return 1;
+    }
+
+    private static int quantityValue(String value) {
+        return switch (value) {
+            case "uno", "un", "una" -> 1;
+            case "dos" -> 2;
+            case "tres" -> 3;
+            case "cuatro" -> 4;
+            case "cinco" -> 5;
+            case "seis" -> 6;
+            case "siete" -> 7;
+            case "ocho" -> 8;
+            case "nueve" -> 9;
+            case "diez" -> 10;
+            default -> {
+                try {
+                    yield Integer.parseInt(value);
+                } catch (NumberFormatException ignored) {
+                    yield 1;
+                }
+            }
+        };
     }
 
     private static String normalize(String value) {

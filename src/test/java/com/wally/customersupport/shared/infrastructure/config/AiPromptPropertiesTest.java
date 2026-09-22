@@ -18,7 +18,7 @@ class AiPromptPropertiesTest {
                 99);
 
         assertEquals("conversation-intent-v2", properties.effectiveIntentVersion());
-        assertEquals(1_024, properties.effectiveIntentMaxOutputTokens());
+        assertEquals(2_048, properties.effectiveIntentMaxOutputTokens());
         assertEquals(0.0f, properties.effectiveIntentTemperature());
         assertEquals(2_000, properties.effectiveMaxInputCharacters());
         assertEquals(12, properties.effectiveMaxHistoryMessages());
@@ -38,5 +38,17 @@ class AiPromptPropertiesTest {
         assertEquals(0.2f, properties.effectiveIntentTemperature());
         assertEquals(1_500, properties.effectiveMaxInputCharacters());
         assertEquals(8, properties.effectiveMaxHistoryMessages());
+    }
+
+    @Test
+    void acceptsTheNewBoundedRouterOutputBudget() {
+        AiPromptProperties properties = new AiPromptProperties(
+                "conversation-intent-v4",
+                2_048,
+                BigDecimal.ZERO,
+                2_000,
+                12);
+
+        assertEquals(2_048, properties.effectiveIntentMaxOutputTokens());
     }
 }

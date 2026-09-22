@@ -47,7 +47,7 @@ class BedrockConversationIntentClassifierTest {
         assertEquals("negro", decision.catalogQuery().color());
         assertEquals(new BigDecimal("20000"), decision.catalogQuery().maxPrice());
         verify(converseClient).completeForRouter(
-                anyString(), anyString(), anyString(), anyString(), eq(1_024), eq(0.0f),
+                anyString(), anyString(), anyString(), anyString(), eq(2_048), eq(0.0f),
                 eq("conversation-intent-v4"), anyString());
     }
 
@@ -67,7 +67,7 @@ class BedrockConversationIntentClassifierTest {
         assertEquals("buzo", decision.catalogQuery().productType());
         org.mockito.ArgumentCaptor<String> prompt = org.mockito.ArgumentCaptor.forClass(String.class);
         verify(converseClient).completeForRouter(
-                anyString(), anyString(), anyString(), prompt.capture(), eq(1_024), eq(0.0f),
+                anyString(), anyString(), anyString(), prompt.capture(), eq(2_048), eq(0.0f),
                 eq("conversation-intent-v4"), anyString());
         assertTrue(prompt.getValue().contains("quiero un buzo"));
         assertTrue(prompt.getValue().contains("que sea negro"));
@@ -213,7 +213,7 @@ class BedrockConversationIntentClassifierTest {
                 converseClient,
                 new ObjectMapper(),
                 new com.wally.customersupport.shared.infrastructure.config.AiPromptProperties(
-                        "conversation-intent-v4", 1024, BigDecimal.ZERO, 2000, 12),
+                        "conversation-intent-v4", 2048, BigDecimal.ZERO, 2000, 12),
                 new com.wally.customersupport.conversation.infrastructure.ai.prompt.ClasspathPromptRegistry(),
                 properties);
 
@@ -223,7 +223,7 @@ class BedrockConversationIntentClassifierTest {
         assertEquals(ConversationAction.CATALOG_SEARCH, decision.action());
         assertEquals("buzo", decision.catalogQuery().productType());
         verify(converseClient).completeWithToolUseForRouter(
-                anyString(), anyString(), anyString(), anyString(), eq(1_024), eq(0.0f),
+                anyString(), anyString(), anyString(), anyString(), eq(2_048), eq(0.0f),
                 eq("conversation-intent-v4"), anyString(), eq(ConversationRouteToolContract.DESCRIPTOR));
     }
 }

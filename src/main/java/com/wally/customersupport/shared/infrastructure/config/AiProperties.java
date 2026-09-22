@@ -186,7 +186,7 @@ public record AiProperties(
     }
 
     public String effectiveRouterReasoningEffort() {
-        return router == null || router.reasoningEffort() == null ? "high" : router.reasoningEffort();
+        return router == null || router.reasoningEffort() == null ? "medium" : router.reasoningEffort();
     }
 
     public String effectiveRegion() {
