@@ -1,7 +1,9 @@
 # ADR-032 — Prompts externos con Bedrock Prompt Management
 
 - Owner: Product/Tech Lead
-- Status: `Accepted`
+- Status: `Superseded by ADR-043 for WCS conversational Bedrock calls`
+- Historical note: WCS-140/ADR-043 replaces this decision as the executable
+  configuration source for the four current conversational Bedrock calls.
 - Last reviewed: 2026-09-12
 - Related Jira: `WCS-45`
 - Related documents: [`ai.md`](../ai.md), [`agent-platform-delivery-plan.md`](../agent-platform-delivery-plan.md)

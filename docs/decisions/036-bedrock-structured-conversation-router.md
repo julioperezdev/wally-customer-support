@@ -40,9 +40,9 @@ Bedrock está habilitado. El proveedor mock continúa siendo útil para tests.
 ## Compatibilidad y fallback
 
 El contrato `conversation-intent-v3` agrega `action`, `quantity` y
-`missingParameters`. Si un prompt administrado anterior omite `action`, el
-parser la deriva de `intent`; así se conserva compatibilidad durante la
-migración de Prompt Management. Una respuesta inválida, una acción desconocida
+`missingParameters`. Si un prompt anterior omite `action`, el parser la deriva
+de `intent`; se conserva compatibilidad con los snapshots empaquetados usados
+como fallback. Una respuesta inválida, una acción desconocida
 o una confianza insuficiente produce aclaración o fallback seguro y nunca una
 operación sensible.
 

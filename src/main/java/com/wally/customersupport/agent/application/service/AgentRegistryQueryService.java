@@ -96,6 +96,7 @@ public class AgentRegistryQueryService {
         return new AgentRegistryVersionView(
                 version.agentId(),
                 version.version(),
+                version.semanticVersion(),
                 version.name(),
                 version.purpose(),
                 version.state(),
@@ -119,7 +120,8 @@ public class AgentRegistryQueryService {
                 version.fallbackAgentId(),
                 version.evaluationSuiteVersion(),
                 version.createdAt(),
-                version.approvedAt());
+                version.approvedAt(),
+                version.invocationConfiguration());
     }
 
     private static AgentRegistryActivationView toActivationView(AgentActivation activation) {

@@ -23,6 +23,7 @@ propios criterios de aceptación, pruebas y revisión de infraestructura.
 - permitir agentes especialistas con responsabilidades pequeñas y explícitas;
 - mantener los datos de negocio determinísticos y verificables;
 - versionar prompts, modelos, tools, políticas y parámetros de inferencia;
+- mantener la configuración ejecutable de los llamados Bedrock en versiones SQL inmutables, no en el repositorio o AppConfig;
 - comparar agentes y versiones con datasets reproducibles;
 - activar o revertir versiones mediante feature flags auditables;
 - medir calidad, grounding, latencia, tokens, errores y costo estimado;
@@ -54,6 +55,12 @@ respuesta antes de enviarla al canal.
 No se propone que todos los agentes conversen libremente entre sí. Cada flujo
 debe tener un grafo pequeño, explícito y con límites de pasos, tiempo, tokens y
 costo.
+
+WCS-140 materializa el primer tramo: router, generación de soporte,
+humanización de catálogo y resumen de memoria son perfiles versionados en
+`wcs.agent_versions`, con asignaciones activas en `wcs.agent_activations`. El
+registry permite cambiar configuración declarativa, no código ejecutable,
+consultas SQL ni contratos de tools fuera de las allowlists del backend.
 
 ```text
 WhatsApp / Telegram / canal futuro
@@ -343,9 +350,10 @@ Reglas propuestas:
 - AppConfig administra referencias de activación y límites operativos;
 - Secrets Manager conserva sólo secretos y credenciales;
 - el contenido de prompts y contratos debe tener revisión y trazabilidad;
-- los prompts productivos se administran con Bedrock Prompt Management; PostgreSQL
-  conserva metadata, activaciones y evaluaciones. El fallback empaquetado se
-  mantiene para rollback. La decisión está formalizada en `ADR-032`.
+- WCS-140 cambia la decisión para las cuatro llamadas conversacionales: PostgreSQL
+  (`wcs.agent_versions`) guarda los snapshots inmutables de prompt y parámetros;
+  `wcs.agent_activations` selecciona por ambiente, canal y caso de uso. El fallback
+  empaquetado queda sólo como compatibilidad. La decisión vigente está en `ADR-043`.
 
 ## Evaluación
 
@@ -571,9 +579,9 @@ volver atrás.
 ## Gates antes de implementar
 
 - mantener aceptados el ADR y esta propuesta en Confluence;
-- mantener separadas las fuentes: Prompt Management para prompts productivos,
-  PostgreSQL para metadata/activaciones/evaluaciones y el artefacto como
-  fallback;
+- mantener PostgreSQL como fuente ejecutable de las versiones y activaciones de
+  las llamadas conversacionales; no guardar secretos ni código/tool permissions
+  dentro de los perfiles. Ver ADR-043;
 - definir permisos del backoffice y separación de ambientes;
 - aceptar el dataset mínimo de evaluación;
 - aceptar presupuesto de tokens, latencia y costo por caso de uso;

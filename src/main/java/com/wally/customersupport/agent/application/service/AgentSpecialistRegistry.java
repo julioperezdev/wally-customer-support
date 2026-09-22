@@ -53,7 +53,25 @@ public final class AgentSpecialistRegistry {
                         "conversation-context",
                         Set.of(),
                         Set.of("GREETING", "CATALOG_SEARCH", "PURCHASE_LINK", "BUSINESS_HOURS",
-                                "POLICY_QUERY", "GENERAL_SUPPORT", "HUMAN_HANDOFF")),
+                                "POLICY_QUERY", "GENERAL_SUPPORT", "HUMAN_HANDOFF", "ROUTING")),
+                new AgentSpecialistDefinition(
+                        "conversation-summarizer",
+                        "Resume temas conversacionales previos sin sustituir datos transaccionales.",
+                        "conversation-context",
+                        Set.of(),
+                        Set.of("CONVERSATION_SUMMARY")),
+                new AgentSpecialistDefinition(
+                        "response-generation",
+                        "Genera respuestas de soporte basadas en contexto y conocimiento aprobado.",
+                        "approved-knowledge",
+                        Set.of(),
+                        Set.of("GENERAL_SUPPORT")),
+                new AgentSpecialistDefinition(
+                        "response-humanization",
+                        "Humaniza respuestas de catálogo sin alterar hechos validados.",
+                        "validated-facts",
+                        Set.of(),
+                        Set.of("CATALOG_SEARCH")),
                 new AgentSpecialistDefinition(
                         "catalog-specialist",
                         "Busca productos, variantes, precio y stock.",

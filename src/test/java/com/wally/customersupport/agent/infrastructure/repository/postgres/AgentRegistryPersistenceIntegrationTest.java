@@ -16,6 +16,7 @@ import com.wally.customersupport.agent.domain.model.AgentActivation;
 import com.wally.customersupport.agent.domain.model.AgentActivationPolicy;
 import com.wally.customersupport.agent.domain.model.AgentActivationRequest;
 import com.wally.customersupport.agent.domain.model.AgentInferenceParameters;
+import com.wally.customersupport.agent.domain.model.AgentInvocationConfiguration;
 import com.wally.customersupport.agent.domain.model.AgentLifecycleState;
 import com.wally.customersupport.agent.domain.model.AgentVersion;
 import org.junit.jupiter.api.Test;
@@ -72,9 +73,46 @@ class AgentRegistryPersistenceIntegrationTest {
         assertThat(registry.findVersions(agentId)).containsExactly(version);
         assertThat(registry.findLatestVersion(agentId, AgentLifecycleState.APPROVED))
                 .contains(version);
+        assertThat(registry.findVersion(agentId, 1).orElseThrow().semanticVersion()).isEqualTo("1.0.0");
+        assertThat(registry.findVersion(agentId, 1).orElseThrow().invocationConfiguration().systemPrompt())
+                .isEqualTo("System prompt for persistence test.");
         assertThatThrownBy(() -> registry.saveVersion(version))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("immutable");
+    }
+
+    @Test
+    void seedsTheCurrentBedrockCallsAsVerifiedSqlBackedSemanticBaselines() {
+        for (String agentId : Set.of(
+                "conversation-router", "response-generation", "response-humanization", "conversation-summarizer")) {
+            AgentVersion baseline = registry.findVersion(agentId, 1).orElseThrow();
+            assertThat(baseline.semanticVersion()).isEqualTo("1.0.0");
+            assertThat(baseline.modelProvider()).isEqualTo("bedrock");
+            assertThat(baseline.modelId()).isEqualTo("openai.gpt-oss-20b-1:0");
+            assertThat(baseline.invocationConfiguration().systemPrompt()).isNotBlank();
+            assertThat(baseline.invocationConfiguration().userPromptTemplate()).isNotBlank();
+            assertThat(baseline.invocationConfiguration().pricingVersion())
+                    .isEqualTo("aws-bedrock-us-east-1-standard-2026-09");
+            assertThat(baseline.invocationConfiguration().inputPriceUsdPerMillionTokens())
+                    .isEqualByComparingTo("0.072100");
+            assertThat(baseline.invocationConfiguration().outputPriceUsdPerMillionTokens())
+                    .isEqualByComparingTo("0.309000");
+            assertThat(AgentInvocationConfiguration.sha256(
+                    baseline.invocationConfiguration().systemPrompt().trim()))
+                    .isEqualTo(baseline.systemPromptHash());
+        }
+        assertThat(registry.findLatestActivation(
+                "conversation-router", "prod", "telegram", "ROUTING"))
+                .hasValueSatisfying(activation -> {
+                    assertThat(activation.enabled()).isTrue();
+                    assertThat(activation.rolloutPercentage()).isEqualTo(100);
+                });
+        assertThat(registry.findLatestActivation(
+                "response-humanization", "prod", "telegram", "CATALOG_SEARCH"))
+                .hasValueSatisfying(activation -> {
+                    assertThat(activation.enabled()).isTrue();
+                    assertThat(activation.rolloutPercentage()).isEqualTo(100);
+                });
     }
 
     @Test
@@ -192,6 +230,14 @@ class AgentRegistryPersistenceIntegrationTest {
                 "author",
                 createdAt,
                 "reviewer",
-                approvedAt);
+                approvedAt,
+                "1.0.0",
+                new AgentInvocationConfiguration(
+                        "System prompt for persistence test.",
+                        "Customer: {{latest_message}}",
+                        "{\"type\":\"object\"}",
+                        "{\"type\":\"string\"}",
+                        "low",
+                        false));
     }
 }

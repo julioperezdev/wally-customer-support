@@ -307,13 +307,14 @@ wcs.conversation.retention.cleanup-batch-size=500
 wcs.conversation.retention.schedule-delay-ms=86400000
 ```
 
-### Registry de agentes y activaciones — contrato en `WCS-47`, persistencia en `V9`/`WCS-48`
+### Registry de agentes y activaciones — contrato en `WCS-47`, persistencia en `V9`/`WCS-48`, perfiles Bedrock en `V27`/`WCS-140`
 
 El control plane inicial persiste dos grupos separados:
 
 * `wcs.agent_versions`: una fila por `agent_id + agent_version`, con estado de
-  lifecycle, modelo, parámetros acotados, hash/version de prompt, schemas,
-  allowlists, políticas, límites, presupuesto y metadatos de aprobación;
+  lifecycle, SemVer, proveedor/modelo, cuerpos de system/user prompt, schemas,
+  parámetros de inferencia, pricing versionado, allowlists, políticas, límites,
+  presupuesto y metadatos de aprobación;
 * `wcs.agent_activations`: referencias auditables por ambiente, canal y caso de
   uso, con motivo, rollout, actor, timestamp, versión anterior y kill switch.
 
@@ -337,8 +338,9 @@ exacta o un fallback sin `agentId` ni `agentVersion`. `NOT_CONFIGURED`,
 `DISABLED`, `KILL_SWITCH` y `REGISTRY_UNAVAILABLE` son razones controladas y
 no contienen PII. `AgentRuntimeDefinitionResolver` agrega la segunda frontera:
 carga la versión exacta, valida que sea publicable y devuelve un snapshot
-inmutable de modelo, límites, contratos y allowlists. El snapshot no persiste
-ni contiene prompts; sólo conserva metadatos de prompt. Los fallbacks
+inmutable de modelo, configuración ejecutable, límites, contratos y allowlists.
+Los cuerpos de prompt sólo están en estas versiones autenticadas del control
+plane; no se copian a tablas transaccionales, logs ni trazas. Los fallbacks
 `VERSION_NOT_FOUND`, `VERSION_MISMATCH`, `VERSION_NOT_PUBLISHABLE`,
 `INVALID_DEFINITION` y `REGISTRY_UNAVAILABLE` no interrumpen el flujo actual.
 Cuando la activación está habilitada, la generación grounded de soporte recibe
@@ -428,5 +430,7 @@ completas ni PII innecesaria.
 - El aislamiento por tienda se debe diseñar antes de habilitar multi-tenant; no se debe asumir que un identificador externo de canal alcanza como ownership.
 - La implementación inicial puede operar con una tienda, pero las claves internas deben permitir incorporar `store_id`/`account_id` sin redefinir un identificador de canal como ownership.
 - JPA/Hibernate no reemplaza Flyway: el schema productivo se versiona con migraciones explícitas.
-- No persistir payloads completos de Meta, prompts completos ni respuestas del proveedor salvo que exista una política de retención aprobada.
-- No guardar el contenido del prompt en `agent_versions`: sólo su versión y hash.
+- No persistir payloads completos de Meta ni respuestas del proveedor.
+- Los cuerpos de prompts se guardan únicamente en versiones inmutables del
+  control plane (`agent_versions`) con acceso protegido; nunca en AppConfig,
+  logs, trazas o tablas transaccionales de conversación.

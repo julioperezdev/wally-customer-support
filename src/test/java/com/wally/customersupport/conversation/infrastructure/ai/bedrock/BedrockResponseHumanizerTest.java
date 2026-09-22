@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.anyFloat;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -19,6 +20,7 @@ import com.wally.customersupport.conversation.domain.model.ResponseHumanizationR
 import com.wally.customersupport.conversation.infrastructure.ai.prompt.PromptDefinition;
 import com.wally.customersupport.conversation.infrastructure.ai.prompt.PromptRegistry;
 import com.wally.customersupport.shared.infrastructure.config.AiResponseProperties;
+import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -57,6 +59,17 @@ class BedrockResponseHumanizerTest {
         assertThat(result.outcome()).isEqualTo(ResponseHumanizationResult.Outcome.APPLIED);
         assertThat(result.policyId()).isEqualTo(BedrockResponseHumanizer.POLICY_ID);
         assertThat(result.text()).contains("Remera NullPointer", "RP-REM-NP-NEG-M", "18.900,00 ARS", "12");
+
+        ArgumentCaptor<String> userPrompt = ArgumentCaptor.forClass(String.class);
+        verify(converseClient).complete(
+                anyString(), anyString(), anyString(), userPrompt.capture(),
+                anyInt(), anyFloat(), anyString(), anyString());
+        assertThat(userPrompt.getValue())
+                .contains("<required_facts>")
+                .contains("name=Remera NullPointer")
+                .contains("sku=RP-REM-NP-NEG-M")
+                .contains("price=18900.00 ARS")
+                .contains("stock=12");
     }
 
     @Test
@@ -137,6 +150,8 @@ class BedrockResponseHumanizerTest {
                 .withBean(AiResponseProperties.class, () -> new AiResponseProperties(
                         "conversation-response-v1", 256, BigDecimal.valueOf(0.2), 2_000, 6, 8_000, 4_000))
                 .withBean(PromptRegistry.class, () -> promptRegistry)
+                .withBean(BedrockAgentProfileResolver.class,
+                        () -> mock(BedrockAgentProfileResolver.class))
                 .withUserConfiguration(
                         BedrockResponseHumanizer.class,
                         com.wally.customersupport.conversation.application.service

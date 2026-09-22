@@ -24,9 +24,24 @@ WCS-122 (pedidos y Mercado Pago Sandbox) queda fuera de este slice. Su
 implementación puede avanzar aislada, pero no habilita pagos por sí sola ni
 reemplaza los smoke tests de WCS-120 y WCS-121.
 
-## PR 1 — Runtime de prompts y foundation del control plane
+WCS-140 completa el siguiente tramo: las cuatro llamadas generativas actuales
+(`conversation-router`, `response-generation`, `response-humanization` y
+`conversation-summarizer`) tienen configuración ejecutable prevista en
+PostgreSQL y baseline `1.0.0`. Esto reemplaza para esos llamados el antiguo plan
+optativo de Bedrock Prompt Management descrito en PR 1; véase
+[`ADR-043`](decisions/043-sql-agent-invocation-versions.md). Los cambios de
+versión requieren primero desplegar esta base y aplicar Flyway V27; luego,
+editar/activar perfiles versionados no requiere redeploy de la API.
 
-Incluye:
+## PR 1 — Runtime de prompts (histórico, supersedido por WCS-140)
+
+Este plan inicialmente proponía Bedrock Prompt Management. ADR-043 lo
+reemplaza para las llamadas conversacionales por configuración versionada en
+PostgreSQL, alineada con el authoring/lifecycle del registry existente. No
+implementar los pasos siguientes de esta sección como una segunda fuente de
+verdad.
+
+Incluía:
 
 - `PromptRegistry` provider-neutral.
 - Proveedor actual empaquetado como fallback.
@@ -54,14 +69,11 @@ Incluye:
 El runtime seguirá usando casos de uso determinísticos; el LLM no genera SQL
 ni recibe credenciales.
 
-El primer corte implementado de este PR conecta el snapshot con la generación
-grounded de `GENERAL_SUPPORT`. `LlmClient` conserva compatibilidad con los
-adapters existentes y Bedrock aplica el modelo, prompt versionado, hash,
-parámetros de inferencia, límite de salida y timeout de la definición activa.
-El catálogo sigue siendo determinístico y el router continúa usando su
-configuración global. La migración de cada step del plan a un agente
-independiente queda como evolución posterior; el control plane y su escritura
-protegida ya están cubiertos por WCS-120.
+El runtime conecta el snapshot SQL con routing, generación grounded de
+`GENERAL_SUPPORT`, humanización de hechos de catálogo y resumen conversacional.
+`LlmClient` mantiene compatibilidad con adapters anteriores; Bedrock aplica el
+modelo, prompt, hash, parámetros, límites y timeout de la versión activa. El
+catálogo y las reglas transaccionales siguen determinísticos.
 
 ## PR 3 — Backoffice operativo del control plane
 

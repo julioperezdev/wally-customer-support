@@ -80,7 +80,11 @@ class AgentRegistryControllerIntegrationTest {
                 .andExpect(jsonPath("$.agentIds").value(org.hamcrest.Matchers.contains(
                         "catalog-specialist",
                         "checkout-specialist",
+                        "conversation-router",
+                        "conversation-summarizer",
                         "knowledge-specialist",
+                        "response-generation",
+                        "response-humanization",
                         "response-humanizer",
                         "support-safety")))
                 .andExpect(jsonPath("$.environments").value(org.hamcrest.Matchers.contains("prod")))
@@ -89,6 +93,7 @@ class AgentRegistryControllerIntegrationTest {
                         "BUSINESS_HOURS",
                         "CART",
                         "CATALOG_SEARCH",
+                        "CONVERSATION_SUMMARY",
                         "GENERAL_SUPPORT",
                         "GREETING",
                         "HUMAN_HANDOFF",
@@ -96,8 +101,9 @@ class AgentRegistryControllerIntegrationTest {
                         "POLICY_QUERY",
                         "PURCHASE_DEFERRED",
                         "PURCHASE_LINK",
+                        "ROUTING",
                         "SAFE_FALLBACK")))
-                .andExpect(jsonPath("$.assignments").value(org.hamcrest.Matchers.hasSize(24)));
+                .andExpect(jsonPath("$.assignments").value(org.hamcrest.Matchers.hasSize(32)));
     }
 
     @TestConfiguration(proxyBeanMethods = false)

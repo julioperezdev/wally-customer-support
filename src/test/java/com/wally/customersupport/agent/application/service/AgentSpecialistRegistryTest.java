@@ -25,6 +25,9 @@ class AgentSpecialistRegistryTest {
                 .extracting(AgentSpecialistDefinition::agentId)
                 .containsExactlyInAnyOrder(
                         "conversation-router",
+                        "conversation-summarizer",
+                        "response-generation",
+                        "response-humanization",
                         "catalog-specialist",
                         "conversation-state",
                         "knowledge-specialist",

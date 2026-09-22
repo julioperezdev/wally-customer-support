@@ -1,6 +1,7 @@
 package com.wally.customersupport.agent.application.service;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Objects;
 
@@ -14,6 +15,7 @@ import com.wally.customersupport.agent.application.registry.AgentRegistryMutatio
 import com.wally.customersupport.agent.application.registry.AgentVersionDraftCommand;
 import com.wally.customersupport.agent.domain.model.AgentLifecyclePolicy;
 import com.wally.customersupport.agent.domain.model.AgentLifecycleState;
+import com.wally.customersupport.agent.domain.model.AgentSemanticVersion;
 import com.wally.customersupport.agent.domain.model.AgentVersion;
 import com.wally.customersupport.shared.infrastructure.observability.StructuredEventLog;
 import lombok.extern.slf4j.Slf4j;
@@ -73,6 +75,7 @@ public class AgentRegistryCommandService {
         }
         try {
             int version = resolveVersion(command);
+            String semanticVersion = resolveSemanticVersion(command);
             if (registryRepository.findVersion(command.agentId(), version).isPresent()) {
                 return result(AgentRegistryMutationStatus.CONFLICT,
                         AgentRegistryMutationReason.VERSION_ALREADY_EXISTS,
@@ -84,7 +87,7 @@ public class AgentRegistryCommandService {
                         command.agentId(), version, null, null, null);
             }
             Instant now = Instant.now();
-            AgentVersion draft = command.toDraft(version, actorId, now);
+            AgentVersion draft = command.toDraft(version, semanticVersion, actorId, now);
             AgentVersion saved = registryRepository.saveVersion(draft);
             auditRepository.save(new com.wally.customersupport.agent.domain.model.AgentRegistryAuditEvent(
                     "VERSION_CREATED", saved.agentId(), saved.version(), null, saved.state().name(),
@@ -122,6 +125,7 @@ public class AgentRegistryCommandService {
                         agentId, sourceVersion, null, null, null);
             }
             int nextVersion = nextVersion(agentId);
+            String nextSemanticVersion = nextSemanticVersion(agentId);
             if (!claim(idempotencyKey, agentId, "clone_version:" + sourceVersion)) {
                 return result(AgentRegistryMutationStatus.ALREADY_PROCESSED,
                         AgentRegistryMutationReason.IDEMPOTENCY_ALREADY_CLAIMED,
@@ -131,6 +135,7 @@ public class AgentRegistryCommandService {
             AgentVersion draft = AgentVersion.draft(
                     source.agentId(),
                     nextVersion,
+                    nextSemanticVersion,
                     source.name(),
                     source.purpose(),
                     source.modelProvider(),
@@ -151,6 +156,7 @@ public class AgentRegistryCommandService {
                     source.budgetLimitUsd(),
                     source.fallbackAgentId(),
                     source.evaluationSuiteVersion(),
+                    source.invocationConfiguration(),
                     actorId,
                     now);
             AgentVersion saved = registryRepository.saveVersion(draft);
@@ -295,6 +301,34 @@ public class AgentRegistryCommandService {
                 .mapToInt(AgentVersion::version)
                 .max()
                 .orElse(0) + 1;
+    }
+
+    private String nextSemanticVersion(String agentId) {
+        return registryRepository.findVersions(agentId).stream()
+                .map(version -> AgentSemanticVersion.parse(version.semanticVersion()))
+                .max(AgentSemanticVersion::compareTo)
+                .map(AgentSemanticVersion::nextPatch)
+                .orElse(new AgentSemanticVersion(1, 0, 0))
+                .toString();
+    }
+
+    private String resolveSemanticVersion(AgentVersionDraftCommand command) {
+        List<AgentVersion> existing = registryRepository.findVersions(command.agentId());
+        AgentSemanticVersion latest = existing.stream()
+                .map(version -> AgentSemanticVersion.parse(version.semanticVersion()))
+                .max(AgentSemanticVersion::compareTo)
+                .orElse(null);
+        String requestedValue = command.semanticVersion();
+        AgentSemanticVersion requested = requestedValue == null || requestedValue.isBlank()
+                ? latest == null ? new AgentSemanticVersion(1, 0, 0) : latest.nextPatch()
+                : AgentSemanticVersion.parse(requestedValue);
+        if (latest == null && !requested.equals(new AgentSemanticVersion(1, 0, 0))) {
+            throw new IllegalArgumentException("the first version of an agent must be 1.0.0");
+        }
+        if (latest != null && requested.compareTo(latest) <= 0) {
+            throw new IllegalArgumentException("semanticVersion must be greater than the latest version");
+        }
+        return requested.toString();
     }
 
     private static boolean isAuthoringTarget(AgentLifecycleState target) {

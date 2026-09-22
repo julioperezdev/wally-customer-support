@@ -150,7 +150,8 @@ public class InboundMessageProcessingService {
         saveConversationMemory(conversationSummaryService.appendAndMaybeSummarize(
                 updatedSelection,
                 inboundMessage.body(),
-                now));
+                now,
+                conversation.channel()));
 
         humanFollowUpTaskService.createIfRequired(conversation, inboundMessage, executionResult);
 

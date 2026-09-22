@@ -17,9 +17,16 @@ export function versionsForAgent(
   return agents?.find((agent) => agent.agentId === agentId)?.versions ?? [];
 }
 
-export function draftFromVersion(version: AgentRegistryVersion): AgentVersionDraftInput {
+export function draftFromVersion(
+  version: AgentRegistryVersion,
+  versions: AgentRegistryVersion[] = [version]
+): AgentVersionDraftInput {
+  const latestSemanticVersion = versions.reduce((latest, candidate) =>
+    compareSemanticVersions(candidate.semanticVersion, latest) > 0 ? candidate.semanticVersion : latest,
+  version.semanticVersion);
   return {
     version: null,
+    semanticVersion: nextPatch(latestSemanticVersion),
     name: version.name,
     purpose: version.purpose,
     modelProvider: version.modelProvider,
@@ -40,8 +47,25 @@ export function draftFromVersion(version: AgentRegistryVersion): AgentVersionDra
     maxOutputTokens: version.maxOutputTokens,
     budgetLimitUsd: version.budgetLimitUsd,
     fallbackAgentId: version.fallbackAgentId,
-    evaluationSuiteVersion: version.evaluationSuiteVersion
+    evaluationSuiteVersion: version.evaluationSuiteVersion,
+    invocationConfiguration: structuredClone(version.invocationConfiguration)
   };
+}
+
+function compareSemanticVersions(left: string, right: string): number {
+  const leftParts = left.split(".").map(Number);
+  const rightParts = right.split(".").map(Number);
+  for (let index = 0; index < 3; index += 1) {
+    const difference = (leftParts[index] ?? 0) - (rightParts[index] ?? 0);
+    if (difference !== 0) return difference;
+  }
+  return 0;
+}
+
+function nextPatch(version: string): string {
+  const match = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.exec(version);
+  if (!match) return "1.0.0";
+  return `${match[1]}.${match[2]}.${Number(match[3]) + 1}`;
 }
 
 export function assignmentValuesFor(

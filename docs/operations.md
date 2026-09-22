@@ -468,26 +468,15 @@ referencias a secretos, por ejemplo:
 }
 ```
 
-El proveedor `classpath` conserva el comportamiento actual y permite rollback
-sin depender de otro recurso. Para usar prompts productivos administrados por
-Bedrock Prompt Management, se cambia `wcs.ai.prompt.provider` a `bedrock` y se
-agregan en el mismo profile las cuatro referencias no secretas:
-
-```json
-{
-  "wcs.ai.prompt.provider": "bedrock",
-  "wcs.ai.prompt.management.intent-identifier": "arn:aws:bedrock:REGION:ACCOUNT:prompt/PROMPT_ID",
-  "wcs.ai.prompt.management.intent-version": "1",
-  "wcs.ai.prompt.management.response-identifier": "arn:aws:bedrock:REGION:ACCOUNT:prompt/PROMPT_ID",
-  "wcs.ai.prompt.management.response-version": "1"
-}
-```
-
-Las versiones deben ser numéricas e inmutables; no se usa `DRAFT`. El cambio
-requiere que Terraform allowliste los ARNs en `bedrock_prompt_arns`, que ambos
-prompts tengan una variante de texto y que se ejecute un smoke de clasificación
-y respuesta. El detalle del contrato y rollback está en
-[`ADR-032`](decisions/032-bedrock-prompt-management.md).
+Las claves `wcs.ai.prompt.*` y `wcs.ai.response.prompt-version` del ejemplo
+sólo afectan el fallback empaquetado. La configuración normal de las cuatro
+llamadas conversacionales a Bedrock se lee de
+PostgreSQL y de sus activaciones por ambiente/canal/caso de uso. Editar una
+configuración crea una nueva versión inmutable; la activación toma efecto en la
+siguiente inferencia, sin reiniciar la API. `ClasspathPromptRegistry` permanece
+sólo como fallback compatible cuando no se resuelve un perfil SQL válido. No
+agregar prompts a AppConfig ni crear permisos de Bedrock Prompt Management para
+este flujo. Véase [`ADR-043`](decisions/043-sql-agent-invocation-versions.md).
 
 El prompt `conversation-intent-v4` es la selección por defecto del artefacto.
 Su rollout debe verificarse con mensajes sintéticos y smoke de Telegram antes

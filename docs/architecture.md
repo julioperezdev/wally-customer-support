@@ -532,11 +532,14 @@ campos allow-listed de los roles `database`, `whatsapp`, `telegram` y `runtime`.
 normal usa AWS y el fail-fast evita operar con configuración parcial; los tests
 deshabilitan las fuentes externas y usan datos sintéticos.
 
-Los cuerpos de prompts productivos se administran con Bedrock Prompt Management
-cuando `wcs.ai.prompt.provider=bedrock`; AppConfig sólo contiene referencias no
-secretas a versiones inmutables. `ClasspathPromptRegistry` se conserva como
-fallback de rollback. El runtime solicita únicamente `bedrock:GetPrompt` para
-los ARNs allowlisted y registra versión/hash, nunca el contenido.
+Los perfiles de las llamadas conversacionales a Bedrock se resuelven desde las
+versiones inmutables de `wcs.agent_versions` por agente, ambiente, canal y caso
+de uso. Incluyen system/user prompt, modelo, parámetros, límites, schemas y
+pricing; `wcs.agent_activations` selecciona la versión activa. La consulta se
+hace por invocación para que una activación o rollback tenga efecto sin
+reiniciar App Runner. Ante perfil ausente o inválido se conserva el camino
+compatible anterior. Los prompts no se escriben en logs. Véase
+[`ADR-043`](decisions/043-sql-agent-invocation-versions.md).
 
 ## Flujos críticos
 
