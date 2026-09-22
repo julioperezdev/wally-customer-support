@@ -53,6 +53,7 @@ public final class CartCommandParser {
                     + "sacar|saca|quita|quitar|eliminar|elimina|bajar|restar|resta|remove)\\s+(" + QUANTITY_VALUE
                     + ")\\b|"
                     + "\\b(?:quiero|necesito|me\\s+llevo)\\s+(" + QUANTITY_VALUE + ")\\b|"
+                    + "\\b(?:al|a)\\s+(?:mi\\s+)?carrito\\s+(" + QUANTITY_VALUE + ")\\b|"
                     + "\\b(" + QUANTITY_VALUE + ")\\s*(?:unidades?|u)\\b|\\bx\\s*(" + QUANTITY_VALUE + ")\\b");
     private static final Pattern DEFER = Pattern.compile(
             "\\bno\\s+(?:quiero|necesito|voy\\s+a)\\s+(?:comprar|comprarla|comprarlo|pagar|llevar|llevarme)\\b|"
