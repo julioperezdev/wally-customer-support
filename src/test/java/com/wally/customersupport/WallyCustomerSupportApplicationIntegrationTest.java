@@ -609,7 +609,7 @@ class WallyCustomerSupportApplicationIntegrationTest {
                 .export(baselineId, candidateId)
                 .orElseThrow();
 
-        assertEquals("wcs.agent-evaluation-evidence.v1", export.schemaVersion());
+        assertEquals("wcs.agent-evaluation-evidence.v2", export.schemaVersion());
         assertEquals(baselineId, export.comparison().baselineRunId());
         assertEquals(candidateId, export.comparison().candidateRunId());
         assertTrue(export.comparison().metricDelta().totalTokensDelta().isEmpty());

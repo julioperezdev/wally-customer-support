@@ -45,8 +45,14 @@ y métricas sanitizadas; las respuestas y prompts no se persisten ni se escriben
 en logs. El evento de uso Bedrock identifica SemVer y hash del prompt.
 
 Comparar una baseline y una candidata significa ejecutar dos runs separados
-contra el mismo dataset versionado y comparar sus scorecards. Ninguna ejecución
-activa, publica ni modifica una versión o asignación, y no procesa tráfico real.
+del mismo agente lógico, contra el mismo dataset versionado y exactamente la
+misma cobertura de escenarios. El comparador muestra scorecard diferencial,
+dimensiones especializadas sólo con cobertura idéntica y un resultado
+descriptivo por escenario. No declara significancia estadística ni selecciona
+un ganador. Ninguna ejecución activa, publica ni modifica una versión o
+asignación, y no procesa tráfico real. El contrato de comparación está en
+[`ADR-020`](020-agent-evaluation-comparison.md) y el envelope de evidencia
+actual es `wcs.agent-evaluation-evidence.v2`.
 
 ## Configuración
 

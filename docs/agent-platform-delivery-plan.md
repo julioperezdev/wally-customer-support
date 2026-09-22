@@ -33,6 +33,16 @@ optativo de Bedrock Prompt Management descrito en PR 1; véase
 versión requieren primero desplegar esta base y aplicar Flyway V27; luego,
 editar/activar perfiles versionados no requiere redeploy de la API.
 
+La entrega 2 del ciclo de evaluación de WCS-140 hace útil y segura la
+comparación de versiones: exige el mismo agente lógico, dataset y cobertura
+única de escenarios; entrega deltas de calidad, un resultado descriptivo y
+comparación por escenario. Las métricas especializadas sólo se comparan cuando
+usan la misma muestra. Costo, tokens y latencia siguen separados de calidad;
+no hay promoción automática ni afirmación estadística. El envelope de evidencia
+se versiona como `wcs.agent-evaluation-evidence.v2`; no requiere Flyway ni
+Terraform. Véanse [`ADR-020`](decisions/020-agent-evaluation-comparison.md) y
+[`ADR-021`](decisions/021-agent-evaluation-evidence-export.md).
+
 ## PR 1 — Runtime de prompts (histórico, supersedido por WCS-140)
 
 Este plan inicialmente proponía Bedrock Prompt Management. ADR-043 lo

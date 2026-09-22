@@ -218,12 +218,14 @@ mantiene una cadena de preview-token ni un bypass local.
   respetar todos los filtros, no duplicar runs y desempatar por `runId`.
 - `TC-050`: consultar un `runId` inexistente debe producir un resultado vacío
   tipado, sin excepción de persistencia ni exposición de contenido.
-- `TC-051`: comparar runs del mismo dataset debe devolver identidad, deltas y
-  estados por escenario sin prompts ni respuestas.
-- `TC-052`: metadata ausente no se interpreta como cero y un dataset diferente
-  debe rechazarse con un error de aplicación sanitizado.
+- `TC-051`: comparar runs del mismo agente, dataset y cobertura exacta debe
+  devolver identidad, scorecard diferencial, assessment descriptivo y estados
+  por escenario sin prompts ni respuestas.
+- `TC-052`: metadata o dimensiones especializadas no comparables se muestran
+  como no disponibles; agentes/datasets distintos, cobertura diferente o IDs
+  de escenario duplicados se rechazan con error sanitizado.
 - `TC-053`: el export debe conservar la identidad, métricas y escenarios de la
-  comparación bajo `wcs.agent-evaluation-evidence.v1`, sin prompts ni
+  comparación bajo `wcs.agent-evaluation-evidence.v2`, sin prompts ni
   respuestas.
 - `TC-054`: un export que excede el límite de escenarios debe rechazarse con un
   error sanitizado y no debe escribir ni modificar datos.

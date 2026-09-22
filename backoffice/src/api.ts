@@ -334,6 +334,28 @@ export type Comparison = {
     providerLatencyMsDelta: number | null;
     estimatedCostUsdDelta: number | null;
   };
+  qualityDelta: {
+    passRateDelta: number;
+    responseValidityRateDelta: number;
+    responseGroundingRateDelta: number;
+    safetyRateDelta: number;
+    utilityRateDelta: number;
+    intentAccuracyRateDelta: number | null;
+    entityExtractionRateDelta: number | null;
+    toolSuccessRateDelta: number | null;
+    ragGroundingRateDelta: number | null;
+  };
+  assessment: {
+    outcome: "QUALITY_IMPROVED" | "QUALITY_REGRESSION" | "MIXED" | "NO_QUALITY_CHANGE";
+    scenarioCount: number;
+    improvedScenarioCount: number;
+    regressedScenarioCount: number;
+    unchangedScenarioCount: number;
+    improvedDimensions: string[];
+    regressedDimensions: string[];
+    unavailableDimensions: string[];
+    evidenceLevel: "DESCRIPTIVE_NOT_STATISTICALLY_SIGNIFICANT";
+  };
   scenarios: Array<{
     scenarioId: string;
     baselinePassed: boolean | null;

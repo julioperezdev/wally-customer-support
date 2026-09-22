@@ -1,6 +1,6 @@
 package com.wally.customersupport.agent.infrastructure.http;
 
-import com.wally.customersupport.agent.application.service.IncompatibleEvaluationDatasetException;
+import com.wally.customersupport.agent.application.service.IncompatibleEvaluationRunsException;
 import com.wally.customersupport.shared.infrastructure.observability.StructuredEventLog;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -38,10 +38,10 @@ public class AgentEvaluationControlPlaneExceptionHandler {
                 .body(new AgentEvaluationControlPlaneError("INVALID_REQUEST"));
     }
 
-    @ExceptionHandler(IncompatibleEvaluationDatasetException.class)
-    ResponseEntity<AgentEvaluationControlPlaneError> incompatibleDataset() {
+    @ExceptionHandler(IncompatibleEvaluationRunsException.class)
+    ResponseEntity<AgentEvaluationControlPlaneError> incompatibleRuns(IncompatibleEvaluationRunsException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new AgentEvaluationControlPlaneError("INCOMPATIBLE_DATASET"));
+                .body(new AgentEvaluationControlPlaneError(exception.reason().code()));
     }
 
     @ExceptionHandler(RuntimeException.class)

@@ -2,19 +2,24 @@ package com.wally.customersupport.agent.application.service;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationComparison;
+import com.wally.customersupport.agent.application.evaluation.AgentEvaluationComparisonAssessment;
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationMetricDelta;
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationOperationalMetrics;
+import com.wally.customersupport.agent.application.evaluation.AgentEvaluationQualityMetricDelta;
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationRun;
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationRunSummary;
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationScenarioComparison;
@@ -28,6 +33,8 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class AgentEvaluationComparisonApplicationService {
+
+    private static final double QUALITY_DELTA_TOLERANCE = 0.000001;
 
     private final AgentEvaluationRunRepository repository;
 
@@ -43,15 +50,14 @@ public class AgentEvaluationComparisonApplicationService {
         if (baseline.isEmpty() || candidate.isEmpty()) {
             return Optional.empty();
         }
-        if (!baseline.get().datasetVersion().equals(candidate.get().datasetVersion())) {
-            throw new IncompatibleEvaluationDatasetException();
-        }
+        validateComparableRuns(baseline.get(), candidate.get());
         return Optional.of(toComparison(baseline.get(), candidate.get()));
     }
 
     private static AgentEvaluationComparison toComparison(
             AgentEvaluationRun baseline,
             AgentEvaluationRun candidate) {
+        AgentEvaluationQualityMetricDelta qualityDelta = qualityDelta(baseline, candidate);
         return new AgentEvaluationComparison(
                 baseline.runId(),
                 candidate.runId(),
@@ -59,7 +65,32 @@ public class AgentEvaluationComparisonApplicationService {
                 summary(baseline),
                 summary(candidate),
                 metricDelta(baseline, candidate),
-                scenarioComparisons(baseline, candidate));
+                scenarioComparisons(baseline, candidate),
+                qualityDelta,
+                assessment(baseline, candidate, qualityDelta));
+    }
+
+    private static void validateComparableRuns(AgentEvaluationRun baseline, AgentEvaluationRun candidate) {
+        if (!baseline.datasetVersion().equals(candidate.datasetVersion())) {
+            throw new IncompatibleEvaluationRunsException(IncompatibleEvaluationRunsException.Reason.DATASET);
+        }
+        if (!baseline.agentId().equals(candidate.agentId())) {
+            throw new IncompatibleEvaluationRunsException(IncompatibleEvaluationRunsException.Reason.AGENT);
+        }
+        if (!scenarioInventory(baseline).equals(scenarioInventory(candidate))) {
+            throw new IncompatibleEvaluationRunsException(IncompatibleEvaluationRunsException.Reason.SCENARIO_COVERAGE);
+        }
+    }
+
+    private static Set<String> scenarioInventory(AgentEvaluationRun run) {
+        List<AgentEvaluationResult> results = run.suiteResult().scenarioResults();
+        Set<String> scenarioIds = results.stream()
+                .map(AgentEvaluationResult::scenarioId)
+                .collect(Collectors.toCollection(HashSet::new));
+        if (scenarioIds.size() != results.size()) {
+            throw new IncompatibleEvaluationRunsException(IncompatibleEvaluationRunsException.Reason.SCENARIO_COVERAGE);
+        }
+        return scenarioIds;
     }
 
     private static AgentEvaluationRunSummary summary(AgentEvaluationRun run) {
@@ -102,6 +133,130 @@ public class AgentEvaluationComparisonApplicationService {
                 subtractOptional(sumMetadata(baseline, AgentEvaluationExecutionMetadata::providerLatencyMs),
                         sumMetadata(candidate, AgentEvaluationExecutionMetadata::providerLatencyMs)),
                 subtractOptional(sumCost(baseline), sumCost(candidate)));
+    }
+
+    private static AgentEvaluationQualityMetricDelta qualityDelta(
+            AgentEvaluationRun baseline,
+            AgentEvaluationRun candidate) {
+        var before = baseline.suiteResult().qualityScorecard();
+        var after = candidate.suiteResult().qualityScorecard();
+        return new AgentEvaluationQualityMetricDelta(
+                candidate.suiteResult().passRate() - baseline.suiteResult().passRate(),
+                after.responseValidityRate() - before.responseValidityRate(),
+                after.responseGroundingRate() - before.responseGroundingRate(),
+                after.safetyRate() - before.safetyRate(),
+                after.utilityRate() - before.utilityRate(),
+                comparableDimensionDelta(baseline, candidate, "intent_accuracy",
+                        before.intentAccuracyRate(), after.intentAccuracyRate()),
+                comparableDimensionDelta(baseline, candidate, "entity_extraction",
+                        before.entityExtractionRate(), after.entityExtractionRate()),
+                comparableDimensionDelta(baseline, candidate, "tool_success",
+                        before.toolSuccessRate(), after.toolSuccessRate()),
+                comparableDimensionDelta(baseline, candidate, "rag_grounding",
+                        before.ragGroundingRate(), after.ragGroundingRate()));
+    }
+
+    private static Double comparableDimensionDelta(
+            AgentEvaluationRun baseline,
+            AgentEvaluationRun candidate,
+            String dimension,
+            Double baselineRate,
+            Double candidateRate) {
+        if (baselineRate == null || candidateRate == null
+                || !dimensionCoverage(baseline, dimension).equals(dimensionCoverage(candidate, dimension))) {
+            return null;
+        }
+        return candidateRate - baselineRate;
+    }
+
+    private static Set<String> dimensionCoverage(AgentEvaluationRun run, String dimension) {
+        return run.suiteResult().scenarioResults().stream()
+                .filter(result -> result.evaluatedDimensions().contains(dimension))
+                .map(AgentEvaluationResult::scenarioId)
+                .collect(Collectors.toSet());
+    }
+
+    private static AgentEvaluationComparisonAssessment assessment(
+            AgentEvaluationRun baseline,
+            AgentEvaluationRun candidate,
+            AgentEvaluationQualityMetricDelta deltas) {
+        List<String> improvements = new ArrayList<>();
+        List<String> regressions = new ArrayList<>();
+        List<String> unavailable = new ArrayList<>();
+        collectDimension("pass_rate", deltas.passRateDelta(), improvements, regressions);
+        collectDimension("response_validity", deltas.responseValidityRateDelta(), improvements, regressions);
+        collectDimension("response_grounding", deltas.responseGroundingRateDelta(), improvements, regressions);
+        collectDimension("safety", deltas.safetyRateDelta(), improvements, regressions);
+        collectDimension("utility", deltas.utilityRateDelta(), improvements, regressions);
+        collectOptionalDimension("intent_accuracy", deltas.intentAccuracyRateDelta(), improvements, regressions, unavailable);
+        collectOptionalDimension("entity_extraction", deltas.entityExtractionRateDelta(), improvements, regressions, unavailable);
+        collectOptionalDimension("tool_success", deltas.toolSuccessRateDelta(), improvements, regressions, unavailable);
+        collectOptionalDimension("rag_grounding", deltas.ragGroundingRateDelta(), improvements, regressions, unavailable);
+
+        int improvedScenarios = 0;
+        int regressedScenarios = 0;
+        int unchangedScenarios = 0;
+        Map<String, AgentEvaluationResult> before = byScenario(baseline);
+        Map<String, AgentEvaluationResult> after = byScenario(candidate);
+        for (String scenarioId : before.keySet()) {
+            AgentEvaluationResult baselineResult = before.get(scenarioId);
+            AgentEvaluationResult candidateResult = after.get(scenarioId);
+            double scoreDelta = candidateResult.score() - baselineResult.score();
+            if ((baselineResult.passed() && !candidateResult.passed())
+                    || scoreDelta < -QUALITY_DELTA_TOLERANCE) {
+                regressedScenarios++;
+            } else if ((!baselineResult.passed() && candidateResult.passed())
+                    || scoreDelta > QUALITY_DELTA_TOLERANCE) {
+                improvedScenarios++;
+            } else {
+                unchangedScenarios++;
+            }
+        }
+
+        boolean improved = !improvements.isEmpty() || improvedScenarios > 0;
+        boolean regressed = !regressions.isEmpty() || regressedScenarios > 0;
+        AgentEvaluationComparisonAssessment.Outcome outcome = improved && regressed
+                ? AgentEvaluationComparisonAssessment.Outcome.MIXED
+                : regressed
+                        ? AgentEvaluationComparisonAssessment.Outcome.QUALITY_REGRESSION
+                        : improved
+                                ? AgentEvaluationComparisonAssessment.Outcome.QUALITY_IMPROVED
+                                : AgentEvaluationComparisonAssessment.Outcome.NO_QUALITY_CHANGE;
+        return new AgentEvaluationComparisonAssessment(
+                outcome,
+                before.size(),
+                improvedScenarios,
+                regressedScenarios,
+                unchangedScenarios,
+                improvements.stream().sorted(Comparator.naturalOrder()).toList(),
+                regressions.stream().sorted(Comparator.naturalOrder()).toList(),
+                unavailable.stream().sorted(Comparator.naturalOrder()).toList(),
+                AgentEvaluationComparisonAssessment.EvidenceLevel.DESCRIPTIVE_NOT_STATISTICALLY_SIGNIFICANT);
+    }
+
+    private static void collectOptionalDimension(
+            String name,
+            Double delta,
+            List<String> improvements,
+            List<String> regressions,
+            List<String> unavailable) {
+        if (delta == null) {
+            unavailable.add(name);
+            return;
+        }
+        collectDimension(name, delta, improvements, regressions);
+    }
+
+    private static void collectDimension(
+            String name,
+            double delta,
+            List<String> improvements,
+            List<String> regressions) {
+        if (delta > QUALITY_DELTA_TOLERANCE) {
+            improvements.add(name);
+        } else if (delta < -QUALITY_DELTA_TOLERANCE) {
+            regressions.add(name);
+        }
     }
 
     private static List<AgentEvaluationScenarioComparison> scenarioComparisons(
@@ -187,5 +342,12 @@ public class AgentEvaluationComparisonApplicationService {
             return Optional.empty();
         }
         return Optional.of(candidate.get().subtract(baseline.get()));
+    }
+
+    private static Double subtractOptional(Double baseline, Double candidate) {
+        if (baseline == null || candidate == null) {
+            return null;
+        }
+        return candidate - baseline;
     }
 }

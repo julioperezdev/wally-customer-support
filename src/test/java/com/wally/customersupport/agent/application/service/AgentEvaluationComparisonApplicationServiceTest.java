@@ -16,7 +16,9 @@ import java.util.UUID;
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationRun;
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationEvidenceExport;
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationComparison;
+import com.wally.customersupport.agent.application.evaluation.AgentEvaluationComparisonAssessment;
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationMetricDelta;
+import com.wally.customersupport.agent.application.evaluation.AgentEvaluationQualityMetricDelta;
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationRunSummary;
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationScenarioComparison;
 import com.wally.customersupport.agent.application.evaluation.EvaluationEvidenceExportLimitException;
@@ -51,6 +53,13 @@ class AgentEvaluationComparisonApplicationServiceTest {
         assertThat(comparison.metricDelta().totalTokensDelta().orElseThrow()).isEqualTo(50);
         assertThat(comparison.metricDelta().providerLatencyMsDelta().orElseThrow()).isEqualTo(5);
         assertThat(comparison.metricDelta().estimatedCostUsdDelta()).contains(BigDecimal.valueOf(0.05));
+        assertThat(comparison.qualityDelta().utilityRateDelta())
+                .isCloseTo(0.2, org.assertj.core.data.Offset.offset(0.000001));
+        assertThat(comparison.assessment().outcome())
+                .isEqualTo(AgentEvaluationComparisonAssessment.Outcome.QUALITY_IMPROVED);
+        assertThat(comparison.assessment().improvedScenarioCount()).isEqualTo(1);
+        assertThat(comparison.assessment().evidenceLevel())
+                .isEqualTo(AgentEvaluationComparisonAssessment.EvidenceLevel.DESCRIPTIVE_NOT_STATISTICALLY_SIGNIFICANT);
         assertThat(comparison.scenarios()).singleElement()
                 .satisfies(scenario -> assertThat(scenario.scoreDelta())
                         .isCloseTo(0.2, org.assertj.core.data.Offset.offset(0.000001)));
@@ -92,7 +101,7 @@ class AgentEvaluationComparisonApplicationServiceTest {
 
         assertThatThrownBy(() -> new AgentEvaluationComparisonApplicationService(repository)
                 .compare(BASELINE_ID, CANDIDATE_ID))
-                .isInstanceOf(IncompatibleEvaluationDatasetException.class)
+                .isInstanceOf(IncompatibleEvaluationRunsException.class)
                 .hasMessage("evaluation runs must use the same dataset");
     }
 
@@ -131,12 +140,98 @@ class AgentEvaluationComparisonApplicationServiceTest {
         when(repository.findById(CANDIDATE_ID)).thenReturn(Optional.of(
                 run(CANDIDATE_ID, "other-dataset", 15, 0.9, null)));
         assertThatThrownBy(() -> exportService.export(BASELINE_ID, CANDIDATE_ID))
-                .isInstanceOf(IncompatibleEvaluationDatasetException.class)
+                .isInstanceOf(IncompatibleEvaluationRunsException.class)
                 .hasMessage("evaluation runs must use the same dataset");
     }
 
     @Test
+    void rejectsDifferentAgentsAndDifferentScenarioCoverage() {
+        AgentEvaluationRunRepository repository = mock(AgentEvaluationRunRepository.class);
+        when(repository.findById(BASELINE_ID)).thenReturn(Optional.of(
+                run(BASELINE_ID, "catalog-response-v1", 10, 0.7, null)));
+        when(repository.findById(CANDIDATE_ID)).thenReturn(Optional.of(
+                run(CANDIDATE_ID, "catalog-response-v1", 15, "support-router", List.of(
+                        result("scenario-1", 0.9, List.of(), null)))));
+
+        assertThatThrownBy(() -> new AgentEvaluationComparisonApplicationService(repository)
+                .compare(BASELINE_ID, CANDIDATE_ID))
+                .isInstanceOf(IncompatibleEvaluationRunsException.class)
+                .extracting(exception -> ((IncompatibleEvaluationRunsException) exception).reason())
+                .isEqualTo(IncompatibleEvaluationRunsException.Reason.AGENT);
+
+        when(repository.findById(CANDIDATE_ID)).thenReturn(Optional.of(
+                run(CANDIDATE_ID, "catalog-response-v1", 15, "catalog-specialist", List.of(
+                        result("different-scenario", 0.9, List.of(), null)))));
+        assertThatThrownBy(() -> new AgentEvaluationComparisonApplicationService(repository)
+                .compare(BASELINE_ID, CANDIDATE_ID))
+                .isInstanceOf(IncompatibleEvaluationRunsException.class)
+                .extracting(exception -> ((IncompatibleEvaluationRunsException) exception).reason())
+                .isEqualTo(IncompatibleEvaluationRunsException.Reason.SCENARIO_COVERAGE);
+
+        when(repository.findById(CANDIDATE_ID)).thenReturn(Optional.of(run(
+                CANDIDATE_ID, "catalog-response-v1", 15, "catalog-specialist", List.of(
+                        result("scenario-1", 0.9, List.of(), null),
+                        result("scenario-1", 0.9, List.of(), null)))));
+        assertThatThrownBy(() -> new AgentEvaluationComparisonApplicationService(repository)
+                .compare(BASELINE_ID, CANDIDATE_ID))
+                .isInstanceOf(IncompatibleEvaluationRunsException.class)
+                .extracting(exception -> ((IncompatibleEvaluationRunsException) exception).reason())
+                .isEqualTo(IncompatibleEvaluationRunsException.Reason.SCENARIO_COVERAGE);
+    }
+
+    @Test
+    void leavesSpecializedQualityDeltaUnavailableWhenItsScenarioCoverageDiffers() {
+        AgentEvaluationRunRepository repository = mock(AgentEvaluationRunRepository.class);
+        AgentEvaluationExecutionMetadata routed = metadataWithIntent("CATALOG_SEARCH");
+        when(repository.findById(BASELINE_ID)).thenReturn(Optional.of(run(
+                BASELINE_ID, "catalog-response-v1", 10, "catalog-specialist", List.of(
+                        result("scenario-1", 0.8, List.of("intent_accuracy"), routed),
+                        result("scenario-2", 0.8, List.of(), null)))));
+        when(repository.findById(CANDIDATE_ID)).thenReturn(Optional.of(run(
+                CANDIDATE_ID, "catalog-response-v1", 15, "catalog-specialist", List.of(
+                        result("scenario-1", 0.8, List.of(), null),
+                        result("scenario-2", 0.8, List.of("intent_accuracy"), routed)))));
+
+        var comparison = new AgentEvaluationComparisonApplicationService(repository)
+                .compare(BASELINE_ID, CANDIDATE_ID)
+                .orElseThrow();
+
+        assertThat(comparison.qualityDelta().intentAccuracyRateDelta()).isNull();
+        assertThat(comparison.assessment().unavailableDimensions()).contains("intent_accuracy");
+        assertThat(comparison.assessment().outcome())
+                .isEqualTo(AgentEvaluationComparisonAssessment.Outcome.NO_QUALITY_CHANGE);
+    }
+
+    @Test
+    void comparesSpecializedQualityDimensionWhenScenarioCoverageMatches() {
+        AgentEvaluationRunRepository repository = mock(AgentEvaluationRunRepository.class);
+        AgentEvaluationExecutionMetadata routed = metadataWithIntent("CATALOG_SEARCH");
+        when(repository.findById(BASELINE_ID)).thenReturn(Optional.of(run(
+                BASELINE_ID, "catalog-response-v1", 10, "catalog-specialist", List.of(
+                        result("scenario-1", 0.8, List.of("intent_accuracy"), routed),
+                        result("scenario-2", 0.8, List.of(), null)))));
+        when(repository.findById(CANDIDATE_ID)).thenReturn(Optional.of(run(
+                CANDIDATE_ID, "catalog-response-v1", 15, "catalog-specialist", List.of(
+                        new AgentEvaluationResult("scenario-1", "catalog-response-v1", false, 0.2,
+                                List.of("INTENT_MISMATCH"), routed, List.of("intent_accuracy")),
+                        result("scenario-2", 0.8, List.of(), null)))));
+
+        var comparison = new AgentEvaluationComparisonApplicationService(repository)
+                .compare(BASELINE_ID, CANDIDATE_ID)
+                .orElseThrow();
+
+        assertThat(comparison.qualityDelta().intentAccuracyRateDelta()).isEqualTo(-1.0);
+        assertThat(comparison.assessment().regressedDimensions()).contains("intent_accuracy");
+        assertThat(comparison.assessment().outcome())
+                .isEqualTo(AgentEvaluationComparisonAssessment.Outcome.QUALITY_REGRESSION);
+    }
+
+    @Test
     void rejectsAnEvidenceExportWithTooManyScenarios() {
+        var scenarios = java.util.stream.IntStream.range(0, AgentEvaluationEvidenceExport.MAX_SCENARIOS + 1)
+                .mapToObj(index -> new AgentEvaluationScenarioComparison(
+                        "scenario-" + index, true, true, 1.0, 1.0, 0.0))
+                .toList();
         var comparison = new AgentEvaluationComparison(
                 BASELINE_ID,
                 CANDIDATE_ID,
@@ -145,10 +240,12 @@ class AgentEvaluationComparisonApplicationServiceTest {
                 summary(CANDIDATE_ID),
                 new AgentEvaluationMetricDelta(
                         0, 0, 0, 0, 0, OptionalLong.empty(), OptionalLong.empty(), Optional.empty()),
-                java.util.stream.IntStream.range(0, AgentEvaluationEvidenceExport.MAX_SCENARIOS + 1)
-                        .mapToObj(index -> new AgentEvaluationScenarioComparison(
-                                "scenario-" + index, true, true, 1.0, 1.0, 0.0))
-                        .toList());
+                scenarios,
+                new AgentEvaluationQualityMetricDelta(0, 0, 0, 0, 0, null, null, null, null),
+                new AgentEvaluationComparisonAssessment(
+                        AgentEvaluationComparisonAssessment.Outcome.NO_QUALITY_CHANGE,
+                        scenarios.size(), 0, 0, scenarios.size(), List.of(), List.of(), List.of(),
+                        AgentEvaluationComparisonAssessment.EvidenceLevel.DESCRIPTIVE_NOT_STATISTICALLY_SIGNIFICANT));
 
         assertThatThrownBy(() -> AgentEvaluationEvidenceExport.from(comparison))
                 .isInstanceOf(EvaluationEvidenceExportLimitException.class)
@@ -165,10 +262,10 @@ class AgentEvaluationComparisonApplicationServiceTest {
                 "deterministic-v1",
                 Instant.parse("2026-09-08T00:00:00Z"),
                 Instant.parse("2026-09-08T00:00:01Z"),
-                10,
                 1,
                 1,
                 0,
+                1,
                 1.0,
                 1.0,
                 Map.of());
@@ -180,12 +277,32 @@ class AgentEvaluationComparisonApplicationServiceTest {
             long durationMs,
             double score,
             AgentEvaluationExecutionMetadata metadata) {
-        AgentEvaluationResult scenario = new AgentEvaluationResult(
-                "scenario-1", datasetVersion, true, score, List.of(), metadata);
+        return run(runId, datasetVersion, durationMs, "catalog-specialist", List.of(
+                result("scenario-1", score, List.of(), metadata)));
+    }
+
+    private static AgentEvaluationRun run(
+            UUID runId,
+            String datasetVersion,
+            long durationMs,
+            String agentId,
+            List<AgentEvaluationResult> scenarios) {
+        List<AgentEvaluationResult> normalizedScenarios = scenarios.stream()
+                .map(scenario -> new AgentEvaluationResult(
+                        scenario.scenarioId(),
+                        datasetVersion,
+                        scenario.passed(),
+                        scenario.score(),
+                        scenario.reasons(),
+                        scenario.executionMetadata(),
+                        scenario.evaluatedDimensions()))
+                .toList();
+        int passed = (int) normalizedScenarios.stream().filter(AgentEvaluationResult::passed).count();
+        double averageScore = normalizedScenarios.stream().mapToDouble(AgentEvaluationResult::score).average().orElseThrow();
         return new AgentEvaluationRun(
                 runId,
                 datasetVersion,
-                "catalog-specialist",
+                agentId,
                 "v1",
                 "mock",
                 "deterministic-v1",
@@ -194,13 +311,22 @@ class AgentEvaluationComparisonApplicationServiceTest {
                 durationMs,
                 new AgentEvaluationSuiteResult(
                         datasetVersion,
-                        List.of(scenario),
-                        1,
-                        1,
-                        0,
-                        1.0,
-                        score,
+                        normalizedScenarios,
+                        normalizedScenarios.size(),
+                        passed,
+                        normalizedScenarios.size() - passed,
+                        (double) passed / normalizedScenarios.size(),
+                        averageScore,
                         Map.of()));
+    }
+
+    private static AgentEvaluationResult result(
+            String scenarioId,
+            double score,
+            List<String> evaluatedDimensions,
+            AgentEvaluationExecutionMetadata metadata) {
+        return new AgentEvaluationResult(
+                scenarioId, "catalog-response-v1", true, score, List.of(), metadata, evaluatedDimensions);
     }
 
     private static AgentEvaluationExecutionMetadata metadata(
@@ -219,5 +345,12 @@ class AgentEvaluationComparisonApplicationServiceTest {
                 totalTokens,
                 new BigDecimal(cost),
                 "test-pricing-v1");
+    }
+
+    private static AgentEvaluationExecutionMetadata metadataWithIntent(String routedIntent) {
+        return new AgentEvaluationExecutionMetadata(
+                "catalog-specialist", "v1", "mock", "deterministic-v1", 1, 1L,
+                1, 1, 2, BigDecimal.ZERO, "test-pricing-v1", routedIntent,
+                null, null, null, null);
     }
 }

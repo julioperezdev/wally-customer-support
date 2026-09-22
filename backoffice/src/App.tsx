@@ -970,7 +970,47 @@ function RunDetailView({ run }: { run: RunDetail }) {
 
 function ComparisonView({ comparison }: { comparison: Comparison }) {
   const delta = comparison.metricDelta;
-  return <div className="comparison"><h3>Delta candidate − baseline</h3><div className="metric-row"><Metric label="Pass rate" value={formatSignedPercent(delta.passRateDelta)} /><Metric label="Latencia" value={formatSignedMs(delta.durationMsDelta)} /><Metric label="Tokens" value={delta.totalTokensDelta == null ? "—" : formatSigned(delta.totalTokensDelta)} /><Metric label="Costo USD" value={delta.estimatedCostUsdDelta == null ? "—" : formatSigned(delta.estimatedCostUsdDelta)} /></div><p className="muted">Dataset: {comparison.datasetVersion}. La evidencia es informativa y requiere aprobación separada para cualquier promoción.</p></div>;
+  const quality = comparison.qualityDelta;
+  const assessment = comparison.assessment;
+  const outcomeLabel = {
+    QUALITY_IMPROVED: "Mejora descriptiva",
+    QUALITY_REGRESSION: "Regresión de calidad",
+    MIXED: "Resultado mixto",
+    NO_QUALITY_CHANGE: "Sin cambio de calidad"
+  }[assessment.outcome];
+  const outcomeClass = assessment.outcome === "QUALITY_IMPROVED"
+    ? "positive"
+    : assessment.outcome === "QUALITY_REGRESSION"
+      ? "negative"
+      : "warning";
+  return <div className="comparison">
+    <h3>Conclusión: <span className={outcomeClass}>{outcomeLabel}</span></h3>
+    <p><strong>{comparison.baseline.agentId}</strong> · {comparison.baseline.agentVersion} → {comparison.candidate.agentVersion}<br />
+      <span className="muted">{comparison.baseline.provider}/{comparison.baseline.modelId} → {comparison.candidate.provider}/{comparison.candidate.modelId}</span></p>
+    <p className="muted">Comparación descriptiva de {assessment.scenarioCount} escenarios; no mide significancia estadística ni promociona agentes.</p>
+    <div className="metric-row">
+      <Metric label="Pass rate" value={formatSignedPercent(delta.passRateDelta)} />
+      <Metric label="Utilidad" value={formatSignedPercent(quality.utilityRateDelta)} />
+      <Metric label="Grounding" value={formatSignedPercent(quality.responseGroundingRateDelta)} />
+      <Metric label="Seguridad" value={formatSignedPercent(quality.safetyRateDelta)} />
+      <Metric label="Validez" value={formatSignedPercent(quality.responseValidityRateDelta)} />
+      <Metric label="Tiempo total de evaluación" value={formatSignedMs(delta.durationMsDelta)} />
+      <Metric label="Latencia del modelo" value={delta.providerLatencyMsDelta == null ? "—" : formatSignedMs(delta.providerLatencyMsDelta)} />
+      <Metric label="Tokens" value={delta.totalTokensDelta == null ? "—" : formatSigned(delta.totalTokensDelta)} />
+      <Metric label="Costo estimado" value={delta.estimatedCostUsdDelta == null ? "—" : `${formatSigned(delta.estimatedCostUsdDelta)} USD`} />
+    </div>
+    <p>Escenarios: {assessment.improvedScenarioCount} mejoraron, {assessment.regressedScenarioCount} empeoraron, {assessment.unchangedScenarioCount} sin cambio.</p>
+    <p><strong>Dimensiones con mejora:</strong> {formatQualityDimensions(assessment.improvedDimensions) || "ninguna"}</p>
+    <p><strong>Dimensiones con regresión:</strong> {formatQualityDimensions(assessment.regressedDimensions) || "ninguna"}</p>
+    {assessment.unavailableDimensions.length > 0 && <p className="muted"><strong>No medidas/comparables:</strong> {formatQualityDimensions(assessment.unavailableDimensions)}</p>}
+    <div className="table-wrap"><table className="responsive-table"><thead><tr><th>Escenario</th><th>Baseline</th><th>Candidata</th><th>Delta score</th></tr></thead><tbody>{comparison.scenarios.map((scenario) => <tr key={scenario.scenarioId}>
+      <td data-label="Escenario">{scenario.scenarioId}</td>
+      <td data-label="Baseline" className={scenario.baselinePassed == null ? "muted" : scenario.baselinePassed ? "positive" : "negative"}>{scenario.baselinePassed == null ? "—" : scenario.baselinePassed ? "PASS" : "FAIL"}{scenario.baselineScore == null ? "" : ` · ${formatPercent(scenario.baselineScore)}`}</td>
+      <td data-label="Candidata" className={scenario.candidatePassed == null ? "muted" : scenario.candidatePassed ? "positive" : "negative"}>{scenario.candidatePassed == null ? "—" : scenario.candidatePassed ? "PASS" : "FAIL"}{scenario.candidateScore == null ? "" : ` · ${formatPercent(scenario.candidateScore)}`}</td>
+      <td data-label="Delta score">{scenario.scoreDelta == null ? "—" : formatSignedPercent(scenario.scoreDelta)}</td>
+    </tr>)}</tbody></table></div>
+    <p className="muted">Dataset: {comparison.datasetVersion}. Decisión final y promoción requieren revisión humana.</p>
+  </div>;
 }
 
 function Metric({ label, value }: { label: string; value: string }) { return <div className="metric"><span>{label}</span><strong>{value}</strong></div>; }
@@ -980,6 +1020,20 @@ function formatSignedPercent(value: number) { return `${value >= 0 ? "+" : ""}${
 function formatMs(value: number | null) { return value == null ? "—" : `${value} ms`; }
 function formatSigned(value: number) { return `${value >= 0 ? "+" : ""}${value}`; }
 function formatSignedMs(value: number) { return formatSigned(value) + " ms"; }
+function formatQualityDimensions(dimensions: string[]) {
+  const labels: Record<string, string> = {
+    pass_rate: "aprobación",
+    response_validity: "validez de respuesta",
+    response_grounding: "respaldo en datos",
+    safety: "seguridad",
+    utility: "utilidad",
+    intent_accuracy: "precisión de intención",
+    entity_extraction: "extracción de entidades",
+    tool_success: "éxito de herramientas",
+    rag_grounding: "fundamentación RAG"
+  };
+  return dimensions.map((dimension) => labels[dimension] ?? dimension).join(", ");
+}
 function formatPanelNames(panels: Array<"registry" | "agentMap" | "store" | "featureFlags">) {
   return panels.map((panel) => ({
     registry: "registry",
@@ -1023,7 +1077,12 @@ function toUserMessage(cause: unknown) {
     if (cause.code === "IMAGE_UPLOAD_FAILED") {
       return "No se pudo subir la imagen. Verificá el origen permitido y que el archivo sea válido.";
     }
-    if (cause.status === 409) return "Los runs no son comparables: verificá que usen el mismo dataset.";
+    if (cause.status === 409) {
+      if (cause.code === "INCOMPATIBLE_DATASET") return "Los runs usan datasets distintos. Elegí dos ejecuciones del mismo dataset y versión.";
+      if (cause.code === "INCOMPATIBLE_AGENT") return "Los runs son de agentes distintos. Compará versiones del mismo agente lógico.";
+      if (cause.code === "INCOMPLETE_SCENARIO_COVERAGE") return "Los runs no cubren exactamente los mismos escenarios. Volvé a ejecutarlos con la misma suite.";
+      return "Los runs no son comparables. Verificá agente, dataset y cobertura de escenarios.";
+    }
     return `El control plane respondió ${cause.code}.`;
   }
   return "No se pudo conectar con el control plane. Revisá la URL y el estado del backend.";
