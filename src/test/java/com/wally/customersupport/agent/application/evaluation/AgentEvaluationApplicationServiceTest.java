@@ -18,7 +18,6 @@ import com.wally.customersupport.agent.domain.model.AgentEvaluationExecutionMeta
 import com.wally.customersupport.agent.domain.model.AgentEvaluationScenario;
 import com.wally.customersupport.agent.infrastructure.config.AgentEvaluationProperties;
 import com.wally.customersupport.conversation.application.service.DeterministicResponseHumanizer;
-import com.wally.customersupport.shared.infrastructure.config.AiProperties;
 import org.junit.jupiter.api.Test;
 
 class AgentEvaluationApplicationServiceTest {
@@ -32,10 +31,7 @@ class AgentEvaluationApplicationServiceTest {
             new PassthroughAgentEvaluationRunRepository(),
             Clock.fixed(NOW, ZoneOffset.UTC),
             new AgentEvaluationProperties(
-                    "deterministic", 10, 4_000, 512, new BigDecimal("0.0500"), Duration.ofSeconds(30)),
-            new AiProperties(
-                    "mock", "llm.mock.v1", "us-east-1", "test-pricing-v1",
-                    new BigDecimal("0.0721"), new BigDecimal("0.3090")));
+                    "deterministic", 10, 4_000, 512, new BigDecimal("0.0500"), Duration.ofSeconds(30)));
 
     @Test
     void executesKnownDatasetAndReturnsSanitizedRunMetrics() {

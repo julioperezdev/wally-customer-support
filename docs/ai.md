@@ -45,9 +45,16 @@ continúan con sus fronteras actuales hasta migrar cada step del plan.
 Las evaluaciones de agentes tienen un executor Bedrock opcional, separado del
 runtime conversacional. Sólo recibe hechos sintéticos y validados del dataset,
 no genera SQL ni consulta tools. `deterministic` es el default y rollback;
-`bedrock` requiere activación explícita, coincidencia de provider/model y pasa
-por límites de escenarios, tokens y costo estimado. Esta evaluación no cambia
-el modelo activo del chatbot.
+`bedrock` requiere activación explícita y resuelve el agent ID + versión SQL
+inmutable directamente, sin depender de activaciones ni tocar tráfico. La
+primera versión evalúa `response-humanization` sobre `catalog-response-v1`; usa
+el system prompt, template, model ID, parámetros, límites, timeout y precios de
+esa versión. Se rechaza DRAFT, un prompt cuyo hash no coincida, schemas o
+placeholders inválidos y un límite de salida superior al cap global. Se hacen
+dos runs separados sobre el mismo dataset para comparar baseline y candidata.
+El modelo no recibe conversaciones reales y no ejecuta SQL, tools, pedidos ni
+acciones. El histórico conserva la versión numérica SQL, modelo y métricas; el
+evento `AI_USAGE_RECORDED` añade SemVer y hash de prompt sin contenido.
 
 ## RAG
 

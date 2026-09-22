@@ -4,7 +4,7 @@ import java.util.Objects;
 
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationRunRequest;
 
-/** HTTP input for a controlled evaluation run; it contains no executable data. */
+/** HTTP input for a controlled evaluation run; SQL supplies provider and model configuration. */
 public record AgentEvaluationTriggerHttpRequest(
         String datasetVersion,
         String agentId,
@@ -16,17 +16,18 @@ public record AgentEvaluationTriggerHttpRequest(
         datasetVersion = required(datasetVersion, "datasetVersion");
         agentId = required(agentId, "agentId");
         agentVersion = required(agentVersion, "agentVersion");
-        provider = required(provider, "provider");
-        modelId = required(modelId, "modelId");
+        provider = optional(provider);
+        modelId = optional(modelId);
     }
 
     AgentEvaluationRunRequest toApplicationRequest() {
+        if (provider != null && modelId != null) {
+            return new AgentEvaluationRunRequest(datasetVersion, agentId, agentVersion, provider, modelId);
+        }
         return new AgentEvaluationRunRequest(
                 datasetVersion,
                 agentId,
-                agentVersion,
-                provider,
-                modelId);
+                agentVersion);
     }
 
     private static String required(String value, String field) {
@@ -35,5 +36,9 @@ public record AgentEvaluationTriggerHttpRequest(
             throw new IllegalArgumentException(field + " must not be blank");
         }
         return normalized;
+    }
+
+    private static String optional(String value) {
+        return value == null || value.isBlank() ? null : value.strip();
     }
 }

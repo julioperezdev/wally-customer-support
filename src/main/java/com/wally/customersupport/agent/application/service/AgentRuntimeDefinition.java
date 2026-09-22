@@ -7,10 +7,11 @@ import java.util.Set;
 
 import com.wally.customersupport.agent.domain.model.AgentInferenceParameters;
 import com.wally.customersupport.agent.domain.model.AgentInvocationConfiguration;
+import com.wally.customersupport.agent.domain.model.AgentLifecycleState;
 import com.wally.customersupport.agent.domain.model.AgentVersion;
 
 /**
- * Immutable execution snapshot derived from a published agent version.
+ * Immutable execution snapshot derived from an agent version selected for runtime or offline evaluation.
  * It contains executable prompt configuration but never conversation data;
  * operational telemetry records only prompt identifiers and hashes.
  */
@@ -117,6 +118,22 @@ public record AgentRuntimeDefinition(
         if (!version.canBeActivated()) {
             throw new IllegalArgumentException("agent version is not publishable");
         }
+        return snapshot(version);
+    }
+
+    /**
+     * Builds the same immutable snapshot for offline evaluation. Evaluation may
+     * target a candidate or retired version, but never an editable draft.
+     */
+    public static AgentRuntimeDefinition forEvaluation(AgentVersion version) {
+        Objects.requireNonNull(version, "version");
+        if (version.state() == AgentLifecycleState.DRAFT) {
+            throw new IllegalArgumentException("draft agent version cannot be evaluated");
+        }
+        return snapshot(version);
+    }
+
+    private static AgentRuntimeDefinition snapshot(AgentVersion version) {
         return new AgentRuntimeDefinition(
                 version.agentId(),
                 version.version(),

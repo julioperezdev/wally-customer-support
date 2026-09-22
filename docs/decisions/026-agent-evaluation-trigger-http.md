@@ -23,12 +23,15 @@ El request sólo acepta:
 ```json
 {
   "datasetVersion": "catalog-response-v1",
-  "agentId": "catalog-specialist",
-  "agentVersion": "v1",
-  "provider": "mock",
-  "modelId": "deterministic-v1"
+  "agentId": "response-humanization",
+  "agentVersion": "2"
 }
 ```
+
+El executor determinístico legacy puede seguir recibiendo `provider` y
+`modelId`; en modo Bedrock se ignoran por seguridad y compatibilidad. El
+executor obtiene modelo y demás parámetros de la versión inmutable indicada en
+PostgreSQL.
 
 El actor se obtiene del `sub` del JWT y la key se recibe en
 `Idempotency-Key`. La identidad no puede ser enviada por header alternativo ni

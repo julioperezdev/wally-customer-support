@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 
 import com.wally.customersupport.catalog.application.service.CatalogFact;
 import com.wally.customersupport.catalog.application.service.CatalogResponseFormatter;
+import com.wally.customersupport.catalog.application.service.CatalogResponseFactsFormatter;
 import com.wally.customersupport.catalog.application.service.CatalogSearchResult;
 import com.wally.customersupport.agent.application.service.AgentRuntimeDefinition;
 import com.wally.customersupport.conversation.application.port.out.ResponseHumanizer;
@@ -142,7 +143,7 @@ public class BedrockResponseHumanizer implements ResponseHumanizer {
     private String buildUserPrompt(ResponseHumanizationRequest request, String deterministicText) {
         String boundedFacts = limit(deterministicText, responseProperties.effectiveMaxInputCharacters());
         String requiredFacts = limit(
-                requiredFacts(request.catalogResult()),
+                CatalogResponseFactsFormatter.requiredFacts(request.catalogResult()),
                 responseProperties.effectiveMaxInputCharacters());
         return """
                 <request_metadata>
@@ -177,28 +178,7 @@ public class BedrockResponseHumanizer implements ResponseHumanizer {
                 "use_case", request.useCase(),
                 "channel", request.channel().name(),
                 "approved_knowledge", limit(deterministicText, maxInputCharacters),
-                "required_facts", limit(requiredFacts(request.catalogResult()), maxInputCharacters)));
-    }
-
-    private String requiredFacts(CatalogSearchResult result) {
-        if (result == null || result.facts().isEmpty()) {
-            return "No hay hechos de catálogo para presentar.";
-        }
-        StringBuilder facts = new StringBuilder();
-        for (int index = 0; index < result.facts().size(); index++) {
-            CatalogFact fact = result.facts().get(index);
-            facts.append("product[").append(index + 1).append("] ")
-                    .append("name=").append(fact.productName())
-                    .append(" | sku=").append(fact.sku())
-                    .append(" | color=").append(fact.color())
-                    .append(" | size=").append(fact.size())
-                    .append(" | price=").append(fact.price().toPlainString())
-                    .append(" ").append(fact.currency())
-                    .append(" | stock=")
-                    .append(fact.available() ? fact.stock() : "sin stock")
-                    .append('\n');
-        }
-        return facts.toString().trim();
+                "required_facts", limit(CatalogResponseFactsFormatter.requiredFacts(request.catalogResult()), maxInputCharacters)));
     }
 
     private ValidationDiagnostics validateApprovedFacts(String generated, CatalogSearchResult result) {

@@ -12,7 +12,6 @@ import com.wally.customersupport.agent.application.port.out.AgentEvaluationRunRe
 import com.wally.customersupport.agent.domain.model.AgentEvaluationQualityScorecard;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationSuiteResult;
 import com.wally.customersupport.agent.infrastructure.config.AgentEvaluationProperties;
-import com.wally.customersupport.shared.infrastructure.config.AiProperties;
 import com.wally.customersupport.shared.infrastructure.observability.AiPricingCalculator;
 import com.wally.customersupport.shared.infrastructure.observability.StructuredEventLog;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +29,6 @@ public class AgentEvaluationApplicationService {
     private final AgentEvaluationRunRepository runRepository;
     private final Clock clock;
     private final AgentEvaluationProperties properties;
-    private final AiProperties aiProperties;
 
     public AgentEvaluationRun execute(
             AgentEvaluationRunRequest request,
@@ -41,21 +39,24 @@ public class AgentEvaluationApplicationService {
         UUID runId = UUID.randomUUID();
         Instant startedAt = clock.instant();
         try {
-            executor.validate(request);
-            var scenarios = datasetCatalog.scenarios(request.datasetVersion());
-            validateLimits(request, scenarios.size());
+            AgentEvaluationRunRequest resolvedRequest = Objects.requireNonNull(
+                    executor.prepare(request), "executor.prepare must not return null");
+            executor.validate(resolvedRequest);
+            var scenarios = datasetCatalog.scenarios(resolvedRequest.datasetVersion());
+            validateLimits(resolvedRequest, scenarios.size());
+            executor.validateScenarios(scenarios, resolvedRequest);
             AgentEvaluationSuiteResult suiteResult = runner.run(
                     scenarios,
-                    request,
+                    resolvedRequest,
                     executor);
             Instant completedAt = clock.instant();
             AgentEvaluationRun run = new AgentEvaluationRun(
                     runId,
-                    request.datasetVersion(),
-                    request.agentId(),
-                    request.agentVersion(),
-                    request.provider(),
-                    request.modelId(),
+                    resolvedRequest.datasetVersion(),
+                    resolvedRequest.agentId(),
+                    resolvedRequest.agentVersion(),
+                    resolvedRequest.provider(),
+                    resolvedRequest.modelId(),
                     startedAt,
                     completedAt,
                     elapsedMillis(startedAt, completedAt),
@@ -137,13 +138,20 @@ public class AgentEvaluationApplicationService {
             throw new IllegalArgumentException("evaluation scenario limit exceeded");
         }
         if ("bedrock".equalsIgnoreCase(request.provider())) {
-            int inputTokens = properties.effectiveMaxInputTokensPerScenario() * scenarioCount;
-            int outputTokens = properties.effectiveMaxOutputTokens() * scenarioCount;
+            var version = Objects.requireNonNull(
+                    request.versionDefinition(), "Bedrock evaluation requires an immutable SQL version");
+            if (version.maxOutputTokens() > properties.effectiveMaxOutputTokens()) {
+                throw new IllegalArgumentException("agent output limit exceeds evaluator safety cap");
+            }
+            int inputTokens = Math.min(
+                    properties.effectiveMaxInputTokensPerScenario(), version.maxInputTokens()) * scenarioCount;
+            int outputTokens = version.maxOutputTokens() * scenarioCount;
+            var pricing = version.invocationConfiguration();
             var estimatedCost = AiPricingCalculator.estimatedCostUsd(
                     inputTokens,
                     outputTokens,
-                    aiProperties.effectiveInputPriceUsdPerMillionTokens(),
-                    aiProperties.effectiveOutputPriceUsdPerMillionTokens());
+                    pricing.inputPriceUsdPerMillionTokens(),
+                    pricing.outputPriceUsdPerMillionTokens());
             if (estimatedCost.compareTo(properties.effectiveMaxEstimatedCostUsd()) > 0) {
                 throw new IllegalArgumentException("evaluation estimated budget exceeded");
             }
