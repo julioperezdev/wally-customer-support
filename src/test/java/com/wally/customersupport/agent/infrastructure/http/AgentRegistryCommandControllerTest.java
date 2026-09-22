@@ -1,6 +1,8 @@
 package com.wally.customersupport.agent.infrastructure.http;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentCaptor.forClass;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -8,7 +10,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.Instant;
+import java.util.UUID;
 
+import com.wally.customersupport.agent.application.registry.AgentLifecycleTransitionCommand;
 import com.wally.customersupport.agent.application.registry.AgentRegistryMutationReason;
 import com.wally.customersupport.agent.application.registry.AgentRegistryMutationResult;
 import com.wally.customersupport.agent.application.registry.AgentRegistryMutationStatus;
@@ -72,5 +76,39 @@ class AgentRegistryCommandControllerTest {
                 .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
 
         verifyNoInteractions(commandService);
+    }
+
+    @Test
+    void acceptsComparableEvaluationRunReferencesForLifecycleReview() throws Exception {
+        UUID baselineRunId = UUID.fromString("00000000-0000-0000-0000-000000000041");
+        UUID candidateRunId = UUID.fromString("00000000-0000-0000-0000-000000000042");
+        when(commandService.transition(any(), any(), any())).thenReturn(
+                new AgentRegistryMutationResult(
+                        AgentRegistryMutationStatus.TRANSITIONED,
+                        AgentRegistryMutationReason.LIFECYCLE_TRANSITIONED,
+                        "support-specialist",
+                        2,
+                        AgentLifecycleState.EVALUATED,
+                        Instant.parse("2026-09-13T03:00:00Z"),
+                        Instant.parse("2026-09-13T03:01:00Z")));
+
+        mockMvc.perform(post("/internal/agent-registry/agents/support-specialist/versions/2/lifecycle")
+                        .principal(() -> "agent-operator")
+                        .header("Idempotency-Key", "evaluation-001")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"targetState":"EVALUATED","reason":"reviewed",
+                                 "baselineEvaluationRunId":"%s","candidateEvaluationRunId":"%s"}
+                                """.formatted(baselineRunId, candidateRunId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.state").value("EVALUATED"));
+
+        var command = forClass(AgentLifecycleTransitionCommand.class);
+        verify(commandService).transition(command.capture(), org.mockito.ArgumentMatchers.eq("agent-operator"),
+                org.mockito.ArgumentMatchers.eq("evaluation-001"));
+        org.assertj.core.api.Assertions.assertThat(command.getValue().baselineEvaluationRunId())
+                .isEqualTo(baselineRunId);
+        org.assertj.core.api.Assertions.assertThat(command.getValue().candidateEvaluationRunId())
+                .isEqualTo(candidateRunId);
     }
 }

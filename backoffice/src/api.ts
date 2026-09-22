@@ -147,6 +147,10 @@ export type AgentRegistryAuditEvent = {
   actorId: string;
   reason: string;
   occurredAt: string;
+  baselineEvaluationRunId: string | null;
+  candidateEvaluationRunId: string | null;
+  evaluationDatasetVersion: string | null;
+  evaluationAssessmentOutcome: string | null;
 };
 
 export type AgentExecutionTrace = {
@@ -614,6 +618,8 @@ export function createControlPlaneClient(
         reason: string;
         approvalReference?: string;
         operationalApprovalReference?: string;
+        baselineEvaluationRunId?: string;
+        candidateEvaluationRunId?: string;
       },
       idempotencyKey: string) {
       return requestFrom<AgentRegistryMutation>(

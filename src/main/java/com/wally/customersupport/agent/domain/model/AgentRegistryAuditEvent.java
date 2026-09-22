@@ -2,6 +2,7 @@ package com.wally.customersupport.agent.domain.model;
 
 import java.time.Instant;
 import java.util.Objects;
+import java.util.UUID;
 
 /**
  * Content-free audit evidence for changes to the agent control plane.
@@ -20,7 +21,27 @@ public record AgentRegistryAuditEvent(
         String useCase,
         String actorId,
         String reason,
-        Instant occurredAt) {
+        Instant occurredAt,
+        UUID baselineEvaluationRunId,
+        UUID candidateEvaluationRunId,
+        String evaluationDatasetVersion,
+        String evaluationAssessmentOutcome) {
+
+    public AgentRegistryAuditEvent(
+            String operation,
+            String agentId,
+            Integer agentVersion,
+            String previousState,
+            String resultingState,
+            String environment,
+            String channel,
+            String useCase,
+            String actorId,
+            String reason,
+            Instant occurredAt) {
+        this(operation, agentId, agentVersion, previousState, resultingState, environment, channel, useCase,
+                actorId, reason, occurredAt, null, null, null, null);
+    }
 
     public AgentRegistryAuditEvent {
         operation = required(operation, "operation");
@@ -33,6 +54,20 @@ public record AgentRegistryAuditEvent(
         actorId = required(actorId, "actorId");
         reason = required(reason, "reason");
         occurredAt = Objects.requireNonNull(occurredAt, "occurredAt");
+        evaluationDatasetVersion = optional(evaluationDatasetVersion);
+        evaluationAssessmentOutcome = optional(evaluationAssessmentOutcome);
+        boolean evaluationEvidenceAbsent = baselineEvaluationRunId == null
+                && candidateEvaluationRunId == null
+                && evaluationDatasetVersion == null
+                && evaluationAssessmentOutcome == null;
+        boolean evaluationEvidenceComplete = baselineEvaluationRunId != null
+                && candidateEvaluationRunId != null
+                && evaluationDatasetVersion != null
+                && evaluationAssessmentOutcome != null
+                && !baselineEvaluationRunId.equals(candidateEvaluationRunId);
+        if (!evaluationEvidenceAbsent && !evaluationEvidenceComplete) {
+            throw new IllegalArgumentException("evaluation evidence must be complete or absent");
+        }
         if (agentVersion != null && agentVersion < 1) {
             throw new IllegalArgumentException("agentVersion must be positive");
         }

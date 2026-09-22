@@ -4,6 +4,7 @@ import {
   AgentRegistryAgent,
   AgentRegistryMutation,
   AgentVersionDraftInput,
+  RunSummary,
   createControlPlaneClient
 } from "./api";
 import { draftFromVersion, versionsForAgent } from "./agent-registry";
@@ -52,13 +53,15 @@ export function AgentAuthoringPanel({
   onRegistryChanged,
   canWrite,
   agents,
-  filterOptions
+  filterOptions,
+  evaluationRuns
 }: {
   client: ControlPlaneClient;
   onRegistryChanged: () => Promise<boolean>;
   canWrite: boolean;
   agents: AgentRegistryAgent[] | null;
   filterOptions: AgentFilterOptions;
+  evaluationRuns: RunSummary[];
 }) {
   const [agentId, setAgentId] = useState("catalog-specialist");
   const [definitionJson, setDefinitionJson] = useState(DEFAULT_DEFINITION);
@@ -70,6 +73,8 @@ export function AgentAuthoringPanel({
   const [reason, setReason] = useState("backoffice authoring");
   const [approvalReference, setApprovalReference] = useState("");
   const [operationalApprovalReference, setOperationalApprovalReference] = useState("");
+  const [baselineEvaluationRunId, setBaselineEvaluationRunId] = useState("");
+  const [candidateEvaluationRunId, setCandidateEvaluationRunId] = useState("");
   const [mutation, setMutation] = useState<AgentRegistryMutation | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -77,6 +82,18 @@ export function AgentAuthoringPanel({
   const availableVersions = useMemo(
     () => versionsForAgent(agents, agentId),
     [agents, agentId]);
+  const lifecycleVersions = useMemo(
+    () => versionsForAgent(agents, lifecycleAgentId),
+    [agents, lifecycleAgentId]);
+  const selectedLifecycleVersion = lifecycleVersions.find((version) => version.version === Number(lifecycleVersion));
+  const activeBaselineRuns = evaluationRuns.filter((run) => run.agentId === lifecycleAgentId
+    && lifecycleVersions.some((version) => version.state === "ACTIVE" && String(version.version) === run.agentVersion));
+  const selectedBaselineRun = activeBaselineRuns.find((run) => run.runId === baselineEvaluationRunId);
+  const eligibleCandidateRuns = evaluationRuns.filter((run) => run.agentId === lifecycleAgentId
+    && run.agentVersion === lifecycleVersion
+    && selectedLifecycleVersion?.evaluationSuiteVersion === run.datasetVersion
+    && (!selectedBaselineRun || selectedBaselineRun.datasetVersion === run.datasetVersion));
+  const requiresEvaluationEvidence = targetState === "EVALUATED" || targetState === "APPROVED";
 
   function selectAgent(value: string) {
     setAgentId(value);
@@ -85,6 +102,8 @@ export function AgentAuthoringPanel({
     const firstVersion = versionsForAgent(agents, value)[0];
     setSourceVersion(firstVersion ? String(firstVersion.version) : "");
     setLifecycleVersion(firstVersion ? String(firstVersion.version) : "");
+    setBaselineEvaluationRunId("");
+    setCandidateEvaluationRunId("");
     setError(null);
   }
 
@@ -152,6 +171,10 @@ export function AgentAuthoringPanel({
       setError("Indicá agentId, versión y motivo para la transición.");
       return;
     }
+    if (requiresEvaluationEvidence && (!baselineEvaluationRunId || !candidateEvaluationRunId)) {
+      setError("Elegí un run del agente activo y otro de esta versión, con el mismo dataset, para documentar la evaluación comparable.");
+      return;
+    }
     setBusy(true);
     setError(null);
     setMutation(null);
@@ -163,7 +186,8 @@ export function AgentAuthoringPanel({
           targetState,
           reason,
           ...(approvalReference.trim() ? { approvalReference } : {}),
-          ...(operationalApprovalReference.trim() ? { operationalApprovalReference } : {})
+          ...(operationalApprovalReference.trim() ? { operationalApprovalReference } : {}),
+          ...(requiresEvaluationEvidence ? { baselineEvaluationRunId, candidateEvaluationRunId } : {})
         },
         idempotencyKey());
       setMutation(result);
@@ -217,16 +241,23 @@ export function AgentAuthoringPanel({
 
           <h3 className="authoring-subheading">Transicionar lifecycle</h3>
           <div className="form-grid">
-            <label>Agent ID<input list="agent-lifecycle-agent-ids" value={lifecycleAgentId} onChange={(event) => setLifecycleAgentId(event.target.value)} /></label>
-            <label>Versión<input inputMode="numeric" value={lifecycleVersion} onChange={(event) => setLifecycleVersion(event.target.value)} placeholder="versión creada" /></label>
+            <label>Agent ID<select value={lifecycleAgentId} onChange={(event) => { setLifecycleAgentId(event.target.value); setBaselineEvaluationRunId(""); setCandidateEvaluationRunId(""); }}><option value="">Seleccionar</option>{filterOptions.agentIds.map((option) => <option key={option} value={option}>{option}</option>)}</select></label>
+            <label>Versión<select value={lifecycleVersion} onChange={(event) => { setLifecycleVersion(event.target.value); setCandidateEvaluationRunId(""); }}><option value="">Seleccionar</option>{lifecycleVersions.map((version) => <option key={version.version} value={version.version}>v{version.version} · {version.semanticVersion} · {version.state}</option>)}</select></label>
             <label>Destino<select value={targetState} onChange={(event) => setTargetState(event.target.value as typeof targetState)}><option value="CANDIDATE">CANDIDATE</option><option value="EVALUATED">EVALUATED</option><option value="APPROVED">APPROVED</option><option value="ACTIVE">ACTIVE</option><option value="RETIRED">RETIRED</option></select></label>
             <label>Motivo<input value={reason} onChange={(event) => setReason(event.target.value)} /></label>
             <label>Aprobación técnica<input value={approvalReference} onChange={(event) => setApprovalReference(event.target.value)} /></label>
             <label>Aprobación operativa<input value={operationalApprovalReference} onChange={(event) => setOperationalApprovalReference(event.target.value)} /></label>
           </div>
-          <datalist id="agent-lifecycle-agent-ids">{filterOptions.agentIds.map((option) => <option key={option} value={option} />)}</datalist>
+          {requiresEvaluationEvidence && <>
+            <div className="info-alert">La promoción necesita comparar la candidata con una ejecución de la versión activa, usando el mismo dataset. La API valida también que la cobertura de escenarios coincida. Consultá la tabla Comparar antes de la aprobación humana; el resultado no aprueba automáticamente.</div>
+            <div className="form-grid">
+              <label>Run baseline (versión activa)<select aria-label="Run baseline activo" value={baselineEvaluationRunId} onChange={(event) => { setBaselineEvaluationRunId(event.target.value); setCandidateEvaluationRunId(""); }}><option value="">Seleccionar run del activo</option>{activeBaselineRuns.map((run) => <option key={run.runId} value={run.runId}>{run.agentVersion} · {run.datasetVersion} · {new Date(run.completedAt).toLocaleString("es-AR")} · {run.passRate.toLocaleString("es-AR", { style: "percent" })}</option>)}</select></label>
+              <label>Run candidata (esta versión)<select aria-label="Run candidato" value={candidateEvaluationRunId} onChange={(event) => setCandidateEvaluationRunId(event.target.value)}><option value="">Seleccionar run de candidata</option>{eligibleCandidateRuns.map((run) => <option key={run.runId} value={run.runId}>{run.agentVersion} · {run.datasetVersion} · {new Date(run.completedAt).toLocaleString("es-AR")} · {run.passRate.toLocaleString("es-AR", { style: "percent" })}</option>)}</select></label>
+            </div>
+            {evaluationRuns.length === 0 && <p className="muted">No hay runs cargados en esta vista. Actualizá los runs después de evaluar la versión activa y la candidata.</p>}
+          </>}
           <button onClick={() => void transitionLifecycle()} disabled={busy || !canWrite}>Aplicar transición</button>
-          <p className="muted">Las transiciones de publicación requieren autorización y referencias de aprobación cuando corresponda.</p>
+          <p className="muted">La evaluación queda enlazada a la auditoría. La publicación sigue requiriendo aprobación humana y autorización.</p>
         </div>
       </div>
       {error && <div className="alert" role="alert">Authoring: {error}</div>}

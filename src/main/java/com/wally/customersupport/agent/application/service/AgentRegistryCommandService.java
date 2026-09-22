@@ -9,6 +9,7 @@ import com.wally.customersupport.agent.application.port.out.AgentRegistryCommand
 import com.wally.customersupport.agent.application.port.out.AgentRegistryAuditRepository;
 import com.wally.customersupport.agent.application.port.out.AgentRegistryRepository;
 import com.wally.customersupport.agent.application.registry.AgentLifecycleTransitionCommand;
+import com.wally.customersupport.agent.application.registry.AgentPromotionEvaluationEvidence;
 import com.wally.customersupport.agent.application.registry.AgentRegistryMutationReason;
 import com.wally.customersupport.agent.application.registry.AgentRegistryMutationResult;
 import com.wally.customersupport.agent.application.registry.AgentRegistryMutationStatus;
@@ -34,6 +35,7 @@ public class AgentRegistryCommandService {
     private final AgentRegistryCommandGuard commandGuard;
     private final AgentRegistryAuditRepository auditRepository;
     private final AgentLifecyclePolicy lifecyclePolicy;
+    private final AgentPromotionEvidenceResolver promotionEvidenceResolver;
 
     private final boolean authoringWriteEnabled;
 
@@ -44,7 +46,7 @@ public class AgentRegistryCommandService {
             AgentLifecyclePolicy lifecyclePolicy,
             @Value("${wcs.agent-registry.authoring-write-enabled:false}") boolean authoringWriteEnabled) {
         this(accessService, registryRepository, commandGuard, lifecyclePolicy,
-                new NoOpAgentRegistryAuditRepository(), authoringWriteEnabled);
+                new NoOpAgentRegistryAuditRepository(), null, authoringWriteEnabled);
     }
 
     @Autowired
@@ -54,13 +56,26 @@ public class AgentRegistryCommandService {
             AgentRegistryCommandGuard commandGuard,
             AgentLifecyclePolicy lifecyclePolicy,
             AgentRegistryAuditRepository auditRepository,
+            AgentPromotionEvidenceResolver promotionEvidenceResolver,
             @Value("${wcs.agent-registry.authoring-write-enabled:false}") boolean authoringWriteEnabled) {
         this.accessService = accessService;
         this.registryRepository = registryRepository;
         this.commandGuard = commandGuard;
         this.lifecyclePolicy = lifecyclePolicy;
         this.auditRepository = auditRepository;
+        this.promotionEvidenceResolver = promotionEvidenceResolver;
         this.authoringWriteEnabled = authoringWriteEnabled;
+    }
+
+    public AgentRegistryCommandService(
+            AgentEvaluationControlPlaneAccessService accessService,
+            AgentRegistryRepository registryRepository,
+            AgentRegistryCommandGuard commandGuard,
+            AgentLifecyclePolicy lifecyclePolicy,
+            AgentRegistryAuditRepository auditRepository,
+            @Value("${wcs.agent-registry.authoring-write-enabled:false}") boolean authoringWriteEnabled) {
+        this(accessService, registryRepository, commandGuard, lifecyclePolicy,
+                auditRepository, null, authoringWriteEnabled);
     }
 
     @Transactional
@@ -203,6 +218,16 @@ public class AgentRegistryCommandService {
                         AgentRegistryMutationReason.VERSION_NOT_FOUND,
                         command.agentId(), command.version(), null, null, null);
             }
+            AgentPromotionEvaluationEvidence evaluationEvidence = null;
+            if (requiresEvaluationEvidence(command.targetState())) {
+                if (promotionEvidenceResolver == null) {
+                    return result(AgentRegistryMutationStatus.INVALID,
+                            AgentRegistryMutationReason.EVALUATION_EVIDENCE_REQUIRED,
+                            command.agentId(), command.version(), current.state(), current.createdAt(), null);
+                }
+                evaluationEvidence = promotionEvidenceResolver.resolve(
+                        current, command.baselineEvaluationRunId(), command.candidateEvaluationRunId());
+            }
             Instant now = Instant.now();
             AgentVersion transitioned = lifecyclePolicy.transition(
                     current, command.targetState(), actorId, now);
@@ -220,12 +245,27 @@ public class AgentRegistryCommandService {
                     transitioned.approvedAt());
             auditRepository.save(new com.wally.customersupport.agent.domain.model.AgentRegistryAuditEvent(
                     "LIFECYCLE_TRANSITIONED", saved.agentId(), saved.version(), current.state().name(),
-                    saved.state().name(), null, null, null, actorId, command.reason(), now));
+                    saved.state().name(), null, null, null, actorId, command.reason(), now,
+                    evaluationEvidence == null ? null : evaluationEvidence.baselineRunId(),
+                    evaluationEvidence == null ? null : evaluationEvidence.candidateRunId(),
+                    evaluationEvidence == null ? null : evaluationEvidence.datasetVersion(),
+                    evaluationEvidence == null ? null : evaluationEvidence.assessmentOutcome()));
             logMutation("AGENT_VERSION_LIFECYCLE_TRANSITIONED", command.agentId(), saved,
                     current.state(), null);
             return result(AgentRegistryMutationStatus.TRANSITIONED,
                     AgentRegistryMutationReason.LIFECYCLE_TRANSITIONED,
                     saved.agentId(), saved.version(), saved.state(), saved.createdAt(), now);
+        } catch (AgentPromotionEvidenceException exception) {
+            AgentRegistryMutationReason reason = switch (exception.reason()) {
+                case REQUIRED -> AgentRegistryMutationReason.EVALUATION_EVIDENCE_REQUIRED;
+                case RUN_NOT_FOUND -> AgentRegistryMutationReason.EVALUATION_RUN_NOT_FOUND;
+                case CANDIDATE_VERSION_MISMATCH -> AgentRegistryMutationReason.EVALUATION_CANDIDATE_VERSION_MISMATCH;
+                case BASELINE_NOT_ACTIVE -> AgentRegistryMutationReason.EVALUATION_BASELINE_NOT_ACTIVE;
+                case DATASET_MISMATCH -> AgentRegistryMutationReason.EVALUATION_DATASET_MISMATCH;
+                case RUNS_NOT_COMPARABLE -> AgentRegistryMutationReason.EVALUATION_RUNS_NOT_COMPARABLE;
+            };
+            return result(AgentRegistryMutationStatus.INVALID,
+                    reason, command.agentId(), command.version(), null, null, null);
         } catch (IllegalArgumentException | IllegalStateException exception) {
             return result(AgentRegistryMutationStatus.INVALID,
                     AgentRegistryMutationReason.INVALID_REQUEST,
@@ -343,6 +383,10 @@ public class AgentRegistryCommandService {
         return target == AgentLifecycleState.APPROVED
                 || target == AgentLifecycleState.ACTIVE
                 || target == AgentLifecycleState.RETIRED;
+    }
+
+    private static boolean requiresEvaluationEvidence(AgentLifecycleState target) {
+        return target == AgentLifecycleState.EVALUATED || target == AgentLifecycleState.APPROVED;
     }
 
     private void logMutation(

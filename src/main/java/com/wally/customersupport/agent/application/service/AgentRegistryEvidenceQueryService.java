@@ -24,7 +24,9 @@ public class AgentRegistryEvidenceQueryService {
                 .map(event -> new AgentRegistryAuditView(
                         event.operation(), event.agentId(), event.agentVersion(), event.previousState(),
                         event.resultingState(), event.environment(), event.channel(), event.useCase(),
-                        event.actorId(), event.reason(), event.occurredAt()))
+                        event.actorId(), event.reason(), event.occurredAt(), event.baselineEvaluationRunId(),
+                        event.candidateEvaluationRunId(), event.evaluationDatasetVersion(),
+                        event.evaluationAssessmentOutcome()))
                 .toList();
     }
 

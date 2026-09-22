@@ -1,5 +1,7 @@
 package com.wally.customersupport.agent.infrastructure.http;
 
+import java.util.UUID;
+
 import com.wally.customersupport.agent.application.registry.AgentLifecycleTransitionCommand;
 import com.wally.customersupport.agent.domain.model.AgentLifecycleState;
 
@@ -8,7 +10,9 @@ public record AgentLifecycleTransitionHttpRequest(
         AgentLifecycleState targetState,
         String reason,
         String approvalReference,
-        String operationalApprovalReference) {
+        String operationalApprovalReference,
+        UUID baselineEvaluationRunId,
+        UUID candidateEvaluationRunId) {
 
     AgentLifecycleTransitionCommand toCommand(String agentId, int version) {
         return new AgentLifecycleTransitionCommand(
@@ -17,6 +21,8 @@ public record AgentLifecycleTransitionHttpRequest(
                 targetState,
                 reason,
                 approvalReference,
-                operationalApprovalReference);
+                operationalApprovalReference,
+                baselineEvaluationRunId,
+                candidateEvaluationRunId);
     }
 }

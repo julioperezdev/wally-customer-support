@@ -63,9 +63,14 @@ pueden desplegar sólo cambiando un prompt.
 
 El primer release requiere código y Flyway `V27`. Luego, el ciclo de cambio es:
 clonar versión activa → editar DRAFT → correr evaluación con el mismo dataset →
-comparar calidad/grounding, errores, latencia, tokens y costo → aprobar → activar
-por dimensión. Rollback es una activación nueva a una versión previamente
-aprobada, no una mutación destructiva.
+comparar calidad/grounding, errores, latencia, tokens y costo → registrar los
+runs comparados en `EVALUATED` → revisión y aprobación humana → activar por
+dimensión. El backend verifica mismo agente, dataset y cobertura, la identidad
+de la versión candidata y que el run baseline pertenezca a una versión activa.
+Los IDs de los runs y el assessment descriptivo quedan enlazados al evento de
+auditoría mediante Flyway `V29`. No hay promoción automática ni umbrales
+universales implícitos. Rollback es una activación nueva a una versión
+previamente aprobada, no una mutación destructiva.
 
 El primer patch del humanizador se entrega mediante `V28` como SemVer `1.0.1`.
 Agrega `required_facts` al prompt para enumerar explícitamente los hechos de

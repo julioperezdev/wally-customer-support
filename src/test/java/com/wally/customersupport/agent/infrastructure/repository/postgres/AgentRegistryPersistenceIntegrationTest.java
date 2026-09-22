@@ -11,6 +11,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import com.wally.customersupport.agent.application.port.out.AgentRegistryCommandGuard;
+import com.wally.customersupport.agent.application.port.out.AgentRegistryAuditRepository;
 import com.wally.customersupport.agent.application.port.out.AgentRegistryRepository;
 import com.wally.customersupport.agent.domain.model.AgentActivation;
 import com.wally.customersupport.agent.domain.model.AgentActivationPolicy;
@@ -18,6 +19,7 @@ import com.wally.customersupport.agent.domain.model.AgentActivationRequest;
 import com.wally.customersupport.agent.domain.model.AgentInferenceParameters;
 import com.wally.customersupport.agent.domain.model.AgentInvocationConfiguration;
 import com.wally.customersupport.agent.domain.model.AgentLifecycleState;
+import com.wally.customersupport.agent.domain.model.AgentRegistryAuditEvent;
 import com.wally.customersupport.agent.domain.model.AgentVersion;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,6 +59,9 @@ class AgentRegistryPersistenceIntegrationTest {
 
     @Autowired
     private AgentRegistryCommandGuard commandGuard;
+
+    @Autowired
+    private AgentRegistryAuditRepository auditRepository;
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
@@ -172,6 +177,25 @@ class AgentRegistryPersistenceIntegrationTest {
                 "select key_hash from wcs.agent_registry_command_claims", String.class))
                 .hasSize(64)
                 .doesNotContain(rawKey);
+    }
+
+    @Test
+    void persistsPromotionEvaluationReferencesInTheImmutableAuditTrail() {
+        String agentId = "promotion-audit-" + UUID.randomUUID();
+        UUID baselineRunId = UUID.randomUUID();
+        UUID candidateRunId = UUID.randomUUID();
+        AgentRegistryAuditEvent event = new AgentRegistryAuditEvent(
+                "LIFECYCLE_TRANSITIONED", agentId, 2, "CANDIDATE", "EVALUATED",
+                null, null, null, "reviewer", "same dataset reviewed", APPROVED_AT,
+                baselineRunId, candidateRunId, "catalog-response-v1", "QUALITY_IMPROVED");
+
+        auditRepository.save(event);
+        AgentRegistryAuditEvent saved = auditRepository.findRecent(agentId, 10).getFirst();
+
+        assertThat(saved.baselineEvaluationRunId()).isEqualTo(baselineRunId);
+        assertThat(saved.candidateEvaluationRunId()).isEqualTo(candidateRunId);
+        assertThat(saved.evaluationDatasetVersion()).isEqualTo("catalog-response-v1");
+        assertThat(saved.evaluationAssessmentOutcome()).isEqualTo("QUALITY_IMPROVED");
     }
 
     @Test

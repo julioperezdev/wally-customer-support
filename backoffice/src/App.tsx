@@ -691,6 +691,7 @@ export function App() {
         canWrite={canRegistryWrite}
         agents={registryAgents}
         filterOptions={effectiveAgentFilterOptions}
+        evaluationRuns={page?.items ?? []}
       />
       <AgentEvidencePanel client={client} canRead={canRegistryRead} filterOptions={effectiveAgentFilterOptions} />
 

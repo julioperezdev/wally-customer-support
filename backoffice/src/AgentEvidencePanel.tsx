@@ -48,8 +48,8 @@ export function AgentEvidencePanel({ client, canRead, filterOptions }: { client:
         <div>
           <h3>Auditoría de cambios</h3>
           {!audit ? <p className="muted">Sin datos cargados.</p> : audit.length === 0 ? <p className="muted">No hay eventos para el filtro.</p> : (
-            <div className="table-wrap"><table className="responsive-table"><thead><tr><th>Operación</th><th>Agente</th><th>Estado</th><th>Actor</th><th>Motivo</th><th>Hora</th></tr></thead><tbody>
-              {audit.map((event, index) => <tr key={`${event.occurredAt}-${index}`}><td data-label="Operación">{event.operation}</td><td data-label="Agente">{event.agentId} {event.agentVersion ? `v${event.agentVersion}` : ""}</td><td data-label="Estado">{event.previousState ?? "—"} → {event.resultingState ?? "—"}</td><td data-label="Actor">{event.actorId}</td><td data-label="Motivo">{event.reason}</td><td data-label="Hora">{formatDate(event.occurredAt)}</td></tr>)}
+            <div className="table-wrap"><table className="responsive-table"><thead><tr><th>Operación</th><th>Agente</th><th>Estado</th><th>Evidencia de evaluación</th><th>Actor</th><th>Motivo</th><th>Hora</th></tr></thead><tbody>
+              {audit.map((event, index) => <tr key={`${event.occurredAt}-${index}`}><td data-label="Operación">{event.operation}</td><td data-label="Agente">{event.agentId} {event.agentVersion ? `v${event.agentVersion}` : ""}</td><td data-label="Estado">{event.previousState ?? "—"} → {event.resultingState ?? "—"}</td><td data-label="Evidencia de evaluación">{event.candidateEvaluationRunId ? <><span>{event.evaluationAssessmentOutcome} · {event.evaluationDatasetVersion}</span><small>baseline {event.baselineEvaluationRunId?.slice(0, 8)}… → candidate {event.candidateEvaluationRunId.slice(0, 8)}…</small></> : "—"}</td><td data-label="Actor">{event.actorId}</td><td data-label="Motivo">{event.reason}</td><td data-label="Hora">{formatDate(event.occurredAt)}</td></tr>)}
             </tbody></table></div>
           )}
         </div>
