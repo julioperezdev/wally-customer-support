@@ -12,13 +12,16 @@ Related repository paths: `src/main/java/com/wally/customersupport/conversation/
 | --- | --- | --- | --- |
 | `llm.mock.v1` | Interno | Desarrollo, tests y fixtures | Accepted |
 | `llm.bedrock.openai.gpt-oss-20b.v1` | AWS Bedrock | Clasificación de intención y soporte general | Accepted |
+| `conversation-router-v3` | AWS Bedrock GPT-OSS 20B | Routing semántico, reasoning effort `high` | Active; evaluación pendiente |
 | `llm.bedrock.nova-pro.v1` | AWS Bedrock | Referencia histórica para generación documental | Reference |
 
 Bedrock se integra detrás de `ConversationIntentClassifier` y `LlmClient`.
 `ConversationOrchestrator` sólo consume decisiones estructuradas del clasificador
 y ejecuta casos de uso internos. El caso de uso no conoce el model ID ni el SDK.
 La selección del modelo, región, límites, timeout, guardrails y fallback se
-resuelve mediante AppConfig; el acceso a Bedrock se autoriza con IAM.
+resuelve mediante AppConfig para el modelo general; el perfil del router se
+versiona por separado en `application.properties`. El acceso a Bedrock se
+autoriza con IAM.
 
 Cada llamada a Bedrock Converse emite el evento estructurado
 `AI_USAGE_RECORDED`, con etapa, operación, proveedor, model ID, éxito, tokens
@@ -207,19 +210,18 @@ arbitrario ni ejecutar herramientas por su cuenta.
 El prompt de routing está versionado como `conversation-intent-v4` y el
 texto del cliente se envía como datos delimitados y acotados. La generación de
 respuestas conserva el modelo general seleccionado por `wcs.ai.model`. En esta
-prueba el router semántico usa por defecto la candidata
-`conversation-router-v2` con `us.openai.gpt-5.6-luna`; sus valores están en el
-`application.properties` versionado y no se agregan claves específicas del
-router a AppConfig.
+router semántico usa `conversation-router-v3` con
+`openai.gpt-oss-20b-1:0`, el modelo ya autorizado y usado por WCS. El esfuerzo
+de razonamiento `high` se envía como parámetro específico de GPT-OSS solamente
+en las llamadas del router; no altera las llamadas de generación de respuestas
+ni de otros agentes. El model ID, pricing y nivel de esfuerzo están definidos
+en el `application.properties` versionado, sin claves adicionales de router en
+AppConfig. `AI_USAGE_RECORDED` registra `reasoningEffort` para que la evaluación
+compare latencia, tokens, costo y calidad bajo esa configuración.
 
-GPT-5.6 Luna está pensado para clasificación, routing y tareas de alta
-frecuencia. En `bedrock-runtime` el identificador `us.openai.gpt-5.6-luna` es
-un perfil de inferencia cross-Region para Estados Unidos; no se debe cambiar a
-`openai.gpt-5.6-luna` mientras el adapter use AWS SDK Converse. El precio
-configurado para el contexto corto es USD 0.22 por millón de tokens de entrada
-y USD 1.32 por millón de tokens de salida. Se mantienen separados en la
-configuración interna del router para que el costo de routing no se mezcle con
-el de generación de respuestas.
+El nivel `high` puede ayudar al router con mensajes coloquiales, incompletos y
+multiturno, pero puede aumentar tokens y latencia. No se asume que mejore la
+calidad: debe confirmarse con la matriz de evaluación usando el mismo dataset.
 
 El cambio es reversible mediante una nueva versión de código o, cuando el
 router se integre al Agent Registry, mediante una activación hacia otra
@@ -293,11 +295,12 @@ idempotencia y pago.
 
 ```properties
 wcs.ai.model=openai.gpt-oss-20b-1:0
-wcs.ai.router.model=us.openai.gpt-5.6-luna
-wcs.ai.router.version=conversation-router-v2
-wcs.ai.router.pricing-version=aws-bedrock-us-east-1-standard-2026-09-gpt-5.6-luna
-wcs.ai.router.input-price-usd-per-million-tokens=0.22
-wcs.ai.router.output-price-usd-per-million-tokens=1.32
+wcs.ai.router.model=openai.gpt-oss-20b-1:0
+wcs.ai.router.version=conversation-router-v3
+wcs.ai.router.pricing-version=aws-bedrock-us-east-1-standard-2026-09
+wcs.ai.router.input-price-usd-per-million-tokens=0.0721
+wcs.ai.router.output-price-usd-per-million-tokens=0.3090
+wcs.ai.router.reasoning-effort=high
 ```
 
 `wcs.ai.model` y sus precios siguen siendo la configuración de la respuesta

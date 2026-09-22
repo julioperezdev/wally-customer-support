@@ -150,7 +150,7 @@ final class BedrockConverseClient implements MeasuredLlmClient {
             toolConfigurationBuilder.toolChoice(choice(providerToolName));
         }
         ToolConfiguration toolConfiguration = toolConfigurationBuilder.build();
-        ConverseRequest request = ConverseRequest.builder()
+        ConverseRequest.Builder requestBuilder = ConverseRequest.builder()
                 .modelId(modelSettings.modelId())
                 .system(SystemContentBlock.fromText(systemPrompt))
                 .messages(message)
@@ -162,8 +162,12 @@ final class BedrockConverseClient implements MeasuredLlmClient {
                         .maxTokens(maxTokens)
                         .temperature(temperature)
                         .topP(0.9f)
-                        .build())
-                .build();
+                        .build());
+        Document additionalModelRequestFields = additionalModelRequestFields(modelSettings);
+        if (additionalModelRequestFields != null) {
+            requestBuilder.additionalModelRequestFields(additionalModelRequestFields);
+        }
+        ConverseRequest request = requestBuilder.build();
 
         ConverseResponse response = null;
         long startedAt = System.nanoTime();
@@ -381,7 +385,7 @@ final class BedrockConverseClient implements MeasuredLlmClient {
                 .role(ConversationRole.USER)
                 .content(ContentBlock.fromText(userPrompt))
                 .build();
-        ConverseRequest request = ConverseRequest.builder()
+        ConverseRequest.Builder requestBuilder = ConverseRequest.builder()
                 .modelId(modelSettings.modelId())
                 .system(SystemContentBlock.fromText(systemPrompt))
                 .messages(message)
@@ -392,8 +396,12 @@ final class BedrockConverseClient implements MeasuredLlmClient {
                         .maxTokens(maxTokens)
                         .temperature(temperature)
                         .topP(topP)
-                        .build())
-                .build();
+                        .build());
+        Document additionalModelRequestFields = additionalModelRequestFields(modelSettings);
+        if (additionalModelRequestFields != null) {
+            requestBuilder.additionalModelRequestFields(additionalModelRequestFields);
+        }
+        ConverseRequest request = requestBuilder.build();
 
         ConverseResponse response = null;
         long startedAt = System.nanoTime();
@@ -478,6 +486,21 @@ final class BedrockConverseClient implements MeasuredLlmClient {
                 modelSettings.pricingVersion());
     }
 
+    private Document additionalModelRequestFields(AiProperties.ModelSettings modelSettings) {
+        if (!usesGptOssRouterReasoning(modelSettings)) {
+            return null;
+        }
+        return Document.fromMap(Map.of(
+                "reasoning_effort",
+                Document.fromString(properties.effectiveRouterReasoningEffort())));
+    }
+
+    private boolean usesGptOssRouterReasoning(AiProperties.ModelSettings modelSettings) {
+        return "conversation-router".equals(modelSettings.agentId())
+                && modelSettings.modelId() != null
+                && modelSettings.modelId().startsWith("openai.gpt-oss-");
+    }
+
     private void recordUsage(
             String stage,
             String operation,
@@ -540,6 +563,9 @@ final class BedrockConverseClient implements MeasuredLlmClient {
         if (modelSettings.agentId() != null) {
             fields.put("agentId", modelSettings.agentId());
             fields.put("agentVersion", modelSettings.agentVersion());
+        }
+        if (usesGptOssRouterReasoning(modelSettings)) {
+            fields.put("reasoningEffort", properties.effectiveRouterReasoningEffort());
         }
 
         if (success) {

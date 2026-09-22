@@ -54,13 +54,14 @@ corte: parser de conversación dividido, routing LLM separado de la
 reconciliación determinística, composición catálogo/política aislada y matriz
 de lenguaje natural. El alcance preserva los contratos de BD y la
 infraestructura; la evidencia requerida es la matriz de tests, `mvn verify` y
-el smoke posterior sólo después de integrar el PR. La prueba del router usa
-por defecto la candidata `conversation-router-v2` con
-`us.openai.gpt-5.6-luna`, definida en el `application.properties` versionado;
-no agrega claves específicas del router a AppConfig. La integración futura al
-Agent Registry trasladará modelo, prompts y activaciones a su versión
-persistida. Los precios y el modelo aparecen en `AI_USAGE_RECORDED` para
-permitir comparación baseline vs candidate.
+el smoke posterior sólo después de integrar el PR. El router usa
+`conversation-router-v3` sobre `openai.gpt-oss-20b-1:0` con reasoning effort
+`high`; la definición está en el `application.properties` versionado y no
+agrega claves específicas del router a AppConfig. GPT-5.6 Luna queda diferido
+hasta contar con acceso aprobado. La integración futura al Agent Registry
+trasladará modelo, prompts y activaciones a su versión persistida. El modelo,
+esfuerzo, precio, tokens, costo y latencia aparecen en `AI_USAGE_RECORDED` para
+comparar la configuración con el baseline.
 
 ## Mapeo de keys reales
 

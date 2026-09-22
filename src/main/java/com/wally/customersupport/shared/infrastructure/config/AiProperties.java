@@ -2,6 +2,8 @@ package com.wally.customersupport.shared.infrastructure.config;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.util.Locale;
+import java.util.Set;
 
 import org.springframework.boot.context.properties.bind.ConstructorBinding;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -121,7 +123,29 @@ public record AiProperties(
             String version,
             String pricingVersion,
             BigDecimal inputPriceUsdPerMillionTokens,
-            BigDecimal outputPriceUsdPerMillionTokens) {
+            BigDecimal outputPriceUsdPerMillionTokens,
+            String reasoningEffort) {
+
+        private static final Set<String> SUPPORTED_REASONING_EFFORTS = Set.of("low", "medium", "high");
+
+        public Router(
+                String model,
+                String version,
+                String pricingVersion,
+                BigDecimal inputPriceUsdPerMillionTokens,
+                BigDecimal outputPriceUsdPerMillionTokens) {
+            this(model, version, pricingVersion, inputPriceUsdPerMillionTokens,
+                    outputPriceUsdPerMillionTokens, null);
+        }
+
+        public Router {
+            reasoningEffort = reasoningEffort == null || reasoningEffort.isBlank()
+                    ? null
+                    : reasoningEffort.trim().toLowerCase(Locale.ROOT);
+            if (reasoningEffort != null && !SUPPORTED_REASONING_EFFORTS.contains(reasoningEffort)) {
+                throw new IllegalArgumentException("Unsupported router reasoning effort");
+            }
+        }
     }
 
     public record ModelSettings(
@@ -159,6 +183,10 @@ public record AiProperties(
                 nonNegative(configured.outputPriceUsdPerMillionTokens(), effectiveOutputPriceUsdPerMillionTokens()),
                 "conversation-router",
                 nonBlank(configured.version(), "conversation-router-v1"));
+    }
+
+    public String effectiveRouterReasoningEffort() {
+        return router == null || router.reasoningEffort() == null ? "high" : router.reasoningEffort();
     }
 
     public String effectiveRegion() {

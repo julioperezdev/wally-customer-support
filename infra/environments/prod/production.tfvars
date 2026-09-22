@@ -31,9 +31,7 @@ enable_appconfig_management = false
 
 enable_bedrock_access = true
 bedrock_model_arns = [
-  "arn:aws:bedrock:us-east-1::foundation-model/openai.gpt-oss-20b-1:0",
-  "arn:aws:bedrock:*::inference-profile/us.openai.gpt-5.6-luna",
-  "arn:aws:bedrock:*::foundation-model/openai.gpt-5.6-luna"
+  "arn:aws:bedrock:us-east-1::foundation-model/openai.gpt-oss-20b-1:0"
 ]
 bedrock_prompt_arns   = []
 appconfig_secret_arns = []
