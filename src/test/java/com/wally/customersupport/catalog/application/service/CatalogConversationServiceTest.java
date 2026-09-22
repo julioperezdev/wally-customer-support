@@ -228,6 +228,48 @@ class CatalogConversationServiceTest {
     }
 
     @Test
+    void answersHowManyRemainFromTheActiveVariant() {
+        CatalogProduct product = product("Remera NullPointer", "RP-REM-NP-NEG-M", "M", "Negro", 12);
+        when(catalogQueryService.search(argThat(query ->
+                "remera".equals(query.productType()) && "m".equals(query.size())
+                        && "negro".equals(query.color()))))
+                .thenReturn(List.of(product));
+        List<String> history = List.of("Busco una remera negra talle M");
+        String latest = "¿Cuántas quedan?";
+        CatalogQuery query = CatalogQueryParser.parseConversation(history, latest).orElseThrow();
+
+        String reply = new CatalogConversationService(catalogQueryService)
+                .search(query, history, latest)
+                .map(CatalogResponseFormatter::render)
+                .orElseThrow();
+
+        assertEquals(
+                "Sí, Remera NullPointer (SKU: RP-REM-NP-NEG-M) está disponible. Stock actual: 12 unidades.",
+                reply);
+    }
+
+    @Test
+    void findsAndIncludesTheImageForAVisualColorFollowUp() {
+        CatalogProduct grayHoodie = product(
+                "Buzo Spring Boot", "RP-BUZ-SB-GRI-L", "L", "Gris", 5,
+                "wcs/catalog/buzo-spring-boot-gris.jpg");
+        when(catalogQueryService.search(argThat(query ->
+                "buzo".equals(query.productType()) && "gris".equals(query.color()))))
+                .thenReturn(List.of(grayHoodie));
+        List<String> history = List.of("Quiero un buzo");
+        String latest = "¿Cómo se ve el gris?";
+        CatalogQuery query = CatalogQueryParser.parseConversation(history, latest).orElseThrow();
+
+        CatalogSearchResult result = new CatalogConversationService(catalogQueryService)
+                .search(query, history, latest)
+                .orElseThrow();
+
+        assertEquals(CatalogSearchResult.Status.MATCHED, result.status());
+        assertEquals("RP-BUZ-SB-GRI-L", result.facts().getFirst().sku());
+        assertEquals("wcs/catalog/buzo-spring-boot-gris.jpg", result.singleImageReference().orElseThrow());
+    }
+
+    @Test
     void answersPriceUsingTheSinglePreviousCatalogResult() {
         CatalogProduct product = product("Remera NullPointer", "RP-REM-NP-NEG-M", "M", "Negro", 12);
         when(catalogQueryService.search(argThat(query ->

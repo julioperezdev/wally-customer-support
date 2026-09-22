@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -62,7 +63,7 @@ class ConversationalCartServiceTest {
                 checkoutCreator,
                 actorKeyGenerator,
                 Clock.fixed(NOW, ZoneOffset.UTC));
-        when(actorKeyGenerator.generate(Channel.TELEGRAM, "customer-1"))
+        lenient().when(actorKeyGenerator.generate(Channel.TELEGRAM, "customer-1"))
                 .thenReturn(Optional.of("actor-hash"));
     }
 
@@ -94,6 +95,27 @@ class ConversationalCartServiceTest {
         assertEquals(3, savedCart[0].getItems().stream()
                 .mapToInt(item -> item.getQuantity()).sum());
         assertEquals(CartStatus.ACTIVE, savedCart[0].getStatus());
+    }
+
+    @Test
+    void doesNotAddAStockAlternativeWhenTheRequestedVariantDoesNotExist() {
+        CatalogFact alternative = fact("Buzo Spring Boot", "RP-BUZ-SB-NEG-XL", "XL", "Negro", "42900.00", 3);
+        CatalogSearchResult alternatives = new CatalogSearchResult(
+                CatalogSearchResult.Status.ALTERNATIVES,
+                List.of(alternative),
+                "buzo",
+                CatalogSearchResult.FollowUpKind.NONE,
+                "RELAXED_FILTERS");
+        when(catalogConversationService.searchExact(any(CatalogQuery.class))).thenReturn(Optional.of(alternatives));
+        when(catalogConversationService.search(any(CatalogQuery.class), any(), anyString()))
+                .thenReturn(Optional.of(alternatives));
+
+        String response = service.handle(context("Agrega al carrito un buzo Spring Boot negro talle M"))
+                .orElseThrow().text();
+
+        assertTrue(response.contains("Como alternativa"));
+        verify(cartRepository, org.mockito.Mockito.never()).saveAndFlush(any(CartJpaEntity.class));
+        verify(checkoutCreator, org.mockito.Mockito.never()).create(any());
     }
 
     @Test

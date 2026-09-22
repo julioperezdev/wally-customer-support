@@ -55,7 +55,11 @@ public final class ConversationWorkingMemoryReferenceResolver {
         CatalogQuery explicitQuery = parsedQuery == null ? CatalogQuery.empty() : parsedQuery;
         if (candidate.isPresent()) {
             candidate = candidate.filter(value -> matches(value, explicitQuery));
-        } else if (!explicitQuery.isEmpty()) {
+        } else {
+            // A quantity-only cart command can refer to the single variant
+            // currently in focus ("Agrega al carrito 2"). If the recent
+            // result contains multiple variants, the unique-match check keeps
+            // the resolver from guessing.
             candidate = uniqueCandidateMatching(explicitQuery, memory);
         }
         return candidate.map(value -> new CatalogQuery(null, value.sku(), null, null));

@@ -131,8 +131,50 @@ class CatalogQueryParserTest {
     void recognizesCatalogFollowUpQuestions() {
         assertEquals(CatalogQueryParser.FollowUpKind.AVAILABILITY,
                 CatalogQueryParser.followUpKind("¿Está disponible?"));
+        assertEquals(CatalogQueryParser.FollowUpKind.AVAILABILITY,
+                CatalogQueryParser.followUpKind("¿Cuántas remeras negras talle M quedan?"));
         assertEquals(CatalogQueryParser.FollowUpKind.PRICE,
                 CatalogQueryParser.followUpKind("¿Cuánto cuesta?"));
+    }
+
+    @Test
+    void extractsCatalogFiltersWithoutTurningStockQuestionWordsIntoAName() {
+        CatalogQuery query = CatalogQueryParser.parse(
+                "¿Cuántas remeras negras en talle M quedan?").orElseThrow();
+
+        assertNull(query.name());
+        assertEquals("remera", query.productType());
+        assertEquals("negro", query.color());
+        assertEquals("m", query.size());
+    }
+
+    @Test
+    void preservesTheProductSelectionForAColloquialStockFollowUp() {
+        CatalogQuery query = CatalogQueryParser.parseConversation(
+                List.of("Busco una remera negra talle M"),
+                "¿Cuántas quedan?").orElseThrow();
+
+        assertNull(query.name());
+        assertEquals("remera", query.productType());
+        assertEquals("negro", query.color());
+        assertEquals("m", query.size());
+    }
+
+    @Test
+    void treatsVisualColorQuestionsAsFilterOnlyRefinements() {
+        CatalogQuery query = CatalogQueryParser.parse("¿Cómo se ve el gris?").orElseThrow();
+
+        assertNull(query.name());
+        assertEquals("gris", query.color());
+        assertTrue(CatalogQueryParser.isFilterOnlyRefinement("¿Cómo se ve el gris?"));
+    }
+
+    @Test
+    void stripsVisualSelectionFillerFromAColorReference() {
+        CatalogQuery query = CatalogQueryParser.parse("Quiero ver el negro").orElseThrow();
+
+        assertNull(query.name());
+        assertEquals("negro", query.color());
     }
 
     @Test

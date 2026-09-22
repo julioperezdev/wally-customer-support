@@ -94,7 +94,7 @@ public final class CatalogQueryParser {
                     + "\\b(?:que|cuales?)\\s+ropa\\s+(?:tienen|hay|ofrecen|venden|vendes|tenes|tienes)\\b|"
                     + "\\b(?:mostrame|muestrame|mostrarme|mostrar)\\s+(?:todo|el\\s+catalogo|los\\s+productos)\\b");
     private static final Pattern AVAILABILITY_FOLLOW_UP = Pattern.compile(
-            "\\b(disponible|disponibilidad|hay stock|tiene stock)\\b");
+            "\\b(disponible|disponibilidad|hay stock|tiene stock|queda|quedan)\\b");
     private static final Pattern PRICE_FOLLOW_UP = Pattern.compile(
             "\\b(cuanto|cuesta|precio|sale|valor)\\b");
     private static final Pattern SIZE_FOLLOW_UP = Pattern.compile(
@@ -110,11 +110,12 @@ public final class CatalogQueryParser {
             + "alguna|alguno|que|qué|sea|estilo|mi|ahora|solo|sólo|tambien|también|pero|mejor|tipo|"
                     + "frio|abrigo|abrigado|abrigada|invierno|lindo|linda|bonito|bonita|"
                     + "cuesta|cueste|menos|mas|barato|barata|caro|cara|hasta|debajo|encima|entre|"
-                    + "opcion|opciones|alternativa|alternativas|mostrame|muestrame|mostrarme|mostrar|anterior|"
+                    + "opcion|opciones|alternativa|alternativas|mostrame|muestrame|mostrarme|mostrar|ver|ve|ves|anterior|"
                     + "anteriores|antes|eso|esa|esas|asi|algo|lo|y|como|hace|hacen|se|envio|envios|entrega|"
                     + "despacho|pesos?|ars|comprar|comprarla|comprarlo|comprame|compro|adquirir|llevarme|"
                     + "llevar|llevarme|llevo|pasame|generame|link|enlace|pago|pagar|pagarla|compra|unidades?|u|"
                     + "suma|sumame|agrega|agregame|agregar|anade|anademe|anadir|al|carrito|camiseta|camisetas|"
+                    + "cuantas|cuantos|queda|quedan|"
                     + "sudadera|sudaderas|preferentemente|preferible|preferencia|"
                     + "dos|tres|cuatro|cinco|ese|esos|misma|mismo|gusta|gustaria|vamos|prosigamos|"
                     + "bueno|buena|bien|ok|dale|entonces|o|primero|primera|segundo|segunda|tercero|"

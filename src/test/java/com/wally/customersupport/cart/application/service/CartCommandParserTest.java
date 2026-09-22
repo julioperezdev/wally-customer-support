@@ -2,6 +2,7 @@ package com.wally.customersupport.cart.application.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.wally.customersupport.catalog.domain.model.CatalogQuery;
 import org.junit.jupiter.api.Test;
@@ -32,6 +33,29 @@ class CartCommandParserTest {
         assertEquals(CartCommandParser.Action.REMOVE, remove.action());
         assertEquals(2, remove.quantity());
         assertEquals(expectedQuery, remove.query());
+    }
+
+    @Test
+    void parsesQuantityAfterCartPhraseWithoutTreatingItAsOne() {
+        CartCommandParser.Command numeric = CartCommandParser.parse("Agrega al carrito 2");
+        CartCommandParser.Command words = CartCommandParser.parse("Agregá al carrito dos");
+
+        assertEquals(CartCommandParser.Action.ADD, numeric.action());
+        assertEquals(2, numeric.quantity());
+        assertTrue(numeric.query().isEmpty());
+        assertEquals(CartCommandParser.Action.ADD, words.action());
+        assertEquals(2, words.quantity());
+        assertTrue(words.query().isEmpty());
+    }
+
+    @Test
+    void parsesQuantityAfterCartPhraseBeforeTheItem() {
+        CartCommandParser.Command command = CartCommandParser.parse(
+                "Agrega al carrito 2 remeras NullPointer negras talle M");
+
+        assertEquals(CartCommandParser.Action.ADD, command.action());
+        assertEquals(2, command.quantity());
+        assertEquals(new CatalogQuery("nullpointer", null, "m", "negro", "remera", null, null), command.query());
     }
 
     @Test

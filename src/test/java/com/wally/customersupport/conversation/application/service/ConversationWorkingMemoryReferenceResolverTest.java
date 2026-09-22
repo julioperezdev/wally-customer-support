@@ -107,6 +107,32 @@ class ConversationWorkingMemoryReferenceResolverTest {
     }
 
     @Test
+    void resolvesColorSelectionAfterAskingToSeeAnOption() {
+        ConversationContext context = context(
+                "Quiero ver el negro",
+                List.of(
+                        candidate("Buzo Spring Boot", "RP-BUZ-SB-GRI-L", "L", "Gris"),
+                        candidate("Buzo Spring Boot", "RP-BUZ-SB-NEG-XL", "XL", "Negro")));
+
+        var query = resolver.resolve(context).orElseThrow();
+
+        assertEquals("RP-BUZ-SB-NEG-XL", query.sku());
+    }
+
+    @Test
+    void resolvesVisualColorFollowUpToTheUniqueRecentOption() {
+        ConversationContext context = context(
+                "¿Cómo se ve el gris?",
+                List.of(
+                        candidate("Buzo Spring Boot", "RP-BUZ-SB-GRI-L", "L", "Gris"),
+                        candidate("Buzo Spring Boot", "RP-BUZ-SB-NEG-XL", "XL", "Negro")));
+
+        var query = resolver.resolve(context).orElseThrow();
+
+        assertEquals("RP-BUZ-SB-GRI-L", query.sku());
+    }
+
+    @Test
     void deterministicRouterUsesWorkingMemoryWhenTheModelCannotClassifyAReference() {
         ConversationContext context = context(
                 "Quiero una",

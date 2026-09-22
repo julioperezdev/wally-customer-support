@@ -59,4 +59,38 @@ class ConversationCartUseCaseWorkingMemoryTest {
         assertEquals(CartCommandParser.Action.ADD, captor.getValue().action());
         assertEquals("RP-CAM-DF-AZU-M", captor.getValue().query().sku());
     }
+
+    @Test
+    void preservesQuantityWhenCartItemIsImplicitlySelectedFromRecentCatalogResult() {
+        CartConversationHandler handler = mock(CartConversationHandler.class);
+        when(handler.recognizes("Agrega al carrito 2")).thenReturn(true);
+        when(handler.handle(any(ConversationContext.class), any(CartCommandParser.Command.class)))
+                .thenReturn(Optional.of(new CartConversationHandler.Response("added")));
+        ConversationCartUseCase useCase = new ConversationCartUseCase(
+                handler,
+                new ConversationExecutionPlanFactory());
+        var memory = ConversationWorkingMemory.catalogObservation(
+                List.of(new CatalogCandidateReference(
+                        "Remera NullPointer", "RP-REM-NP-NEG-M", "M", "Negro")),
+                CatalogObservationStatus.MATCHED,
+                Instant.now());
+        ConversationSelection selection = new ConversationSelection(
+                ConversationIntent.CATALOG_SEARCH,
+                ConversationAction.CATALOG_SEARCH,
+                CatalogQuery.empty(),
+                memory.focusedSku(),
+                "CATALOG_SEARCH",
+                memory);
+        ConversationContext context = new ConversationContext(
+                UUID.randomUUID(), "actor", "Agrega al carrito 2",
+                List.of("Busco una remera negra talle M"), List.of(), null, List.of(), Channel.TELEGRAM, selection);
+
+        useCase.handleBeforeRouting(context);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(CartCommandParser.Command.class);
+        verify(handler).handle(eq(context), captor.capture());
+        assertEquals(CartCommandParser.Action.ADD, captor.getValue().action());
+        assertEquals(2, captor.getValue().quantity());
+        assertEquals("RP-REM-NP-NEG-M", captor.getValue().query().sku());
+    }
 }
