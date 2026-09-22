@@ -4,6 +4,8 @@
 - Status: `Accepted`
 - Last reviewed: 2026-09-12
 - Related Jira: `WCS-45` y el siguiente slice de ejecución del control plane
+- Historical note: WCS-140/ADR-043 extends this snapshot to the four current
+  conversational Bedrock calls and moves their prompts/configuration to SQL.
 - Related documents: [`agent-platform-delivery-plan.md`](../agent-platform-delivery-plan.md), [`ai.md`](../ai.md), [`architecture.md`](../architecture.md)
 
 ## Contexto

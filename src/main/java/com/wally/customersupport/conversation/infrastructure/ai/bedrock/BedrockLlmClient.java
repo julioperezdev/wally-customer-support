@@ -1,6 +1,7 @@
 package com.wally.customersupport.conversation.infrastructure.ai.bedrock;
 
 import java.util.stream.Collectors;
+import java.util.Map;
 
 import com.wally.customersupport.agent.application.service.AgentRuntimeDefinition;
 import com.wally.customersupport.conversation.application.port.out.LlmClient;
@@ -8,6 +9,7 @@ import com.wally.customersupport.conversation.domain.model.ConversationContext;
 import com.wally.customersupport.conversation.infrastructure.ai.prompt.ClasspathPromptRegistry;
 import com.wally.customersupport.conversation.infrastructure.ai.prompt.PromptDefinition;
 import com.wally.customersupport.conversation.infrastructure.ai.prompt.PromptRegistry;
+import com.wally.customersupport.conversation.infrastructure.ai.prompt.PromptTemplateRenderer;
 import com.wally.customersupport.shared.infrastructure.config.AiResponseProperties;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -21,28 +23,40 @@ public class BedrockLlmClient implements LlmClient {
     private final AiResponseProperties responseProperties;
     private final PromptRegistry promptRegistry;
     private final PromptDefinition prompt;
+    private final BedrockAgentProfileResolver profileResolver;
 
     public BedrockLlmClient(BedrockConverseClient converseClient) {
         this(
                 converseClient,
                 new AiResponseProperties(
                         "conversation-response-v1", 1_024, null, 2_000, 6, 8_000, 4_000),
-                new ClasspathPromptRegistry());
+                new ClasspathPromptRegistry(), null);
+    }
+
+    public BedrockLlmClient(
+            BedrockConverseClient converseClient,
+            AiResponseProperties responseProperties,
+            PromptRegistry promptRegistry) {
+        this(converseClient, responseProperties, promptRegistry, null);
     }
 
     @Autowired
     public BedrockLlmClient(
             BedrockConverseClient converseClient,
             AiResponseProperties responseProperties,
-            PromptRegistry promptRegistry) {
+            PromptRegistry promptRegistry,
+            BedrockAgentProfileResolver profileResolver) {
         this.converseClient = converseClient;
         this.responseProperties = responseProperties;
         this.promptRegistry = promptRegistry;
         this.prompt = promptRegistry.responsePrompt(responseProperties.effectivePromptVersion());
+        this.profileResolver = profileResolver;
     }
 
     @Override
     public String generateReply(ConversationContext context) {
+        AgentRuntimeDefinition profile = resolveProfile(context);
+        if (profile != null) return generateReplyFromProfile(context, profile);
         return generateReply(
                 context,
                 prompt,
@@ -55,6 +69,8 @@ public class BedrockLlmClient implements LlmClient {
     public String generateReply(
             ConversationContext context,
             AgentRuntimeDefinition definition) {
+        AgentRuntimeDefinition profile = resolveProfile(context);
+        if (profile != null) return generateReplyFromProfile(context, profile);
         if (definition == null) {
             return generateReply(context);
         }
@@ -72,6 +88,49 @@ public class BedrockLlmClient implements LlmClient {
                 definition.maxOutputTokens(),
                 definition.inferenceParameters().temperature().floatValue(),
                 definition);
+    }
+
+    private AgentRuntimeDefinition resolveProfile(ConversationContext context) {
+        return profileResolver == null
+                ? null
+                : profileResolver.resolve("response-generation", "GENERAL_SUPPORT", context).orElse(null);
+    }
+
+    private String generateReplyFromProfile(ConversationContext context, AgentRuntimeDefinition definition) {
+        String systemPrompt = definition.invocationConfiguration().systemPrompt();
+        String userPrompt = PromptTemplateRenderer.render(
+                definition.invocationConfiguration().userPromptTemplate(),
+                Map.of(
+                        "latest_message", limit(context.latestMessage(), effectiveInputCharacterLimit(definition)),
+                        "recent_messages", context.recentMessages().stream()
+                                .skip(Math.max(0, context.recentMessages().size()
+                                        - responseProperties.effectiveMaxHistoryMessages()))
+                                .map(value -> limit(value, effectiveInputCharacterLimit(definition)))
+                                .collect(Collectors.joining("\n")),
+                        "conversation_summary", limit(context.conversationSummary(),
+                                responseProperties.effectiveMaxSummaryCharacters()),
+                        "active_selection", formatSelection(context),
+                        "customer_preferences", limit(context.preferences().stream()
+                                .map(preference -> preference.key() + "=" + preference.value())
+                                .collect(Collectors.joining("\n")), 1_000),
+                        "approved_knowledge", limit(context.knowledge().stream()
+                                .map(chunk -> "[" + chunk.sourceId() + "] " + chunk.content())
+                                .collect(Collectors.joining("\n")),
+                                responseProperties.effectiveMaxKnowledgeCharacters())));
+        String correlationId = context.conversationId() == null
+                ? null
+                : context.conversationId().toString();
+        return correlationId == null
+                ? converseClient.completeForAgent(
+                        "response-generation", "conversation.reply.generate", systemPrompt, userPrompt,
+                        definition.maxOutputTokens(), definition.inferenceParameters().temperature().floatValue(),
+                        definition.inferenceParameters().topP().floatValue(), definition.semanticVersion(),
+                        definition.systemPromptHash(), definition)
+                : converseClient.completeForAgent(
+                        "response-generation", "conversation.reply.generate", systemPrompt, userPrompt,
+                        definition.maxOutputTokens(), definition.inferenceParameters().temperature().floatValue(),
+                        definition.inferenceParameters().topP().floatValue(), definition.semanticVersion(),
+                        definition.systemPromptHash(), definition, correlationId);
     }
 
     private String generateReply(
@@ -182,6 +241,9 @@ public class BedrockLlmClient implements LlmClient {
     private int effectiveInputCharacterLimit(AgentRuntimeDefinition definition) {
         if (definition == null) {
             return responseProperties.effectiveMaxInputCharacters();
+        }
+        if ("response-generation".equals(definition.agentId())) {
+            return Math.min(12_000, Math.multiplyExact(definition.maxInputTokens(), 4));
         }
         // A conservative four-character approximation keeps a versioned
         // token budget from being bypassed by an oversized user/context block.

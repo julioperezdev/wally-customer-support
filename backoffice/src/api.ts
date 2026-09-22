@@ -50,6 +50,7 @@ export type RunDetail = RunSummary & {
 export type AgentRegistryVersion = {
   agentId: string;
   version: number;
+  semanticVersion: string;
   name: string;
   purpose: string;
   state: string;
@@ -74,6 +75,19 @@ export type AgentRegistryVersion = {
   evaluationSuiteVersion: string;
   createdAt: string;
   approvedAt: string | null;
+  invocationConfiguration: AgentInvocationConfiguration;
+};
+
+export type AgentInvocationConfiguration = {
+  systemPrompt: string;
+  userPromptTemplate: string;
+  inputSchemaJson: string;
+  outputSchemaJson: string;
+  reasoningEffort: "low" | "medium" | "high" | null;
+  structuredToolCalling: boolean;
+  pricingVersion: string | null;
+  inputPriceUsdPerMillionTokens: number | null;
+  outputPriceUsdPerMillionTokens: number | null;
 };
 
 export type AgentRegistryActivation = {
@@ -158,6 +172,7 @@ export type AgentExecutionTrace = {
 
 export type AgentVersionDraftInput = {
   version?: number | null;
+  semanticVersion: string;
   name: string;
   purpose: string;
   modelProvider: string;
@@ -179,6 +194,7 @@ export type AgentVersionDraftInput = {
   budgetLimitUsd: number;
   fallbackAgentId?: string | null;
   evaluationSuiteVersion: string;
+  invocationConfiguration: AgentInvocationConfiguration;
 };
 
 export type BackofficeAgentNode = {

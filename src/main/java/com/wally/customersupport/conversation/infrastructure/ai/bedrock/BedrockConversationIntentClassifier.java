@@ -11,7 +11,10 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
+import com.wally.customersupport.agent.application.service.AgentRuntimeDefinition;
 import com.wally.customersupport.catalog.domain.model.CatalogQuery;
+import com.wally.customersupport.conversation.application.tool.ConversationRouteToolContract;
+import com.wally.customersupport.conversation.application.tool.WcsToolDescriptor;
 import com.wally.customersupport.conversation.application.port.out.ConversationIntentClassifier;
 import com.wally.customersupport.conversation.domain.model.ConversationContext;
 import com.wally.customersupport.conversation.domain.model.ConversationAction;
@@ -21,7 +24,7 @@ import com.wally.customersupport.conversation.domain.model.CustomerPreference;
 import com.wally.customersupport.conversation.infrastructure.ai.prompt.ClasspathPromptRegistry;
 import com.wally.customersupport.conversation.infrastructure.ai.prompt.PromptDefinition;
 import com.wally.customersupport.conversation.infrastructure.ai.prompt.PromptRegistry;
-import com.wally.customersupport.conversation.application.tool.ConversationRouteToolContract;
+import com.wally.customersupport.conversation.infrastructure.ai.prompt.PromptTemplateRenderer;
 import com.wally.customersupport.shared.infrastructure.config.AiPromptProperties;
 import com.wally.customersupport.shared.infrastructure.config.AiProperties;
 import com.wally.customersupport.shared.infrastructure.observability.StructuredEventLog;
@@ -46,6 +49,7 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
     private final AiPromptProperties promptProperties;
     private final PromptDefinition prompt;
     private final AiProperties aiProperties;
+    private final BedrockAgentProfileResolver profileResolver;
 
     public BedrockConversationIntentClassifier(BedrockConverseClient converseClient, ObjectMapper objectMapper) {
         this(
@@ -65,18 +69,29 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
                 new AiProperties("bedrock", null, "us-east-1", null, BigDecimal.ZERO, BigDecimal.ZERO));
     }
 
-    @Autowired
     public BedrockConversationIntentClassifier(
             BedrockConverseClient converseClient,
             ObjectMapper objectMapper,
             AiPromptProperties promptProperties,
             PromptRegistry promptRegistry,
             AiProperties aiProperties) {
+        this(converseClient, objectMapper, promptProperties, promptRegistry, aiProperties, null);
+    }
+
+    @Autowired
+    public BedrockConversationIntentClassifier(
+            BedrockConverseClient converseClient,
+            ObjectMapper objectMapper,
+            AiPromptProperties promptProperties,
+            PromptRegistry promptRegistry,
+            AiProperties aiProperties,
+            BedrockAgentProfileResolver profileResolver) {
         this.converseClient = converseClient;
         this.objectMapper = objectMapper;
         this.promptProperties = promptProperties;
         this.prompt = promptRegistry.intentPrompt(promptProperties.effectiveIntentVersion());
         this.aiProperties = aiProperties;
+        this.profileResolver = profileResolver;
     }
 
     @Override
@@ -89,55 +104,106 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
             String correlationId = context.conversationId() == null
                     ? null
                     : context.conversationId().toString();
-            String userMessage = buildUserMessage(context);
+            AgentRuntimeDefinition profile = resolveProfile(context);
+            String userMessage = profile == null ? buildUserMessage(context) : buildUserMessage(context, profile);
+            String baseSystemPrompt = profile == null
+                    ? prompt.content()
+                    : profile.invocationConfiguration().systemPrompt();
+            String promptVersion = profile == null ? prompt.version() : profile.semanticVersion();
+            String promptHash = profile == null ? prompt.sha256() : profile.systemPromptHash();
+            int maxOutputTokens = profile == null
+                    ? promptProperties.effectiveIntentMaxOutputTokens()
+                    : profile.maxOutputTokens();
+            float temperature = profile == null
+                    ? promptProperties.effectiveIntentTemperature()
+                    : profile.inferenceParameters().temperature().floatValue();
+            boolean structuredToolCalling = profile == null
+                    ? aiProperties.structuredToolCallingEnabled()
+                    : profile.invocationConfiguration().structuredToolCalling();
             String output;
-            if (aiProperties.structuredToolCallingEnabled()) {
-                String structuredSystemPrompt = structuredToolUsePrompt();
+            if (structuredToolCalling) {
+                String structuredSystemPrompt = profile == null
+                        ? structuredToolUsePrompt()
+                        : baseSystemPrompt + structuredToolSuffix();
                 String structuredPromptHash = sha256(structuredSystemPrompt);
-                BedrockConverseClient.ToolUseCompletion completion = correlationId == null
-                        ? converseClient.completeWithToolUseForRouter(
+                WcsToolDescriptor routeContract = profile == null
+                        ? ConversationRouteToolContract.DESCRIPTOR
+                        : configuredRouteContract(profile);
+                BedrockConverseClient.ToolUseCompletion completion;
+                if (profile != null) {
+                    completion = correlationId == null
+                        ? converseClient.completeWithToolUseForAgent(
                                 "intent-classification",
                                 "conversation.intent.classify",
                                 structuredSystemPrompt,
                                 userMessage,
-                                promptProperties.effectiveIntentMaxOutputTokens(),
-                                promptProperties.effectiveIntentTemperature(),
-                                prompt.version(),
+                                maxOutputTokens,
+                                temperature,
+                                profile.inferenceParameters().topP().floatValue(),
+                                promptVersion,
                                 structuredPromptHash,
-                                ConversationRouteToolContract.DESCRIPTOR)
-                        : converseClient.completeWithToolUseForRouter(
+                                routeContract,
+                                profile)
+                        : converseClient.completeWithToolUseForAgent(
                                 "intent-classification",
                                 "conversation.intent.classify",
                                 structuredSystemPrompt,
                                 userMessage,
-                                promptProperties.effectiveIntentMaxOutputTokens(),
-                                promptProperties.effectiveIntentTemperature(),
-                                prompt.version(),
+                                maxOutputTokens,
+                                temperature,
+                                profile.inferenceParameters().topP().floatValue(),
+                                promptVersion,
                                 structuredPromptHash,
                                 correlationId,
-                                ConversationRouteToolContract.DESCRIPTOR);
+                                routeContract,
+                                profile);
+                } else {
+                    completion = correlationId == null
+                            ? converseClient.completeWithToolUseForRouter(
+                                    "intent-classification", "conversation.intent.classify", structuredSystemPrompt,
+                                    userMessage, maxOutputTokens, temperature, promptVersion, structuredPromptHash,
+                                    routeContract)
+                            : converseClient.completeWithToolUseForRouter(
+                                    "intent-classification", "conversation.intent.classify", structuredSystemPrompt,
+                                    userMessage, maxOutputTokens, temperature, promptVersion, structuredPromptHash,
+                                    correlationId, routeContract);
+                }
                 output = completion.inputJson();
             } else {
-                output = correlationId == null
+                if (profile != null) {
+                    output = correlationId == null
+                            ? converseClient.completeForAgent(
+                                    "intent-classification", "conversation.intent.classify", baseSystemPrompt,
+                                    userMessage, maxOutputTokens, temperature,
+                                    profile.inferenceParameters().topP().floatValue(), promptVersion,
+                                    promptHash, profile)
+                            : converseClient.completeForAgent(
+                                    "intent-classification", "conversation.intent.classify", baseSystemPrompt,
+                                    userMessage, maxOutputTokens, temperature,
+                                    profile.inferenceParameters().topP().floatValue(), promptVersion,
+                                    promptHash, profile, correlationId);
+                } else {
+                    output = correlationId == null
                         ? converseClient.completeForRouter(
                                 "intent-classification",
                                 "conversation.intent.classify",
-                                prompt.content(),
+                                baseSystemPrompt,
                                 userMessage,
-                                promptProperties.effectiveIntentMaxOutputTokens(),
-                                promptProperties.effectiveIntentTemperature(),
-                                prompt.version(),
-                                prompt.sha256())
+                                maxOutputTokens,
+                                temperature,
+                                promptVersion,
+                                promptHash)
                         : converseClient.completeForRouter(
                                 "intent-classification",
                                 "conversation.intent.classify",
-                                prompt.content(),
+                                baseSystemPrompt,
                                 userMessage,
-                                promptProperties.effectiveIntentMaxOutputTokens(),
-                                promptProperties.effectiveIntentTemperature(),
-                                prompt.version(),
-                                prompt.sha256(),
+                                maxOutputTokens,
+                                temperature,
+                                promptVersion,
+                                promptHash,
                                 correlationId);
+                }
             }
             return parse(output, context);
         } catch (RuntimeException exception) {
@@ -147,11 +213,31 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
     }
 
     private String structuredToolUsePrompt() {
-        return prompt.content()
-                + "\n\nMODO STRUCTURED TOOL USE:\n"
+        return prompt.content() + structuredToolSuffix();
+    }
+
+    private String structuredToolSuffix() {
+        return "\n\nMODO STRUCTURED TOOL USE:\n"
                 + "Usa la herramienta conversation_route exactamente una vez para devolver la decision estructurada. "
                 + "No escribas JSON como texto, no respondas con texto libre y no agregues una respuesta conversacional. "
                 + "La herramienta es la unica salida valida para este turno.";
+    }
+
+    private AgentRuntimeDefinition resolveProfile(ConversationContext context) {
+        return profileResolver == null
+                ? null
+                : profileResolver.resolve("conversation-router", "ROUTING", context).orElse(null);
+    }
+
+    private WcsToolDescriptor configuredRouteContract(AgentRuntimeDefinition definition) {
+        return new WcsToolDescriptor(
+                ConversationRouteToolContract.DESCRIPTOR.name(),
+                ConversationRouteToolContract.DESCRIPTOR.description(),
+                definition.outputSchemaVersion(),
+                definition.invocationConfiguration().outputSchemaJson(),
+                ConversationRouteToolContract.DESCRIPTOR.outputSchemaVersion(),
+                ConversationRouteToolContract.DESCRIPTOR.outputSchemaJson(),
+                ConversationRouteToolContract.DESCRIPTOR.requiredCapability());
     }
 
     private static String sha256(String value) {
@@ -350,6 +436,65 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
             }
         }
         return userPrompt.toString();
+    }
+
+    private String buildUserMessage(ConversationContext context, AgentRuntimeDefinition definition) {
+        String latestMessage = context.latestMessage();
+        List<String> messages = new ArrayList<>(context.recentMessages().reversed());
+        if (messages.isEmpty() || !latestMessage.equals(messages.getLast())) messages.add(latestMessage);
+        int inputCharacterLimit = Math.min(12_000, Math.multiplyExact(definition.maxInputTokens(), 4));
+        int historyStart = Math.max(0, messages.size() - 1 - promptProperties.effectiveMaxHistoryMessages());
+        StringBuilder history = new StringBuilder();
+        for (int index = historyStart; index < messages.size() - 1; index++) {
+            history.append("<customer_message>\n")
+                    .append(limit(messages.get(index), inputCharacterLimit))
+                    .append("\n</customer_message>\n");
+        }
+        String summary = context.conversationSummary() == null || context.conversationSummary().isBlank()
+                ? ""
+                : "\n<conversation_summary>\n" + limit(context.conversationSummary(), inputCharacterLimit)
+                        + "\n</conversation_summary>";
+        String preferences = context.preferences().isEmpty()
+                ? ""
+                : "\n<customer_preferences>\n" + context.preferences().stream()
+                        .map(preference -> preference.key() + "=" + preference.value())
+                        .collect(java.util.stream.Collectors.joining("\n"))
+                        + "\n</customer_preferences>\n"
+                        + "Las preferencias son contexto auxiliar y nunca reemplazan filtros explícitos del turno actual.";
+        String selection = selectionSection(context, inputCharacterLimit);
+        return PromptTemplateRenderer.render(definition.invocationConfiguration().userPromptTemplate(), Map.of(
+                "prompt_version", definition.systemPromptVersion(),
+                "conversation_history", history.toString(),
+                "latest_customer_message", limit(messages.getLast(), inputCharacterLimit),
+                "conversation_summary_section", summary,
+                "customer_preferences_section", preferences,
+                "active_selection_section", selection));
+    }
+
+    private String selectionSection(ConversationContext context, int inputCharacterLimit) {
+        if (context.selection() == null || !context.selection().hasCatalogSelection()) return "";
+        StringBuilder selection = new StringBuilder("\n<active_selection>\n")
+                .append("stage=").append(context.selection().stage()).append("\n")
+                .append("intent=").append(context.selection().intent()).append("\n")
+                .append("action=").append(context.selection().action()).append("\n")
+                .append("catalogQuery=").append(context.selection().catalogQuery())
+                .append("\n</active_selection>\n")
+                .append("La selección activa es contexto auxiliar. Validá el turno actual y no inventes hechos.");
+        if (context.selection().workingMemory().hasCandidates()) {
+            selection.append("\n<recent_catalog_candidates>\n");
+            context.selection().workingMemory().catalogCandidates().forEach(candidate ->
+                    selection.append("sku=").append(candidate.sku())
+                            .append("; product=").append(candidate.productName())
+                            .append("; size=").append(candidate.size())
+                            .append("; color=").append(candidate.color()).append("\n"));
+            selection.append("</recent_catalog_candidates>\n")
+                    .append("Las referencias como 'esa', 'el segundo' o 'una' sólo pueden resolverse hacia estas variantes; si no es único, pedí aclaración.");
+        }
+        return limit(selection.toString(), inputCharacterLimit);
+    }
+
+    private static String limit(String value, int maximum) {
+        return value.substring(0, Math.min(value.length(), maximum));
     }
 
     private String limit(String message) {

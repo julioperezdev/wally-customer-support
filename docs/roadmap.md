@@ -162,6 +162,14 @@ La implementación operativa del backoffice se organiza en
 [`backoffice-mvp-roadmap.md`](backoffice-mvp-roadmap.md): catálogo y handoff,
 mapa de agentes, feature flags dinámicos y venta asistida.
 
+WCS-140 concreta el primer corte ejecutable de la plataforma: los cuatro
+llamados generativos Bedrock reciben prompts, modelo, límites y pricing desde
+versiones SQL inmutables `1.0.0`. Tras la migración y un único despliegue, las
+nuevas versiones/evaluaciones/aprobaciones/activaciones se reflejan en caliente
+en el siguiente llamado. Ver [`ADR-043`](decisions/043-sql-agent-invocation-versions.md)
+y [`docs/ai.md`](ai.md). Cambios en código/flujo, schema o infraestructura aún
+requieren su pipeline habitual.
+
 ### Regla de secuenciación del backoffice
 
 El primer corte read-only fue ampliado en WCS-120 con authoring por clonación,

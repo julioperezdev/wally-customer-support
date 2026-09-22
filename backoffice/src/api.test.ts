@@ -128,6 +128,7 @@ describe("control plane client", () => {
     const client = createControlPlaneClient("/internal/agent-evaluations", "session-token");
     await client.createAgentDraft("support specialist", {
       version: null,
+      semanticVersion: "1.0.0",
       name: "Support",
       purpose: "Grounded support",
       modelProvider: "bedrock",
@@ -147,7 +148,18 @@ describe("control plane client", () => {
       maxInputTokens: 100,
       maxOutputTokens: 100,
       budgetLimitUsd: 0.01,
-      evaluationSuiteVersion: "eval-v1"
+      evaluationSuiteVersion: "eval-v1",
+      invocationConfiguration: {
+        systemPrompt: "",
+        userPromptTemplate: "",
+        inputSchemaJson: "{}",
+        outputSchemaJson: "{}",
+        reasoningEffort: null,
+        structuredToolCalling: false,
+        pricingVersion: "aws-bedrock-test-v1",
+        inputPriceUsdPerMillionTokens: 0.07,
+        outputPriceUsdPerMillionTokens: 0.3
+      }
     }, "key-create");
     await client.transitionAgentVersion("support specialist", 2, {
       targetState: "CANDIDATE",

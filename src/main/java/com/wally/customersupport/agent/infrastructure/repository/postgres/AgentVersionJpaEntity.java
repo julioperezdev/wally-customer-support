@@ -7,6 +7,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import com.wally.customersupport.agent.domain.model.AgentInferenceParameters;
+import com.wally.customersupport.agent.domain.model.AgentInvocationConfiguration;
 import com.wally.customersupport.agent.domain.model.AgentLifecycleState;
 import com.wally.customersupport.agent.domain.model.AgentVersion;
 import jakarta.persistence.Column;
@@ -109,6 +110,36 @@ public class AgentVersionJpaEntity {
     @Column(name = "approved_at")
     private Instant approvedAt;
 
+    @Column(name = "semantic_version", nullable = false, length = 32)
+    private String semanticVersion;
+
+    @Column(name = "system_prompt_body", nullable = false, columnDefinition = "text")
+    private String systemPromptBody;
+
+    @Column(name = "user_prompt_template", nullable = false, columnDefinition = "text")
+    private String userPromptTemplate;
+
+    @Column(name = "input_schema_json", nullable = false, columnDefinition = "text")
+    private String inputSchemaJson;
+
+    @Column(name = "output_schema_json", nullable = false, columnDefinition = "text")
+    private String outputSchemaJson;
+
+    @Column(name = "reasoning_effort", length = 16)
+    private String reasoningEffort;
+
+    @Column(name = "structured_tool_calling", nullable = false)
+    private boolean structuredToolCalling;
+
+    @Column(name = "pricing_version", length = 80)
+    private String pricingVersion;
+
+    @Column(name = "input_price_usd_per_million_tokens", precision = 12, scale = 6)
+    private BigDecimal inputPriceUsdPerMillionTokens;
+
+    @Column(name = "output_price_usd_per_million_tokens", precision = 12, scale = 6)
+    private BigDecimal outputPriceUsdPerMillionTokens;
+
     protected AgentVersionJpaEntity() {
     }
 
@@ -142,6 +173,16 @@ public class AgentVersionJpaEntity {
         this.createdAt = version.createdAt();
         this.approvedBy = version.approvedBy();
         this.approvedAt = version.approvedAt();
+        this.semanticVersion = version.semanticVersion();
+        this.systemPromptBody = version.invocationConfiguration().systemPrompt();
+        this.userPromptTemplate = version.invocationConfiguration().userPromptTemplate();
+        this.inputSchemaJson = version.invocationConfiguration().inputSchemaJson();
+        this.outputSchemaJson = version.invocationConfiguration().outputSchemaJson();
+        this.reasoningEffort = version.invocationConfiguration().reasoningEffort();
+        this.structuredToolCalling = version.invocationConfiguration().structuredToolCalling();
+        this.pricingVersion = version.invocationConfiguration().pricingVersion();
+        this.inputPriceUsdPerMillionTokens = version.invocationConfiguration().inputPriceUsdPerMillionTokens();
+        this.outputPriceUsdPerMillionTokens = version.invocationConfiguration().outputPriceUsdPerMillionTokens();
     }
 
     public AgentVersion toDomain() {
@@ -172,6 +213,17 @@ public class AgentVersionJpaEntity {
                 createdBy,
                 createdAt,
                 approvedBy,
-                approvedAt);
+                approvedAt,
+                semanticVersion,
+                new AgentInvocationConfiguration(
+                        systemPromptBody,
+                        userPromptTemplate,
+                        inputSchemaJson,
+                        outputSchemaJson,
+                        reasoningEffort,
+                        structuredToolCalling,
+                        pricingVersion,
+                        inputPriceUsdPerMillionTokens,
+                        outputPriceUsdPerMillionTokens));
     }
 }

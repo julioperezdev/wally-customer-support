@@ -8,6 +8,7 @@ import java.util.Map;
 import com.wally.customersupport.conversation.application.port.out.ConversationSummarizer;
 import com.wally.customersupport.conversation.domain.model.ConversationState;
 import com.wally.customersupport.conversation.domain.model.ConversationSummary;
+import com.wally.customersupport.conversation.domain.model.Channel;
 import com.wally.customersupport.shared.infrastructure.config.ConversationSummaryProperties;
 import com.wally.customersupport.shared.infrastructure.observability.StructuredEventLog;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +38,14 @@ public class ConversationSummaryService {
             ConversationState current,
             String latestMessage,
             Instant updatedAt) {
+        return appendAndMaybeSummarize(current, latestMessage, updatedAt, null);
+    }
+
+    public ConversationState appendAndMaybeSummarize(
+            ConversationState current,
+            String latestMessage,
+            Instant updatedAt,
+            Channel channel) {
         if (current == null || latestMessage == null || latestMessage.isBlank()) {
             return current;
         }
@@ -59,7 +68,9 @@ public class ConversationSummaryService {
         long startedAt = System.nanoTime();
 
         try {
-            String generated = limit(summarizer.summarize(previousSummary, olderMessages));
+            String generated = limit(channel == null
+                    ? summarizer.summarize(previousSummary, olderMessages)
+                    : summarizer.summarize(previousSummary, olderMessages, channel));
             if (generated == null || generated.isBlank()) {
                 throw new IllegalStateException("conversation summarizer returned an empty summary");
             }

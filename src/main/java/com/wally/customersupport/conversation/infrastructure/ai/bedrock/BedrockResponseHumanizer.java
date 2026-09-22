@@ -13,11 +13,13 @@ import java.util.stream.Collectors;
 import com.wally.customersupport.catalog.application.service.CatalogFact;
 import com.wally.customersupport.catalog.application.service.CatalogResponseFormatter;
 import com.wally.customersupport.catalog.application.service.CatalogSearchResult;
+import com.wally.customersupport.agent.application.service.AgentRuntimeDefinition;
 import com.wally.customersupport.conversation.application.port.out.ResponseHumanizer;
 import com.wally.customersupport.conversation.domain.model.ResponseHumanizationRequest;
 import com.wally.customersupport.conversation.domain.model.ResponseHumanizationResult;
 import com.wally.customersupport.conversation.infrastructure.ai.prompt.PromptDefinition;
 import com.wally.customersupport.conversation.infrastructure.ai.prompt.PromptRegistry;
+import com.wally.customersupport.conversation.infrastructure.ai.prompt.PromptTemplateRenderer;
 import com.wally.customersupport.shared.infrastructure.config.AiResponseProperties;
 import com.wally.customersupport.shared.infrastructure.observability.StructuredEventLog;
 import lombok.extern.slf4j.Slf4j;
@@ -53,16 +55,26 @@ public class BedrockResponseHumanizer implements ResponseHumanizer {
     private final BedrockConverseClient converseClient;
     private final AiResponseProperties responseProperties;
     private final PromptDefinition prompt;
+    private final BedrockAgentProfileResolver profileResolver;
+
+    public BedrockResponseHumanizer(
+            BedrockConverseClient converseClient,
+            AiResponseProperties responseProperties,
+            PromptRegistry promptRegistry) {
+        this(converseClient, responseProperties, promptRegistry, null);
+    }
 
     @Autowired
     public BedrockResponseHumanizer(
             BedrockConverseClient converseClient,
             AiResponseProperties responseProperties,
-            PromptRegistry promptRegistry) {
+            PromptRegistry promptRegistry,
+            BedrockAgentProfileResolver profileResolver) {
         this.converseClient = Objects.requireNonNull(converseClient, "converseClient");
         this.responseProperties = Objects.requireNonNull(responseProperties, "responseProperties");
         Objects.requireNonNull(promptRegistry, "promptRegistry");
         this.prompt = promptRegistry.responsePrompt(responseProperties.effectivePromptVersion());
+        this.profileResolver = profileResolver;
     }
 
     @Override
@@ -76,23 +88,32 @@ public class BedrockResponseHumanizer implements ResponseHumanizer {
         try {
             deterministicText = CatalogResponseFormatter.render(request.catalogResult());
         } catch (RuntimeException exception) {
-            logFallback(request, "RENDERING_FAILED", exception, startedAt, notEvaluated(), 0);
+            logFallback(request, "RENDERING_FAILED", exception, startedAt, notEvaluated(), 0, null);
             return ResponseHumanizationResult.fallback(
                     SAFE_FALLBACK, POLICY_ID, POLICY_VERSION, "RENDERING_FAILED");
         }
 
+        AgentRuntimeDefinition profile = null;
         try {
-            String generated = converseClient.complete(
-                    "response-humanization",
-                    "conversation.response.humanize",
-                    prompt.content(),
-                    buildUserPrompt(request, deterministicText),
-                    responseProperties.effectiveMaxOutputTokens(),
-                    responseProperties.effectiveTemperature(),
-                    prompt.version(),
-                    prompt.sha256());
+            profile = profileResolver == null
+                    ? null
+                    : profileResolver.resolve("response-humanization", request.useCase(), request.channel())
+                            .orElse(null);
+            String generated = profile == null
+                    ? converseClient.complete(
+                            "response-humanization", "conversation.response.humanize", prompt.content(),
+                            buildUserPrompt(request, deterministicText),
+                            responseProperties.effectiveMaxOutputTokens(),
+                            responseProperties.effectiveTemperature(), prompt.version(), prompt.sha256())
+                    : converseClient.completeForAgent(
+                            "response-humanization", "conversation.response.humanize",
+                            profile.invocationConfiguration().systemPrompt(),
+                            buildUserPrompt(request, deterministicText, profile),
+                            profile.maxOutputTokens(), profile.inferenceParameters().temperature().floatValue(),
+                            profile.inferenceParameters().topP().floatValue(), profile.semanticVersion(),
+                            profile.systemPromptHash(), profile);
             if (generated == null || generated.isBlank()) {
-                return fallback(deterministicText, "EMPTY_RESPONSE", request, startedAt);
+                return fallback(deterministicText, "EMPTY_RESPONSE", request, startedAt, profile);
             }
             String normalized = generated.trim();
             ValidationDiagnostics validation = validateApprovedFacts(normalized, request.catalogResult());
@@ -103,15 +124,16 @@ public class BedrockResponseHumanizer implements ResponseHumanizer {
                         request,
                         startedAt,
                         validation,
-                        normalized.length());
+                        normalized.length(),
+                        profile);
             }
 
             ResponseHumanizationResult result = ResponseHumanizationResult.applied(
-                    normalized, POLICY_ID, POLICY_VERSION);
-            logApplied(request, startedAt, validation, normalized.length());
+                    normalized, POLICY_ID, profile == null ? POLICY_VERSION : profile.semanticVersion());
+            logApplied(request, startedAt, validation, normalized.length(), profile);
             return result;
         } catch (RuntimeException exception) {
-            logFallback(request, "PROVIDER_ERROR", exception, startedAt, notEvaluated(), 0);
+            logFallback(request, "PROVIDER_ERROR", exception, startedAt, notEvaluated(), 0, profile);
             return ResponseHumanizationResult.fallback(
                     deterministicText, POLICY_ID, POLICY_VERSION, "PROVIDER_ERROR");
         }
@@ -119,6 +141,9 @@ public class BedrockResponseHumanizer implements ResponseHumanizer {
 
     private String buildUserPrompt(ResponseHumanizationRequest request, String deterministicText) {
         String boundedFacts = limit(deterministicText, responseProperties.effectiveMaxInputCharacters());
+        String requiredFacts = limit(
+                requiredFacts(request.catalogResult()),
+                responseProperties.effectiveMaxInputCharacters());
         return """
                 <request_metadata>
                 <use_case>%s</use_case>
@@ -127,16 +152,53 @@ public class BedrockResponseHumanizer implements ResponseHumanizer {
                 <approved_knowledge>
                 %s
                 </approved_knowledge>
+                <required_facts>
+                %s
+                </required_facts>
                 <response_contract>
                 Redactá una respuesta breve y natural en español argentino.
-                Conservá literalmente todos los productos, SKU, talles, colores,
-                precios, monedas y cantidades de stock presentes en los hechos.
+                Cada producto debe aparecer con todos los campos de
+                <required_facts>: nombre, SKU, color, talle, precio exacto,
+                moneda y stock. No resumas una lista omitiendo precio o stock.
                 Si hay varios productos, conservá exactamente su orden; el cliente
                 puede referirse a ellos por posición.
                 No agregues datos, promociones, políticas, envíos ni instrucciones.
                 Devolvé únicamente el mensaje final para el cliente.
                 </response_contract>
-                """.formatted(request.useCase(), request.channel().name(), boundedFacts);
+                """.formatted(request.useCase(), request.channel().name(), boundedFacts, requiredFacts);
+    }
+
+    private String buildUserPrompt(
+            ResponseHumanizationRequest request,
+            String deterministicText,
+            AgentRuntimeDefinition definition) {
+        int maxInputCharacters = Math.min(12_000, Math.multiplyExact(definition.maxInputTokens(), 4));
+        return PromptTemplateRenderer.render(definition.invocationConfiguration().userPromptTemplate(), Map.of(
+                "use_case", request.useCase(),
+                "channel", request.channel().name(),
+                "approved_knowledge", limit(deterministicText, maxInputCharacters),
+                "required_facts", limit(requiredFacts(request.catalogResult()), maxInputCharacters)));
+    }
+
+    private String requiredFacts(CatalogSearchResult result) {
+        if (result == null || result.facts().isEmpty()) {
+            return "No hay hechos de catálogo para presentar.";
+        }
+        StringBuilder facts = new StringBuilder();
+        for (int index = 0; index < result.facts().size(); index++) {
+            CatalogFact fact = result.facts().get(index);
+            facts.append("product[").append(index + 1).append("] ")
+                    .append("name=").append(fact.productName())
+                    .append(" | sku=").append(fact.sku())
+                    .append(" | color=").append(fact.color())
+                    .append(" | size=").append(fact.size())
+                    .append(" | price=").append(fact.price().toPlainString())
+                    .append(" ").append(fact.currency())
+                    .append(" | stock=")
+                    .append(fact.available() ? fact.stock() : "sin stock")
+                    .append('\n');
+        }
+        return facts.toString().trim();
     }
 
     private ValidationDiagnostics validateApprovedFacts(String generated, CatalogSearchResult result) {
@@ -336,7 +398,16 @@ public class BedrockResponseHumanizer implements ResponseHumanizer {
             String reason,
             ResponseHumanizationRequest request,
             long startedAt) {
-        return fallback(text, reason, request, startedAt, notEvaluated(), 0);
+        return fallback(text, reason, request, startedAt, notEvaluated(), 0, null);
+    }
+
+    private ResponseHumanizationResult fallback(
+            String text,
+            String reason,
+            ResponseHumanizationRequest request,
+            long startedAt,
+            AgentRuntimeDefinition profile) {
+        return fallback(text, reason, request, startedAt, notEvaluated(), 0, profile);
     }
 
     private ResponseHumanizationResult fallback(
@@ -345,7 +416,8 @@ public class BedrockResponseHumanizer implements ResponseHumanizer {
             ResponseHumanizationRequest request,
             long startedAt,
             ValidationDiagnostics validation,
-            int generatedCharacters) {
+            int generatedCharacters,
+            AgentRuntimeDefinition profile) {
         if (request == null) {
             Map<String, Object> fields = new LinkedHashMap<>();
             fields.put("policyId", POLICY_ID);
@@ -356,7 +428,7 @@ public class BedrockResponseHumanizer implements ResponseHumanizer {
             addValidationFields(fields, validation, generatedCharacters);
             StructuredEventLog.warn(log, "RESPONSE_POLICY_FALLBACK", fields);
         } else {
-            logFallback(request, reason, null, startedAt, validation, generatedCharacters);
+            logFallback(request, reason, null, startedAt, validation, generatedCharacters, profile);
         }
         return ResponseHumanizationResult.fallback(text, POLICY_ID, POLICY_VERSION, reason);
     }
@@ -365,8 +437,9 @@ public class BedrockResponseHumanizer implements ResponseHumanizer {
             ResponseHumanizationRequest request,
             long startedAt,
             ValidationDiagnostics validation,
-            int generatedCharacters) {
-        Map<String, Object> fields = baseFields(request, startedAt);
+            int generatedCharacters,
+            AgentRuntimeDefinition profile) {
+        Map<String, Object> fields = baseFields(request, startedAt, profile);
         fields.put("outcome", ResponseHumanizationResult.Outcome.APPLIED.name());
         addValidationFields(fields, validation, generatedCharacters);
         StructuredEventLog.info(log, "RESPONSE_POLICY_APPLIED", fields);
@@ -378,8 +451,9 @@ public class BedrockResponseHumanizer implements ResponseHumanizer {
             RuntimeException exception,
             long startedAt,
             ValidationDiagnostics validation,
-            int generatedCharacters) {
-        Map<String, Object> fields = baseFields(request, startedAt);
+            int generatedCharacters,
+            AgentRuntimeDefinition profile) {
+        Map<String, Object> fields = baseFields(request, startedAt, profile);
         fields.put("outcome", ResponseHumanizationResult.Outcome.FALLBACK.name());
         fields.put("fallbackReason", reason);
         addValidationFields(fields, validation, generatedCharacters);
@@ -391,7 +465,8 @@ public class BedrockResponseHumanizer implements ResponseHumanizer {
 
     private Map<String, Object> baseFields(
             ResponseHumanizationRequest request,
-            long startedAt) {
+            long startedAt,
+            AgentRuntimeDefinition profile) {
         Map<String, Object> fields = new LinkedHashMap<>();
         fields.put("useCase", request.useCase());
         fields.put("channel", request.channel().name());
@@ -400,8 +475,13 @@ public class BedrockResponseHumanizer implements ResponseHumanizer {
         fields.put("resultStatus", request.catalogResult().status().name());
         fields.put("resultCount", request.catalogResult().resultCount());
         fields.put("durationMs", elapsedMillis(startedAt));
-        fields.put("promptVersion", prompt.version());
-        fields.put("promptHash", prompt.sha256());
+        fields.put("promptVersion", profile == null ? prompt.version() : profile.semanticVersion());
+        fields.put("promptHash", profile == null ? prompt.sha256() : profile.systemPromptHash());
+        if (profile != null) {
+            fields.put("agentId", profile.agentId());
+            fields.put("agentVersion", profile.agentVersion());
+            fields.put("agentSemanticVersion", profile.semanticVersion());
+        }
         return fields;
     }
 

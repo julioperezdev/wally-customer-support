@@ -1,9 +1,14 @@
 package com.wally.customersupport.conversation.infrastructure.ai.bedrock;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
+import com.wally.customersupport.agent.application.service.AgentRuntimeDefinition;
 import com.wally.customersupport.conversation.application.port.out.ConversationSummarizer;
+import com.wally.customersupport.conversation.domain.model.Channel;
+import com.wally.customersupport.conversation.infrastructure.ai.prompt.PromptTemplateRenderer;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -21,13 +26,27 @@ public class BedrockConversationSummarizer implements ConversationSummarizer {
             """;
 
     private final BedrockConverseClient converseClient;
+    private final BedrockAgentProfileResolver profileResolver;
 
     public BedrockConversationSummarizer(BedrockConverseClient converseClient) {
+        this(converseClient, null);
+    }
+
+    @Autowired
+    public BedrockConversationSummarizer(
+            BedrockConverseClient converseClient,
+            BedrockAgentProfileResolver profileResolver) {
         this.converseClient = converseClient;
+        this.profileResolver = profileResolver;
     }
 
     @Override
     public String summarize(String previousSummary, List<String> olderMessages) {
+        return summarize(previousSummary, olderMessages, null);
+    }
+
+    @Override
+    public String summarize(String previousSummary, List<String> olderMessages, Channel channel) {
         String prior = redact(previousSummary == null ? "" : previousSummary);
         String messages = olderMessages == null
                 ? ""
@@ -37,6 +56,30 @@ public class BedrockConversationSummarizer implements ConversationSummarizer {
                         .map(value -> "<customer_message>\n" + limit(value, 1_000)
                                 + "\n</customer_message>")
                         .collect(Collectors.joining("\n"));
+        AgentRuntimeDefinition profile = channel == null || profileResolver == null
+                ? null
+                : profileResolver.resolve("conversation-summarizer", "CONVERSATION_SUMMARY", channel).orElse(null);
+        if (profile != null) {
+            int maxInputCharacters = Math.min(12_000, Math.multiplyExact(profile.maxInputTokens(), 4));
+            String boundedPrior = limit(prior, Math.min(4_000, maxInputCharacters / 3));
+            String boundedMessages = limit(messages, Math.min(8_000,
+                    Math.max(0, maxInputCharacters - boundedPrior.length())));
+            String userPrompt = PromptTemplateRenderer.render(
+                    profile.invocationConfiguration().userPromptTemplate(),
+                    Map.of("previous_summary", boundedPrior, "older_messages", boundedMessages));
+            return converseClient.completeForAgent(
+                    "conversation-summary",
+                    "conversation.summary.generate",
+                    profile.invocationConfiguration().systemPrompt(),
+                    userPrompt,
+                    profile.maxOutputTokens(),
+                    profile.inferenceParameters().temperature().floatValue(),
+                    profile.inferenceParameters().topP().floatValue(),
+                    profile.semanticVersion(),
+                    profile.systemPromptHash(),
+                    profile);
+        }
+
         String prompt = """
                 <previous_summary>
                 %s

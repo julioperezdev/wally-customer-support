@@ -12,6 +12,7 @@ type ControlPlaneClient = ReturnType<typeof createControlPlaneClient>;
 
 const DEFAULT_DEFINITION = `{
   "version": null,
+  "semanticVersion": "1.0.0",
   "name": "Catalog specialist candidate",
   "purpose": "Search products, variants, price and stock through validated WCS tools",
   "modelProvider": "bedrock",
@@ -32,7 +33,18 @@ const DEFAULT_DEFINITION = `{
   "maxOutputTokens": 1000,
   "budgetLimitUsd": 0.05,
   "fallbackAgentId": null,
-  "evaluationSuiteVersion": "catalog-response-v1"
+  "evaluationSuiteVersion": "catalog-response-v1",
+  "invocationConfiguration": {
+    "systemPrompt": "",
+    "userPromptTemplate": "",
+    "inputSchemaJson": "{}",
+    "outputSchemaJson": "{}",
+    "reasoningEffort": null,
+    "structuredToolCalling": false,
+    "pricingVersion": "aws-bedrock-us-east-1-standard-2026-09",
+    "inputPriceUsdPerMillionTokens": 0.0721,
+    "outputPriceUsdPerMillionTokens": 0.309
+  }
 }`;
 
 export function AgentAuthoringPanel({
@@ -83,7 +95,7 @@ export function AgentAuthoringPanel({
       setError("Seleccioná una versión existente para cargarla como nueva DRAFT.");
       return;
     }
-    setDefinitionJson(JSON.stringify(draftFromVersion(version), null, 2));
+    setDefinitionJson(JSON.stringify(draftFromVersion(version, availableVersions), null, 2));
     setEditingVersion(version.version);
     setLifecycleAgentId(version.agentId);
     setLifecycleVersion("");
@@ -168,22 +180,22 @@ export function AgentAuthoringPanel({
       <div className="section-heading">
         <div>
           <h2>Authoring y lifecycle de agentes</h2>
-          <p>Creá una nueva versión inmutable, editá su metadata y promovela con un workflow auditable.</p>
+          <p>Creá versiones inmutables de prompts, modelo, parámetros, schemas y tools; publicá sólo tras evaluación y aprobación.</p>
         </div>
         <span className="security-note">PROTEGIDO</span>
       </div>
       <div className="success-alert">
-        Los prompts, schemas y secretos son artefactos externos: el registry sólo guarda referencias, versiones y hashes SHA-256.
+        El registro SQL guarda prompts, modelo, límites y pricing versionados; los hash SHA-256 se calculan en backend. Secretos y herramientas ejecutables no se almacenan aquí.
       </div>
       {!canWrite && <div className="warning-alert">Tu usuario no tiene <code>agent-registry.write</code>; el authoring está en modo lectura.</div>}
       <div className="authoring-grid">
         <div>
           <h3>Crear o editar como nueva DRAFT</h3>
-          <p className="muted">Para editar una versión publicada, cargala abajo, cambiá la metadata y guardá una nueva versión. La original nunca se modifica.</p>
+          <p className="muted">Para editar una versión publicada, cargala abajo, cambiá prompts, modelo, límites o schemas y guardá una nueva versión. La original nunca se modifica.</p>
           {editingVersion !== null && <div className="info-alert">Editando una copia de <strong>{agentId} v{editingVersion}</strong>. Guardar creará la siguiente versión DRAFT.</div>}
           <div className="form-grid">
             <label>Agent ID<input list="agent-authoring-agent-ids" value={agentId} onChange={(event) => selectAgent(event.target.value)} /></label>
-            <label>Versión nueva<input value="automática" readOnly /></label>
+            <label>SemVer<input value="se define en la definición JSON" readOnly /></label>
           </div>
           <datalist id="agent-authoring-agent-ids">{filterOptions.agentIds.map((option) => <option key={option} value={option} />)}</datalist>
           <label>Definición metadata JSON<textarea rows={19} value={definitionJson} onChange={(event) => setDefinitionJson(event.target.value)} /></label>
@@ -193,10 +205,10 @@ export function AgentAuthoringPanel({
         </div>
         <div>
           <h3>Cargar una versión para editar</h3>
-          <p className="muted">La carga sólo copia metadata sanitizada al editor. No trae prompts completos ni conversaciones.</p>
+          <p className="muted">La carga copia al editor la definición versionada, incluidos prompts y schemas. Nunca incluye conversaciones ni secretos.</p>
           <div className="form-grid">
             <label>Agente<select value={agentId} onChange={(event) => selectAgent(event.target.value)}><option value="">Seleccionar</option>{filterOptions.agentIds.map((option) => <option key={option} value={option}>{option}</option>)}</select></label>
-            <label>Versión origen<select value={sourceVersion} onChange={(event) => setSourceVersion(event.target.value)}><option value="">Seleccionar</option>{availableVersions.map((version) => <option key={version.version} value={version.version}>v{version.version} · {version.state}</option>)}</select></label>
+            <label>Versión origen<select value={sourceVersion} onChange={(event) => setSourceVersion(event.target.value)}><option value="">Seleccionar</option>{availableVersions.map((version) => <option key={version.version} value={version.version}>{version.semanticVersion} · SQL #{version.version} · {version.state}</option>)}</select></label>
           </div>
           <div className="button-row">
             <button onClick={loadVersionForEditing} disabled={busy || !agentId || !sourceVersion}>Cargar para editar</button>

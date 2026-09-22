@@ -5,6 +5,7 @@ import type { AgentFilterOptions } from "./api";
 const VERSION = {
   agentId: "catalog-specialist",
   version: 3,
+  semanticVersion: "1.2.0",
   name: "Catalog specialist",
   purpose: "Search the catalog",
   state: "APPROVED",
@@ -27,6 +28,17 @@ const VERSION = {
   budgetLimitUsd: 0.05,
   fallbackAgentId: "support-safety",
   evaluationSuiteVersion: "catalog-eval-v3",
+  invocationConfiguration: {
+    systemPrompt: "system prompt",
+    userPromptTemplate: "{{latest_message}}",
+    inputSchemaJson: "{}",
+    outputSchemaJson: "{}",
+    reasoningEffort: null,
+    structuredToolCalling: false,
+    pricingVersion: "aws-bedrock-test-v1",
+    inputPriceUsdPerMillionTokens: 0.07,
+    outputPriceUsdPerMillionTokens: 0.3
+  },
   createdAt: "2026-09-15T12:00:00Z",
   approvedAt: "2026-09-15T12:10:00Z"
 };
@@ -49,12 +61,20 @@ describe("agent registry authoring helpers", () => {
 
     expect(definition).toMatchObject({
       version: null,
+      semanticVersion: "1.2.1",
       name: "Catalog specialist",
       modelId: "model-v3",
       fallbackAgentId: "support-safety"
     });
     expect(definition.allowedTools).toEqual(["catalog.search", "catalog.stock"]);
     expect(definition.knowledgeSources).toEqual(["wcs-catalog-kb"]);
+    expect(definition.invocationConfiguration.systemPrompt).toBe("system prompt");
+  });
+
+  it("starts a draft from the latest semantic version even when editing an older source", () => {
+    const latest = { ...VERSION, version: 3, semanticVersion: "2.1.0" };
+
+    expect(draftFromVersion(VERSION, [VERSION, latest]).semanticVersion).toBe("2.1.1");
   });
 
   it("returns versions only for the selected agent", () => {

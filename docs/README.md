@@ -49,10 +49,11 @@
   - [`029-shadow-quality-scorecard-and-observability.md`](decisions/029-shadow-quality-scorecard-and-observability.md): scorecard determinístico y observabilidad de shadow sin autoridad de activación.
   - [`030-controlled-shadow-rollout.md`](decisions/030-controlled-shadow-rollout.md): allowlist de ambiente y porcentaje determinístico para rollout shadow.
   - [`031-human-follow-up-opt-out-retention.md`](decisions/031-human-follow-up-opt-out-retention.md): derivación humana, supresión y limpieza operativa.
-  - [`032-bedrock-prompt-management.md`](decisions/032-bedrock-prompt-management.md): prompts productivos versionados fuera del artefacto mediante Bedrock Prompt Management.
+  - [`032-bedrock-prompt-management.md`](decisions/032-bedrock-prompt-management.md): decisión histórica, supersedida para llamadas conversacionales por ADR-043.
   - [`033-versioned-agent-runtime-execution.md`](decisions/033-versioned-agent-runtime-execution.md): ejecución real gobernada por el snapshot versionado del agente.
   - [`034-agent-platform-authoring-and-runtime-evidence.md`](decisions/034-agent-platform-authoring-and-runtime-evidence.md): authoring, publicación, auditoría y trazas productivas de WCS-120.
   - [`035-cognito-only-backoffice-security.md`](decisions/035-cognito-only-backoffice-security.md): Cognito/JWT como único acceso del backoffice y eliminación del preview-token.
+  - [`043-sql-agent-invocation-versions.md`](decisions/043-sql-agent-invocation-versions.md): system/user prompts, modelo, límites, schemas y pricing inmutables versionados en PostgreSQL.
 
 ## Calidad y operación
 

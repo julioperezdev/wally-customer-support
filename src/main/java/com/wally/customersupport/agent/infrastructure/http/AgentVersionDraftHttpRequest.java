@@ -4,8 +4,9 @@ import java.math.BigDecimal;
 import java.util.Set;
 
 import com.wally.customersupport.agent.application.registry.AgentVersionDraftCommand;
+import com.wally.customersupport.agent.domain.model.AgentInvocationConfiguration;
 
-/** HTTP authoring input; prompt and schema contents are never accepted here. */
+/** Authenticated authoring input for a new immutable agent version. */
 public record AgentVersionDraftHttpRequest(
         Integer version,
         String name,
@@ -28,7 +29,9 @@ public record AgentVersionDraftHttpRequest(
         Integer maxOutputTokens,
         BigDecimal budgetLimitUsd,
         String fallbackAgentId,
-        String evaluationSuiteVersion) {
+        String evaluationSuiteVersion,
+        String semanticVersion,
+        AgentInvocationConfiguration invocationConfiguration) {
 
     AgentVersionDraftCommand toCommand(String agentId) {
         return new AgentVersionDraftCommand(
@@ -54,6 +57,8 @@ public record AgentVersionDraftHttpRequest(
                 maxOutputTokens,
                 budgetLimitUsd,
                 fallbackAgentId,
-                evaluationSuiteVersion);
+                evaluationSuiteVersion,
+                semanticVersion,
+                invocationConfiguration == null ? AgentInvocationConfiguration.empty() : invocationConfiguration);
     }
 }

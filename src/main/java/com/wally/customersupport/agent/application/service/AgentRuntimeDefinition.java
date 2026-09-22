@@ -6,12 +6,13 @@ import java.util.Objects;
 import java.util.Set;
 
 import com.wally.customersupport.agent.domain.model.AgentInferenceParameters;
+import com.wally.customersupport.agent.domain.model.AgentInvocationConfiguration;
 import com.wally.customersupport.agent.domain.model.AgentVersion;
 
 /**
- * Immutable, sanitized execution snapshot derived from a published agent
- * version. It intentionally contains prompt metadata only, never prompt
- * content or conversation data.
+ * Immutable execution snapshot derived from a published agent version.
+ * It contains executable prompt configuration but never conversation data;
+ * operational telemetry records only prompt identifiers and hashes.
  */
 public record AgentRuntimeDefinition(
         String agentId,
@@ -35,7 +36,39 @@ public record AgentRuntimeDefinition(
         int maxOutputTokens,
         BigDecimal budgetLimitUsd,
         String fallbackAgentId,
-        String evaluationSuiteVersion) {
+        String evaluationSuiteVersion,
+        String semanticVersion,
+        AgentInvocationConfiguration invocationConfiguration) {
+
+    public AgentRuntimeDefinition(
+            String agentId,
+            int agentVersion,
+            String name,
+            String purpose,
+            String modelProvider,
+            String modelId,
+            AgentInferenceParameters inferenceParameters,
+            String systemPromptVersion,
+            String systemPromptHash,
+            String inputSchemaVersion,
+            String outputSchemaVersion,
+            Set<String> allowedTools,
+            Set<String> knowledgeSources,
+            String memoryPolicy,
+            String responsePolicy,
+            Duration timeout,
+            int maxSteps,
+            int maxInputTokens,
+            int maxOutputTokens,
+            BigDecimal budgetLimitUsd,
+            String fallbackAgentId,
+            String evaluationSuiteVersion) {
+        this(agentId, agentVersion, name, purpose, modelProvider, modelId, inferenceParameters,
+                systemPromptVersion, systemPromptHash, inputSchemaVersion, outputSchemaVersion,
+                allowedTools, knowledgeSources, memoryPolicy, responsePolicy, timeout, maxSteps,
+                maxInputTokens, maxOutputTokens, budgetLimitUsd, fallbackAgentId, evaluationSuiteVersion,
+                "1.0.0", AgentInvocationConfiguration.empty());
+    }
 
     public AgentRuntimeDefinition {
         agentId = required(agentId, "agentId");
@@ -55,6 +88,9 @@ public record AgentRuntimeDefinition(
         timeout = Objects.requireNonNull(timeout, "timeout");
         budgetLimitUsd = Objects.requireNonNull(budgetLimitUsd, "budgetLimitUsd");
         evaluationSuiteVersion = required(evaluationSuiteVersion, "evaluationSuiteVersion");
+        semanticVersion = com.wally.customersupport.agent.domain.model.AgentSemanticVersion
+                .parse(semanticVersion).toString();
+        invocationConfiguration = Objects.requireNonNull(invocationConfiguration, "invocationConfiguration");
         fallbackAgentId = normalize(fallbackAgentId);
 
         if (agentVersion < 1) {
@@ -103,7 +139,18 @@ public record AgentRuntimeDefinition(
                 version.maxOutputTokens(),
                 version.budgetLimitUsd(),
                 version.fallbackAgentId(),
-                version.evaluationSuiteVersion());
+                version.evaluationSuiteVersion(),
+                version.semanticVersion(),
+                version.invocationConfiguration());
+    }
+
+    /** Keep prompt bodies out of accidental log statements. */
+    @Override
+    public String toString() {
+        return "AgentRuntimeDefinition[agentId=" + agentId + ", agentVersion=" + agentVersion
+                + ", semanticVersion=" + semanticVersion + ", modelProvider=" + modelProvider
+                + ", modelId=" + modelId + ", systemPromptHash=" + systemPromptHash
+                + ", invocationConfiguration=<redacted>]";
     }
 
     private static void validateTokenLimit(int value, String field) {

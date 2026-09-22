@@ -86,57 +86,79 @@ y la decisión en `ADR-003`.
 
 Cada modelo real debe registrar proveedor, model ID, versión, límites, timeout, precio vigente, fecha de revisión y casos permitidos.
 
-## Registro ejecutable del prompt de intención
+## Configuración ejecutable Bedrock versionada en SQL — WCS-140 / V27
 
-El clasificador usa el `prompt_id` lógico `conversation-intent` y un
-`PromptRegistry` provider-neutral. El proveedor actual empaquetado en
-`src/main/resources/prompts/` sigue siendo el fallback compatible y default.
-Cuando `wcs.ai.prompt.provider=bedrock`, el contenido se obtiene de Bedrock
-Prompt Management mediante un identificador y una versión numérica inmutable
-configurados en AppConfig. No se acepta prompt arbitrario desde requests,
-AppConfig como texto libre ni el usuario final. La decisión completa está en
-[`ADR-032`](decisions/032-bedrock-prompt-management.md).
+Las llamadas generativas actuales obtienen su configuración desde la versión
+activa del registry en PostgreSQL; se resuelve al empezar cada llamada, sin
+cache, para que una activación/rollback tome efecto en la siguiente inferencia.
+La migración crea una línea base `1.0.0` que copia la configuración actual de:
 
-Las versiones empaquetadas incluyen `conversation-intent-v1.system.md`,
-`conversation-intent-v2.system.md`, `conversation-intent-v3.system.md` y
-`conversation-intent-v4.system.md`. En el proveedor administrado, la versión
-activa es la que devuelve `GetPrompt` para la referencia configurada. Al iniciar
-una clasificación, WCS calcula un SHA-256 del contenido y registra únicamente
-`promptVersion` y `promptHash` junto con el evento `AI_USAGE_RECORDED`. El
-contenido, el mensaje y la respuesta no se registran. Para publicar una nueva
-versión se crea una versión inmutable en Bedrock, se actualizan fixtures y se
-cambia la selección de AppConfig después de revisar el PR y sus resultados.
+| Agent ID | Operación Bedrock | Caso de uso | Responsabilidad |
+| --- | --- | --- | --- |
+| `conversation-router` | `conversation.intent.classify` | `ROUTING` | Interpreta mensaje/contexto y produce una decisión WCS estructurada |
+| `response-generation` | `conversation.reply.generate` | `GENERAL_SUPPORT` | Redacta soporte con contexto y conocimiento aprobado |
+| `response-humanization` | `conversation.response.humanize` | `CATALOG_SEARCH` | Humaniza hechos determinísticos; el validador vigente sigue siendo obligatorio |
+| `conversation-summarizer` | `conversation.summary.generate` | `CONVERSATION_SUMMARY` | Resume mensajes redactados para memoria, nunca datos transaccionales |
 
-Los límites de inferencia son configuración no secreta y quedan acotados por
-el código: `intent-max-output-tokens` entre 1 y 2048,
-`intent-temperature` entre 0 y 2, historial de hasta 12 mensajes y entradas
-de hasta 2000 caracteres por bloque. Después de parsear la respuesta, el plan
-de ejecución aplica `wcs.conversation.guardrails.min-intent-confidence`; una
-intención por debajo del umbral sólo puede producir el fallback seguro.
-Una fuente externa como AppConfig prevalece sobre `application.properties` si
-define la misma key. Los defaults de Terraform para `prod` y `test` aún tienen
-1024; este cambio local no modifica Terraform ni publica AppConfig, así que un
-futuro `apply` puede volver a publicar ese límite. Antes del smoke post-deploy,
-verificar el valor efectivo; para que el límite 2048 persista tras Terraform,
-habrá que alinear ese default en un cambio de infraestructura separado.
+Cada versión inmutable guarda prompts system/user, schemas JSON,
+`modelProvider/modelId`, temperatura, `topP`, esfuerzo de razonamiento,
+límite de entrada/salida, timeout, presupuesto y pricing versionado con tarifas
+input/output. El proveedor, región y credenciales siguen siendo configuración
+de plataforma/IAM. Modelo y tarifas se publican juntos para que cambiar el
+modelo no distorsione el costo estimado de Grafana.
+
+`semanticVersion` usa MAJOR.MINOR.PATCH: primer baseline `1.0.0`; cambio pequeño
+compatible `1.0.1`; cambio funcional compatible `1.1.0`; cambio incompatible de
+responsabilidad/contrato `2.0.0`. `agent_version` sigue siendo la clave SQL.
+Clonar genera una nueva DRAFT inmutable con PATCH siguiente; al crear la DRAFT
+se puede seleccionar MINOR o MAJOR. Lifecycle, evaluación, aprobación y
+activación por ambiente/canal/caso de uso continúan siendo gates obligatorios.
+Rollback significa activar una versión anterior, nunca editar una versión
+publicada.
+
+El primer despliegue de WCS-140 incorpora código y `V27`; después, crear,
+evaluar y activar nuevas versiones de esos agentes se refleja en el siguiente
+llamado sin redeploy de API ni una key por agente en AppConfig. Los templates
+interpolan sólo placeholders allowlisted; no evalúan código, SQL ni expresiones.
+`maxInputTokens` se convierte a un límite aproximado de caracteres (`4
+caracteres/token`) porque este adapter de Converse no fija un límite exacto de
+tokens de entrada. Las métricas de Bedrock reportan el conteo real de tokens.
+
+Los schemas se guardan como contrato versionado y su enforcement depende del
+tipo de agente: el router mapea su schema de salida al contrato de tool y WCS
+valida/parsa la decisión; respuesta, humanización y resumen conservan sus
+validadores determinísticos, mientras que sus schemas son contrato de authoring
+y evaluación. Un prompt no concede autoridad sobre tools, SQL, stock, precio,
+pagos ni acciones sensibles.
+
+Ante activación ausente o perfil inválido, WCS no ejecuta el perfil: emite un
+evento sanitizado con agente/versión/razón y conserva el camino compatible. Los
+eventos `AI_USAGE_RECORDED` incluyen agente, versión SQL, SemVer, modelo,
+hash/version de prompt, tokens, pricing, costo, latencia y error sanitizado;
+nunca incluyen prompts, inputs, respuestas, secretos ni PII. La decisión está
+en [`ADR-043`](decisions/043-sql-agent-invocation-versions.md); `ADR-032` queda
+como decisión histórica supersedida.
+
+La comparación de versiones reutiliza el runner de evaluaciones existente:
+usar el mismo dataset, revisar calidad/grounding, errores, tokens, costo y
+latencia antes de aprobar y activar una candidata.
+
+La versión `1.0.1` del `response-humanization` agrega un bloque estructurado
+`required_facts` al prompt, con nombre, SKU, color, talle, precio, moneda y
+stock de cada producto. Esto reduce omisiones del modelo al redactar listas
+largas; no reemplaza ni relaja el validador determinístico. Si Bedrock vuelve
+a omitir un hecho, WCS conserva el fallback seguro. La migración `V28` activa
+esta versión para `CATALOG_SEARCH` en Telegram y WhatsApp y deja `1.0.0`
+disponible como rollback.
 
 ## Prompt de respuesta y límites del proveedor
 
-La generación de respuestas de soporte usa el prompt lógico
-`conversation-response`. Por default se resuelve desde
-`src/main/resources/prompts/`; con `wcs.ai.prompt.provider=bedrock` se resuelve
-desde Bedrock Prompt Management mediante la referencia inmutable de
-`wcs.ai.prompt.management`. El adapter Bedrock registra esa versión y su hash
-junto con `AI_USAGE_RECORDED`; nunca registra el prompt, el contexto, la
-respuesta ni credenciales.
-
-AppConfig controla únicamente límites no sensibles y bounded: tokens máximos,
-temperatura, cantidad de mensajes, caracteres de entrada, conocimiento
-recuperado y resumen. El timeout del SDK se configura con
-`wcs.ai.request-timeout` y acepta entre 1 y 60 segundos; ante un valor inválido
-se aplica el default seguro de 30 segundos. Un error o timeout de Bedrock se
-registra como uso fallido y el orquestador conserva el fallback seguro, sin
-interrumpir el canal ni revelar detalles internos.
+Si no hay una configuración SQL activa y válida, los adapters conservan el
+prompt registry existente como compatibilidad/fallback. AppConfig sigue
+controlando configuración general no sensible y límites globales de seguridad;
+Secrets Manager y el role IAM siguen siendo autoridad para credenciales y
+acceso a AWS. Errores o timeouts conservan el fallback seguro, sin interrumpir
+el canal ni revelar detalles internos.
 
 Para resultados de catálogo con varias variantes, el humanizador debe conservar
 el orden determinístico del resultado PostgreSQL. WCS valida también ese orden
@@ -147,6 +169,21 @@ referencias posicionales como “el segundo”.
 El proveedor mock continúa siendo el default de los tests y no simula costos de
 Bedrock. La selección productiva se realiza mediante `wcs.ai.provider=bedrock`
 y el acceso se autoriza con el role IAM del runtime.
+
+Para probar localmente los perfiles SQL con Bedrock real, sin consultar
+AppConfig/Secrets Manager ni modificar AWS, usar:
+
+```bash
+mvn -B -DskipTests package
+./scripts/run-bedrock-agent-runtime-local.sh
+```
+
+El script reutiliza el contenedor PostgreSQL local, habilita explícitamente
+`wcs.agent-runtime.activation-enabled=true`, usa `prod` como ambiente de las
+activaciones semilla y deja Telegram en modo mock para que el webhook local no
+envíe mensajes externos. Las credenciales de AWS se resuelven por la cadena
+estándar del SDK y nunca se escriben en el repositorio. El endpoint queda en
+`http://localhost:18080`.
 
 ## Registro de prompts
 

@@ -23,6 +23,7 @@ import com.wally.customersupport.agent.application.registry.AgentRegistryMutatio
 import com.wally.customersupport.agent.application.registry.AgentVersionDraftCommand;
 import com.wally.customersupport.agent.domain.model.AgentLifecyclePolicy;
 import com.wally.customersupport.agent.domain.model.AgentLifecycleState;
+import com.wally.customersupport.agent.domain.model.AgentInvocationConfiguration;
 import com.wally.customersupport.agent.domain.model.AgentVersion;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -71,6 +72,60 @@ class AgentRegistryCommandServiceTest {
         assertThat(result.version()).isEqualTo(1);
         assertThat(result.state()).isEqualTo(AgentLifecycleState.DRAFT);
         verify(registry).saveVersion(any(AgentVersion.class));
+        org.mockito.ArgumentCaptor<AgentVersion> saved = org.mockito.ArgumentCaptor.forClass(AgentVersion.class);
+        verify(registry).saveVersion(saved.capture());
+        assertThat(saved.getValue().semanticVersion()).isEqualTo("1.0.0");
+        assertThat(saved.getValue().invocationConfiguration().systemPrompt()).isEqualTo("System prompt v1");
+        assertThat(saved.getValue().systemPromptHash())
+                .isEqualTo(AgentInvocationConfiguration.sha256("System prompt v1"));
+    }
+
+    @Test
+    void allowsAnExplicitMinorSemverForTheNextImmutableDraft() {
+        when(accessService.authorizeRegistryWrite(ACTOR)).thenReturn(authorized());
+        AgentVersion previous = draft(AgentLifecycleState.DRAFT);
+        when(registry.findVersions("support-specialist")).thenReturn(java.util.List.of(previous));
+        when(registry.findVersion("support-specialist", 2)).thenReturn(java.util.Optional.empty());
+        when(guard.tryAcquire("create_draft:2:support-specialist:" + IDEMPOTENCY_KEY)).thenReturn(true);
+        when(registry.saveVersion(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = service.createDraft(draftCommand("1.1.0"), ACTOR, IDEMPOTENCY_KEY);
+
+        assertThat(result.status()).isEqualTo(AgentRegistryMutationStatus.CREATED);
+        org.mockito.ArgumentCaptor<AgentVersion> saved = org.mockito.ArgumentCaptor.forClass(AgentVersion.class);
+        verify(registry).saveVersion(saved.capture());
+        assertThat(saved.getValue().semanticVersion()).isEqualTo("1.1.0");
+    }
+
+    @Test
+    void rejectsARepeatedSemverWithoutPersistingAnotherDraft() {
+        when(accessService.authorizeRegistryWrite(ACTOR)).thenReturn(authorized());
+        when(registry.findVersions("support-specialist")).thenReturn(java.util.List.of(draft(AgentLifecycleState.DRAFT)));
+
+        var result = service.createDraft(draftCommand("1.0.0"), ACTOR, IDEMPOTENCY_KEY);
+
+        assertThat(result.status()).isEqualTo(AgentRegistryMutationStatus.INVALID);
+        verify(registry, never()).saveVersion(any());
+        verifyNoInteractions(guard);
+    }
+
+    @Test
+    void cloningAnOlderVersionUsesThePatchAfterTheLatestSemanticVersion() {
+        AgentVersion source = draft(1, "1.0.0", AgentLifecycleState.DRAFT);
+        AgentVersion latest = draft(2, "1.2.0", AgentLifecycleState.DRAFT);
+        when(accessService.authorizeRegistryWrite(ACTOR)).thenReturn(authorized());
+        when(registry.findVersion("support-specialist", 1)).thenReturn(java.util.Optional.of(source));
+        when(registry.findVersions("support-specialist")).thenReturn(java.util.List.of(source, latest));
+        when(guard.tryAcquire("clone_version:1:support-specialist:" + IDEMPOTENCY_KEY)).thenReturn(true);
+        when(registry.saveVersion(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = service.cloneVersion("support-specialist", 1, ACTOR, IDEMPOTENCY_KEY);
+
+        assertThat(result.status()).isEqualTo(AgentRegistryMutationStatus.CREATED);
+        org.mockito.ArgumentCaptor<AgentVersion> saved = org.mockito.ArgumentCaptor.forClass(AgentVersion.class);
+        verify(registry).saveVersion(saved.capture());
+        assertThat(saved.getValue().version()).isEqualTo(3);
+        assertThat(saved.getValue().semanticVersion()).isEqualTo("1.2.1");
     }
 
     @Test
@@ -127,6 +182,10 @@ class AgentRegistryCommandServiceTest {
     }
 
     private static AgentVersionDraftCommand draftCommand() {
+        return draftCommand("1.0.0");
+    }
+
+    private static AgentVersionDraftCommand draftCommand(String semanticVersion) {
         return new AgentVersionDraftCommand(
                 "support-specialist",
                 null,
@@ -150,20 +209,28 @@ class AgentRegistryCommandServiceTest {
                 1_000,
                 new BigDecimal("0.050000"),
                 null,
-                "support-eval-v1");
+                "support-eval-v1",
+                semanticVersion,
+                new AgentInvocationConfiguration(
+                        "System prompt v1", "Latest: {{latest_message}}", "{}", "{}", "medium", false));
     }
 
     private static AgentVersion draft(AgentLifecycleState state) {
-        AgentVersion version = AgentVersion.draft(
-                "support-specialist", 1, "Support specialist", "Answers support questions",
+        return draft(1, "1.0.0", state);
+    }
+
+    private static AgentVersion draft(int version, String semanticVersion, AgentLifecycleState state) {
+        AgentVersion definition = AgentVersion.draft(
+                "support-specialist", version, semanticVersion, "Support specialist", "Answers support questions",
                 "bedrock", "openai.gpt-oss-20b-1:0", new com.wally.customersupport.agent.domain.model.AgentInferenceParameters(
                         BigDecimal.ZERO, BigDecimal.ONE), "system-v1", PROMPT_HASH,
                 "support-input-v1", "support-output-v1", Set.of("support.lookup"), Set.of("wcs-support-kb"),
                 "conversation-summary-v1", "grounded-customer-support-v1", Duration.ofSeconds(10), 2,
-                2_000, 1_000, new BigDecimal("0.050000"), null, "support-eval-v1", ACTOR, CREATED_AT);
+                2_000, 1_000, new BigDecimal("0.050000"), null, "support-eval-v1",
+                AgentInvocationConfiguration.empty(), ACTOR, CREATED_AT);
         return state == AgentLifecycleState.DRAFT
-                ? version
-                : new AgentLifecyclePolicy().transition(version, state, ACTOR, CREATED_AT);
+                ? definition
+                : new AgentLifecyclePolicy().transition(definition, state, ACTOR, CREATED_AT);
     }
 
     private static AgentEvaluationControlPlaneAccessDecision authorized() {

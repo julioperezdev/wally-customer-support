@@ -9,9 +9,8 @@ import java.util.Set;
 /**
  * Immutable, publishable definition of one agent version.
  *
- * <p>Only prompt metadata is stored here. The prompt content itself is an
- * external artifact and must never be included in operational events or
- * conversation logs.</p>
+ * <p>The executable configuration is persisted with the immutable version.
+ * Prompt contents must never be included in operational events or logs.</p>
  */
 public record AgentVersion(
         String agentId,
@@ -40,16 +39,54 @@ public record AgentVersion(
         String createdBy,
         Instant createdAt,
         String approvedBy,
-        Instant approvedAt) {
+        Instant approvedAt,
+        String semanticVersion,
+        AgentInvocationConfiguration invocationConfiguration) {
 
     public static final int MAX_STEPS = 3;
     public static final int MAX_TOKENS_PER_DIRECTION = 32_000;
     public static final Duration MAX_TIMEOUT = Duration.ofSeconds(60);
 
+    /** Source compatibility for metadata-only versions created before the SQL prompt registry. */
+    public AgentVersion(
+            String agentId,
+            int version,
+            String name,
+            String purpose,
+            AgentLifecycleState state,
+            String modelProvider,
+            String modelId,
+            AgentInferenceParameters inferenceParameters,
+            String systemPromptVersion,
+            String systemPromptHash,
+            String inputSchemaVersion,
+            String outputSchemaVersion,
+            Set<String> allowedTools,
+            Set<String> knowledgeSources,
+            String memoryPolicy,
+            String responsePolicy,
+            Duration timeout,
+            int maxSteps,
+            int maxInputTokens,
+            int maxOutputTokens,
+            BigDecimal budgetLimitUsd,
+            String fallbackAgentId,
+            String evaluationSuiteVersion,
+            String createdBy,
+            Instant createdAt,
+            String approvedBy,
+            Instant approvedAt) {
+        this(agentId, version, name, purpose, state, modelProvider, modelId, inferenceParameters,
+                systemPromptVersion, systemPromptHash, inputSchemaVersion, outputSchemaVersion,
+                allowedTools, knowledgeSources, memoryPolicy, responsePolicy, timeout, maxSteps,
+                maxInputTokens, maxOutputTokens, budgetLimitUsd, fallbackAgentId, evaluationSuiteVersion,
+                createdBy, createdAt, approvedBy, approvedAt, "1.0.0", AgentInvocationConfiguration.empty());
+    }
+
     /**
-     * Creates a new immutable definition in the authoring state. Prompt and
-     * schema contents remain external artifacts; only their references and
-     * hashes belong to the registry definition.
+ * Creates a new immutable definition in the authoring state. Prompt and
+ * schema contents are persisted in this version; operational logs must use
+ * the identifiers and hashes, never the prompt bodies.
      */
     public static AgentVersion draft(
             String agentId,
@@ -103,7 +140,45 @@ public record AgentVersion(
                 createdBy,
                 createdAt,
                 null,
-                null);
+                null,
+                "1.0.0",
+                AgentInvocationConfiguration.empty());
+    }
+
+    public static AgentVersion draft(
+            String agentId,
+            int version,
+            String semanticVersion,
+            String name,
+            String purpose,
+            String modelProvider,
+            String modelId,
+            AgentInferenceParameters inferenceParameters,
+            String systemPromptVersion,
+            String systemPromptHash,
+            String inputSchemaVersion,
+            String outputSchemaVersion,
+            Set<String> allowedTools,
+            Set<String> knowledgeSources,
+            String memoryPolicy,
+            String responsePolicy,
+            Duration timeout,
+            int maxSteps,
+            int maxInputTokens,
+            int maxOutputTokens,
+            BigDecimal budgetLimitUsd,
+            String fallbackAgentId,
+            String evaluationSuiteVersion,
+            AgentInvocationConfiguration invocationConfiguration,
+            String createdBy,
+            Instant createdAt) {
+        return new AgentVersion(
+                agentId, version, name, purpose, AgentLifecycleState.DRAFT, modelProvider, modelId,
+                inferenceParameters, systemPromptVersion, systemPromptHash, inputSchemaVersion,
+                outputSchemaVersion, allowedTools, knowledgeSources, memoryPolicy, responsePolicy,
+                timeout, maxSteps, maxInputTokens, maxOutputTokens, budgetLimitUsd, fallbackAgentId,
+                evaluationSuiteVersion, createdBy, createdAt, null, null, semanticVersion,
+                invocationConfiguration);
     }
 
     public AgentVersion {
@@ -125,6 +200,8 @@ public record AgentVersion(
         timeout = Objects.requireNonNull(timeout, "timeout");
         budgetLimitUsd = Objects.requireNonNull(budgetLimitUsd, "budgetLimitUsd");
         evaluationSuiteVersion = required(evaluationSuiteVersion, "evaluationSuiteVersion");
+        semanticVersion = AgentSemanticVersion.parse(semanticVersion).toString();
+        invocationConfiguration = Objects.requireNonNull(invocationConfiguration, "invocationConfiguration");
         createdBy = required(createdBy, "createdBy");
         createdAt = Objects.requireNonNull(createdAt, "createdAt");
         approvedBy = normalize(approvedBy);
@@ -159,6 +236,15 @@ public record AgentVersion(
         if (!approvedLifecycle && (approvedBy != null || approvedAt != null)) {
             throw new IllegalArgumentException("approval metadata is only valid for evaluated or published versions");
         }
+    }
+
+    /** Keep immutable prompt content out of accidental log statements. */
+    @Override
+    public String toString() {
+        return "AgentVersion[agentId=" + agentId + ", version=" + version + ", semanticVersion="
+                + semanticVersion + ", state=" + state + ", modelProvider=" + modelProvider
+                + ", modelId=" + modelId + ", systemPromptHash=" + systemPromptHash
+                + ", invocationConfiguration=<redacted>]";
     }
 
     static AgentVersion withLifecycle(
@@ -204,7 +290,9 @@ public record AgentVersion(
                         : source.approvedBy(),
                 target == AgentLifecycleState.APPROVED
                         ? normalizedTransitionAt
-                        : source.approvedAt());
+                        : source.approvedAt(),
+                source.semanticVersion(),
+                source.invocationConfiguration());
     }
 
     public boolean canBeActivated() {
