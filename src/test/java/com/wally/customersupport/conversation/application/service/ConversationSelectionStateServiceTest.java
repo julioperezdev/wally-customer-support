@@ -14,6 +14,8 @@ import com.wally.customersupport.conversation.domain.model.ConversationExecution
 import com.wally.customersupport.conversation.domain.model.ConversationIntent;
 import com.wally.customersupport.conversation.domain.model.ConversationSelection;
 import com.wally.customersupport.conversation.domain.model.ConversationState;
+import com.wally.customersupport.conversation.domain.model.CatalogCandidateReference;
+import com.wally.customersupport.conversation.domain.model.ConversationWorkingMemory;
 import org.junit.jupiter.api.Test;
 
 class ConversationSelectionStateServiceTest {
@@ -104,5 +106,140 @@ class ConversationSelectionStateServiceTest {
 
         assertEquals(true, updated.selection().catalogQuery().isEmpty());
         assertEquals(null, updated.selection().selectedVariantSku());
+    }
+
+    @Test
+    void storesCandidatesFromTheCatalogResultAndFocusesOnlyAnUnambiguousVariant() {
+        UUID conversationId = UUID.randomUUID();
+        ConversationState current = new ConversationState(
+                conversationId, "actor-1", List.of("quiero la campera"), NOW);
+        ConversationContext context = new ConversationContext(
+                conversationId, "customer", "quiero la campera", current.recentMessages(),
+                List.of(), null, List.of(), Channel.TELEGRAM, current.selection());
+        ConversationWorkingMemory observed = ConversationWorkingMemory.catalogObservation(
+                List.of(new CatalogCandidateReference(
+                        "Campera Deploy Friday", "RP-CAM-DF-AZU-M", "M", "Azul", "media/campera.jpg")),
+                "MATCHED",
+                null);
+        ConversationExecutionResult result = new ConversationExecutionResult(
+                "workflow", "CATALOG_SEARCH", "REPLIED", "resultado", null, 1, null, observed);
+
+        ConversationState updated = new ConversationSelectionStateService()
+                .update(current, context, result, NOW.plusSeconds(1));
+
+        assertEquals("RP-CAM-DF-AZU-M", updated.selection().selectedVariantSku());
+        assertEquals("RP-CAM-DF-AZU-M", updated.selection().workingMemory().focusedSku());
+        assertEquals(1, updated.selection().workingMemory().catalogCandidates().size());
+        assertEquals(NOW.plusSeconds(1), updated.selection().workingMemory().updatedAt());
+    }
+
+    @Test
+    void retainsGeneralCatalogCandidatesSoTheCustomerCanReferToAListedItem() {
+        UUID conversationId = UUID.randomUUID();
+        ConversationState current = new ConversationState(
+                conversationId,
+                "actor-1",
+                List.of("que venden"),
+                NOW,
+                0L,
+                null,
+                new ConversationSelection(
+                        ConversationIntent.CATALOG_SEARCH,
+                        ConversationAction.CATALOG_SEARCH,
+                        new CatalogQuery(null, null, null, null, "buzo"),
+                        null,
+                        "CATALOG_SEARCH"));
+        ConversationContext context = new ConversationContext(
+                conversationId, "customer", "que venden", current.recentMessages(),
+                List.of(), null, List.of(), Channel.TELEGRAM, current.selection());
+        ConversationWorkingMemory observed = ConversationWorkingMemory.catalogObservation(
+                List.of(new CatalogCandidateReference(
+                        "Campera Deploy Friday", "RP-CAM-DF-AZU-M", "M", "Azul", null)),
+                "MATCHED",
+                null);
+        ConversationExecutionResult result = new ConversationExecutionResult(
+                "workflow", "CATALOG_SEARCH", "REPLIED", "catalogo", null, 1, null, observed);
+
+        ConversationState updated = new ConversationSelectionStateService()
+                .update(current, context, result, NOW.plusSeconds(1));
+
+        assertEquals(true, updated.selection().catalogQuery().isEmpty());
+        assertEquals("RP-CAM-DF-AZU-M", updated.selection().workingMemory().focusedSku());
+    }
+
+    @Test
+    void clearsWorkingMemoryAfterSuccessfulPurchaseResult() {
+        UUID conversationId = UUID.randomUUID();
+        ConversationWorkingMemory memory = ConversationWorkingMemory.catalogObservation(
+                List.of(new CatalogCandidateReference(
+                        "Campera Deploy Friday", "RP-CAM-DF-AZU-M", "M", "Azul", null)),
+                "MATCHED",
+                NOW);
+        ConversationSelection selection = new ConversationSelection(
+                ConversationIntent.CATALOG_SEARCH,
+                ConversationAction.CATALOG_SEARCH,
+                new CatalogQuery(null, null, null, null, "campera"),
+                "RP-CAM-DF-AZU-M",
+                "CATALOG_SEARCH",
+                memory);
+        ConversationState current = new ConversationState(
+                conversationId, "actor-1", List.of("comprar la campera"), NOW, 0L, null, selection);
+        ConversationContext context = new ConversationContext(
+                conversationId, "customer", "comprar la campera", current.recentMessages(),
+                List.of(), null, List.of(), Channel.TELEGRAM, selection);
+        ConversationExecutionResult result = new ConversationExecutionResult(
+                "workflow",
+                "PURCHASE_LINK",
+                "REPLIED",
+                "Listo, link creado",
+                null,
+                1,
+                null,
+                ConversationWorkingMemory.cleared(NOW.plusSeconds(1)));
+
+        ConversationState updated = new ConversationSelectionStateService()
+                .update(current, context, result, NOW.plusSeconds(2));
+
+        assertEquals(true, updated.selection().catalogQuery().isEmpty());
+        assertEquals(null, updated.selection().selectedVariantSku());
+        assertEquals(false, updated.selection().workingMemory().hasCandidates());
+    }
+
+    @Test
+    void clearsOldCandidatesAndFocusedSkuAfterNoCatalogMatches() {
+        UUID conversationId = UUID.randomUUID();
+        ConversationWorkingMemory memory = ConversationWorkingMemory.catalogObservation(
+                List.of(new CatalogCandidateReference(
+                        "Campera Deploy Friday", "RP-CAM-DF-AZU-M", "M", "Azul", null)),
+                "MATCHED",
+                NOW);
+        ConversationSelection selection = new ConversationSelection(
+                ConversationIntent.CATALOG_SEARCH,
+                ConversationAction.CATALOG_SEARCH,
+                new CatalogQuery(null, null, null, null, "campera"),
+                "RP-CAM-DF-AZU-M",
+                "CATALOG_SEARCH",
+                memory);
+        ConversationState current = new ConversationState(
+                conversationId, "actor-1", List.of("quiero la campera roja"), NOW, 0L, null, selection);
+        ConversationContext context = new ConversationContext(
+                conversationId, "customer", "quiero la campera roja", current.recentMessages(),
+                List.of(), null, List.of(), Channel.TELEGRAM, selection);
+        ConversationExecutionResult result = new ConversationExecutionResult(
+                "workflow",
+                "CATALOG_SEARCH",
+                "REPLIED",
+                "No encontré coincidencias",
+                null,
+                1,
+                null,
+                ConversationWorkingMemory.catalogObservation(List.of(), "NO_MATCH", null));
+
+        ConversationState updated = new ConversationSelectionStateService()
+                .update(current, context, result, NOW.plusSeconds(1));
+
+        assertEquals(null, updated.selection().selectedVariantSku());
+        assertEquals(false, updated.selection().workingMemory().hasCandidates());
+        assertEquals("NO_MATCH", updated.selection().workingMemory().lastCatalogStatus());
     }
 }

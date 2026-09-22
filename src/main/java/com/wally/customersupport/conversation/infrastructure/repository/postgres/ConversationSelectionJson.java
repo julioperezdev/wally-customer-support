@@ -17,7 +17,17 @@ public record ConversationSelectionJson(
         String action,
         CatalogQueryJson catalogQuery,
         String selectedVariantSku,
-        String stage) {
+        String stage,
+        ConversationWorkingMemoryJson workingMemory) {
+
+    public ConversationSelectionJson(
+            String intent,
+            String action,
+            CatalogQueryJson catalogQuery,
+            String selectedVariantSku,
+            String stage) {
+        this(intent, action, catalogQuery, selectedVariantSku, stage, null);
+    }
 
     static ConversationSelectionJson fromDomain(ConversationSelection selection) {
         ConversationSelection normalized = selection == null
@@ -28,7 +38,8 @@ public record ConversationSelectionJson(
                 normalized.action().name(),
                 CatalogQueryJson.fromDomain(normalized.catalogQuery()),
                 normalized.selectedVariantSku(),
-                normalized.stage());
+                normalized.stage(),
+                ConversationWorkingMemoryJson.fromDomain(normalized.workingMemory()));
     }
 
     ConversationSelection toDomain() {
@@ -38,7 +49,10 @@ public record ConversationSelectionJson(
                 parseAction(action),
                 query,
                 selectedVariantSku,
-                stage);
+                stage,
+                workingMemory == null
+                        ? com.wally.customersupport.conversation.domain.model.ConversationWorkingMemory.empty()
+                        : workingMemory.toDomain());
     }
 
     private static ConversationIntent parseIntent(String value) {

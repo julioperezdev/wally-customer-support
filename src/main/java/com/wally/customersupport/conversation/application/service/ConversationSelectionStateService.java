@@ -13,6 +13,9 @@ import com.wally.customersupport.conversation.domain.model.ConversationExecution
 import com.wally.customersupport.conversation.domain.model.ConversationIntent;
 import com.wally.customersupport.conversation.domain.model.ConversationSelection;
 import com.wally.customersupport.conversation.domain.model.ConversationState;
+import com.wally.customersupport.conversation.domain.model.ConversationWorkingMemory;
+import com.wally.customersupport.shared.infrastructure.observability.StructuredEventLog;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 /**
@@ -23,6 +26,7 @@ import org.springframework.stereotype.Service;
  * catalog service still validates every query against PostgreSQL.</p>
  */
 @Service
+@Slf4j
 public class ConversationSelectionStateService {
 
     public ConversationState read(ConversationState current) {
@@ -96,6 +100,43 @@ public class ConversationSelectionStateService {
                 .filter(value -> value != null && !value.isBlank())
                 .orElse(previous.selectedVariantSku());
 
+        boolean clearWorkingMemory = result.workingMemory() != null
+                && "CLEARED".equals(result.workingMemory().lastCatalogStatus());
+        if (clearWorkingMemory) {
+            activeQuery = CatalogQuery.empty();
+            selectedSku = null;
+        }
+
+        ConversationWorkingMemory workingMemory = workingMemory(
+                previous.workingMemory(),
+                result,
+                generalCatalogRequest,
+                updatedAt);
+        if (workingMemory.hasCatalogObservation() && !workingMemory.hasCandidates()) {
+            selectedSku = parsedQuery.map(CatalogQuery::sku)
+                    .filter(value -> value != null && !value.isBlank())
+                    .orElse(null);
+        }
+        if (!generalCatalogRequest && workingMemory.focusedSku() != null) {
+            selectedSku = workingMemory.focusedSku();
+        }
+
+        String memoryResult = clearWorkingMemory
+                || (generalCatalogRequest && !workingMemory.hasCandidates())
+                        ? "RESET"
+                        : workingMemory.hasCatalogObservation() && !workingMemory.hasCandidates()
+                                ? "CANDIDATES_CLEARED"
+                                : "UPDATED";
+        StructuredEventLog.info(log, "CONVERSATION_WORKING_MEMORY_UPDATED", java.util.Map.of(
+                "operation", "conversation.working_memory.update",
+                "result", memoryResult,
+                "correlationId", current.conversationId(),
+                "candidateCount", workingMemory.catalogCandidates().size(),
+                "focusedSkuPresent", workingMemory.focusedSku() != null,
+                "catalogObservation", workingMemory.hasCatalogObservation(),
+                "lastCatalogStatus", workingMemory.lastCatalogStatus() == null
+                        ? "NONE" : workingMemory.lastCatalogStatus()));
+
         return new ConversationState(
                 current.conversationId(),
                 current.actorId(),
@@ -108,7 +149,8 @@ public class ConversationSelectionStateService {
                         actionFor(result.useCase(), previous.action()),
                         activeQuery,
                         selectedSku,
-                        result.useCase()));
+                        result.useCase(),
+                        workingMemory));
     }
 
     private static ConversationState withSelection(
@@ -128,7 +170,38 @@ public class ConversationSelectionStateService {
                         previous.action(),
                         query,
                         query.sku() == null ? previous.selectedVariantSku() : query.sku(),
-                        previous.stage()));
+                        previous.stage(),
+                        previous.workingMemory()));
+    }
+
+    private static ConversationWorkingMemory workingMemory(
+            ConversationWorkingMemory previous,
+            ConversationExecutionResult result,
+        boolean generalCatalogRequest,
+        Instant updatedAt) {
+        if (generalCatalogRequest) {
+            ConversationWorkingMemory observed = result.workingMemory();
+            return new ConversationWorkingMemory(
+                    observed.catalogCandidates(),
+                    observed.focusedSku(),
+                    result.useCase(),
+                    observed.lastCatalogStatus(),
+                    updatedAt);
+        }
+
+        ConversationWorkingMemory observed = result.workingMemory();
+        if ("CLEARED".equals(observed.lastCatalogStatus())) {
+            return ConversationWorkingMemory.empty();
+        }
+        if (observed.hasCatalogObservation()) {
+            return new ConversationWorkingMemory(
+                    observed.catalogCandidates(),
+                    observed.focusedSku(),
+                    result.useCase(),
+                    observed.lastCatalogStatus(),
+                    updatedAt);
+        }
+        return previous.withPendingAction(result.useCase());
     }
 
     private static ConversationIntent intentFor(String useCase, ConversationIntent previous) {

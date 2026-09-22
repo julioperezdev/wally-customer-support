@@ -129,6 +129,12 @@ se aplica el default seguro de 30 segundos. Un error o timeout de Bedrock se
 registra como uso fallido y el orquestador conserva el fallback seguro, sin
 interrumpir el canal ni revelar detalles internos.
 
+Para resultados de catálogo con varias variantes, el humanizador debe conservar
+el orden determinístico del resultado PostgreSQL. WCS valida también ese orden
+de SKU; si el modelo lo cambia u omite un hecho, se entrega el formatter
+determinístico. La memoria de trabajo usa ese mismo orden para interpretar
+referencias posicionales como “el segundo”.
+
 El proveedor mock continúa siendo el default de los tests y no simula costos de
 Bedrock. La selección productiva se realiza mediante `wcs.ai.provider=bedrock`
 y el acceso se autoriza con el role IAM del runtime.

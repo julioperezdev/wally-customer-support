@@ -26,6 +26,8 @@ public final class ConversationDecisionReconciler {
 
     private final ConversationDeterministicSignalResolver deterministicSignalResolver =
             new ConversationDeterministicSignalResolver();
+    private final ConversationWorkingMemoryReferenceResolver workingMemoryReferenceResolver =
+            new ConversationWorkingMemoryReferenceResolver();
 
     public ReconciliationResult reconcile(
             ConversationContext context,
@@ -49,10 +51,11 @@ public final class ConversationDecisionReconciler {
                         ? normalizeCatalogDecision(context, signal)
                         : signal);
         if (deterministicSignal.isPresent() && shouldPreferDeterministicSignal(raw, deterministicSignal.get())) {
+            boolean workingMemoryResolution = isWorkingMemoryResolution(context, deterministicSignal.get());
             return result(
                     deterministicSignal.get(),
-                    "DETERMINISTIC_MESSAGE_SIGNAL",
-                    "EXPLICIT_MESSAGE_SIGNAL");
+                    workingMemoryResolution ? "WORKING_MEMORY_REFERENCE" : "DETERMINISTIC_MESSAGE_SIGNAL",
+                    workingMemoryResolution ? "RECENT_CATALOG_CANDIDATE" : "EXPLICIT_MESSAGE_SIGNAL");
         }
 
         ConversationIntentDecision normalized = normalizeCatalogDecision(context, raw);
@@ -185,6 +188,11 @@ public final class ConversationDecisionReconciler {
                 .orElse(CatalogQuery.empty());
         CatalogQuery currentTurn = CatalogQueryParser.parse(latest).orElse(CatalogQuery.empty());
 
+        Optional<CatalogQuery> memoryReference = workingMemoryReferenceResolver.resolve(context);
+        if (memoryReference.isPresent()) {
+            return memoryReference;
+        }
+
         if (!selection.isEmpty() && (isRefinementTurn(latest)
                 || CatalogQueryParser.followUpKind(latest) != CatalogQueryParser.FollowUpKind.NONE)) {
             CatalogQuery merged = selection.merge(currentTurn);
@@ -206,6 +214,19 @@ public final class ConversationDecisionReconciler {
             return Optional.of(currentTurn);
         }
         return Optional.empty();
+    }
+
+    private boolean isWorkingMemoryResolution(
+            ConversationContext context,
+            ConversationIntentDecision decision) {
+        if (context == null || decision == null || decision.catalogQuery() == null
+                || decision.catalogQuery().sku() == null) {
+            return false;
+        }
+        return workingMemoryReferenceResolver.resolve(context)
+                .map(CatalogQuery::sku)
+                .filter(decision.catalogQuery().sku()::equalsIgnoreCase)
+                .isPresent();
     }
 
     private static boolean isRefinementTurn(String message) {

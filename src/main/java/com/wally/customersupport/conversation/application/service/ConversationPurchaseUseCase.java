@@ -12,6 +12,7 @@ import com.wally.customersupport.catalog.domain.model.CatalogQuery;
 import com.wally.customersupport.conversation.application.port.out.PurchaseLinkCreator;
 import com.wally.customersupport.conversation.domain.model.ConversationContext;
 import com.wally.customersupport.conversation.domain.model.ConversationIntentDecision;
+import com.wally.customersupport.conversation.domain.model.ConversationWorkingMemory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -52,9 +53,19 @@ public class ConversationPurchaseUseCase {
             ConversationIntentDecision decision) {
         Optional<CatalogQuery> query = CatalogQueryParser.parsePurchaseConversation(
                 context.recentMessages(), context.latestMessage())
+                .filter(candidate -> !candidate.isEmpty())
                 .or(() -> decision == null
                         ? Optional.empty()
-                        : Optional.ofNullable(decision.catalogQuery()))
+                        : Optional.ofNullable(decision.catalogQuery()).filter(candidate -> !candidate.isEmpty()))
+                .or(() -> context.selection() == null
+                        || context.selection().workingMemory() == null
+                        || context.selection().workingMemory().focusedSku() == null
+                                ? Optional.empty()
+                                : Optional.of(new CatalogQuery(
+                                        null,
+                                        context.selection().workingMemory().focusedSku(),
+                                        null,
+                                        null)))
                 .filter(candidate -> !candidate.isEmpty());
         if (query.isEmpty()) {
             telemetry.logPurchaseOutcome(context, "VARIANT_REQUIRED");
@@ -97,7 +108,8 @@ public class ConversationPurchaseUseCase {
                 Locale.ROOT,
                 "Listo. Preparé tu pedido de %d %s (%s), por un total de %s %s.\n"
                         + "Podés completar el pago acá: %s",
-                link.quantity(), link.productName(), link.sku(), link.total(), link.currency(), link.checkoutUrl()));
+                link.quantity(), link.productName(), link.sku(), link.total(), link.currency(), link.checkoutUrl()),
+                ConversationWorkingMemory.cleared(null));
     }
 
     private static String customerReference(ConversationContext context) {

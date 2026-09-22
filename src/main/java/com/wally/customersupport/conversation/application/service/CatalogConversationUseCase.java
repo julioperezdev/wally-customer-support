@@ -12,7 +12,9 @@ import com.wally.customersupport.catalog.application.service.CatalogSearchResult
 import com.wally.customersupport.catalog.domain.model.CatalogQuery;
 import com.wally.customersupport.conversation.application.port.out.ResponseHumanizer;
 import com.wally.customersupport.conversation.domain.model.ConversationContext;
+import com.wally.customersupport.conversation.domain.model.CatalogCandidateReference;
 import com.wally.customersupport.conversation.domain.model.ConversationIntentDecision;
+import com.wally.customersupport.conversation.domain.model.ConversationWorkingMemory;
 import com.wally.customersupport.conversation.domain.model.ResponseHumanizationRequest;
 import com.wally.customersupport.conversation.domain.model.ResponseHumanizationResult;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -111,15 +113,41 @@ public class CatalogConversationUseCase {
     private ConversationRenderedResponse humanize(
             ConversationContext context,
             CatalogSearchResult result) {
+        ConversationWorkingMemory workingMemory = workingMemory(result);
         if (context == null || context.channel() == null) {
-            return ConversationRenderedResponse.catalog(CatalogResponseFormatter.render(result), result);
+            return ConversationRenderedResponse.catalog(
+                    CatalogResponseFormatter.render(result), result, workingMemory);
         }
         ResponseHumanizationResult humanized = responseHumanizer.humanize(
                 new ResponseHumanizationRequest("CATALOG_SEARCH", context.channel(), result));
         if (humanized == null || humanized.text() == null || humanized.text().isBlank()) {
-            return ConversationRenderedResponse.catalog(CatalogResponseFormatter.render(result), result);
+            return ConversationRenderedResponse.catalog(
+                    CatalogResponseFormatter.render(result), result, workingMemory);
         }
-        return ConversationRenderedResponse.catalog(humanized.text(), result);
+        return ConversationRenderedResponse.catalog(humanized.text(), result, workingMemory);
+    }
+
+    private static ConversationWorkingMemory workingMemory(CatalogSearchResult result) {
+        if (result == null) {
+            return ConversationWorkingMemory.empty();
+        }
+        java.util.Map<String, String> imageBySku = result.images().stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        image -> image.sku().toLowerCase(java.util.Locale.ROOT),
+                        com.wally.customersupport.catalog.application.service.CatalogImage::reference,
+                        (left, right) -> left));
+        java.util.List<CatalogCandidateReference> candidates = result.facts().stream()
+                .map(fact -> new CatalogCandidateReference(
+                        fact.productName(),
+                        fact.sku(),
+                        fact.size(),
+                        fact.color(),
+                        imageBySku.get(fact.sku().toLowerCase(java.util.Locale.ROOT))))
+                .toList();
+        return ConversationWorkingMemory.catalogObservation(
+                candidates,
+                result.status().name(),
+                null);
     }
 
     public ConversationRenderedResponse lowConfidenceResponse() {

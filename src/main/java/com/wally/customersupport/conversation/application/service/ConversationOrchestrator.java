@@ -166,7 +166,11 @@ public class ConversationOrchestrator {
                             plan,
                             reply,
                             plan.fallbackReason() == null ? "SAFE_GENERAL_SUPPORT_FALLBACK" : plan.fallbackReason())
-                    : ConversationExecutionResult.completed(plan, reply, rendered.mediaReference());
+                    : ConversationExecutionResult.completed(
+                            plan,
+                            reply,
+                            rendered.mediaReference(),
+                            rendered.workingMemory());
         } catch (RuntimeException exception) {
             telemetry.logAgentExecutionFailed(context, plan, exception, startedAt);
             ConversationExecutionPlan fallback = executionPlanFactory.safeFallback("EXECUTION_FAILED");

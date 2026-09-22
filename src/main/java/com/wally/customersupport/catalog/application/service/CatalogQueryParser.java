@@ -22,7 +22,7 @@ public final class CatalogQueryParser {
 
     static final Pattern SKU = Pattern.compile("\\b[a-z]{2}(?:-[a-z0-9]+){2,}\\b");
     static final Pattern SIZE = Pattern.compile(
-            "\\b(?:talle|talla|tamano|size)?\\s*(xxl|extra\\s+grande|extra\\s+small|xl|xs|large|medium|"
+            "\\b(?:talle[s]?|talla[s]?|tamano|size)?\\s*(xxl|extra\\s+grande|extra\\s+small|xl|xs|large|medium|"
                     + "mediano|mediana|grande|pequeno|pequena|chico|chica|small|l|m|s)\\b");
     static final Pattern COLOR = Pattern.compile(
             "\\b(negro|negra|negros|negras|blanco|blanca|blancos|blancas|gris|grises|azul|azules|"
@@ -43,7 +43,7 @@ public final class CatalogQueryParser {
     static final Pattern REFINEMENT_MARKER = Pattern.compile(
             "\\b(que|sea|tambien|también|ahora|solo|sólo|pero|mejor|tipo)\\b");
     private static final Pattern CONTINUATION_MARKER = Pattern.compile(
-            "\\b(opcion|opciones|alternativa|alternativas|mostrame|muestrame|mostrar|"
+            "\\b(opcion|opciones|alternativa|alternativas|mostrame|muestrame|mostrar|mostrarme|"
                     + "anterior|anteriores|antes|esto|este|estos|ese|eso|esa|esas|mismo|misma|"
                     + "ultimo|ultima|arriba|abajo|asi|algo asi|"
                     + "algo como|lo de antes|mas barato|mas barata|mas baratos|mas baratas|"
@@ -92,7 +92,7 @@ public final class CatalogQueryParser {
                     + "\\b(?:que|cuales?)\\s+(?:venden|vendes|ofrecen|tenes|tienes)\\b|"
                     + "\\b(?:tenes|tienes|venden|vendes|ofrecen|ofrece|hay)\\s+(?:algo\\s+de\\s+)?ropa\\b|"
                     + "\\b(?:que|cuales?)\\s+ropa\\s+(?:tienen|hay|ofrecen|venden|vendes|tenes|tienes)\\b|"
-                    + "\\b(?:mostrame|muestrame|mostrar)\\s+(?:todo|el\\s+catalogo|los\\s+productos)\\b");
+                    + "\\b(?:mostrame|muestrame|mostrarme|mostrar)\\s+(?:todo|el\\s+catalogo|los\\s+productos)\\b");
     private static final Pattern AVAILABILITY_FOLLOW_UP = Pattern.compile(
             "\\b(disponible|disponibilidad|hay stock|tiene stock)\\b");
     private static final Pattern PRICE_FOLLOW_UP = Pattern.compile(
@@ -105,18 +105,20 @@ public final class CatalogQueryParser {
             "\\b(tienen|tienes|tenemos|tenes|hay|ofrece|ofrecen|dispone|disponen|venden|vende|quiero|busco|necesito|soy|tengo|estoy|ropa|una|un|el|la|los|las|del|de|en|con|"
                     + "vendes|q|onda|"
                     + "por|para|favor|me|podes|pueden|puedo|cuanto|cuál|cual|es|esta|tiene|stock|disponible|"
-                    + "disponibilidad|precio|precios|color|talle|talla|tamano|size|sku|productos?|catalogo|"
+                    + "disponibilidad|precio|precios|color|talle[s]?|talla[s]?|tamano|size|sku|productos?|catalogo|"
                     + "este|estos|esto|algo|"
             + "alguna|alguno|que|qué|sea|estilo|mi|ahora|solo|sólo|tambien|también|pero|mejor|tipo|"
                     + "frio|abrigo|abrigado|abrigada|invierno|lindo|linda|bonito|bonita|"
                     + "cuesta|cueste|menos|mas|barato|barata|caro|cara|hasta|debajo|encima|entre|"
-                    + "opcion|opciones|alternativa|alternativas|mostrame|muestrame|mostrar|anterior|"
+                    + "opcion|opciones|alternativa|alternativas|mostrame|muestrame|mostrarme|mostrar|anterior|"
                     + "anteriores|antes|eso|esa|esas|asi|algo|lo|y|como|hace|hacen|se|envio|envios|entrega|"
                     + "despacho|pesos?|ars|comprar|comprarla|comprarlo|comprame|compro|adquirir|llevarme|"
                     + "llevar|llevarme|llevo|pasame|generame|link|enlace|pago|pagar|pagarla|compra|unidades?|u|"
                     + "suma|sumame|agrega|agregame|agregar|anade|anademe|anadir|al|carrito|camiseta|camisetas|"
                     + "sudadera|sudaderas|preferentemente|preferible|preferencia|"
-                    + "dos|tres|cuatro|cinco|ese|esos|misma|mismo)\\b");
+                    + "dos|tres|cuatro|cinco|ese|esos|misma|mismo|gusta|gustaria|vamos|prosigamos|"
+                    + "bueno|buena|bien|ok|dale|entonces|o|primero|primera|segundo|segunda|tercero|"
+                    + "tercera|ultimo|ultima|arriba|abajo)\\b");
 
     private static final CatalogConversationQueryResolver CONVERSATION_RESOLVER =
             new CatalogConversationQueryResolver();
@@ -448,6 +450,7 @@ public final class CatalogQueryParser {
                 .replaceAll("\\bbuso\\b", "buzo")
                 .replaceAll("\\bbusos\\b", "buzos")
                 .replaceAll("\\btaya\\b", "talla")
+                .replaceAll("\\bbanca\\b", "blanca")
                 .replaceAll("[¿?¡!.,;:()\\[\\]{}]", " ")
                 .replaceAll("\\s+", " ")
                 .trim();

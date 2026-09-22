@@ -337,6 +337,17 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
                     .append("catalogQuery=").append(selection).append("\n")
                     .append("</active_selection>\n")
                     .append("La selección activa es contexto auxiliar. Validá el turno actual y no inventes hechos.");
+            if (context.selection().workingMemory().hasCandidates()) {
+                userPrompt.append("\n<recent_catalog_candidates>\n");
+                context.selection().workingMemory().catalogCandidates().forEach(candidate ->
+                        userPrompt.append("sku=").append(candidate.sku())
+                                .append("; product=").append(candidate.productName())
+                                .append("; size=").append(candidate.size())
+                                .append("; color=").append(candidate.color())
+                                .append("\n"));
+                userPrompt.append("</recent_catalog_candidates>\n")
+                        .append("Las referencias como 'esa', 'el segundo' o 'una' sólo pueden resolverse hacia estas variantes; si no es único, pedí aclaración.");
+            }
         }
         return userPrompt.toString();
     }

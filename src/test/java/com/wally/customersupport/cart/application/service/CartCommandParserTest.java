@@ -29,6 +29,15 @@ class CartCommandParserTest {
     }
 
     @Test
+    void recognizesInflectedAddPronounWithoutInventingTheVariant() {
+        CartCommandParser.Command command = CartCommandParser.parse("Agregala al carrito");
+
+        assertEquals(CartCommandParser.Action.ADD, command.action());
+        assertEquals(1, command.quantity());
+        assertEquals(true, command.query().isEmpty());
+    }
+
+    @Test
     void parsesImplicitAdditionOnlyWhenTheCartBoundaryAllowsIt() {
         CartCommandParser.Command command = CartCommandParser.parse(
                 "También quiero 1 buzo Spring Boot negro talle XL", true);

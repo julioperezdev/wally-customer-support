@@ -51,6 +51,8 @@ import com.wally.customersupport.conversation.domain.model.ConversationMemoryOwn
 import com.wally.customersupport.conversation.domain.model.ConversationAction;
 import com.wally.customersupport.conversation.domain.model.ConversationIntent;
 import com.wally.customersupport.conversation.domain.model.ConversationSelection;
+import com.wally.customersupport.conversation.domain.model.CatalogCandidateReference;
+import com.wally.customersupport.conversation.domain.model.ConversationWorkingMemory;
 import com.wally.customersupport.conversation.domain.model.ConversationState;
 import com.wally.customersupport.conversation.domain.model.ConversationSummary;
 import com.wally.customersupport.conversation.domain.model.ConversationStatus;
@@ -415,7 +417,16 @@ class WallyCustomerSupportApplicationIntegrationTest {
                 ConversationAction.CATALOG_SEARCH,
                 new CatalogQuery(null, null, "M", "negro", "remera"),
                 null,
-                "CATALOG_SEARCH");
+                "CATALOG_SEARCH",
+                ConversationWorkingMemory.catalogObservation(
+                        List.of(new CatalogCandidateReference(
+                                "Remera NullPointer",
+                                "RP-REM-NP-NEG-M",
+                                "M",
+                                "Negro",
+                                "media/remera.jpg")),
+                        "MATCHED",
+                        now));
         ConversationState saved = conversationMemory.save(new ConversationState(
                 conversationId,
                 "actor-selection",
@@ -431,6 +442,9 @@ class WallyCustomerSupportApplicationIntegrationTest {
         assertEquals("remera", loaded.selection().catalogQuery().productType());
         assertEquals("M", loaded.selection().catalogQuery().size());
         assertEquals("negro", loaded.selection().catalogQuery().color());
+        assertEquals("RP-REM-NP-NEG-M", loaded.selection().workingMemory().focusedSku());
+        assertEquals("media/remera.jpg", loaded.selection().workingMemory()
+                .focusedCandidate().orElseThrow().imageReference());
     }
 
     @Test

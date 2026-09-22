@@ -39,12 +39,13 @@ public final class CartCommandParser {
             "\\b(confirmar|confirmo|confirmá|confirmame|finalizar|finalizo)\\b.*\\b(compra|pedido|carrito|pago)?\\b|"
                     + "\\b(generar|genera|generame|pasame)\\b.*\\b(link|enlace)\\b.*\\b(pago|carrito|compra)?\\b");
     private static final Pattern ADD = Pattern.compile(
-            "\\b(agregar|agrega|agregame|agregue|sumar|suma|sumame|sume|anadir|anade|añadir|añade)\\b|"
+            "\\b(agregar|agrega|agregame|agregue|agregala|agregalo|sumar|suma|sumame|sume|anadir|anade|añadir|añade)\\b|"
                     + "\\b(al|a)\\s+(mi\\s+)?carrito\\b");
     private static final Pattern IMPLICIT_ADD = Pattern.compile(
             "\\b(?:tambien|ademas)\\s+(?:quiero|necesito|me\\s+llevo)\\b");
     private static final Pattern REMOVE = Pattern.compile(
-            "\\b(sacar|saca|quita|quitar|eliminar|elimina|bajar|restar|resta|remove)\\b");
+            "\\b(sacar|saca|sacala|sacalo|quita|quitame|quitamela|quitamelo|quitar|eliminar|elimina|"
+                    + "bajar|restar|resta|remove)\\b");
     private static final Pattern QUANTITY = Pattern.compile(
             "\\b(?:agregar|agrega|agregame|agregue|sumar|suma|sumame|sume|anadir|anade|añadir|añade|"
                     + "sacar|saca|quita|quitar|eliminar|elimina|bajar|restar|resta|remove)\\s+([1-9][0-9]?)\\b|"
@@ -115,8 +116,8 @@ public final class CartCommandParser {
 
     private static CatalogQuery itemQuery(String normalized) {
         String itemMessage = normalized
-                .replaceAll("\\b(?:agregar|agrega|agregame|agregue|sumar|suma|sumame|sume|anadir|anade|añadir|añade|"
-                        + "sacar|saca|quita|quitar|eliminar|elimina|bajar|restar|resta|remove)\\b", " ")
+                .replaceAll("\\b(?:agregar|agrega|agregame|agregue|agregala|agregalo|sumar|suma|sumame|sume|anadir|anade|añadir|añade|"
+                        + "sacar|saca|sacala|sacalo|quita|quitame|quitamela|quitamelo|quitar|eliminar|elimina|bajar|restar|resta|remove)\\b", " ")
                 .replaceAll("\\b(?:quiero|necesito|llevo|tambien|también|ademas|además|otro|otra|"
                         + "al|a|mi|el|la|un|una|por|favor|carrito|cesta)\\b", " ")
                 .replaceAll("\\b[1-9][0-9]?\\b", " ")

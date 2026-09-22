@@ -123,6 +123,7 @@ mantiene una cadena de preview-token ni un bypass local.
 | `TC-010A` | P0 | Catálogo general sin filtros | Devuelve una lista acotada desde PostgreSQL | JUnit + Testcontainers |
 | `TC-010B` | P0 | Seguimiento de variante única | Reconsulta stock/precio vigente usando el contexto previo | Application + Testcontainers |
 | `TC-010C` | P1 | Seguimiento ambiguo | Solicita SKU o producto exacto sin elegir arbitrariamente | Application |
+| `TC-010D` | P0 | Referencia a candidatos recientes | Resuelve demostrativos/ordinales a SKU sólo si la variante coincide; conserva el orden mostrado; no reutiliza candidatos tras un `NO_MATCH`; carrito revalida stock/precio | Unit + Application + Testcontainers |
 | `TC-011` | P0 | Acción sensible | No ejecuta cancelaciones, reembolsos, pagos ni cambios; crea seguimiento | JUnit |
 | `TC-012` | P1 | Imagen de catálogo | Persiste una referencia S3 válida y conserva el envío textual si la media no está disponible | Integration |
 | `TC-012A` | P0 | Ajuste de stock autorizado | Aplica un delta no negativo, registra auditoría y repite idempotentemente | Testcontainers |

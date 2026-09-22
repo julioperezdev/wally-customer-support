@@ -131,6 +131,8 @@ public class BedrockResponseHumanizer implements ResponseHumanizer {
                 Redactá una respuesta breve y natural en español argentino.
                 Conservá literalmente todos los productos, SKU, talles, colores,
                 precios, monedas y cantidades de stock presentes en los hechos.
+                Si hay varios productos, conservá exactamente su orden; el cliente
+                puede referirse a ellos por posición.
                 No agregues datos, promociones, políticas, envíos ni instrucciones.
                 Devolvé únicamente el mensaje final para el cliente.
                 </response_contract>
@@ -188,12 +190,27 @@ public class BedrockResponseHumanizer implements ResponseHumanizer {
                 missingFacts.addAll(missingForFact);
             }
         }
+        if (!catalogOrderPreserved(normalizedGenerated, facts)) {
+            missingFacts.add("CATALOG_ORDER");
+        }
         return diagnostics(
                 unapprovedClaims.isEmpty() && missingFacts.isEmpty(),
                 missingFacts,
                 unapprovedClaims,
                 facts.size(),
                 preservedFactCount);
+    }
+
+    private static boolean catalogOrderPreserved(String generated, List<CatalogFact> facts) {
+        int previousSkuPosition = -1;
+        for (CatalogFact fact : facts) {
+            int skuPosition = generated.indexOf(normalize(fact.sku()));
+            if (skuPosition < 0 || skuPosition <= previousSkuPosition) {
+                return false;
+            }
+            previousSkuPosition = skuPosition;
+        }
+        return true;
     }
 
     private List<String> missingFacts(
