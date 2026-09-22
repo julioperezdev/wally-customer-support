@@ -13,15 +13,13 @@ public record CatalogCandidateReference(
         String productName,
         String sku,
         String size,
-        String color,
-        String imageReference) {
+        String color) {
 
     public CatalogCandidateReference {
         productName = required(productName, "productName");
         sku = required(sku, "sku");
         size = normalize(size);
         color = normalize(color);
-        imageReference = normalize(imageReference);
     }
 
     private static String required(String value, String field) {

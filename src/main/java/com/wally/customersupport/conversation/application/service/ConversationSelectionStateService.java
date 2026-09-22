@@ -29,6 +29,8 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class ConversationSelectionStateService {
 
+    private final ConversationWorkingMemoryReducer workingMemoryReducer = new ConversationWorkingMemoryReducer();
+
     public ConversationState read(ConversationState current) {
         return Objects.requireNonNull(current, "current");
     }
@@ -100,18 +102,14 @@ public class ConversationSelectionStateService {
                 .filter(value -> value != null && !value.isBlank())
                 .orElse(previous.selectedVariantSku());
 
-        boolean clearWorkingMemory = result.workingMemory() != null
-                && "CLEARED".equals(result.workingMemory().lastCatalogStatus());
-        if (clearWorkingMemory) {
+        ConversationWorkingMemoryReducer.Transition memoryTransition = workingMemoryReducer
+                .reduce(previous.workingMemory(), result.workingMemory(), generalCatalogRequest, updatedAt);
+        ConversationWorkingMemory workingMemory = memoryTransition.memory();
+        if (memoryTransition.resetsSelection()) {
             activeQuery = CatalogQuery.empty();
             selectedSku = null;
         }
 
-        ConversationWorkingMemory workingMemory = workingMemory(
-                previous.workingMemory(),
-                result,
-                generalCatalogRequest,
-                updatedAt);
         if (workingMemory.hasCatalogObservation() && !workingMemory.hasCandidates()) {
             selectedSku = parsedQuery.map(CatalogQuery::sku)
                     .filter(value -> value != null && !value.isBlank())
@@ -121,21 +119,15 @@ public class ConversationSelectionStateService {
             selectedSku = workingMemory.focusedSku();
         }
 
-        String memoryResult = clearWorkingMemory
-                || (generalCatalogRequest && !workingMemory.hasCandidates())
-                        ? "RESET"
-                        : workingMemory.hasCatalogObservation() && !workingMemory.hasCandidates()
-                                ? "CANDIDATES_CLEARED"
-                                : "UPDATED";
         StructuredEventLog.info(log, "CONVERSATION_WORKING_MEMORY_UPDATED", java.util.Map.of(
                 "operation", "conversation.working_memory.update",
-                "result", memoryResult,
+                "result", memoryTransition.outcome().name(),
                 "correlationId", current.conversationId(),
                 "candidateCount", workingMemory.catalogCandidates().size(),
                 "focusedSkuPresent", workingMemory.focusedSku() != null,
                 "catalogObservation", workingMemory.hasCatalogObservation(),
                 "lastCatalogStatus", workingMemory.lastCatalogStatus() == null
-                        ? "NONE" : workingMemory.lastCatalogStatus()));
+                        ? "NONE" : workingMemory.lastCatalogStatus().name()));
 
         return new ConversationState(
                 current.conversationId(),
@@ -172,36 +164,6 @@ public class ConversationSelectionStateService {
                         query.sku() == null ? previous.selectedVariantSku() : query.sku(),
                         previous.stage(),
                         previous.workingMemory()));
-    }
-
-    private static ConversationWorkingMemory workingMemory(
-            ConversationWorkingMemory previous,
-            ConversationExecutionResult result,
-        boolean generalCatalogRequest,
-        Instant updatedAt) {
-        if (generalCatalogRequest) {
-            ConversationWorkingMemory observed = result.workingMemory();
-            return new ConversationWorkingMemory(
-                    observed.catalogCandidates(),
-                    observed.focusedSku(),
-                    result.useCase(),
-                    observed.lastCatalogStatus(),
-                    updatedAt);
-        }
-
-        ConversationWorkingMemory observed = result.workingMemory();
-        if ("CLEARED".equals(observed.lastCatalogStatus())) {
-            return ConversationWorkingMemory.empty();
-        }
-        if (observed.hasCatalogObservation()) {
-            return new ConversationWorkingMemory(
-                    observed.catalogCandidates(),
-                    observed.focusedSku(),
-                    result.useCase(),
-                    observed.lastCatalogStatus(),
-                    updatedAt);
-        }
-        return previous.withPendingAction(result.useCase());
     }
 
     private static ConversationIntent intentFor(String useCase, ConversationIntent previous) {

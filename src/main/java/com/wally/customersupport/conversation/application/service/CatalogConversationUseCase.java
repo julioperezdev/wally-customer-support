@@ -1,5 +1,6 @@
 package com.wally.customersupport.conversation.application.service;
 
+import java.util.List;
 import java.util.Optional;
 
 import com.wally.customersupport.agent.application.service.CatalogSpecialistExecutionRequest;
@@ -13,6 +14,7 @@ import com.wally.customersupport.catalog.domain.model.CatalogQuery;
 import com.wally.customersupport.conversation.application.port.out.ResponseHumanizer;
 import com.wally.customersupport.conversation.domain.model.ConversationContext;
 import com.wally.customersupport.conversation.domain.model.CatalogCandidateReference;
+import com.wally.customersupport.conversation.domain.model.CatalogObservationStatus;
 import com.wally.customersupport.conversation.domain.model.ConversationIntentDecision;
 import com.wally.customersupport.conversation.domain.model.ConversationWorkingMemory;
 import com.wally.customersupport.conversation.domain.model.ResponseHumanizationRequest;
@@ -131,23 +133,28 @@ public class CatalogConversationUseCase {
         if (result == null) {
             return ConversationWorkingMemory.empty();
         }
-        java.util.Map<String, String> imageBySku = result.images().stream()
-                .collect(java.util.stream.Collectors.toMap(
-                        image -> image.sku().toLowerCase(java.util.Locale.ROOT),
-                        com.wally.customersupport.catalog.application.service.CatalogImage::reference,
-                        (left, right) -> left));
-        java.util.List<CatalogCandidateReference> candidates = result.facts().stream()
+        List<CatalogCandidateReference> candidates = result.facts().stream()
                 .map(fact -> new CatalogCandidateReference(
                         fact.productName(),
                         fact.sku(),
                         fact.size(),
-                        fact.color(),
-                        imageBySku.get(fact.sku().toLowerCase(java.util.Locale.ROOT))))
+                        fact.color()))
                 .toList();
         return ConversationWorkingMemory.catalogObservation(
                 candidates,
-                result.status().name(),
+                observationStatus(result),
                 null);
+    }
+
+    private static CatalogObservationStatus observationStatus(CatalogSearchResult result) {
+        return switch (result.status()) {
+            case MATCHED -> CatalogObservationStatus.MATCHED;
+            case NO_MATCH -> CatalogObservationStatus.NO_MATCH;
+            case CLARIFICATION -> CatalogObservationStatus.CLARIFICATION;
+            case AMBIGUOUS -> CatalogObservationStatus.AMBIGUOUS;
+            case ALTERNATIVES -> CatalogObservationStatus.ALTERNATIVES;
+            case UNSUPPORTED_CATEGORY -> CatalogObservationStatus.UNSUPPORTED_CATEGORY;
+        };
     }
 
     public ConversationRenderedResponse lowConfidenceResponse() {

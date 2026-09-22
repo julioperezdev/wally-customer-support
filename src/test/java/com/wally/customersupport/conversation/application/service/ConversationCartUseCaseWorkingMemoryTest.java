@@ -16,6 +16,7 @@ import com.wally.customersupport.cart.application.port.in.CartConversationHandle
 import com.wally.customersupport.cart.application.service.CartCommandParser;
 import com.wally.customersupport.catalog.domain.model.CatalogQuery;
 import com.wally.customersupport.conversation.domain.model.CatalogCandidateReference;
+import com.wally.customersupport.conversation.domain.model.CatalogObservationStatus;
 import com.wally.customersupport.conversation.domain.model.Channel;
 import com.wally.customersupport.conversation.domain.model.ConversationAction;
 import com.wally.customersupport.conversation.domain.model.ConversationContext;
@@ -37,8 +38,8 @@ class ConversationCartUseCaseWorkingMemoryTest {
                 new ConversationExecutionPlanFactory());
         var memory = ConversationWorkingMemory.catalogObservation(
                 List.of(new CatalogCandidateReference(
-                        "Campera Deploy Friday", "RP-CAM-DF-AZU-M", "M", "Azul", null)),
-                "MATCHED",
+                        "Campera Deploy Friday", "RP-CAM-DF-AZU-M", "M", "Azul")),
+                CatalogObservationStatus.MATCHED,
                 Instant.now());
         ConversationSelection selection = new ConversationSelection(
                 ConversationIntent.CATALOG_SEARCH,

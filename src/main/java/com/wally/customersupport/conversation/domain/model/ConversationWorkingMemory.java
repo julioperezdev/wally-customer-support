@@ -16,8 +16,7 @@ import java.util.Optional;
 public record ConversationWorkingMemory(
         List<CatalogCandidateReference> catalogCandidates,
         String focusedSku,
-        String pendingAction,
-        String lastCatalogStatus,
+        CatalogObservationStatus lastCatalogStatus,
         Instant updatedAt) {
 
     private static final int MAX_CANDIDATES = 10;
@@ -31,20 +30,22 @@ public record ConversationWorkingMemory(
                         .limit(MAX_CANDIDATES)
                         .toList();
         focusedSku = normalize(focusedSku);
-        pendingAction = normalize(pendingAction);
-        lastCatalogStatus = normalize(lastCatalogStatus);
     }
 
     public static ConversationWorkingMemory empty() {
-        return new ConversationWorkingMemory(List.of(), null, null, null, null);
+        return new ConversationWorkingMemory(List.of(), null, null, null);
     }
 
     public static ConversationWorkingMemory cleared(Instant timestamp) {
-        return new ConversationWorkingMemory(List.of(), null, null, "CLEARED", timestamp);
+        return new ConversationWorkingMemory(List.of(), null, CatalogObservationStatus.CLEARED, timestamp);
     }
 
     public boolean hasCatalogObservation() {
-        return lastCatalogStatus != null;
+        return lastCatalogStatus != null && lastCatalogStatus != CatalogObservationStatus.CLEARED;
+    }
+
+    public boolean isCleared() {
+        return lastCatalogStatus == CatalogObservationStatus.CLEARED;
     }
 
     public boolean hasCandidates() {
@@ -67,25 +68,19 @@ public record ConversationWorkingMemory(
         return Optional.of(catalogCandidates.get(zeroBasedIndex));
     }
 
-    public ConversationWorkingMemory withPendingAction(String action) {
-        return new ConversationWorkingMemory(
-                catalogCandidates,
-                focusedSku,
-                action,
-                lastCatalogStatus,
-                updatedAt);
-    }
-
     public static ConversationWorkingMemory catalogObservation(
             List<CatalogCandidateReference> candidates,
-            String status,
+            CatalogObservationStatus status,
             Instant timestamp) {
+        Objects.requireNonNull(status, "status");
+        if (status == CatalogObservationStatus.CLEARED) {
+            throw new IllegalArgumentException("CLEARED is a memory transition, not a catalog observation");
+        }
         List<CatalogCandidateReference> bounded = candidates == null ? List.of() : candidates;
         String focused = bounded.size() == 1 ? bounded.getFirst().sku() : null;
         return new ConversationWorkingMemory(
                 bounded,
                 focused,
-                "CATALOG_SEARCH",
                 status,
                 timestamp);
     }

@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.UUID;
 
 import com.wally.customersupport.conversation.domain.model.CatalogCandidateReference;
+import com.wally.customersupport.conversation.domain.model.CatalogObservationStatus;
 import com.wally.customersupport.conversation.domain.model.Channel;
 import com.wally.customersupport.conversation.domain.model.ConversationAction;
 import com.wally.customersupport.conversation.domain.model.ConversationContext;
@@ -124,7 +125,7 @@ class ConversationWorkingMemoryReferenceResolverTest {
     private static ConversationContext context(String message, List<CatalogCandidateReference> candidates) {
         ConversationWorkingMemory workingMemory = ConversationWorkingMemory.catalogObservation(
                 candidates,
-                "MATCHED",
+                CatalogObservationStatus.MATCHED,
                 NOW);
         ConversationSelection selection = new ConversationSelection(
                 ConversationIntent.CATALOG_SEARCH,
@@ -146,6 +147,6 @@ class ConversationWorkingMemoryReferenceResolverTest {
     }
 
     private static CatalogCandidateReference candidate(String name, String sku, String size, String color) {
-        return new CatalogCandidateReference(name, sku, size, color, null);
+        return new CatalogCandidateReference(name, sku, size, color);
     }
 }

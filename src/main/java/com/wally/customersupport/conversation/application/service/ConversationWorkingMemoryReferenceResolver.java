@@ -30,29 +30,19 @@ public final class ConversationWorkingMemoryReferenceResolver {
         if (context == null || context.latestMessage() == null) {
             return Optional.empty();
         }
-        ConversationWorkingMemory memory = context.selection() == null
-                ? ConversationWorkingMemory.empty()
-                : context.selection().workingMemory();
-        if (!memory.hasCandidates()) {
-            return Optional.empty();
-        }
-
-        String normalized = normalize(context.latestMessage());
         CatalogQuery current = CatalogQueryParser.parse(context.latestMessage()).orElse(CatalogQuery.empty());
-        Optional<CatalogCandidateReference> reference = candidateFor(normalized, memory);
-        if (reference.isPresent()) {
-            reference = reference.filter(candidate -> matches(candidate, current));
-        } else if (!current.isEmpty()) {
-            reference = uniqueCandidateMatching(current, memory);
-        }
-        return reference.map(candidate -> new CatalogQuery(
-                null,
-                candidate.sku(),
-                null,
-                null));
+        return resolve(context, current);
     }
 
     public Optional<CatalogQuery> resolveForCartMutation(ConversationContext context) {
+        if (context == null || context.latestMessage() == null) {
+            return Optional.empty();
+        }
+        CatalogQuery parsedQuery = CartCommandParser.parse(context.latestMessage()).query();
+        return resolve(context, parsedQuery);
+    }
+
+    private Optional<CatalogQuery> resolve(ConversationContext context, CatalogQuery parsedQuery) {
         if (context == null || context.latestMessage() == null || context.selection() == null) {
             return Optional.empty();
         }
@@ -62,18 +52,13 @@ public final class ConversationWorkingMemoryReferenceResolver {
         }
         String normalized = normalize(context.latestMessage());
         Optional<CatalogCandidateReference> candidate = candidateFor(normalized, memory);
-        CatalogQuery parsedQuery = CartCommandParser.parse(context.latestMessage()).query();
-        final CatalogQuery explicitQuery = parsedQuery == null ? CatalogQuery.empty() : parsedQuery;
+        CatalogQuery explicitQuery = parsedQuery == null ? CatalogQuery.empty() : parsedQuery;
         if (candidate.isPresent()) {
             candidate = candidate.filter(value -> matches(value, explicitQuery));
         } else if (!explicitQuery.isEmpty()) {
             candidate = uniqueCandidateMatching(explicitQuery, memory);
         }
         return candidate.map(value -> new CatalogQuery(null, value.sku(), null, null));
-    }
-
-    public Optional<String> resolveSku(ConversationContext context) {
-        return resolve(context).map(CatalogQuery::sku);
     }
 
     private static Optional<CatalogCandidateReference> candidateFor(

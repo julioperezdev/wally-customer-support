@@ -15,6 +15,7 @@ import com.wally.customersupport.conversation.domain.model.ConversationIntent;
 import com.wally.customersupport.conversation.domain.model.ConversationSelection;
 import com.wally.customersupport.conversation.domain.model.ConversationState;
 import com.wally.customersupport.conversation.domain.model.CatalogCandidateReference;
+import com.wally.customersupport.conversation.domain.model.CatalogObservationStatus;
 import com.wally.customersupport.conversation.domain.model.ConversationWorkingMemory;
 import org.junit.jupiter.api.Test;
 
@@ -74,7 +75,12 @@ class ConversationSelectionStateServiceTest {
                 ConversationAction.CATALOG_SEARCH,
                 new CatalogQuery("nullpointer", null, "M", "negro", "remera"),
                 "RP-REM-NP-NEG-M",
-                "CATALOG_SEARCH");
+                "CATALOG_SEARCH",
+                ConversationWorkingMemory.catalogObservation(
+                        List.of(new CatalogCandidateReference(
+                                "Remera NullPointer", "RP-REM-NP-NEG-M", "M", "Negro")),
+                        CatalogObservationStatus.MATCHED,
+                        NOW));
         ConversationState current = new ConversationState(
                 conversationId,
                 "actor-1",
@@ -106,6 +112,7 @@ class ConversationSelectionStateServiceTest {
 
         assertEquals(true, updated.selection().catalogQuery().isEmpty());
         assertEquals(null, updated.selection().selectedVariantSku());
+        assertEquals(false, updated.selection().workingMemory().hasCandidates());
     }
 
     @Test
@@ -118,8 +125,8 @@ class ConversationSelectionStateServiceTest {
                 List.of(), null, List.of(), Channel.TELEGRAM, current.selection());
         ConversationWorkingMemory observed = ConversationWorkingMemory.catalogObservation(
                 List.of(new CatalogCandidateReference(
-                        "Campera Deploy Friday", "RP-CAM-DF-AZU-M", "M", "Azul", "media/campera.jpg")),
-                "MATCHED",
+                        "Campera Deploy Friday", "RP-CAM-DF-AZU-M", "M", "Azul")),
+                CatalogObservationStatus.MATCHED,
                 null);
         ConversationExecutionResult result = new ConversationExecutionResult(
                 "workflow", "CATALOG_SEARCH", "REPLIED", "resultado", null, 1, null, observed);
@@ -154,8 +161,8 @@ class ConversationSelectionStateServiceTest {
                 List.of(), null, List.of(), Channel.TELEGRAM, current.selection());
         ConversationWorkingMemory observed = ConversationWorkingMemory.catalogObservation(
                 List.of(new CatalogCandidateReference(
-                        "Campera Deploy Friday", "RP-CAM-DF-AZU-M", "M", "Azul", null)),
-                "MATCHED",
+                        "Campera Deploy Friday", "RP-CAM-DF-AZU-M", "M", "Azul")),
+                CatalogObservationStatus.MATCHED,
                 null);
         ConversationExecutionResult result = new ConversationExecutionResult(
                 "workflow", "CATALOG_SEARCH", "REPLIED", "catalogo", null, 1, null, observed);
@@ -172,8 +179,8 @@ class ConversationSelectionStateServiceTest {
         UUID conversationId = UUID.randomUUID();
         ConversationWorkingMemory memory = ConversationWorkingMemory.catalogObservation(
                 List.of(new CatalogCandidateReference(
-                        "Campera Deploy Friday", "RP-CAM-DF-AZU-M", "M", "Azul", null)),
-                "MATCHED",
+                        "Campera Deploy Friday", "RP-CAM-DF-AZU-M", "M", "Azul")),
+                CatalogObservationStatus.MATCHED,
                 NOW);
         ConversationSelection selection = new ConversationSelection(
                 ConversationIntent.CATALOG_SEARCH,
@@ -210,8 +217,8 @@ class ConversationSelectionStateServiceTest {
         UUID conversationId = UUID.randomUUID();
         ConversationWorkingMemory memory = ConversationWorkingMemory.catalogObservation(
                 List.of(new CatalogCandidateReference(
-                        "Campera Deploy Friday", "RP-CAM-DF-AZU-M", "M", "Azul", null)),
-                "MATCHED",
+                        "Campera Deploy Friday", "RP-CAM-DF-AZU-M", "M", "Azul")),
+                CatalogObservationStatus.MATCHED,
                 NOW);
         ConversationSelection selection = new ConversationSelection(
                 ConversationIntent.CATALOG_SEARCH,
@@ -233,13 +240,14 @@ class ConversationSelectionStateServiceTest {
                 null,
                 1,
                 null,
-                ConversationWorkingMemory.catalogObservation(List.of(), "NO_MATCH", null));
+                ConversationWorkingMemory.catalogObservation(
+                        List.of(), CatalogObservationStatus.NO_MATCH, null));
 
         ConversationState updated = new ConversationSelectionStateService()
                 .update(current, context, result, NOW.plusSeconds(1));
 
         assertEquals(null, updated.selection().selectedVariantSku());
         assertEquals(false, updated.selection().workingMemory().hasCandidates());
-        assertEquals("NO_MATCH", updated.selection().workingMemory().lastCatalogStatus());
+        assertEquals(CatalogObservationStatus.NO_MATCH, updated.selection().workingMemory().lastCatalogStatus());
     }
 }

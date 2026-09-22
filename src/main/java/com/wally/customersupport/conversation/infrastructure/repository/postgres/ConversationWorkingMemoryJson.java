@@ -3,14 +3,16 @@ package com.wally.customersupport.conversation.infrastructure.repository.postgre
 import java.time.Instant;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.wally.customersupport.conversation.domain.model.CatalogCandidateReference;
+import com.wally.customersupport.conversation.domain.model.CatalogObservationStatus;
 import com.wally.customersupport.conversation.domain.model.ConversationWorkingMemory;
 
 /** Persistence-only JSON shape for the bounded commercial working memory. */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record ConversationWorkingMemoryJson(
         List<CatalogCandidateReferenceJson> catalogCandidates,
         String focusedSku,
-        String pendingAction,
         String lastCatalogStatus,
         String updatedAt) {
 
@@ -23,8 +25,7 @@ public record ConversationWorkingMemoryJson(
                         .map(CatalogCandidateReferenceJson::fromDomain)
                         .toList(),
                 normalized.focusedSku(),
-                normalized.pendingAction(),
-                normalized.lastCatalogStatus(),
+                normalized.lastCatalogStatus() == null ? null : normalized.lastCatalogStatus().name(),
                 normalized.updatedAt() == null ? null : normalized.updatedAt().toString());
     }
 
@@ -43,30 +44,39 @@ public record ConversationWorkingMemoryJson(
                         ? List.of()
                         : catalogCandidates.stream().map(CatalogCandidateReferenceJson::toDomain).toList(),
                 focusedSku,
-                pendingAction,
-                lastCatalogStatus,
+                parseStatus(lastCatalogStatus),
                 timestamp);
     }
 
+    private static CatalogObservationStatus parseStatus(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return CatalogObservationStatus.valueOf(value);
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
     record CatalogCandidateReferenceJson(
             String productName,
             String sku,
             String size,
-            String color,
-            String imageReference) {
+            String color) {
 
         static CatalogCandidateReferenceJson fromDomain(CatalogCandidateReference candidate) {
             return new CatalogCandidateReferenceJson(
                     candidate.productName(),
                     candidate.sku(),
                     candidate.size(),
-                    candidate.color(),
-                    candidate.imageReference());
+                    candidate.color());
         }
 
         CatalogCandidateReference toDomain() {
             try {
-                return new CatalogCandidateReference(productName, sku, size, color, imageReference);
+                return new CatalogCandidateReference(productName, sku, size, color);
             } catch (RuntimeException ignored) {
                 return null;
             }

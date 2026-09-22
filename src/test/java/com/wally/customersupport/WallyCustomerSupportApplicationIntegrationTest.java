@@ -52,6 +52,7 @@ import com.wally.customersupport.conversation.domain.model.ConversationAction;
 import com.wally.customersupport.conversation.domain.model.ConversationIntent;
 import com.wally.customersupport.conversation.domain.model.ConversationSelection;
 import com.wally.customersupport.conversation.domain.model.CatalogCandidateReference;
+import com.wally.customersupport.conversation.domain.model.CatalogObservationStatus;
 import com.wally.customersupport.conversation.domain.model.ConversationWorkingMemory;
 import com.wally.customersupport.conversation.domain.model.ConversationState;
 import com.wally.customersupport.conversation.domain.model.ConversationSummary;
@@ -423,9 +424,8 @@ class WallyCustomerSupportApplicationIntegrationTest {
                                 "Remera NullPointer",
                                 "RP-REM-NP-NEG-M",
                                 "M",
-                                "Negro",
-                                "media/remera.jpg")),
-                        "MATCHED",
+                                "Negro")),
+                        CatalogObservationStatus.MATCHED,
                         now));
         ConversationState saved = conversationMemory.save(new ConversationState(
                 conversationId,
@@ -443,8 +443,8 @@ class WallyCustomerSupportApplicationIntegrationTest {
         assertEquals("M", loaded.selection().catalogQuery().size());
         assertEquals("negro", loaded.selection().catalogQuery().color());
         assertEquals("RP-REM-NP-NEG-M", loaded.selection().workingMemory().focusedSku());
-        assertEquals("media/remera.jpg", loaded.selection().workingMemory()
-                .focusedCandidate().orElseThrow().imageReference());
+        assertEquals("Remera NullPointer", loaded.selection().workingMemory()
+                .focusedCandidate().orElseThrow().productName());
     }
 
     @Test
