@@ -62,12 +62,31 @@ class MetaWhatsAppOutboundAdapterTest {
     }
 
     @Test
+    void convertsArgentineWhatsAppInboundIdToMetaOutboundRecipientForText() {
+        server.expect(requestTo("https://graph.facebook.com/v25.0/synthetic-phone/messages"))
+                .andExpect(content().json("""
+                        {
+                          "messaging_product":"whatsapp",
+                          "to":"540000000000",
+                          "type":"text",
+                          "text":{"body":"Hola"}
+                        }
+                        """))
+                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
+
+        adapter.send(OutboundMessage.text(
+                Channel.WHATSAPP, conversationId, "5490000000000", "Hola"));
+
+        server.verify();
+    }
+
+    @Test
     void sendsTemplateWithBodyParametersInOrder() {
         server.expect(requestTo("https://graph.facebook.com/v25.0/synthetic-phone/messages"))
                 .andExpect(content().json("""
                         {
                           "messaging_product":"whatsapp",
-                          "to":"synthetic-recipient",
+                          "to":"540000000000",
                           "type":"template",
                           "template":{
                             "name":"order_confirmation",
@@ -85,7 +104,7 @@ class MetaWhatsAppOutboundAdapterTest {
         adapter.send(OutboundMessage.template(
                 Channel.WHATSAPP,
                 conversationId,
-                "synthetic-recipient",
+                "5490000000000",
                 "order_confirmation",
                 "en_US",
                 List.of("John Doe", "123456", "Aug 30, 2026")));
@@ -99,7 +118,7 @@ class MetaWhatsAppOutboundAdapterTest {
                 .andExpect(content().json("""
                         {
                           "messaging_product":"whatsapp",
-                          "to":"synthetic-recipient",
+                          "to":"540000000000",
                           "type":"image",
                           "image":{
                             "link":"https://cdn.example.test/catalog/item.jpg",
@@ -112,7 +131,7 @@ class MetaWhatsAppOutboundAdapterTest {
         adapter.send(OutboundMessage.image(
                 Channel.WHATSAPP,
                 conversationId,
-                "synthetic-recipient",
+                "5490000000000",
                 "wcs/catalog/item.jpg",
                 "Remera NullPointer — Negro, talle M"));
 
