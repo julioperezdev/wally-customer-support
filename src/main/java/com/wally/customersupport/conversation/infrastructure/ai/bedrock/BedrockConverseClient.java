@@ -424,6 +424,32 @@ final class BedrockConverseClient implements MeasuredLlmClient {
                 properties.effectiveRequestTimeout());
     }
 
+    @Override
+    public LlmCompletion completeMeasuredForAgent(
+            String stage,
+            String operation,
+            String userPrompt,
+            AgentRuntimeDefinition definition,
+            Duration maxRequestTimeout,
+            String correlationId) {
+        Objects.requireNonNull(definition, "definition");
+        var invocation = definition.invocationConfiguration();
+        return completeMeasured(
+                stage,
+                operation,
+                invocation.systemPrompt(),
+                userPrompt,
+                definition.maxOutputTokens(),
+                definition.inferenceParameters().temperature().floatValue(),
+                definition.semanticVersion(),
+                definition.systemPromptHash(),
+                correlationId,
+                agentModelSettings(definition),
+                definition.inferenceParameters().topP().floatValue(),
+                definition,
+                effectiveTimeout(definition.timeout(), maxRequestTimeout));
+    }
+
     private LlmCompletion completeMeasured(
             String stage,
             String operation,
@@ -546,21 +572,27 @@ final class BedrockConverseClient implements MeasuredLlmClient {
     private Document additionalModelRequestFields(
             AiProperties.ModelSettings modelSettings,
             AgentRuntimeDefinition definition) {
-        if (!usesGptOssRouterReasoning(modelSettings)) {
+        if (modelSettings.modelId() == null || !modelSettings.modelId().startsWith("openai.gpt-oss-")) {
             return null;
         }
-        String effort = definition == null || definition.invocationConfiguration().reasoningEffort() == null
-                ? properties.effectiveRouterReasoningEffort()
-                : definition.invocationConfiguration().reasoningEffort();
+        String effort = reasoningEffort(modelSettings, definition);
+        if (effort == null) {
+            return null;
+        }
         return Document.fromMap(Map.of(
                 "reasoning_effort",
                 Document.fromString(effort)));
     }
 
-    private boolean usesGptOssRouterReasoning(AiProperties.ModelSettings modelSettings) {
+    private String reasoningEffort(
+            AiProperties.ModelSettings modelSettings,
+            AgentRuntimeDefinition definition) {
+        if (definition != null) {
+            return definition.invocationConfiguration().reasoningEffort();
+        }
         return "conversation-router".equals(modelSettings.agentId())
-                && modelSettings.modelId() != null
-                && modelSettings.modelId().startsWith("openai.gpt-oss-");
+                ? properties.effectiveRouterReasoningEffort()
+                : null;
     }
 
     private void recordUsage(
@@ -629,11 +661,9 @@ final class BedrockConverseClient implements MeasuredLlmClient {
                     ? modelSettings.agentVersion()
                     : definition.agentVersion());
         }
-        if (usesGptOssRouterReasoning(modelSettings)) {
-            fields.put("reasoningEffort", definition == null
-                    || definition.invocationConfiguration().reasoningEffort() == null
-                    ? properties.effectiveRouterReasoningEffort()
-                    : definition.invocationConfiguration().reasoningEffort());
+        String reasoningEffort = reasoningEffort(modelSettings, definition);
+        if (reasoningEffort != null) {
+            fields.put("reasoningEffort", reasoningEffort);
         }
 
         if (success) {
@@ -742,6 +772,14 @@ final class BedrockConverseClient implements MeasuredLlmClient {
         return agentTimeout.compareTo(properties.effectiveRequestTimeout()) < 0
                 ? agentTimeout
                 : properties.effectiveRequestTimeout();
+    }
+
+    private Duration effectiveTimeout(Duration agentTimeout, Duration executionCap) {
+        Duration effective = effectiveTimeout(agentTimeout);
+        return executionCap == null || executionCap.isZero() || executionCap.isNegative()
+                || effective.compareTo(executionCap) <= 0
+                ? effective
+                : executionCap;
     }
 
     private AiProperties.ModelSettings agentModelSettings(AgentRuntimeDefinition definition) {
