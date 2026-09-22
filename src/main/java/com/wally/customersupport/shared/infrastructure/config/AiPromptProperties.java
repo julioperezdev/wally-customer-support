@@ -18,7 +18,7 @@ public record AiPromptProperties(
     }
 
     public int effectiveIntentMaxOutputTokens() {
-        return bounded(intentMaxOutputTokens, 1, 1_024, 1_024);
+        return bounded(intentMaxOutputTokens, 1, 2_048, 2_048);
     }
 
     public float effectiveIntentTemperature() {

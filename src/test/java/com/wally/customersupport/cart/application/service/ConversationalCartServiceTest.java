@@ -84,7 +84,7 @@ class ConversationalCartServiceTest {
         when(catalogReader.findBySku(hoodie.sku())).thenReturn(Optional.of(toCatalogItem(hoodie)));
 
         String first = service.handle(context(
-                "Agregá 2 remeras NullPointer negras talle M al carrito")).orElseThrow().text();
+                "Agregá dos remeras NullPointer negras talle M al carrito")).orElseThrow().text();
         String second = service.handle(context(
                 "Sumá 1 buzo Spring Boot negro talle XL al carrito")).orElseThrow().text();
 

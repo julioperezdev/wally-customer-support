@@ -39,6 +39,14 @@ import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
 class BedrockConverseClientTest {
 
     @Test
+    void defaultsRouterReasoningEffortToMedium() {
+        AiProperties properties = new AiProperties(
+                "bedrock", "openai.gpt-oss-20b-1:0", "us-east-1", "pricing-v1", BigDecimal.ZERO, BigDecimal.ZERO);
+
+        assertEquals("medium", properties.effectiveRouterReasoningEffort());
+    }
+
+    @Test
     void recordsModelTokensCostAndLatencyAsStructuredJson(CapturedOutput output) {
         BedrockRuntimeClient client = mock(BedrockRuntimeClient.class);
         when(client.converse(any(ConverseRequest.class))).thenReturn(ConverseResponse.builder()
@@ -142,7 +150,7 @@ class BedrockConverseClientTest {
     }
 
     @Test
-    void usesGptOssRouterWithHighReasoningAndIndependentPricing(CapturedOutput output) {
+    void usesGptOssRouterWithMediumReasoningAndIndependentPricing(CapturedOutput output) {
         BedrockRuntimeClient client = mock(BedrockRuntimeClient.class);
         when(client.converse(any(ConverseRequest.class))).thenReturn(ConverseResponse.builder()
                 .output(ConverseOutput.fromMessage(Message.builder()
@@ -166,7 +174,7 @@ class BedrockConverseClientTest {
                         "aws-bedrock-us-east-1-standard-2026-09",
                         new BigDecimal("0.0721"),
                         new BigDecimal("0.3090"),
-                        "high"));
+                        "medium"));
 
         String result = new BedrockConverseClient(client, properties).completeForRouter(
                 "intent-classification",
@@ -183,12 +191,12 @@ class BedrockConverseClientTest {
                 org.mockito.ArgumentCaptor.forClass(ConverseRequest.class);
         org.mockito.Mockito.verify(client).converse(request.capture());
         assertEquals("openai.gpt-oss-20b-1:0", request.getValue().modelId());
-        assertEquals("high", request.getValue().additionalModelRequestFields()
+        assertEquals("medium", request.getValue().additionalModelRequestFields()
                 .asMap().get("reasoning_effort").asString());
         assertTrue(output.getOut().contains("\"model\":\"openai.gpt-oss-20b-1:0\""));
         assertTrue(output.getOut().contains("\"agentId\":\"conversation-router\""));
         assertTrue(output.getOut().contains("\"agentVersion\":\"conversation-router-v3\""));
-        assertTrue(output.getOut().contains("\"reasoningEffort\":\"high\""));
+        assertTrue(output.getOut().contains("\"reasoningEffort\":\"medium\""));
         assertTrue(output.getOut().contains("\"estimatedCostUsd\":0.000022660000"));
         assertTrue(output.getOut().contains(
                 "\"pricingVersion\":\"aws-bedrock-us-east-1-standard-2026-09\""));

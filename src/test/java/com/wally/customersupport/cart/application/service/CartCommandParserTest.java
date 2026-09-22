@@ -19,6 +19,33 @@ class CartCommandParserTest {
     }
 
     @Test
+    void parsesSpanishQuantityWordsWithoutPollutingTheCatalogQuery() {
+        CartCommandParser.Command add = CartCommandParser.parse(
+                "Agregá dos remeras NullPointer negras talle M al carrito");
+        CartCommandParser.Command remove = CartCommandParser.parse(
+                "Sacá dos remeras NullPointer negras talle M");
+
+        CatalogQuery expectedQuery = new CatalogQuery("nullpointer", null, "m", "negro", "remera", null, null);
+        assertEquals(CartCommandParser.Action.ADD, add.action());
+        assertEquals(2, add.quantity());
+        assertEquals(expectedQuery, add.query());
+        assertEquals(CartCommandParser.Action.REMOVE, remove.action());
+        assertEquals(2, remove.quantity());
+        assertEquals(expectedQuery, remove.query());
+    }
+
+    @Test
+    void parsesSingularQuantityWordsButKeepsPlainCatalogRequestsOutsideTheCart() {
+        CartCommandParser.Command add = CartCommandParser.parse(
+                "Sumá una remera NullPointer negra talle M al carrito");
+
+        assertEquals(CartCommandParser.Action.ADD, add.action());
+        assertEquals(1, add.quantity());
+        assertEquals(new CatalogQuery("nullpointer", null, "m", "negro", "remera", null, null), add.query());
+        assertEquals(CartCommandParser.Action.NONE, CartCommandParser.parse("Quiero una remera").action());
+    }
+
+    @Test
     void parsesAddCommandForAnotherItem() {
         CartCommandParser.Command command = CartCommandParser.parse(
                 "Sumá también un buzo Spring Boot negro talle XL al carrito");

@@ -56,8 +56,9 @@ de lenguaje natural. El alcance preserva los contratos de BD y la
 infraestructura; la evidencia requerida es la matriz de tests, `mvn verify` y
 el smoke posterior sólo después de integrar el PR. El router usa
 `conversation-router-v3` sobre `openai.gpt-oss-20b-1:0` con reasoning effort
-`high`; la definición está en el `application.properties` versionado y no
-agrega claves específicas del router a AppConfig. GPT-5.6 Luna queda diferido
+`medium` y un presupuesto de salida de 2048 tokens; la definición está en el
+`application.properties` versionado y no agrega claves específicas del router
+a AppConfig. GPT-5.6 Luna queda diferido
 hasta contar con acceso aprobado. La integración futura al Agent Registry
 trasladará modelo, prompts y activaciones a su versión persistida. El modelo,
 esfuerzo, precio, tokens, costo y latencia aparecen en `AI_USAGE_RECORDED` para

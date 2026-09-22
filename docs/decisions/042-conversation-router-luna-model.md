@@ -30,20 +30,23 @@ tool use cuando la feature está habilitada; el resultado sigue pasando por el
 parser, la allowlist y la reconciliación WCS. El modelo no ejecuta herramientas,
 SQL ni operaciones transaccionales por sí mismo.
 
-## Estado vigente
+## Configuración candidata de este cambio
 
-GPT-5.6 Luna no está habilitado para la cuenta y no debe invocarse. El router
-usa `openai.gpt-oss-20b-1:0`, igual que el modelo ya autorizado, con
-`reasoning_effort=high` enviado como `additionalModelRequestFields` de Converse.
-La configuración activa es `conversation-router-v3`, definida en
-`application.properties`; el costo se calcula con el pricing OSS estándar ya
-registrado. El esfuerzo `high` es exclusivo del router y queda en los eventos
-`AI_USAGE_RECORDED` como `reasoningEffort`.
+GPT-5.6 Luna no está habilitado para la cuenta y no debe invocarse. La
+configuración candidata del router usa `openai.gpt-oss-20b-1:0`, igual que el
+modelo ya autorizado, con `reasoning_effort=medium` enviado como
+`additionalModelRequestFields` de Converse. La versión es
+`conversation-router-v3`, definida en `application.properties`; el costo se
+calcula con el pricing OSS estándar ya registrado. El esfuerzo `medium` es
+exclusivo del router y queda en los eventos `AI_USAGE_RECORDED` como
+`reasoningEffort`. El límite de salida candidato es 2048 tokens, por debajo del
+máximo de salida de 16K documentado por AWS para GPT-OSS 20B; la respuesta al
+usuario conserva su presupuesto independiente.
 
 AWS documenta para GPT-OSS los niveles de esfuerzo `low`, `medium` y `high`, y
 que el campo de modelo `reasoning_effort` se envía a Converse mediante
 `additionalModelRequestFields` ([parámetros GPT-OSS en Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-openai.html), [guía AWS sobre razonamiento GPT-OSS](https://aws.amazon.com/blogs/machine-learning/run-nvidia-nemotron-and-openai-gpt-oss-models-on-amazon-bedrock-in-aws-govcloud-us/)).
-`high` puede aumentar latencia y tokens; cualquier mejora de calidad debe
+`medium` se propone como equilibrio inicial frente a `high`; cualquier mejora de calidad debe
 medirse con la evaluación offline y el mismo dataset del baseline.
 
 En esta etapa la configuración del candidato vive en el

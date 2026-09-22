@@ -12,7 +12,7 @@ Related repository paths: `src/main/java/com/wally/customersupport/conversation/
 | --- | --- | --- | --- |
 | `llm.mock.v1` | Interno | Desarrollo, tests y fixtures | Accepted |
 | `llm.bedrock.openai.gpt-oss-20b.v1` | AWS Bedrock | Clasificación de intención y soporte general | Accepted |
-| `conversation-router-v3` | AWS Bedrock GPT-OSS 20B | Routing semántico, reasoning effort `high` | Active; evaluación pendiente |
+| `conversation-router-v3` | AWS Bedrock GPT-OSS 20B | Routing semántico, reasoning effort `medium` | Candidata local; evaluación pendiente |
 | `llm.bedrock.nova-pro.v1` | AWS Bedrock | Referencia histórica para generación documental | Reference |
 
 Bedrock se integra detrás de `ConversationIntentClassifier` y `LlmClient`.
@@ -108,11 +108,17 @@ versión se crea una versión inmutable en Bedrock, se actualizan fixtures y se
 cambia la selección de AppConfig después de revisar el PR y sus resultados.
 
 Los límites de inferencia son configuración no secreta y quedan acotados por
-el código: `intent-max-output-tokens` entre 1 y 1024,
+el código: `intent-max-output-tokens` entre 1 y 2048,
 `intent-temperature` entre 0 y 2, historial de hasta 12 mensajes y entradas
 de hasta 2000 caracteres por bloque. Después de parsear la respuesta, el plan
 de ejecución aplica `wcs.conversation.guardrails.min-intent-confidence`; una
 intención por debajo del umbral sólo puede producir el fallback seguro.
+Una fuente externa como AppConfig prevalece sobre `application.properties` si
+define la misma key. Los defaults de Terraform para `prod` y `test` aún tienen
+1024; este cambio local no modifica Terraform ni publica AppConfig, así que un
+futuro `apply` puede volver a publicar ese límite. Antes del smoke post-deploy,
+verificar el valor efectivo; para que el límite 2048 persista tras Terraform,
+habrá que alinear ese default en un cambio de infraestructura separado.
 
 ## Prompt de respuesta y límites del proveedor
 
@@ -209,19 +215,19 @@ arbitrario ni ejecutar herramientas por su cuenta.
 
 El prompt de routing está versionado como `conversation-intent-v4` y el
 texto del cliente se envía como datos delimitados y acotados. La generación de
-respuestas conserva el modelo general seleccionado por `wcs.ai.model`. En esta
+respuestas conserva el modelo general seleccionado por `wcs.ai.model`. El
 router semántico usa `conversation-router-v3` con
 `openai.gpt-oss-20b-1:0`, el modelo ya autorizado y usado por WCS. El esfuerzo
-de razonamiento `high` se envía como parámetro específico de GPT-OSS solamente
+de razonamiento `medium` se enviará como parámetro específico de GPT-OSS solamente
 en las llamadas del router; no altera las llamadas de generación de respuestas
 ni de otros agentes. El model ID, pricing y nivel de esfuerzo están definidos
 en el `application.properties` versionado, sin claves adicionales de router en
 AppConfig. `AI_USAGE_RECORDED` registra `reasoningEffort` para que la evaluación
 compare latencia, tokens, costo y calidad bajo esa configuración.
 
-El nivel `high` puede ayudar al router con mensajes coloquiales, incompletos y
-multiturno, pero puede aumentar tokens y latencia. No se asume que mejore la
-calidad: debe confirmarse con la matriz de evaluación usando el mismo dataset.
+El nivel `medium` es la configuración candidata para equilibrar razonamiento,
+latencia y costo frente al `high` anterior. No se asume que mejore la calidad:
+debe confirmarse con la matriz de evaluación usando el mismo dataset.
 
 El cambio es reversible mediante una nueva versión de código o, cuando el
 router se integre al Agent Registry, mediante una activación hacia otra
@@ -235,10 +241,13 @@ allow-listed; Luna no obtiene autoridad para ejecutar SQL, pagar o modificar
 el carrito. Bedrock documenta Converse y client-side tool use para este modelo,
 pero no structured outputs ni server-side tool use en `bedrock-runtime`, por
 eso el contrato JSON/tool de WCS sigue siendo validado en la aplicación.
-GPT-OSS puede emitir un bloque de razonamiento antes del resultado final; por
-eso el routing y la redacción usan un presupuesto de salida de `1024`
-tokens. `maxTokens` incluye razonamiento y respuesta, y el adapter sólo extrae
-bloques de texto finales, nunca razonamiento ni prompts.
+GPT-OSS puede emitir un bloque de razonamiento antes del resultado final.
+`maxTokens` incluye razonamiento y respuesta. El router tendrá un límite
+versionado de `2048` tokens para reducir truncamientos del JSON de decisión;
+la generación de respuestas conserva su límite independiente de `1024`.
+Ambos están por debajo del máximo de salida de 16K documentado por AWS para
+GPT-OSS 20B. El adapter sólo extrae bloques de texto finales, nunca
+razonamiento ni prompts.
 El contrato exige una confianza numérica. Si Bedrock devuelve una intención
 `GENERAL_SUPPORT` válida pero omite la confianza, el backend aplica `0.70` sólo
 para ese camino documental de bajo riesgo; las intenciones operativas siguen
@@ -300,7 +309,7 @@ wcs.ai.router.version=conversation-router-v3
 wcs.ai.router.pricing-version=aws-bedrock-us-east-1-standard-2026-09
 wcs.ai.router.input-price-usd-per-million-tokens=0.0721
 wcs.ai.router.output-price-usd-per-million-tokens=0.3090
-wcs.ai.router.reasoning-effort=high
+wcs.ai.router.reasoning-effort=medium
 ```
 
 `wcs.ai.model` y sus precios siguen siendo la configuración de la respuesta

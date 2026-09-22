@@ -34,7 +34,7 @@ a compilar por cada ajuste permitido.
 
 | Configuración | Default | Límite aplicado |
 | --- | ---: | --- |
-| `wcs.ai.prompt.intent-max-output-tokens` | 1024 | 1–1024 |
+| `wcs.ai.prompt.intent-max-output-tokens` | 2048 | 1–2048 |
 | `wcs.ai.prompt.intent-temperature` | 0.0 | 0–2 |
 | `wcs.ai.prompt.max-input-characters` | 2000 | 1–2000 |
 | `wcs.ai.prompt.max-history-messages` | 12 | 1–20 |
