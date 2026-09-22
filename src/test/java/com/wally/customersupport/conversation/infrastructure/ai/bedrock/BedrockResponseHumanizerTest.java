@@ -74,6 +74,33 @@ class BedrockResponseHumanizerTest {
     }
 
     @Test
+    void fallsBackWhenBedrockReordersCatalogVariantsUsedForOrdinalReferences() {
+        CatalogSearchResult resultFacts = new CatalogSearchResult(
+                CatalogSearchResult.Status.MATCHED,
+                List.of(
+                        new CatalogFact(
+                                "Buzo Spring Boot", "RP-BUZ-SB-GRI-L", "L", "Gris",
+                                new BigDecimal("42900.00"), "ARS", 5),
+                        new CatalogFact(
+                                "Campera Deploy Friday", "RP-CAM-DF-AZU-M", "M", "Azul",
+                                new BigDecimal("67900.00"), "ARS", 4)),
+                null,
+                CatalogSearchResult.FollowUpKind.NONE,
+                "MATCHED");
+        when(converseClient.complete(
+                anyString(), anyString(), anyString(), anyString(), anyInt(), anyFloat(), anyString(), anyString()))
+                .thenReturn("Campera Deploy Friday RP-CAM-DF-AZU-M, Azul, talle M, 67.900,00 ARS, stock 4. "
+                        + "Buzo Spring Boot RP-BUZ-SB-GRI-L, Gris, talle L, 42.900,00 ARS, stock 5.");
+
+        ResponseHumanizationResult result = humanizer.humanize(request(resultFacts));
+
+        assertThat(result.outcome()).isEqualTo(ResponseHumanizationResult.Outcome.FALLBACK);
+        assertThat(result.fallbackReason()).isEqualTo("FACTS_NOT_PRESERVED");
+        assertThat(result.text().indexOf("RP-BUZ-SB-GRI-L"))
+                .isLessThan(result.text().indexOf("RP-CAM-DF-AZU-M"));
+    }
+
+    @Test
     void fallsBackToDeterministicFactsWhenBedrockFails() {
         when(converseClient.complete(
                 anyString(), anyString(), anyString(), anyString(), anyInt(), anyFloat(), anyString(), anyString()))

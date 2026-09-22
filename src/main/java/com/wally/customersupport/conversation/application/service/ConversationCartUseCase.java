@@ -29,6 +29,8 @@ public class ConversationCartUseCase {
 
     private final CartConversationHandler cartConversationHandler;
     private final ConversationExecutionPlanFactory executionPlanFactory;
+    private final ConversationWorkingMemoryReferenceResolver referenceResolver =
+            new ConversationWorkingMemoryReferenceResolver();
 
     @Autowired
     public ConversationCartUseCase(
@@ -52,9 +54,18 @@ public class ConversationCartUseCase {
         try {
             // Keep explicit product, variant and quantity data deterministic
             // even when this fast path runs before model classification.
+            CartCommandParser.Command command = CartCommandParser.parse(
+                    context.latestMessage(), implicitCartAddition);
+            if (command.action() == CartCommandParser.Action.ADD
+                    || command.action() == CartCommandParser.Action.REMOVE) {
+                var reference = referenceResolver.resolveForCartMutation(context);
+                if (reference.isPresent()) {
+                    command = new CartCommandParser.Command(command.action(), reference.get(), command.quantity());
+                }
+            }
             return cartConversationHandler.handle(
                     context,
-                    CartCommandParser.parse(context.latestMessage(), implicitCartAddition));
+                    command);
         } catch (RuntimeException exception) {
             StructuredEventLog.warn(log, "CONVERSATIONAL_CART_FAILED", java.util.Map.of(
                     "errorType", exception.getClass().getSimpleName()));

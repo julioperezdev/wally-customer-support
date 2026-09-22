@@ -50,7 +50,8 @@ public final class CatalogPolicyCompositionUseCase {
                 "result", "COMPOSED"));
         return Optional.of(new ConversationRenderedResponse(
                 catalogResponse.text() + "\n\n" + shippingReply,
-                catalogResponse.mediaReference()));
+                catalogResponse.mediaReference(),
+                catalogResponse.workingMemory()));
     }
 
     private Optional<CatalogQuery> resolveCatalogQuery(

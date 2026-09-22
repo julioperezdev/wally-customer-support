@@ -142,7 +142,7 @@ class BedrockConverseClientTest {
     }
 
     @Test
-    void usesDedicatedRouterModelPricingAndVersionWithoutChangingDefaultModel(CapturedOutput output) {
+    void usesGptOssRouterWithHighReasoningAndIndependentPricing(CapturedOutput output) {
         BedrockRuntimeClient client = mock(BedrockRuntimeClient.class);
         when(client.converse(any(ConverseRequest.class))).thenReturn(ConverseResponse.builder()
                 .output(ConverseOutput.fromMessage(Message.builder()
@@ -161,11 +161,12 @@ class BedrockConverseClientTest {
                 Duration.ofSeconds(30),
                 false,
                 new AiProperties.Router(
-                        "us.openai.gpt-5.6-luna",
-                        "conversation-router-v2",
-                        "aws-bedrock-us-east-1-standard-2026-09-gpt-5.6-luna",
-                        new BigDecimal("0.22"),
-                        new BigDecimal("1.32")));
+                        "openai.gpt-oss-20b-1:0",
+                        "conversation-router-v3",
+                        "aws-bedrock-us-east-1-standard-2026-09",
+                        new BigDecimal("0.0721"),
+                        new BigDecimal("0.3090"),
+                        "high"));
 
         String result = new BedrockConverseClient(client, properties).completeForRouter(
                 "intent-classification",
@@ -181,13 +182,16 @@ class BedrockConverseClientTest {
         org.mockito.ArgumentCaptor<ConverseRequest> request =
                 org.mockito.ArgumentCaptor.forClass(ConverseRequest.class);
         org.mockito.Mockito.verify(client).converse(request.capture());
-        assertEquals("us.openai.gpt-5.6-luna", request.getValue().modelId());
-        assertTrue(output.getOut().contains("\"model\":\"us.openai.gpt-5.6-luna\""));
+        assertEquals("openai.gpt-oss-20b-1:0", request.getValue().modelId());
+        assertEquals("high", request.getValue().additionalModelRequestFields()
+                .asMap().get("reasoning_effort").asString());
+        assertTrue(output.getOut().contains("\"model\":\"openai.gpt-oss-20b-1:0\""));
         assertTrue(output.getOut().contains("\"agentId\":\"conversation-router\""));
-        assertTrue(output.getOut().contains("\"agentVersion\":\"conversation-router-v2\""));
-        assertTrue(output.getOut().contains("\"estimatedCostUsd\":0.000088000000"));
+        assertTrue(output.getOut().contains("\"agentVersion\":\"conversation-router-v3\""));
+        assertTrue(output.getOut().contains("\"reasoningEffort\":\"high\""));
+        assertTrue(output.getOut().contains("\"estimatedCostUsd\":0.000022660000"));
         assertTrue(output.getOut().contains(
-                "\"pricingVersion\":\"aws-bedrock-us-east-1-standard-2026-09-gpt-5.6-luna\""));
+                "\"pricingVersion\":\"aws-bedrock-us-east-1-standard-2026-09\""));
     }
 
     @Test

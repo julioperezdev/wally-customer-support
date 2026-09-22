@@ -310,6 +310,15 @@ public class ConversationalCartService implements CartConversationHandler {
         if (command.query() != null && !command.query().isEmpty()) {
             return Optional.of(command.query());
         }
+        if (context.selection() != null
+                && context.selection().workingMemory() != null
+                && context.selection().workingMemory().focusedSku() != null) {
+            return Optional.of(new CatalogQuery(
+                    null,
+                    context.selection().workingMemory().focusedSku(),
+                    null,
+                    null));
+        }
         for (String previous : context.recentMessages()) {
             Optional<CatalogQuery> candidate = CatalogQueryParser.parseConversation(
                     context.recentMessages(), previous).filter(query -> !query.isEmpty());

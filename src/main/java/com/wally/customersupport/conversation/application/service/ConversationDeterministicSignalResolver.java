@@ -49,6 +49,8 @@ public final class ConversationDeterministicSignalResolver {
 
     private final CatalogConversationQueryResolver catalogQueryResolver =
             new CatalogConversationQueryResolver();
+    private final ConversationWorkingMemoryReferenceResolver workingMemoryReferenceResolver =
+            new ConversationWorkingMemoryReferenceResolver();
 
     public Optional<ConversationIntentDecision> resolve(ConversationContext context) {
         if (context == null || context.latestMessage() == null || context.latestMessage().isBlank()) {
@@ -101,16 +103,21 @@ public final class ConversationDeterministicSignalResolver {
         Optional<CatalogQuery> parsed = catalogQueryResolver.parseConversation(
                 context.recentMessages(), latest);
         Optional<CatalogQuery> currentTurn = CatalogQueryParser.parse(latest);
+        Optional<CatalogQuery> memoryReference = workingMemoryReferenceResolver.resolve(context);
 
         if (!generalRequest && !unsupportedCategory && !unsupportedAttribute && !followUp && !refinement
                 && parsed.filter(query -> !query.isEmpty()).isEmpty()
-                && currentTurn.filter(query -> !query.isEmpty()).isEmpty()) {
+                && currentTurn.filter(query -> !query.isEmpty()).isEmpty()
+                && memoryReference.isEmpty()) {
             return Optional.empty();
         }
         if (generalRequest && !CatalogQueryParser.isContextualContinuation(latest)) {
             return Optional.of(CatalogQuery.empty());
         }
-        return parsed.or(() -> currentTurn).or(() -> Optional.of(CatalogQuery.empty()));
+        return parsed
+                .or(() -> currentTurn)
+                .or(() -> memoryReference)
+                .or(() -> Optional.of(CatalogQuery.empty()));
     }
 
     private static ConversationIntentDecision decision(

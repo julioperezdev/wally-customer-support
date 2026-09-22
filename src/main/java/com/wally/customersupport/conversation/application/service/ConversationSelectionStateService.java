@@ -13,6 +13,9 @@ import com.wally.customersupport.conversation.domain.model.ConversationExecution
 import com.wally.customersupport.conversation.domain.model.ConversationIntent;
 import com.wally.customersupport.conversation.domain.model.ConversationSelection;
 import com.wally.customersupport.conversation.domain.model.ConversationState;
+import com.wally.customersupport.conversation.domain.model.ConversationWorkingMemory;
+import com.wally.customersupport.shared.infrastructure.observability.StructuredEventLog;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 /**
@@ -23,7 +26,10 @@ import org.springframework.stereotype.Service;
  * catalog service still validates every query against PostgreSQL.</p>
  */
 @Service
+@Slf4j
 public class ConversationSelectionStateService {
+
+    private final ConversationWorkingMemoryReducer workingMemoryReducer = new ConversationWorkingMemoryReducer();
 
     public ConversationState read(ConversationState current) {
         return Objects.requireNonNull(current, "current");
@@ -96,6 +102,33 @@ public class ConversationSelectionStateService {
                 .filter(value -> value != null && !value.isBlank())
                 .orElse(previous.selectedVariantSku());
 
+        ConversationWorkingMemoryReducer.Transition memoryTransition = workingMemoryReducer
+                .reduce(previous.workingMemory(), result.workingMemory(), generalCatalogRequest, updatedAt);
+        ConversationWorkingMemory workingMemory = memoryTransition.memory();
+        if (memoryTransition.resetsSelection()) {
+            activeQuery = CatalogQuery.empty();
+            selectedSku = null;
+        }
+
+        if (workingMemory.hasCatalogObservation() && !workingMemory.hasCandidates()) {
+            selectedSku = parsedQuery.map(CatalogQuery::sku)
+                    .filter(value -> value != null && !value.isBlank())
+                    .orElse(null);
+        }
+        if (!generalCatalogRequest && workingMemory.focusedSku() != null) {
+            selectedSku = workingMemory.focusedSku();
+        }
+
+        StructuredEventLog.info(log, "CONVERSATION_WORKING_MEMORY_UPDATED", java.util.Map.of(
+                "operation", "conversation.working_memory.update",
+                "result", memoryTransition.outcome().name(),
+                "correlationId", current.conversationId(),
+                "candidateCount", workingMemory.catalogCandidates().size(),
+                "focusedSkuPresent", workingMemory.focusedSku() != null,
+                "catalogObservation", workingMemory.hasCatalogObservation(),
+                "lastCatalogStatus", workingMemory.lastCatalogStatus() == null
+                        ? "NONE" : workingMemory.lastCatalogStatus().name()));
+
         return new ConversationState(
                 current.conversationId(),
                 current.actorId(),
@@ -108,7 +141,8 @@ public class ConversationSelectionStateService {
                         actionFor(result.useCase(), previous.action()),
                         activeQuery,
                         selectedSku,
-                        result.useCase()));
+                        result.useCase(),
+                        workingMemory));
     }
 
     private static ConversationState withSelection(
@@ -128,7 +162,8 @@ public class ConversationSelectionStateService {
                         previous.action(),
                         query,
                         query.sku() == null ? previous.selectedVariantSku() : query.sku(),
-                        previous.stage()));
+                        previous.stage(),
+                        previous.workingMemory()));
     }
 
     private static ConversationIntent intentFor(String useCase, ConversationIntent previous) {

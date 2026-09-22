@@ -352,6 +352,18 @@ cantidad de mensajes y control de versión propio, y se ignora cuando
 las fuentes transaccionales continúan siendo autoridad; el resumen sólo aporta
 contexto.
 
+La selección activa también mantiene una memoria de trabajo acotada con los
+candidatos del último resultado de catálogo. Un resolver determinístico traduce
+referencias como “esa campera”, “la M” o “el segundo” a un SKU sólo si coincide
+con un candidato reciente inequívoco; si no, solicita aclaración o conserva la
+búsqueda normal. Precio e inventario nunca se toman de esa memoria: lectura,
+carrito y compra vuelven a consultar PostgreSQL. La memoria guarda referencias
+de texto (nombre, SKU, talle y color), no URLs de imagen; los medios provienen
+del resultado de catálogo del turno actual. Su transición es un reducer puro y
+el resultado de catálogo es un enum explícito. El estado usa el
+`selection_context` existente y, al leer JSON anterior, ignora los campos de
+acción e imagen retirados del contrato.
+
 `WCS-37` agrega `CustomerPreferenceService` y el puerto
 `CustomerPreferenceStore` para preferencias explícitas de bajo riesgo. El
 adapter PostgreSQL usa `wcs.customer_preferences` (`V8`) y existe un adapter

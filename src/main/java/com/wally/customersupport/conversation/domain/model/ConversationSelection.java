@@ -13,7 +13,17 @@ public record ConversationSelection(
         ConversationAction action,
         CatalogQuery catalogQuery,
         String selectedVariantSku,
-        String stage) {
+        String stage,
+        ConversationWorkingMemory workingMemory) {
+
+    public ConversationSelection(
+            ConversationIntent intent,
+            ConversationAction action,
+            CatalogQuery catalogQuery,
+            String selectedVariantSku,
+            String stage) {
+        this(intent, action, catalogQuery, selectedVariantSku, stage, ConversationWorkingMemory.empty());
+    }
 
     public ConversationSelection {
         intent = intent == null ? ConversationIntent.UNKNOWN : intent;
@@ -21,6 +31,7 @@ public record ConversationSelection(
         catalogQuery = catalogQuery == null ? CatalogQuery.empty() : catalogQuery;
         selectedVariantSku = normalize(selectedVariantSku);
         stage = normalize(stage);
+        workingMemory = workingMemory == null ? ConversationWorkingMemory.empty() : workingMemory;
     }
 
     public static ConversationSelection empty() {
@@ -29,11 +40,12 @@ public record ConversationSelection(
                 ConversationAction.UNKNOWN,
                 CatalogQuery.empty(),
                 null,
-                null);
+                null,
+                ConversationWorkingMemory.empty());
     }
 
     public boolean hasCatalogSelection() {
-        return !catalogQuery.isEmpty();
+        return !catalogQuery.isEmpty() || workingMemory.hasCandidates();
     }
 
     private static String normalize(String value) {

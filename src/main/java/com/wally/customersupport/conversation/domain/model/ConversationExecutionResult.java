@@ -9,7 +9,8 @@ public record ConversationExecutionResult(
         String response,
         String fallbackReason,
         int stepCount,
-        String mediaReference) {
+        String mediaReference,
+        ConversationWorkingMemory workingMemory) {
 
     public ConversationExecutionResult {
         workflowVersion = required(workflowVersion, "workflowVersion");
@@ -21,6 +22,7 @@ public record ConversationExecutionResult(
             throw new IllegalArgumentException("stepCount must be positive");
         }
         mediaReference = normalize(mediaReference);
+        workingMemory = workingMemory == null ? ConversationWorkingMemory.empty() : workingMemory;
     }
 
     public ConversationExecutionResult(
@@ -30,7 +32,20 @@ public record ConversationExecutionResult(
             String response,
             String fallbackReason,
             int stepCount) {
-        this(workflowVersion, useCase, outcome, response, fallbackReason, stepCount, null);
+        this(workflowVersion, useCase, outcome, response, fallbackReason, stepCount, null,
+                ConversationWorkingMemory.empty());
+    }
+
+    public ConversationExecutionResult(
+            String workflowVersion,
+            String useCase,
+            String outcome,
+            String response,
+            String fallbackReason,
+            int stepCount,
+            String mediaReference) {
+        this(workflowVersion, useCase, outcome, response, fallbackReason, stepCount, mediaReference,
+                ConversationWorkingMemory.empty());
     }
 
     public static ConversationExecutionResult completed(
@@ -49,13 +64,22 @@ public record ConversationExecutionResult(
                 response,
                 plan.fallbackReason(),
                 plan.stepCount(),
-                null);
+                null,
+                ConversationWorkingMemory.empty());
     }
 
     public static ConversationExecutionResult completed(
             ConversationExecutionPlan plan,
             String response,
             String mediaReference) {
+        return completed(plan, response, mediaReference, ConversationWorkingMemory.empty());
+    }
+
+    public static ConversationExecutionResult completed(
+            ConversationExecutionPlan plan,
+            String response,
+            String mediaReference,
+            ConversationWorkingMemory workingMemory) {
         String outcome = switch (plan.action()) {
             case LOW_CONFIDENCE -> "LOW_CONFIDENCE";
             case SAFE_FALLBACK -> "FALLBACK";
@@ -69,7 +93,8 @@ public record ConversationExecutionResult(
                 response,
                 plan.fallbackReason(),
                 plan.stepCount(),
-                mediaReference);
+                mediaReference,
+                workingMemory);
     }
 
     public static ConversationExecutionResult fallback(
@@ -83,7 +108,8 @@ public record ConversationExecutionResult(
                 response,
                 reason,
                 plan.stepCount(),
-                null);
+                null,
+                ConversationWorkingMemory.empty());
     }
 
     private static String required(String value, String field) {

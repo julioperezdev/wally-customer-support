@@ -195,7 +195,10 @@ separado del historial, mediante la tabla `wcs.conversation_memory_states`:
 * `summary_version` y `summarized_message_count` como checkpoint versionado;
 * `summary_updated_at` para aplicar la retención del estado completo.
 * `selection_context` JSONB con la selección activa tipada: intención, acción,
-  filtros de catálogo, SKU seleccionado y etapa conversacional.
+  filtros de catálogo, SKU seleccionado y etapa conversacional. Su objeto
+  `workingMemory` conserva hasta 10 referencias recientes a candidatos (nombre,
+  SKU, talle y color), foco sólo cuando hay una variante inequívoca, el estado
+  tipado de la última observación y timestamp. No copia imagen, precio ni stock.
 
 La carga elimina de forma transaccional un estado vencido. El guardado valida
 ownership y versión; una versión obsoleta se rechaza como conflicto. La tabla
@@ -209,6 +212,13 @@ desactivado por defecto.
 La selección conserva únicamente contexto de la conversación y no es fuente
 de verdad para stock, precio, carrito ni pedidos. Los datos dinámicos siguen
 resolviéndose en PostgreSQL mediante los servicios de catálogo y checkout.
+El contrato JSON es compatible con registros anteriores: un `selection_context`
+sin `workingMemory` se carga como memoria vacía; los campos legacy que ya no
+participan en la resolución se ignoran al leer y se omiten al escribir. Una
+observación de catálogo sin coincidencias
+limpia candidatos previos para impedir que una referencia posterior los use;
+antes de mutar el carrito se vuelve a validar el SKU contra PostgreSQL y el
+stock/precio vigentes. No requiere nueva migración Flyway.
 
 ### Preferencias explícitas — contrato en `WCS-37`, persistencia en `V8`
 

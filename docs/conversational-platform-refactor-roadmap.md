@@ -221,6 +221,17 @@ Implementación local ampliada para WCS-136:
   un filtro explícito conservando primero la categoría solicitada, y los
   atributos aún no modelados generan una aclaración útil en lugar de una
   respuesta genérica;
+- `selection_context.workingMemory` guarda hasta 10 referencias estructuradas
+  de la última respuesta de catálogo y resuelve demostrativos, ordinales y
+  selecciones conversacionales a SKU sólo con coincidencia inequívoca. Una
+  respuesta sin coincidencias descarta los candidatos previos; el carrito y la
+  compra revalidan SKU, precio y stock desde PostgreSQL. El JSON es aditivo y
+  retrocompatible, sin nueva tabla ni migración;
+- el humanizador de catálogo conserva el orden de variantes y WCS lo valida
+  antes de enviar la respuesta; si cambia, se usa el formatter determinístico
+  para que referencias como “el segundo” coincidan con la lista recibida;
+- la telemetría distingue el routing `WORKING_MEMORY_REFERENCE` y registra
+  cantidad de candidatos/resultado sin guardar texto, precio, stock ni PII;
 - no se modificaron migraciones, contratos de PostgreSQL, Terraform, AppConfig
   ni adapters de infraestructura.
 

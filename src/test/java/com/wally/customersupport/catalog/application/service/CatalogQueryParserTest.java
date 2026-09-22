@@ -76,6 +76,23 @@ class CatalogQueryParserTest {
     }
 
     @Test
+    void removesColloquialSelectionFillerFromAProductQuery() {
+        CatalogQuery query = CatalogQueryParser.parse("Me gusta la campera, vamos con esa").orElseThrow();
+
+        assertNull(query.name());
+        assertEquals("campera", query.productType());
+    }
+
+    @Test
+    void normalizesCommonChatTyposForSupportedColorNames() {
+        CatalogQuery query = CatalogQueryParser.parse("Quiero una remera banca talle M").orElseThrow();
+
+        assertEquals("remera", query.productType());
+        assertEquals("blanco", query.color());
+        assertEquals("m", query.size());
+    }
+
+    @Test
     void combinesFiltersAcrossMultiTurnCatalogConversation() {
         CatalogQuery query = CatalogQueryParser.parseConversation(
                 List.of("que sea nullpointer", "pero quiero buzo", "tenes algo negro"),
