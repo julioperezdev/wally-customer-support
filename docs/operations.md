@@ -384,6 +384,15 @@ wcs.agent-evaluation.control-plane.security.issuer-uri
 wcs.agent-evaluation.control-plane.security.audience
 ```
 
+### Normalización del destinatario saliente de WhatsApp
+
+La identidad de WhatsApp recibida en el webhook y usada para validar la
+allowlist se conserva sin cambios. Sólo el adapter de salida transforma un
+`wa_id` argentino con el formato `549` seguido de diez dígitos al formato
+`54` seguido de esos mismos diez dígitos que requiere el campo `to` de la
+solicitud saliente a Meta. Los demás identificadores se envían sin modificar.
+La regla no cambia IDs persistidos ni afecta a Telegram.
+
 ### AWS Secrets Manager — secretos
 
 ```text

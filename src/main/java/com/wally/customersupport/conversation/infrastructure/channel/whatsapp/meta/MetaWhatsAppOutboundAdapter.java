@@ -66,43 +66,44 @@ public class MetaWhatsAppOutboundAdapter implements OutboundMessagePort {
     @Override
     public void send(OutboundMessage message) {
         validateConfiguration(message);
+        String recipientId = metaRecipientId(message.recipientId());
         Map<String, Object> payload = switch (message.deliveryType()) {
-            case TEMPLATE -> templatePayload(message);
-            case IMAGE -> imageOrTextPayload(message);
-            case TEXT -> textPayload(message);
+            case TEMPLATE -> templatePayload(message, recipientId);
+            case IMAGE -> imageOrTextPayload(message, recipientId);
+            case TEXT -> textPayload(message, recipientId);
         };
         postMessage(payload);
     }
 
-    private Map<String, Object> textPayload(OutboundMessage message) {
+    private Map<String, Object> textPayload(OutboundMessage message, String recipientId) {
         return Map.of(
                 "messaging_product", "whatsapp",
-                "to", message.recipientId(),
+                "to", recipientId,
                 "type", "text",
                 "text", Map.of("body", message.body()));
     }
 
-    private Map<String, Object> imageOrTextPayload(OutboundMessage message) {
+    private Map<String, Object> imageOrTextPayload(OutboundMessage message, String recipientId) {
         if (message.body().length() > MAX_CAPTION_CHARACTERS) {
             log.info("OUTBOUND_MEDIA_FALLBACK channel=WHATSAPP deliveryType=IMAGE reason=CAPTION_TOO_LONG");
-            return textPayload(message);
+            return textPayload(message, recipientId);
         }
         Optional<String> mediaUrl = resolveMediaUrl(message.mediaReference());
         if (mediaUrl.isEmpty()) {
             log.info("OUTBOUND_MEDIA_FALLBACK channel=WHATSAPP deliveryType=IMAGE reason=MEDIA_URL_UNAVAILABLE");
-            return textPayload(message);
+            return textPayload(message, recipientId);
         }
         Map<String, Object> image = new LinkedHashMap<>();
         image.put("link", mediaUrl.get());
         image.put("caption", message.body());
         return Map.of(
                 "messaging_product", "whatsapp",
-                "to", message.recipientId(),
+                "to", recipientId,
                 "type", "image",
                 "image", image);
     }
 
-    private Map<String, Object> templatePayload(OutboundMessage message) {
+    private Map<String, Object> templatePayload(OutboundMessage message, String recipientId) {
         Map<String, Object> template = new LinkedHashMap<>();
         template.put("name", message.templateName());
         template.put("language", Map.of("code", message.templateLanguageCode()));
@@ -117,9 +118,17 @@ public class MetaWhatsAppOutboundAdapter implements OutboundMessagePort {
         }
         return Map.of(
                 "messaging_product", "whatsapp",
-                "to", message.recipientId(),
+                "to", recipientId,
                 "type", "template",
                 "template", template);
+    }
+
+    private static String metaRecipientId(String recipientId) {
+        // Argentine WhatsApp wa_id values include the mobile marker 9 after country code 54.
+        // Meta's outbound Cloud API addressing uses the corresponding 54 + national number form.
+        return recipientId.matches("549[0-9]{10}")
+                ? "54" + recipientId.substring(3)
+                : recipientId;
     }
 
     private void postMessage(Map<String, Object> payload) {
