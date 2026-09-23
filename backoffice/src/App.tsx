@@ -11,6 +11,7 @@ import {
   FeatureFlagSnapshot,
   Comparison,
   ControlPlaneError,
+  EvaluationDataset,
   RunDetail,
   RunPage,
   RunSummary,
@@ -46,6 +47,13 @@ export function App() {
   const [page, setPage] = useState<RunPage | null>(null);
   const [selectedRun, setSelectedRun] = useState<RunDetail | null>(null);
   const [comparison, setComparison] = useState<Comparison | null>(null);
+  const [evaluationDatasets, setEvaluationDatasets] = useState<EvaluationDataset[]>([]);
+  const [evaluationDatasetVersion, setEvaluationDatasetVersion] = useState("conversation-routing-v1");
+  const [evaluationAgentVersion, setEvaluationAgentVersion] = useState("");
+  const [evaluationRunBusy, setEvaluationRunBusy] = useState(false);
+  const [evaluationRunError, setEvaluationRunError] = useState<string | null>(null);
+  const [evaluationRunMessage, setEvaluationRunMessage] = useState<string | null>(null);
+  const [evaluationDatasetsBusy, setEvaluationDatasetsBusy] = useState(false);
   const [baselineId, setBaselineId] = useState("");
   const [candidateId, setCandidateId] = useState("");
   const [registryAgents, setRegistryAgents] = useState<AgentRegistryAgent[] | null>(null);
@@ -113,6 +121,7 @@ export function App() {
   const canRegistryRead = hasCapability("agent-registry.read");
   const canRegistryWrite = hasCapability("agent-registry.write");
   const canEvaluationRead = hasCapability("agent-evaluation.read");
+  const canEvaluationExecute = hasCapability("agent-evaluation.execute");
   const canFeatureFlagsRead = hasCapability("feature-flags.read");
   const canFeatureFlagsWrite = hasCapability("feature-flags.write");
   const canCatalogRead = hasCapability("backoffice.catalog.read");
@@ -123,6 +132,17 @@ export function App() {
   const canOrdersRead = hasCapability("backoffice.orders.read");
   const canOrdersWrite = hasCapability("backoffice.orders.write");
   const effectiveAgentFilterOptions = agentFilterOptions ?? deriveAgentFilterOptions(registryAgents);
+  const selectedEvaluationDataset = evaluationDatasets.find(
+    (dataset) => dataset.datasetVersion === evaluationDatasetVersion);
+  const evaluationAgent = selectedEvaluationDataset
+    ? registryAgents?.find((agent) => agent.agentId === selectedEvaluationDataset.agentId)
+    : undefined;
+  const executableEvaluationVersions = (evaluationAgent?.versions ?? [])
+    .filter((version) => version.state !== "DRAFT"
+      && version.modelProvider === "bedrock"
+      && version.evaluationSuiteVersion === evaluationDatasetVersion);
+  const selectedExecutableVersion = executableEvaluationVersions.find(
+    (version) => String(version.version) === evaluationAgentVersion) ?? executableEvaluationVersions[0];
   const registryFilterValues = {
     agentId: filterValuesFor(effectiveAgentFilterOptions, {
       agentId: registryAgentId,
@@ -207,6 +227,60 @@ export function App() {
       return false;
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function loadEvaluationDatasets(): Promise<boolean> {
+    if (!canEvaluationRead) {
+      setEvaluationDatasets([]);
+      return true;
+    }
+    setEvaluationDatasetsBusy(true);
+    setEvaluationRunError(null);
+    try {
+      const result = await client.listDatasets();
+      setEvaluationDatasets(result);
+      if (!result.some((dataset) => dataset.datasetVersion === evaluationDatasetVersion)) {
+        setEvaluationDatasetVersion(result[0]?.datasetVersion ?? "");
+        setEvaluationAgentVersion("");
+      }
+      return true;
+    } catch (cause) {
+      setEvaluationRunError(toUserMessage(cause));
+      return false;
+    } finally {
+      setEvaluationDatasetsBusy(false);
+    }
+  }
+
+  async function executeEvaluation() {
+    if (!canEvaluationExecute) {
+      setEvaluationRunError("Tu usuario necesita el permiso agent-evaluation.execute para iniciar evaluaciones.");
+      return;
+    }
+    if (!selectedEvaluationDataset || !selectedExecutableVersion) {
+      setEvaluationRunError("Elegí un dataset y una versión Bedrock evaluable que tenga asignado ese dataset.");
+      return;
+    }
+    setEvaluationRunBusy(true);
+    setEvaluationRunError(null);
+    setEvaluationRunMessage(null);
+    try {
+      const result = await client.startEvaluation({
+        datasetVersion: selectedEvaluationDataset.datasetVersion,
+        agentId: selectedEvaluationDataset.agentId,
+        agentVersion: String(selectedExecutableVersion.version)
+      }, crypto.randomUUID());
+      if (result.status === "COMPLETED" && result.runId) {
+        setEvaluationRunMessage(`Evaluación completa. Run ${result.runId}. Podés seleccionarlo en “Comparar”.`);
+        await loadRuns(0);
+      } else {
+        setEvaluationRunError(`No se inició la evaluación: ${result.status} · ${result.reason}.`);
+      }
+    } catch (cause) {
+      setEvaluationRunError(toUserMessage(cause));
+    } finally {
+      setEvaluationRunBusy(false);
     }
   }
 
@@ -477,6 +551,7 @@ export function App() {
       } else {
         setGlobalRefreshMessage("Sesión validada. Todas las secciones read-only fueron actualizadas.");
       }
+      await loadEvaluationDatasets();
     } finally {
       setGlobalRefreshBusy(false);
     }
@@ -749,6 +824,32 @@ export function App() {
             <button onClick={() => void loadRuns()} disabled={busy || !canEvaluationRead}>Filtrar</button>
           </div>
         </div>
+        <div className="evaluation-launcher">
+          <h3>Ejecutar una comparación de prompt</h3>
+          <p>Usa mensajes sintéticos versionados; conserva métricas y resultados por escenario, no el contenido de mensajes ni respuestas. No activa ni publica la versión.</p>
+          <div className="form-grid">
+            <label>Dataset<select aria-label="Dataset de evaluación" value={evaluationDatasetVersion} onChange={(event) => { setEvaluationDatasetVersion(event.target.value); setEvaluationAgentVersion(""); setEvaluationRunMessage(null); }} disabled={!canEvaluationRead || evaluationDatasetsBusy}>
+              <option value="">Seleccionar dataset</option>
+              {evaluationDatasets.map((dataset) => <option key={dataset.datasetVersion} value={dataset.datasetVersion}>{dataset.datasetVersion} · {dataset.agentId} · {dataset.scenarioCount} casos</option>)}
+            </select></label>
+            <label>Versión del agente<select aria-label="Versión Bedrock para evaluar" value={selectedExecutableVersion ? String(selectedExecutableVersion.version) : ""} onChange={(event) => setEvaluationAgentVersion(event.target.value)} disabled={!canEvaluationRead || executableEvaluationVersions.length === 0}>
+              <option value="">Seleccionar versión</option>
+              {executableEvaluationVersions.map((version) => <option key={version.version} value={String(version.version)}>{version.semanticVersion} · DB v{version.version} · {version.state} · {version.modelId}</option>)}
+            </select></label>
+          </div>
+          {selectedEvaluationDataset && selectedExecutableVersion && <p className="muted">Prompt {selectedExecutableVersion.systemPromptVersion} · SHA-256 {selectedExecutableVersion.systemPromptHash.slice(0, 12)}… · salida máxima {selectedExecutableVersion.maxOutputTokens} tokens.</p>}
+          {selectedEvaluationDataset && executableEvaluationVersions.length === 0 && <p className="warning-alert">No hay una versión Bedrock evaluable de {selectedEvaluationDataset.agentId} vinculada a {selectedEvaluationDataset.datasetVersion}. Creá una versión candidata con esa suite y volvé a actualizar.</p>}
+          <p className="warning-alert">La API limita por defecto el costo estimado a USD 0,50 por ejecución; AppConfig puede imponer un límite menor. Es una estimación previa, no una garantía de facturación. Se limitan casos/tokens y la versión activa no cambia.</p>
+          <div className="button-row">
+            <button onClick={() => void loadEvaluationDatasets()} disabled={!canEvaluationRead || evaluationDatasetsBusy || evaluationRunBusy}>{evaluationDatasetsBusy ? "Actualizando datasets…" : "Actualizar datasets"}</button>
+            <button className="primary" onClick={() => void executeEvaluation()} disabled={!canEvaluationExecute || evaluationRunBusy || !selectedExecutableVersion}>
+              {evaluationRunBusy ? "Ejecutando Bedrock…" : `Ejecutar ${selectedEvaluationDataset?.scenarioCount ?? ""} casos`}
+            </button>
+          </div>
+          {!canEvaluationExecute && <p className="muted">La ejecución está protegida por el scope agent-evaluation.execute.</p>}
+          {evaluationRunError && <div className="alert" role="alert">Evaluación: {evaluationRunError}</div>}
+          {evaluationRunMessage && <div className="success-alert" role="status">{evaluationRunMessage}</div>}
+        </div>
         <RunTable page={page} onOpen={openRun} />
         {page && <div className="pagination"><button onClick={() => void loadRuns(page.pageNumber - 1)} disabled={busy || page.pageNumber === 0}>Anterior</button><span>Página {page.pageNumber + 1} de {Math.max(page.totalPages, 1)}</span><button onClick={() => void loadRuns(page.pageNumber + 1)} disabled={busy || page.pageNumber + 1 >= page.totalPages}>Siguiente</button></div>}
       </section>
@@ -984,6 +1085,7 @@ function ComparisonView({ comparison }: { comparison: Comparison }) {
     : assessment.outcome === "QUALITY_REGRESSION"
       ? "negative"
       : "warning";
+  const isRouter = comparison.baseline.agentId === "conversation-router";
   return <div className="comparison">
     <h3>Conclusión: <span className={outcomeClass}>{outcomeLabel}</span></h3>
     <p><strong>{comparison.baseline.agentId}</strong> · {comparison.baseline.agentVersion} → {comparison.candidate.agentVersion}<br />
@@ -991,10 +1093,16 @@ function ComparisonView({ comparison }: { comparison: Comparison }) {
     <p className="muted">Comparación descriptiva de {assessment.scenarioCount} escenarios; no mide significancia estadística ni promociona agentes.</p>
     <div className="metric-row">
       <Metric label="Pass rate" value={formatSignedPercent(delta.passRateDelta)} />
-      <Metric label="Utilidad" value={formatSignedPercent(quality.utilityRateDelta)} />
-      <Metric label="Grounding" value={formatSignedPercent(quality.responseGroundingRateDelta)} />
-      <Metric label="Seguridad" value={formatSignedPercent(quality.safetyRateDelta)} />
-      <Metric label="Validez" value={formatSignedPercent(quality.responseValidityRateDelta)} />
+      {isRouter ? <>
+        <Metric label="Intención" value={quality.intentAccuracyRateDelta == null ? "—" : formatSignedPercent(quality.intentAccuracyRateDelta)} />
+        <Metric label="Acción" value={quality.actionAccuracyRateDelta == null ? "—" : formatSignedPercent(quality.actionAccuracyRateDelta)} />
+        <Metric label="Filtros extraídos" value={quality.entityExtractionRateDelta == null ? "—" : formatSignedPercent(quality.entityExtractionRateDelta)} />
+      </> : <>
+        <Metric label="Utilidad" value={quality.utilityRateDelta == null ? "—" : formatSignedPercent(quality.utilityRateDelta)} />
+        <Metric label="Grounding" value={quality.responseGroundingRateDelta == null ? "—" : formatSignedPercent(quality.responseGroundingRateDelta)} />
+        <Metric label="Seguridad" value={quality.safetyRateDelta == null ? "—" : formatSignedPercent(quality.safetyRateDelta)} />
+        <Metric label="Validez" value={quality.responseValidityRateDelta == null ? "—" : formatSignedPercent(quality.responseValidityRateDelta)} />
+      </>}
       <Metric label="Tiempo total de evaluación" value={formatSignedMs(delta.durationMsDelta)} />
       <Metric label="Latencia del modelo" value={delta.providerLatencyMsDelta == null ? "—" : formatSignedMs(delta.providerLatencyMsDelta)} />
       <Metric label="Tokens" value={delta.totalTokensDelta == null ? "—" : formatSigned(delta.totalTokensDelta)} />
@@ -1030,6 +1138,7 @@ function formatQualityDimensions(dimensions: string[]) {
     utility: "utilidad",
     intent_accuracy: "precisión de intención",
     entity_extraction: "extracción de entidades",
+    action_accuracy: "precisión de acción",
     tool_success: "éxito de herramientas",
     rag_grounding: "fundamentación RAG"
   };

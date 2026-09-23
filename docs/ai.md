@@ -47,14 +47,17 @@ runtime conversacional. Sólo recibe hechos sintéticos y validados del dataset,
 no genera SQL ni consulta tools. `deterministic` es el default y rollback;
 `bedrock` requiere activación explícita y resuelve el agent ID + versión SQL
 inmutable directamente, sin depender de activaciones ni tocar tráfico. La
-primera versión evalúa `response-humanization` sobre `catalog-response-v1`; usa
-el system prompt, template, model ID, parámetros, límites, timeout y precios de
-esa versión. Se rechaza DRAFT, un prompt cuyo hash no coincida, schemas o
-placeholders inválidos y un límite de salida superior al cap global. Se hacen
-dos runs separados sobre el mismo dataset para comparar baseline y candidata.
-El modelo no recibe conversaciones reales y no ejecuta SQL, tools, pedidos ni
-acciones. El histórico conserva la versión numérica SQL, modelo y métricas; el
-evento `AI_USAGE_RECORDED` añade SemVer y hash de prompt sin contenido.
+evaluación cubre `response-humanization` sobre `catalog-response-v1` y
+`conversation-router` sobre `conversation-routing-v1` (31 casos sintéticos
+contrastivos con historial). Usa el system prompt, template, model ID,
+parámetros, límites, timeout y precios de la versión SQL seleccionada. El
+router se puntúa por intención, acción y filtros; no se genera ni almacena una
+respuesta textual. Se rechaza DRAFT, un prompt cuyo hash no coincida,
+schemas/placeholders inválidos y perfiles que excedan los caps. Dos runs sobre
+el mismo dataset versionado permiten comparar baseline y candidata. El modelo
+no recibe conversaciones reales ni ejecuta SQL, tools, pedidos o acciones. El
+histórico conserva número SQL, modelo, dataset y métricas; el evento
+`AI_USAGE_RECORDED` añade SemVer y hash de prompt sin contenido.
 
 ## RAG
 

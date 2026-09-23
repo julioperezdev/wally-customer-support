@@ -104,6 +104,7 @@ public class AgentEvaluationApplicationService {
         scorecardFields.put("utilityRate", scorecard.utilityRate());
         scorecardFields.put("intentAccuracyRate", scorecard.intentAccuracyRate());
         scorecardFields.put("entityExtractionRate", scorecard.entityExtractionRate());
+        scorecardFields.put("actionAccuracyRate", scorecard.actionAccuracyRate());
         scorecardFields.put("toolSuccessRate", scorecard.toolSuccessRate());
         scorecardFields.put("ragGroundingRate", scorecard.ragGroundingRate());
         scorecardFields.put("failureCounts", scorecard.failureCounts());

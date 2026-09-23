@@ -227,6 +227,34 @@ class AgentEvaluationComparisonApplicationServiceTest {
     }
 
     @Test
+    void routerComparisonLeavesResponseOnlyMetricsUnavailable() {
+        AgentEvaluationRunRepository repository = mock(AgentEvaluationRunRepository.class);
+        when(repository.findById(BASELINE_ID)).thenReturn(Optional.of(run(
+                BASELINE_ID, "conversation-routing-v1", 10, "conversation-router",
+                List.of(routerResult("scenario-1", true)))));
+        when(repository.findById(CANDIDATE_ID)).thenReturn(Optional.of(run(
+                CANDIDATE_ID, "conversation-routing-v1", 15, "conversation-router",
+                List.of(routerResult("scenario-1", false)))));
+
+        var comparison = new AgentEvaluationComparisonApplicationService(repository)
+                .compare(BASELINE_ID, CANDIDATE_ID)
+                .orElseThrow();
+
+        assertThat(comparison.qualityDelta().responseValidityRateDelta()).isNull();
+        assertThat(comparison.qualityDelta().responseGroundingRateDelta()).isNull();
+        assertThat(comparison.qualityDelta().safetyRateDelta()).isNull();
+        assertThat(comparison.qualityDelta().utilityRateDelta()).isNull();
+        assertThat(comparison.qualityDelta().intentAccuracyRateDelta()).isEqualTo(-1.0);
+        assertThat(comparison.qualityDelta().actionAccuracyRateDelta()).isEqualTo(-1.0);
+        assertThat(comparison.qualityDelta().entityExtractionRateDelta()).isEqualTo(-1.0);
+        assertThat(comparison.assessment().unavailableDimensions()).contains(
+                "response_validity", "response_grounding", "safety", "utility");
+        assertThat(comparison.assessment().regressedDimensions()).contains(
+                "intent_accuracy", "action_accuracy", "entity_extraction")
+                .doesNotContain("utility", "safety", "response_validity", "response_grounding");
+    }
+
+    @Test
     void rejectsAnEvidenceExportWithTooManyScenarios() {
         var scenarios = java.util.stream.IntStream.range(0, AgentEvaluationEvidenceExport.MAX_SCENARIOS + 1)
                 .mapToObj(index -> new AgentEvaluationScenarioComparison(
@@ -352,5 +380,20 @@ class AgentEvaluationComparisonApplicationServiceTest {
                 "catalog-specialist", "v1", "mock", "deterministic-v1", 1, 1L,
                 1, 1, 2, BigDecimal.ZERO, "test-pricing-v1", routedIntent,
                 null, null, null, null);
+    }
+
+    private static AgentEvaluationResult routerResult(String scenarioId, boolean matches) {
+        String intent = matches ? "CATALOG_SEARCH" : "GENERAL_SUPPORT";
+        String action = matches ? "CATALOG_SEARCH" : "GENERAL_SUPPORT";
+        List<String> entities = matches ? List.of("productType=remera") : List.of();
+        List<String> reasons = matches ? List.of() : List.of(
+                "INTENT_MISMATCH", "ACTION_MISMATCH", "ENTITY_EXTRACTION_MISMATCH");
+        AgentEvaluationExecutionMetadata metadata = new AgentEvaluationExecutionMetadata(
+                "conversation-router", "1", "bedrock", "model-v1", 10, 8L,
+                10, 5, 15, new BigDecimal("0.0001"), "pricing-v1",
+                intent, action, entities, null, null, null);
+        return new AgentEvaluationResult(
+                scenarioId, "conversation-routing-v1", matches, matches ? 1.0 : 0.0,
+                reasons, metadata, List.of("intent_accuracy", "action_accuracy", "entity_extraction"));
     }
 }

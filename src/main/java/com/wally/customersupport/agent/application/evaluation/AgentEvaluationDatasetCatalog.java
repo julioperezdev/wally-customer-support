@@ -36,6 +36,14 @@ public class AgentEvaluationDatasetCatalog {
         return List.copyOf(dataset.scenarios());
     }
 
+    public List<AgentEvaluationDatasetDescriptor> descriptors() {
+        return datasets.values().stream()
+                .map(dataset -> new AgentEvaluationDatasetDescriptor(
+                        dataset.version(), dataset.agentId(), dataset.scenarios().size()))
+                .sorted(java.util.Comparator.comparing(AgentEvaluationDatasetDescriptor::datasetVersion))
+                .toList();
+    }
+
     private static String required(String value, String field) {
         String normalized = Objects.requireNonNull(value, field).strip();
         if (normalized.isBlank()) {

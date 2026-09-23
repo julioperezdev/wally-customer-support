@@ -79,6 +79,9 @@ public class AgentEvaluationScenarioResultJpaEntity {
     @Column(name = "execution_routed_intent", length = 128)
     private String executionRoutedIntent;
 
+    @Column(name = "execution_routed_action", length = 64)
+    private String executionRoutedAction;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "execution_entity_types", columnDefinition = "jsonb")
     private List<String> executionEntityTypes;
@@ -124,6 +127,7 @@ public class AgentEvaluationScenarioResultJpaEntity {
             this.estimatedCostUsd = metadata.estimatedCostUsd();
             this.pricingVersion = metadata.pricingVersion();
             this.executionRoutedIntent = metadata.routedIntent();
+            this.executionRoutedAction = metadata.routedAction();
             this.executionEntityTypes = metadata.resolvedEntityTypes();
             this.executionToolName = metadata.toolName();
             this.executionToolSucceeded = metadata.toolSucceeded();
@@ -151,6 +155,7 @@ public class AgentEvaluationScenarioResultJpaEntity {
                         estimatedCostUsd,
                         pricingVersion,
                         executionRoutedIntent,
+                        executionRoutedAction,
                         executionEntityTypes,
                         executionToolName,
                         executionToolSucceeded,

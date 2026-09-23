@@ -9,6 +9,11 @@ import com.wally.customersupport.agent.domain.model.AgentEvaluationExecutionMeta
 import com.wally.customersupport.agent.domain.model.AgentEvaluationResult;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationScenario;
 import com.wally.customersupport.conversation.application.service.DeterministicResponseHumanizer;
+import com.wally.customersupport.conversation.domain.model.Channel;
+import com.wally.customersupport.conversation.domain.model.ConversationAction;
+import com.wally.customersupport.conversation.domain.model.ConversationContext;
+import com.wally.customersupport.conversation.domain.model.ConversationIntent;
+import com.wally.customersupport.conversation.domain.model.ConversationIntentDecision;
 import com.wally.customersupport.conversation.domain.model.ResponseHumanizationResult;
 import org.junit.jupiter.api.Test;
 
@@ -101,5 +106,59 @@ class ResponsePolicyEvaluatorTest {
                 "ENTITY_EXTRACTION_MISMATCH",
                 "TOOL_SUCCESS_MISMATCH",
                 "RAG_GROUNDING_MISMATCH");
+    }
+
+    @Test
+    void scoresRouterIntentActionAndExtractedCatalogFiltersSeparately() {
+        AgentEvaluationScenario scenario = routingScenario();
+        ConversationIntentDecision decision = new ConversationIntentDecision(
+                ConversationIntent.CATALOG_SEARCH,
+                ConversationAction.CATALOG_SEARCH,
+                0.91,
+                new com.wally.customersupport.catalog.domain.model.CatalogQuery(
+                        null, null, "M", "negro", "remera", null, null),
+                null,
+                1,
+                List.of());
+
+        AgentEvaluationResult result = evaluator.evaluateRoute(scenario, decision, null);
+
+        assertThat(result.passed()).isTrue();
+        assertThat(result.score()).isEqualTo(1.0);
+        assertThat(result.evaluatedDimensions()).containsExactly(
+                "action_accuracy", "entity_extraction", "intent_accuracy");
+        assertThat(result.reasons()).isEmpty();
+    }
+
+    @Test
+    void reportsIntentActionAndFilterRegressionsWithoutStoringMessageContent() {
+        AgentEvaluationScenario scenario = routingScenario();
+        ConversationIntentDecision decision = new ConversationIntentDecision(
+                ConversationIntent.GENERAL_SUPPORT,
+                ConversationAction.GENERAL_SUPPORT,
+                0.35,
+                com.wally.customersupport.catalog.domain.model.CatalogQuery.empty(),
+                null,
+                1,
+                List.of());
+
+        AgentEvaluationResult result = evaluator.evaluateRoute(scenario, decision, null);
+
+        assertThat(result.passed()).isFalse();
+        assertThat(result.score()).isZero();
+        assertThat(result.reasons()).containsExactlyInAnyOrder(
+                "INTENT_MISMATCH", "ACTION_MISMATCH", "ENTITY_EXTRACTION_MISMATCH");
+        assertThat(result.toString()).doesNotContain("quiero una remera negra talle M");
+    }
+
+    private static AgentEvaluationScenario routingScenario() {
+        return new AgentEvaluationScenario(
+                "catalog_type_and_size", "conversation-routing-v1", "ROUTING", Channel.TELEGRAM,
+                null, ResponseHumanizationResult.Outcome.APPLIED, List.of(), List.of(),
+                "CATALOG_SEARCH", List.of("color=negro", "productType=remera", "size=M"),
+                null, null,
+                new ConversationContext(null, null, "Quiero una remera negra talle M", List.of(),
+                        List.of(), null, List.of(), Channel.TELEGRAM),
+                "CATALOG_SEARCH");
     }
 }

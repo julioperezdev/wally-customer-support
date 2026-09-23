@@ -9,5 +9,8 @@ public interface AgentEvaluationDataset {
 
     String version();
 
+    /** Logical agent whose prompt family this immutable evaluation suite exercises. */
+    String agentId();
+
     List<AgentEvaluationScenario> scenarios();
 }

@@ -88,6 +88,9 @@ td small { color: #8796b1; font-size: 12px; margin-top: 4px; }
 .inline-action { display: flex; gap: 6px; align-items: center; }
 .inline-action input { width: 64px; }
 .agent-map { display: grid; gap: 16px; }
+.evaluation-launcher { display: grid; gap: 12px; margin: 14px 0 20px; padding: 16px; border: 1px solid #35435f; border-radius: 12px; background: rgba(10, 18, 36, .45); }
+.evaluation-launcher h3, .evaluation-launcher p { margin: 0; }
+.evaluation-launcher .warning-alert { line-height: 1.45; }
 .map-meta { display: flex; flex-wrap: wrap; gap: 8px; color: #a9b6cb; font-size: 13px; }
 .map-meta span { background: #101a30; border: 1px solid #2b3b5a; border-radius: 999px; padding: 6px 10px; }
 .use-case-map, .simulation-box { border: 1px solid #35435f; border-radius: 12px; padding: 16px; }

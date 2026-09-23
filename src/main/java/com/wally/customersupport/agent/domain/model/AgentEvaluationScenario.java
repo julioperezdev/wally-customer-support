@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Objects;
 
 import com.wally.customersupport.conversation.domain.model.Channel;
+import com.wally.customersupport.conversation.domain.model.ConversationContext;
 import com.wally.customersupport.conversation.domain.model.ResponseHumanizationRequest;
 import com.wally.customersupport.conversation.domain.model.ResponseHumanizationResult;
 
@@ -20,7 +21,9 @@ public record AgentEvaluationScenario(
         String expectedIntent,
         List<String> expectedEntityTypes,
         String expectedToolName,
-        Boolean expectedGrounded) {
+        Boolean expectedGrounded,
+        ConversationContext routingContext,
+        String expectedAction) {
 
     /** Backwards-compatible scenario contract without routing/tool or RAG oracles. */
     public AgentEvaluationScenario(
@@ -33,7 +36,26 @@ public record AgentEvaluationScenario(
             List<String> requiredTextFragments,
             List<String> forbiddenTextFragments) {
         this(scenarioId, datasetVersion, useCase, channel, request, expectedOutcome,
-                requiredTextFragments, forbiddenTextFragments, null, null, null, null);
+                requiredTextFragments, forbiddenTextFragments, null, null, null, null, null, null);
+    }
+
+    /** Backwards-compatible contract for scenarios with quality expectations but no routing oracle. */
+    public AgentEvaluationScenario(
+            String scenarioId,
+            String datasetVersion,
+            String useCase,
+            Channel channel,
+            ResponseHumanizationRequest request,
+            ResponseHumanizationResult.Outcome expectedOutcome,
+            List<String> requiredTextFragments,
+            List<String> forbiddenTextFragments,
+            String expectedIntent,
+            List<String> expectedEntityTypes,
+            String expectedToolName,
+            Boolean expectedGrounded) {
+        this(scenarioId, datasetVersion, useCase, channel, request, expectedOutcome,
+                requiredTextFragments, forbiddenTextFragments, expectedIntent, expectedEntityTypes,
+                expectedToolName, expectedGrounded, null, null);
     }
 
     public AgentEvaluationScenario {
@@ -47,8 +69,18 @@ public record AgentEvaluationScenario(
         expectedIntent = normalizeOptional(expectedIntent);
         expectedEntityTypes = normalizeOptionalFragments(expectedEntityTypes);
         expectedToolName = normalizeOptional(expectedToolName);
-        if (request == null && expectedOutcome != ResponseHumanizationResult.Outcome.FALLBACK) {
+        expectedAction = normalizeOptional(expectedAction);
+        if (request == null && routingContext == null
+                && expectedOutcome != ResponseHumanizationResult.Outcome.FALLBACK) {
             throw new IllegalArgumentException("only fallback scenarios may omit the request");
+        }
+        if (routingContext != null && (expectedIntent == null || expectedAction == null
+                || expectedEntityTypes == null)) {
+            throw new IllegalArgumentException(
+                    "routing scenarios require expected intent, action, and extracted entities");
+        }
+        if (routingContext != null && request != null) {
+            throw new IllegalArgumentException("a scenario cannot evaluate routing and response humanization together");
         }
     }
 

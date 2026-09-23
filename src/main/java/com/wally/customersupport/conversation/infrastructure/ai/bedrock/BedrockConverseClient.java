@@ -145,6 +145,25 @@ final class BedrockConverseClient implements MeasuredLlmClient {
             float topP,
             String promptVersion,
             String promptHash,
+            WcsToolDescriptor descriptor,
+            AgentRuntimeDefinition definition,
+            Duration maxRequestTimeout) {
+        return completeWithToolUse(
+                stage, operation, systemPrompt, userPrompt, maxTokens, temperature,
+                promptVersion, promptHash, null, descriptor, agentModelSettings(definition),
+                definition, topP, effectiveTimeout(definition.timeout(), maxRequestTimeout));
+    }
+
+    ToolUseCompletion completeWithToolUseForAgent(
+            String stage,
+            String operation,
+            String systemPrompt,
+            String userPrompt,
+            int maxTokens,
+            float temperature,
+            float topP,
+            String promptVersion,
+            String promptHash,
             String correlationId,
             WcsToolDescriptor descriptor,
             AgentRuntimeDefinition definition) {

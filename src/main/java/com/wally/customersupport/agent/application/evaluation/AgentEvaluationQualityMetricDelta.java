@@ -3,23 +3,40 @@ package com.wally.customersupport.agent.application.evaluation;
 /** Quality-only deltas; unavailable dimensions remain null instead of becoming zero. */
 public record AgentEvaluationQualityMetricDelta(
         double passRateDelta,
-        double responseValidityRateDelta,
-        double responseGroundingRateDelta,
-        double safetyRateDelta,
-        double utilityRateDelta,
+        Double responseValidityRateDelta,
+        Double responseGroundingRateDelta,
+        Double safetyRateDelta,
+        Double utilityRateDelta,
         Double intentAccuracyRateDelta,
         Double entityExtractionRateDelta,
+        Double actionAccuracyRateDelta,
         Double toolSuccessRateDelta,
         Double ragGroundingRateDelta) {
 
+    public AgentEvaluationQualityMetricDelta(
+            double passRateDelta,
+            double responseValidityRateDelta,
+            double responseGroundingRateDelta,
+            double safetyRateDelta,
+            double utilityRateDelta,
+            Double intentAccuracyRateDelta,
+            Double entityExtractionRateDelta,
+            Double toolSuccessRateDelta,
+            Double ragGroundingRateDelta) {
+        this(passRateDelta, responseValidityRateDelta, responseGroundingRateDelta, safetyRateDelta,
+                utilityRateDelta, intentAccuracyRateDelta, entityExtractionRateDelta, null,
+                toolSuccessRateDelta, ragGroundingRateDelta);
+    }
+
     public AgentEvaluationQualityMetricDelta {
         validateDelta(passRateDelta, "passRateDelta");
-        validateDelta(responseValidityRateDelta, "responseValidityRateDelta");
-        validateDelta(responseGroundingRateDelta, "responseGroundingRateDelta");
-        validateDelta(safetyRateDelta, "safetyRateDelta");
-        validateDelta(utilityRateDelta, "utilityRateDelta");
+        validateOptionalDelta(responseValidityRateDelta, "responseValidityRateDelta");
+        validateOptionalDelta(responseGroundingRateDelta, "responseGroundingRateDelta");
+        validateOptionalDelta(safetyRateDelta, "safetyRateDelta");
+        validateOptionalDelta(utilityRateDelta, "utilityRateDelta");
         validateOptionalDelta(intentAccuracyRateDelta, "intentAccuracyRateDelta");
         validateOptionalDelta(entityExtractionRateDelta, "entityExtractionRateDelta");
+        validateOptionalDelta(actionAccuracyRateDelta, "actionAccuracyRateDelta");
         validateOptionalDelta(toolSuccessRateDelta, "toolSuccessRateDelta");
         validateOptionalDelta(ragGroundingRateDelta, "ragGroundingRateDelta");
     }

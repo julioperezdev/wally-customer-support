@@ -302,12 +302,15 @@ son sanitizados, y la evidencia incluye MockMvc, Testcontainers, logs y
 rollback por configuración.
 
 `WCS-82`, `WCS-83` y `WCS-84` forman el slice de evaluación con proveedor real.
-Agregan un puerto medido y un executor Bedrock opcional para el dataset
-sintético, conservan el executor determinístico como default, persisten la
-metadata de tokens/latencia/costo cuando está disponible y ejecutan un
-preflight con límites de escenarios, tokens y presupuesto. La evaluación no
-recibe conversaciones reales, no genera SQL, no consulta PostgreSQL y no
-promueve automáticamente un modelo. El rollback es cambiar el executor a
+Agregan un puerto medido y un executor Bedrock opcional para datasets
+sintéticos, conservan el executor determinístico como default, persisten la
+metadata de tokens/latencia/costo cuando está disponible y aplican límites de
+escenarios, tokens y presupuesto. `conversation-routing-v1` contiene 31 casos
+con historial y oráculos de intención, acción y filtros; `catalog-response-v1`
+evalúa la humanización del catálogo. El panel puede iniciar runs y comparar
+dos versiones del mismo agente y dataset. La evaluación no recibe
+conversaciones reales, no genera SQL, no consulta PostgreSQL y no promueve
+automáticamente un modelo. El rollback es cambiar el executor a
 `deterministic`; la decisión está documentada en
 [`ADR-027`](decisions/027-bedrock-evaluation-executor-and-guardrails.md).
 

@@ -8,8 +8,14 @@ import java.math.BigDecimal;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationExecutionMetadata;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationQualityScorecard;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationResult;
+import com.wally.customersupport.agent.domain.model.AgentEvaluationScenario;
 import com.wally.customersupport.agent.domain.model.AgentEvaluationSuiteResult;
 import com.wally.customersupport.conversation.application.service.DeterministicResponseHumanizer;
+import com.wally.customersupport.conversation.domain.model.Channel;
+import com.wally.customersupport.conversation.domain.model.ConversationAction;
+import com.wally.customersupport.conversation.domain.model.ConversationContext;
+import com.wally.customersupport.conversation.domain.model.ConversationIntent;
+import com.wally.customersupport.conversation.domain.model.ConversationIntentDecision;
 import com.wally.customersupport.conversation.domain.model.ResponseHumanizationResult;
 import org.junit.jupiter.api.Test;
 
@@ -41,7 +47,7 @@ class AgentEvaluationQualityScorecardTest {
         assertThat(scorecard.utilityRate()).isEqualTo(1.0);
         assertThat(scorecard.failureCounts()).isEmpty();
         assertThat(scorecard.unavailableDimensions()).containsExactly(
-                "entity_extraction", "intent_accuracy", "rag_grounding", "tool_success");
+                "action_accuracy", "entity_extraction", "intent_accuracy", "rag_grounding", "tool_success");
     }
 
     @Test
@@ -80,6 +86,38 @@ class AgentEvaluationQualityScorecardTest {
         assertThat(scorecard.entityExtractionRate()).isEqualTo(1.0);
         assertThat(scorecard.toolSuccessRate()).isEqualTo(1.0);
         assertThat(scorecard.ragGroundingRate()).isEqualTo(1.0);
-        assertThat(scorecard.unavailableDimensions()).isEmpty();
+        assertThat(scorecard.unavailableDimensions()).containsExactly("action_accuracy");
+    }
+
+    @Test
+    void reportsRouterMetricsWithoutClaimingResponseToolOrRagMetrics() {
+        var scenario = new AgentEvaluationScenario(
+                "router-case", "conversation-routing-v1", "ROUTING", Channel.TELEGRAM,
+                null, ResponseHumanizationResult.Outcome.APPLIED, List.of(), List.of(),
+                "CATALOG_SEARCH", List.of("productType=remera"), null, null,
+                new ConversationContext(null, null, "Quiero una remera", List.of(), List.of(),
+                        null, List.of(), Channel.TELEGRAM), "CATALOG_SEARCH");
+        var metadata = new AgentEvaluationExecutionMetadata(
+                "conversation-router", "2", "bedrock", "model-v2", 800, 750L,
+                250, 70, 320, new BigDecimal("0.00004"), "pricing-v1",
+                "CATALOG_SEARCH", "CATALOG_SEARCH", List.of("productType=remera"), null, null, null);
+        var decision = new ConversationIntentDecision(
+                ConversationIntent.CATALOG_SEARCH, ConversationAction.CATALOG_SEARCH, 0.9,
+                new com.wally.customersupport.catalog.domain.model.CatalogQuery(
+                        null, null, null, null, "remera"), null, 1, List.of());
+        AgentEvaluationResult result = evaluator.evaluateRoute(scenario, decision, metadata);
+
+        AgentEvaluationQualityScorecard scorecard = AgentEvaluationQualityScorecard.fromResults(
+                List.of(result), result.score());
+
+        assertThat(scorecard.intentAccuracyRate()).isEqualTo(1.0);
+        assertThat(scorecard.entityExtractionRate()).isEqualTo(1.0);
+        assertThat(scorecard.actionAccuracyRate()).isEqualTo(1.0);
+        assertThat(scorecard.responseValidityRate()).isNull();
+        assertThat(scorecard.responseGroundingRate()).isNull();
+        assertThat(scorecard.safetyRate()).isNull();
+        assertThat(scorecard.utilityRate()).isNull();
+        assertThat(scorecard.unavailableDimensions()).containsExactly(
+                "rag_grounding", "response_grounding", "response_validity", "safety", "tool_success", "utility");
     }
 }

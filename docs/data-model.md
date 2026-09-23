@@ -370,7 +370,9 @@ ejecución completada:
   promedio y razones de fallo agregadas;
 * `wcs.agent_evaluation_scenario_results`: run, `scenario_id`, versión,
   pass/fail, score, razones sanitizadas y metadata opcional de ejecución
-  (latencia, tokens, costo y pricing version).
+  (latencia, tokens, costo, pricing version, intención y acción del router).
+  `execution_routed_action` conserva la acción estructurada para comparar
+  versiones sin persistir mensajes ni respuestas.
 
 La relación tiene foreign key con borrado en cascada y unicidad de
 `run_id + scenario_id`. Los scores, tiempos, tokens y costos tienen constraints

@@ -20,7 +20,7 @@ public record AgentEvaluationProperties(
     }
 
     public int effectiveMaxScenarios() {
-        return positiveOrDefault(maxScenarios, 10);
+        return positiveOrDefault(maxScenarios, 40);
     }
 
     public int effectiveMaxInputTokensPerScenario() {
@@ -28,12 +28,12 @@ public record AgentEvaluationProperties(
     }
 
     public int effectiveMaxOutputTokens() {
-        return positiveOrDefault(maxOutputTokens, 512);
+        return positiveOrDefault(maxOutputTokens, 1_024);
     }
 
     public BigDecimal effectiveMaxEstimatedCostUsd() {
         return maxEstimatedCostUsd == null || maxEstimatedCostUsd.signum() <= 0
-                ? new BigDecimal("0.0500")
+                ? new BigDecimal("0.5000")
                 : maxEstimatedCostUsd;
     }
 

@@ -8,6 +8,7 @@ public final class AgentEvaluationQualityDimensions {
     public static final List<String> ALL = List.of(
             "intent_accuracy",
             "entity_extraction",
+            "action_accuracy",
             "tool_success",
             "rag_grounding");
 

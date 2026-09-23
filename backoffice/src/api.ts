@@ -27,6 +27,18 @@ export type RunPage = {
   totalPages: number;
 };
 
+export type EvaluationDataset = {
+  datasetVersion: string;
+  agentId: string;
+  scenarioCount: number;
+};
+
+export type EvaluationTriggerResult = {
+  status: string;
+  reason: string;
+  runId: string | null;
+};
+
 export type ScenarioResult = {
   scenarioId: string;
   passed: boolean;
@@ -340,12 +352,13 @@ export type Comparison = {
   };
   qualityDelta: {
     passRateDelta: number;
-    responseValidityRateDelta: number;
-    responseGroundingRateDelta: number;
-    safetyRateDelta: number;
-    utilityRateDelta: number;
+    responseValidityRateDelta: number | null;
+    responseGroundingRateDelta: number | null;
+    safetyRateDelta: number | null;
+    utilityRateDelta: number | null;
     intentAccuracyRateDelta: number | null;
     entityExtractionRateDelta: number | null;
+    actionAccuracyRateDelta: number | null;
     toolSuccessRateDelta: number | null;
     ragGroundingRateDelta: number | null;
   };
@@ -533,14 +546,18 @@ export function createControlPlaneClient(
   const normalizedAgentMapBaseUrl = agentMapBaseUrl.replace(/\/+$/, "");
   const normalizedFeatureFlagsBaseUrl = featureFlagsBaseUrl.replace(/\/+$/, "");
 
-  async function request<T>(path: string): Promise<T> {
+  async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     const headers: Record<string, string> = { Accept: "application/json" };
+    new Headers(init.headers).forEach((value, name) => {
+      const canonicalName = name.split("-").map((part) => part[0].toUpperCase() + part.slice(1)).join("-");
+      headers[canonicalName] = value;
+    });
     if (token.trim()) {
       headers.Authorization = `Bearer ${token.trim()}`;
     }
     const response = await fetchWithSessionRefresh(
       `${normalizedBaseUrl}${path}`,
-      { headers, credentials: "include" },
+      { ...init, headers, credentials: "include" },
       refreshSession);
     if (!response.ok) {
       let code = "CONTROL_PLANE_ERROR";
@@ -555,6 +572,21 @@ export function createControlPlaneClient(
   }
 
   return {
+    listDatasets() {
+      return request<EvaluationDataset[]>("/datasets");
+    },
+    startEvaluation(
+      input: { datasetVersion: string; agentId: string; agentVersion: string },
+      idempotencyKey: string) {
+      return request<EvaluationTriggerResult>("/runs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKey
+        },
+        body: JSON.stringify(input)
+      });
+    },
     searchRuns(filters: { agentId?: string; provider?: string; page?: number; size?: number }) {
       const params = new URLSearchParams();
       if (filters.agentId?.trim()) params.set("agentId", filters.agentId.trim());

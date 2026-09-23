@@ -21,7 +21,9 @@ public class AgentEvaluationVersionResolver {
 
     private static final Pattern PLACEHOLDER = Pattern.compile("\\{\\{([a-z][a-z0-9_]*)\\}\\}");
     private static final Set<String> ALLOWED_PLACEHOLDERS = Set.of(
-            "use_case", "channel", "approved_knowledge", "required_facts");
+            "use_case", "channel", "approved_knowledge", "required_facts",
+            "prompt_version", "conversation_history", "latest_customer_message",
+            "conversation_summary_section", "customer_preferences_section", "active_selection_section");
 
     private final AgentRegistryRepository registry;
     private final ObjectMapper objectMapper;
@@ -66,9 +68,6 @@ public class AgentEvaluationVersionResolver {
                 || configuration.inputPriceUsdPerMillionTokens() == null
                 || configuration.outputPriceUsdPerMillionTokens() == null) {
             throw new IllegalArgumentException("selected SQL agent version has no pricing profile");
-        }
-        if (configuration.structuredToolCalling()) {
-            throw new IllegalArgumentException("this evaluation executor does not support tool-calling profiles");
         }
         try {
             if (!objectMapper.readTree(configuration.inputSchemaJson()).isObject()

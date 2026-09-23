@@ -142,14 +142,16 @@ public class AgentEvaluationComparisonApplicationService {
         var after = candidate.suiteResult().qualityScorecard();
         return new AgentEvaluationQualityMetricDelta(
                 candidate.suiteResult().passRate() - baseline.suiteResult().passRate(),
-                after.responseValidityRate() - before.responseValidityRate(),
-                after.responseGroundingRate() - before.responseGroundingRate(),
-                after.safetyRate() - before.safetyRate(),
-                after.utilityRate() - before.utilityRate(),
+                subtractOptional(before.responseValidityRate(), after.responseValidityRate()),
+                subtractOptional(before.responseGroundingRate(), after.responseGroundingRate()),
+                subtractOptional(before.safetyRate(), after.safetyRate()),
+                subtractOptional(before.utilityRate(), after.utilityRate()),
                 comparableDimensionDelta(baseline, candidate, "intent_accuracy",
                         before.intentAccuracyRate(), after.intentAccuracyRate()),
                 comparableDimensionDelta(baseline, candidate, "entity_extraction",
                         before.entityExtractionRate(), after.entityExtractionRate()),
+                comparableDimensionDelta(baseline, candidate, "action_accuracy",
+                        before.actionAccuracyRate(), after.actionAccuracyRate()),
                 comparableDimensionDelta(baseline, candidate, "tool_success",
                         before.toolSuccessRate(), after.toolSuccessRate()),
                 comparableDimensionDelta(baseline, candidate, "rag_grounding",
@@ -184,12 +186,13 @@ public class AgentEvaluationComparisonApplicationService {
         List<String> regressions = new ArrayList<>();
         List<String> unavailable = new ArrayList<>();
         collectDimension("pass_rate", deltas.passRateDelta(), improvements, regressions);
-        collectDimension("response_validity", deltas.responseValidityRateDelta(), improvements, regressions);
-        collectDimension("response_grounding", deltas.responseGroundingRateDelta(), improvements, regressions);
-        collectDimension("safety", deltas.safetyRateDelta(), improvements, regressions);
-        collectDimension("utility", deltas.utilityRateDelta(), improvements, regressions);
+        collectOptionalDimension("response_validity", deltas.responseValidityRateDelta(), improvements, regressions, unavailable);
+        collectOptionalDimension("response_grounding", deltas.responseGroundingRateDelta(), improvements, regressions, unavailable);
+        collectOptionalDimension("safety", deltas.safetyRateDelta(), improvements, regressions, unavailable);
+        collectOptionalDimension("utility", deltas.utilityRateDelta(), improvements, regressions, unavailable);
         collectOptionalDimension("intent_accuracy", deltas.intentAccuracyRateDelta(), improvements, regressions, unavailable);
         collectOptionalDimension("entity_extraction", deltas.entityExtractionRateDelta(), improvements, regressions, unavailable);
+        collectOptionalDimension("action_accuracy", deltas.actionAccuracyRateDelta(), improvements, regressions, unavailable);
         collectOptionalDimension("tool_success", deltas.toolSuccessRateDelta(), improvements, regressions, unavailable);
         collectOptionalDimension("rag_grounding", deltas.ragGroundingRateDelta(), improvements, regressions, unavailable);
 

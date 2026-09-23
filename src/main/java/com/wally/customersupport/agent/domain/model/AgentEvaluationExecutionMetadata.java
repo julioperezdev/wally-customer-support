@@ -18,6 +18,7 @@ public record AgentEvaluationExecutionMetadata(
         BigDecimal estimatedCostUsd,
         String pricingVersion,
         String routedIntent,
+        String routedAction,
         List<String> resolvedEntityTypes,
         String toolName,
         Boolean toolSucceeded,
@@ -38,7 +39,30 @@ public record AgentEvaluationExecutionMetadata(
             String pricingVersion) {
         this(agentId, agentVersion, provider, modelId, durationMs, providerLatencyMs,
                 inputTokens, outputTokens, totalTokens, estimatedCostUsd, pricingVersion,
-                null, null, null, null, null);
+                null, null, null, null, null, null);
+    }
+
+    /** Backwards-compatible quality metadata contract before action accuracy was measured. */
+    public AgentEvaluationExecutionMetadata(
+            String agentId,
+            String agentVersion,
+            String provider,
+            String modelId,
+            long durationMs,
+            Long providerLatencyMs,
+            Integer inputTokens,
+            Integer outputTokens,
+            Integer totalTokens,
+            BigDecimal estimatedCostUsd,
+            String pricingVersion,
+            String routedIntent,
+            List<String> resolvedEntityTypes,
+            String toolName,
+            Boolean toolSucceeded,
+            Boolean grounded) {
+        this(agentId, agentVersion, provider, modelId, durationMs, providerLatencyMs,
+                inputTokens, outputTokens, totalTokens, estimatedCostUsd, pricingVersion,
+                routedIntent, null, resolvedEntityTypes, toolName, toolSucceeded, grounded);
     }
 
     public AgentEvaluationExecutionMetadata {
@@ -59,6 +83,7 @@ public record AgentEvaluationExecutionMetadata(
         estimatedCostUsd = estimatedCostUsd == null ? null : estimatedCostUsd.stripTrailingZeros();
         pricingVersion = normalize(pricingVersion);
         routedIntent = normalize(routedIntent);
+        routedAction = normalize(routedAction);
         resolvedEntityTypes = resolvedEntityTypes == null
                 ? null
                 : resolvedEntityTypes.stream()
