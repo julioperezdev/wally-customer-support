@@ -55,7 +55,6 @@ public class CatalogSpecialistExecutor {
                     fields(request, "STARTED", "EXECUTING", null, startedAt));
             return tool.execute(new CatalogSearchTool.Input(
                             request.catalogQuery(),
-                            request.recentMessages(),
                             request.latestMessage()))
                     .map(result -> completed(request, result, startedAt))
                     .orElseGet(() -> fallback(request, "NO_RESPONSE", startedAt));

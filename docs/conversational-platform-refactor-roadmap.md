@@ -459,3 +459,15 @@ El programa se considera cerrado cuando:
 
 Hasta entonces, el runtime vigente y `wcs-baseline-2026-09-07` permanecen como
 opción de retorno.
+
+## Seguimiento posterior — WCS-141
+
+WCS-141 concreta la memoria estructurada para la experiencia multi-turn sin
+cambiar el modelo de datos ni la infraestructura. Añade preferencia explícita
+de talle sobre V8 y contratos mínimos de contexto por agente; filtros del turno
+actual prevalecen y ningún estado de memoria autoriza operaciones de carrito,
+checkout o datos de stock/precio. El detalle de la decisión está en
+[`ADR-044`](decisions/044-structured-memory-agent-context.md), y los criterios
+automatizados en `TC-071`–`TC-074`. La validación requerida es `mvn -B verify`
+y, después de desplegar, el smoke multi-turn documentado en
+[`testing-strategy.md`](testing-strategy.md).

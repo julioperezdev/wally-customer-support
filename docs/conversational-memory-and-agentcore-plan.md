@@ -3,7 +3,7 @@
 Owner: Product/Tech Lead
 Status: `Accepted for phased implementation`
 Last reviewed: 2026-09-05
-Related Jira: `WCS-20`, `WCS-21`, `WCS-30`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-36`, `WCS-37`
+Related Jira: `WCS-20`, `WCS-21`, `WCS-30`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-141`
 Canonical Confluence: [WCS — Conversational Memory, Context & AgentCore Plan](https://julioperezdev.atlassian.net/wiki/spaces/SD/pages/6684674/WCS+Conversational+Memory+Context+AgentCore+Plan)
 Related repository paths: `src/main/java/com/wally/customersupport/conversation`, `src/main/java/com/wally/customersupport/catalog`, `src/main/resources/db/migration`, `docs/ai.md`, `docs/architecture.md`
 Decision/source: plan aprobado para WCS el 2026-09-05
@@ -266,6 +266,15 @@ un parser determinístico. Sólo reconoce frases de preferencia acotadas, evita
 confundir “busco una remera negra” con una preferencia y confirma el guardado
 sin invocar al LLM para decidir qué persistir.
 
+`WCS-141` agrega `preferred_size` al contrato genérico existente y proyecta la
+memoria de forma distinta por responsabilidad: JSON acotado para el router;
+consulta normalizada para catálogo; historial/resumen y conocimiento aprobado
+para respuesta general; hechos validados para humanización. No crea una
+migración: V8 ya permite claves tipadas. También define precedencia (filtros
+actuales > preferencia explícita > ningún filtro), borrado por clave y
+aclaración ante referencias ambiguas. La memoria no contiene historial libre,
+PII, stock, precio, carrito ni pedidos.
+
 ### Fase 7 — Spike de Amazon Bedrock AgentCore Memory
 
 **Objetivo:** comparar AgentCore Memory contra la implementación PostgreSQL de WCS.
@@ -369,3 +378,4 @@ Métricas:
 | 2026-09-06 | `WCS-35` implementa la persistencia PostgreSQL de memoria de sesión con TTL, ownership, versión y activación controlada. |
 | 2026-09-06 | `WCS-36` inicia la Fase 5 con resumen versionado, ventana reciente y fallback detrás de configuración. |
 | 2026-09-06 | `WCS-37` inicia la Fase 6 con preferencias explícitas PostgreSQL, TTL, ownership, borrado y activación controlada. |
+| 2026-09-23 | `WCS-141` añade preferencia explícita de talle y contratos de contexto por agente; reutiliza V8, sin cambio de infraestructura. |

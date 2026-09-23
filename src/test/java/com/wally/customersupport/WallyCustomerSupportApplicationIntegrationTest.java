@@ -470,13 +470,22 @@ class WallyCustomerSupportApplicationIntegrationTest {
         String actorId = "capture-actor-" + UUID.randomUUID();
         Instant now = Instant.now();
 
-        var saved = explicitPreferenceCaptureService.capture(actorId, "Prefiero el negro", now);
-        var incidental = explicitPreferenceCaptureService.capture(actorId, "Busco una remera negra", now);
+        UUID conversationId = UUID.randomUUID();
+        var saved = explicitPreferenceCaptureService.capture(actorId, conversationId, "Prefiero el negro", now);
+        var size = explicitPreferenceCaptureService.capture(actorId, conversationId, "Soy M", now.plusSeconds(1));
+        var incidental = explicitPreferenceCaptureService.capture(
+                actorId, conversationId, "Busco una remera negra", now.plusSeconds(2));
 
         assertEquals(ExplicitPreferenceCaptureService.Status.SAVED, saved.status());
-        assertEquals("negro", saved.color());
+        assertEquals("negro", saved.value());
+        assertEquals(ExplicitPreferenceCaptureService.Status.SAVED, size.status());
+        assertEquals("M", size.value());
         assertEquals(ExplicitPreferenceCaptureService.Status.NOT_DETECTED, incidental.status());
-        assertEquals("negro", customerPreferenceService.findForContext(actorId, null).getFirst().value());
+        var preferences = customerPreferenceService.findForContext(actorId, conversationId);
+        assertEquals(2, preferences.size());
+        assertTrue(customerPreferenceService.forgetExplicitPreference(
+                actorId, conversationId, CustomerPreferenceService.PREFERRED_SIZE) > 0);
+        assertEquals(1, customerPreferenceService.findForContext(actorId, conversationId).size());
     }
 
     @Test

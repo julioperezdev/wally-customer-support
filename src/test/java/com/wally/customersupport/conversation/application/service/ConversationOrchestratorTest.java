@@ -455,7 +455,7 @@ class ConversationOrchestratorTest {
         CatalogQuery query = new CatalogQuery("camiseta", null, "M", "negro");
         when(intentClassifier.classify(any(ConversationContext.class)))
                 .thenReturn(new ConversationIntentDecision(ConversationIntent.CATALOG_SEARCH, 0.95, query, null));
-        when(catalogConversationService.search(query, context.recentMessages(), context.latestMessage()))
+        when(catalogConversationService.search(query, List.of(), context.latestMessage()))
                 .thenReturn(Optional.of(new CatalogSearchResult(
                         CatalogSearchResult.Status.MATCHED,
                         List.of(new CatalogFact(
@@ -467,7 +467,7 @@ class ConversationOrchestratorTest {
 
         assertTrue(orchestrator.replyFor(context).contains("Resultado del catálogo"));
 
-        verify(catalogConversationService).search(query, context.recentMessages(), context.latestMessage());
+        verify(catalogConversationService).search(query, List.of(), context.latestMessage());
         verify(knowledgeRetriever, never()).retrieve(any());
         verify(llmClient, never()).generateReply(any());
     }
@@ -567,7 +567,7 @@ class ConversationOrchestratorTest {
         when(intentClassifier.classify(catalogContext))
                 .thenReturn(new ConversationIntentDecision(
                         ConversationIntent.CATALOG_SEARCH, 0.95, query, null));
-        when(catalogConversationService.search(query, catalogContext.recentMessages(), latestMessage))
+        when(catalogConversationService.search(query, List.of(), latestMessage))
                 .thenReturn(Optional.of(new CatalogSearchResult(
                         CatalogSearchResult.Status.MATCHED,
                         List.of(new CatalogFact(
@@ -580,7 +580,7 @@ class ConversationOrchestratorTest {
         ConversationExecutionResult result = orchestrator.replyForDetailed(catalogContext);
 
         assertEquals("CATALOG_SEARCH", result.useCase());
-        verify(catalogConversationService).search(query, catalogContext.recentMessages(), latestMessage);
+        verify(catalogConversationService).search(query, List.of(), latestMessage);
     }
 
     @Test
@@ -600,7 +600,7 @@ class ConversationOrchestratorTest {
                 .thenReturn(new ConversationIntentDecision(
                         ConversationIntent.CATALOG_SEARCH, 0.95, staleQuery, null));
         when(catalogConversationService.search(
-                eq(CatalogQuery.empty()), eq(catalogContext.recentMessages()), eq(latestMessage)))
+                eq(CatalogQuery.empty()), eq(List.of()), eq(latestMessage)))
                 .thenReturn(Optional.of(new CatalogSearchResult(
                         CatalogSearchResult.Status.MATCHED,
                         List.of(new CatalogFact(
@@ -615,7 +615,7 @@ class ConversationOrchestratorTest {
         assertEquals("CATALOG_SEARCH", result.useCase());
         assertTrue(result.response().contains("Buzo Spring Boot"));
         verify(catalogConversationService).search(
-                eq(CatalogQuery.empty()), eq(catalogContext.recentMessages()), eq(latestMessage));
+                eq(CatalogQuery.empty()), eq(List.of()), eq(latestMessage));
     }
 
     @Test
@@ -995,7 +995,7 @@ class ConversationOrchestratorTest {
         CatalogQuery query = new CatalogQuery("camiseta", null, "M", "negro");
         when(intentClassifier.classify(any(ConversationContext.class)))
                 .thenReturn(new ConversationIntentDecision(ConversationIntent.CATALOG_SEARCH, 0.95, query, null));
-        when(catalogConversationService.search(query, context.recentMessages(), context.latestMessage()))
+        when(catalogConversationService.search(query, List.of(), context.latestMessage()))
                 .thenThrow(new IllegalStateException("catalog unavailable"));
 
         String reply = orchestrator.replyFor(context);

@@ -2,8 +2,8 @@
 
 Owner: Tech Lead  
 Status: `Accepted`
-Last reviewed: 2026-09-08
-Related Jira: `WCS-13`, `WCS-17`, `WCS-18`, `WCS-20`, `WCS-21`, `WCS-22`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-32`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-71`, `WCS-72`, `WCS-73`, `WCS-74`, `WCS-75`, `WCS-76`, `WCS-77`, `WCS-78`, `WCS-130`, `WCS-131`
+Last reviewed: 2026-09-23
+Related Jira: `WCS-13`, `WCS-17`, `WCS-18`, `WCS-20`, `WCS-21`, `WCS-22`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-32`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-71`, `WCS-72`, `WCS-73`, `WCS-74`, `WCS-75`, `WCS-76`, `WCS-77`, `WCS-78`, `WCS-130`, `WCS-131`, `WCS-141`
 Related repository paths: `src/main/java/com/wally/customersupport/{conversation,catalog,support,knowledge,shared}`, `src/main/resources`, `db/migration`
 Decision/source: specification de WhatsApp y re-baseline solicitada el 2026-08-30
 
@@ -371,10 +371,23 @@ no-op cuando `wcs.conversation.preferences.enabled=false`. El servicio valida
 alcance, origen, confirmación, valores permitidos y expiración; no extrae
 preferencias automáticamente.
 
-Las preferencias activas se agregan al `ConversationContext` como contexto
-auxiliar para el clasificador y el LLM. Las instrucciones de ambos adapters
-impiden que una preferencia reemplace los filtros explícitos del turno o una
-fuente transaccional.
+`WCS-141` amplía el vocabulario explícito a talle (`preferred_size`) sin nueva
+migración: la tabla genérica V8 ya persiste la clave y el valor normalizado.
+“Soy M” o “uso talle M” guarda una preferencia explícita; “busco una remera
+talle M” sólo es un filtro de esa consulta. Se puede olvidar una preferencia
+por clave. Una referencia ambigua (“no quiero eso”) pregunta qué significa y
+no modifica el estado.
+
+Cada agente recibe una proyección distinta de `ConversationContext`: el router
+recibe JSON acotado de mensajes recientes, resumen, selección activa y
+preferencias permitidas, sin identificadores externos; la reconciliación
+determinística aplica la preferencia sólo si una búsqueda específica omite el
+filtro y nunca si el mensaje actual indica otro talle/color. El especialista
+de catálogo recibe la consulta normalizada y el último turno, no el transcript.
+Generación de soporte recibe historial/resumen acotados y conocimiento
+aprobado, sin selección ni preferencias tipadas. El humanizador sólo recibe
+hechos del resultado de catálogo validado. Precio, stock, carrito y pedidos
+siguen siendo autoridad transaccional.
 
 `WCS-38` conecta la captura explícita al flujo común de inbound con un parser
 determinístico y acotado. Una frase como “prefiero el negro” puede guardar la

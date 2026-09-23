@@ -116,7 +116,7 @@ class InboundMessageProcessingServiceTest {
         lenient().when(conversationSummaryService.summaryForContext(any())).thenReturn(null);
         lenient().when(conversationSummaryService.appendAndMaybeSummarize(any(), anyString(), any()))
                 .thenAnswer(invocation -> invocation.getArgument(0));
-        lenient().when(explicitPreferenceCaptureService.capture(anyString(), anyString(), any()))
+        lenient().when(explicitPreferenceCaptureService.capture(anyString(), any(), anyString(), any()))
                 .thenReturn(ExplicitPreferenceCaptureService.CaptureResult.notDetected());
         lenient().when(optOutDetector.isOptOut(anyString())).thenReturn(false);
         lenient().when(optInDetector.isOptIn(anyString())).thenReturn(false);

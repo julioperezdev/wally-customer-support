@@ -4,6 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
@@ -15,6 +19,11 @@ import com.wally.customersupport.conversation.domain.model.ConversationContext;
 import com.wally.customersupport.conversation.domain.model.ConversationIntent;
 import com.wally.customersupport.conversation.domain.model.ConversationIntentDecision;
 import com.wally.customersupport.conversation.domain.model.ConversationSelection;
+import com.wally.customersupport.conversation.domain.model.CustomerPreference;
+import com.wally.customersupport.conversation.domain.model.PreferenceOrigin;
+import com.wally.customersupport.conversation.domain.model.PreferenceScope;
+import com.wally.customersupport.conversation.infrastructure.memory.mock.InMemoryCustomerPreferenceStore;
+import com.wally.customersupport.shared.infrastructure.config.ConversationPreferenceProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -137,6 +146,105 @@ class ConversationRoutingServiceTest {
         assertEquals("remera", result.decision().catalogQuery().productType());
         assertEquals("m", result.decision().catalogQuery().size());
         assertEquals(null, result.decision().catalogQuery().name());
+    }
+
+    @Test
+    void appliesExplicitPreferredSizeToSpecificCatalogSearchWhenTurnOmitsIt() {
+        ConversationContext context = contextWithPreferences(
+                "Quiero un buzo",
+                List.of("Quiero un buzo"),
+                List.of(preference(CustomerPreferenceService.PREFERRED_SIZE, "M")));
+        when(classifier.classify(context)).thenReturn(new ConversationIntentDecision(
+                ConversationIntent.CATALOG_SEARCH,
+                0.95,
+                new CatalogQuery(null, null, null, null, "buzo"),
+                null));
+
+        ConversationRoutingService.RoutingResult result = router.route(context);
+
+        assertEquals("buzo", result.decision().catalogQuery().productType());
+        assertEquals("m", result.decision().catalogQuery().size());
+    }
+
+    @Test
+    void carriesAnExplicitColloquialSizeIntoTheNextSpecificProductRequest() {
+        UUID conversationId = UUID.randomUUID();
+        String actorId = "actor-for-conversation";
+        Instant now = Instant.parse("2026-09-23T10:00:00Z");
+        var properties = new ConversationPreferenceProperties(true, Duration.ofHours(24), 5, 64);
+        var store = new InMemoryCustomerPreferenceStore();
+        var preferenceService = new CustomerPreferenceService(
+                store, properties, Clock.fixed(now, ZoneOffset.UTC));
+        var capture = new ExplicitPreferenceCaptureService(preferenceService, properties);
+
+        var captured = capture.capture(actorId, conversationId, "Estoy buscando ropa; uso M", now);
+        List<CustomerPreference> preferences = preferenceService.findForContext(actorId, conversationId);
+        ConversationContext nextTurn = new ConversationContext(
+                conversationId,
+                actorId,
+                "Quiero un buzo",
+                List.of("Estoy buscando ropa; uso M", "Quiero un buzo"),
+                List.of(),
+                null,
+                preferences,
+                Channel.TELEGRAM,
+                ConversationSelection.empty());
+        when(classifier.classify(nextTurn)).thenReturn(new ConversationIntentDecision(
+                ConversationIntent.CATALOG_SEARCH,
+                0.95,
+                new CatalogQuery(null, null, null, null, "buzo"),
+                null));
+
+        ConversationRoutingService.RoutingResult result = router.route(nextTurn);
+
+        assertEquals(ExplicitPreferenceCaptureService.Status.SAVED, captured.status());
+        assertEquals(false, captured.shouldAcknowledge());
+        assertEquals(1, preferences.size());
+        assertEquals(CustomerPreferenceService.PREFERRED_SIZE, preferences.getFirst().key());
+        assertEquals("M", preferences.getFirst().value());
+        assertEquals("buzo", result.decision().catalogQuery().productType());
+        assertEquals("m", result.decision().catalogQuery().size());
+    }
+
+    @Test
+    void currentSearchFilterWinsOverStoredPreference() {
+        ConversationContext context = contextWithPreferences(
+                "Quiero un buzo talle L",
+                List.of("Quiero un buzo talle L"),
+                List.of(preference(CustomerPreferenceService.PREFERRED_SIZE, "M")));
+        when(classifier.classify(context)).thenReturn(new ConversationIntentDecision(
+                ConversationIntent.CATALOG_SEARCH,
+                0.95,
+                new CatalogQuery(null, null, "l", null, "buzo"),
+                null));
+
+        ConversationRoutingService.RoutingResult result = router.route(context);
+
+        assertEquals("l", result.decision().catalogQuery().size());
+    }
+
+    @Test
+    void doesNotApplyPreferencesToGeneralCatalogListingsOrCartMutations() {
+        CustomerPreference preferredSize = preference(CustomerPreferenceService.PREFERRED_SIZE, "M");
+        ConversationContext listing = contextWithPreferences(
+                "Qué productos tienen?", List.of("Qué productos tienen?"), List.of(preferredSize));
+        when(classifier.classify(listing)).thenReturn(new ConversationIntentDecision(
+                ConversationIntent.CATALOG_SEARCH, 0.95,
+                new CatalogQuery(null, null, "m", null, "buzo"), null));
+        assertTrue(router.route(listing).decision().catalogQuery().isEmpty());
+
+        ConversationContext cart = contextWithPreferences(
+                "Agrega un buzo al carrito", List.of("Agrega un buzo al carrito"), List.of(preferredSize));
+        when(classifier.classify(cart)).thenReturn(new ConversationIntentDecision(
+                ConversationIntent.CATALOG_SEARCH,
+                ConversationAction.ADD_TO_CART,
+                0.95,
+                new CatalogQuery(null, null, null, null, "buzo"),
+                null,
+                1,
+                List.of()));
+
+        assertEquals(null, router.route(cart).decision().catalogQuery().size());
     }
 
     @Test
@@ -384,5 +492,28 @@ class ConversationRoutingServiceTest {
                 query,
                 query.sku(),
                 "CATALOG_SEARCH");
+    }
+
+    private static ConversationContext contextWithPreferences(
+            String latest,
+            List<String> recentMessages,
+            List<CustomerPreference> preferences) {
+        return new ConversationContext(
+                UUID.randomUUID(),
+                "not-forwarded-customer-id",
+                latest,
+                recentMessages,
+                List.of(),
+                null,
+                preferences,
+                Channel.TELEGRAM,
+                ConversationSelection.empty());
+    }
+
+    private static CustomerPreference preference(String key, String value) {
+        java.time.Instant updatedAt = java.time.Instant.parse("2026-09-23T10:00:00Z");
+        return new CustomerPreference(
+                null, "actor-in-test", key, value, PreferenceScope.ACTOR, 1.0,
+                PreferenceOrigin.EXPLICIT_USER, true, updatedAt, updatedAt.plusSeconds(3600));
     }
 }

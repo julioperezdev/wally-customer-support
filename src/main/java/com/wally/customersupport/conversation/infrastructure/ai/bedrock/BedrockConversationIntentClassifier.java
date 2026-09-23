@@ -17,6 +17,7 @@ import com.wally.customersupport.catalog.domain.model.CatalogQuery;
 import com.wally.customersupport.conversation.application.tool.ConversationRouteToolContract;
 import com.wally.customersupport.conversation.application.tool.WcsToolDescriptor;
 import com.wally.customersupport.conversation.application.port.out.ConversationIntentClassifier;
+import com.wally.customersupport.conversation.application.service.CustomerPreferenceService;
 import com.wally.customersupport.conversation.domain.model.ConversationContext;
 import com.wally.customersupport.conversation.domain.model.ConversationAction;
 import com.wally.customersupport.conversation.domain.model.ConversationIntent;
@@ -434,115 +435,117 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
     }
 
     private String buildUserMessage(ConversationContext context) {
-        String latestMessage = context.latestMessage();
-        List<String> messages = new ArrayList<>(context.recentMessages().reversed());
-        if (messages.isEmpty() || !latestMessage.equals(messages.getLast())) {
-            messages.add(latestMessage);
-        }
-
-        StringBuilder userPrompt = new StringBuilder("Version de prompt: ")
-                .append(prompt.version())
-                .append("\n<conversation_history>\n");
-        int historyStart = Math.max(0, messages.size() - 1 - promptProperties.effectiveMaxHistoryMessages());
-        for (int index = historyStart; index < messages.size() - 1; index++) {
-            userPrompt.append("<customer_message>\n")
-                    .append(limit(messages.get(index)))
-                    .append("\n</customer_message>\n");
-        }
-        userPrompt.append("</conversation_history>\n<latest_customer_message>\n")
-                .append(limit(messages.getLast()))
-                .append("\n</latest_customer_message>");
-        if (context.conversationSummary() != null && !context.conversationSummary().isBlank()) {
-            userPrompt.append("\n<conversation_summary>\n")
-                    .append(limit(context.conversationSummary()))
-                    .append("\n</conversation_summary>");
-        }
-        if (!context.preferences().isEmpty()) {
-            userPrompt.append("\n<customer_preferences>\n");
-            for (CustomerPreference preference : context.preferences()) {
-                userPrompt.append(preference.key()).append("=").append(preference.value()).append("\n");
-            }
-            userPrompt.append("</customer_preferences>\n");
-            userPrompt.append("Las preferencias son contexto auxiliar y nunca reemplazan filtros explícitos del turno actual.");
-        }
-        if (context.selection() != null && context.selection().hasCatalogSelection()) {
-            CatalogQuery selection = context.selection().catalogQuery();
-            userPrompt.append("\n<active_selection>\n")
-                    .append("stage=").append(context.selection().stage()).append("\n")
-                    .append("intent=").append(context.selection().intent()).append("\n")
-                    .append("action=").append(context.selection().action()).append("\n")
-                    .append("catalogQuery=").append(selection).append("\n")
-                    .append("</active_selection>\n")
-                    .append("La selección activa es contexto auxiliar. Validá el turno actual y no inventes hechos.");
-            if (context.selection().workingMemory().hasCandidates()) {
-                userPrompt.append("\n<recent_catalog_candidates>\n");
-                context.selection().workingMemory().catalogCandidates().forEach(candidate ->
-                        userPrompt.append("sku=").append(candidate.sku())
-                                .append("; product=").append(candidate.productName())
-                                .append("; size=").append(candidate.size())
-                                .append("; color=").append(candidate.color())
-                                .append("\n"));
-                userPrompt.append("</recent_catalog_candidates>\n")
-                        .append("Las referencias como 'esa', 'el segundo' o 'una' sólo pueden resolverse hacia estas variantes; si no es único, pedí aclaración.");
-            }
-        }
-        return userPrompt.toString();
+        List<String> history = boundedHistory(context, promptProperties.effectiveMaxHistoryMessages(),
+                promptProperties.effectiveMaxInputCharacters());
+        RouterMemoryPrompt memory = memoryPrompt(context);
+        return "Version de prompt: " + prompt.version()
+                + "\n<context_contract>conversation_history es un array JSON de mensajes anteriores; "
+                + "structured_memory contiene sólo resumen, preferencias explícitas y selección de catálogo.</context_contract>"
+                + "\n<conversation_history>\n" + toJson(history) + "\n</conversation_history>"
+                + "\n<latest_customer_message>\n" + limit(context.latestMessage()) + "\n</latest_customer_message>"
+                + memorySection(memory);
     }
 
     private String buildUserMessage(ConversationContext context, AgentRuntimeDefinition definition) {
-        String latestMessage = context.latestMessage();
-        List<String> messages = new ArrayList<>(context.recentMessages().reversed());
-        if (messages.isEmpty() || !latestMessage.equals(messages.getLast())) messages.add(latestMessage);
         int inputCharacterLimit = Math.min(12_000, Math.multiplyExact(definition.maxInputTokens(), 4));
-        int historyStart = Math.max(0, messages.size() - 1 - promptProperties.effectiveMaxHistoryMessages());
-        StringBuilder history = new StringBuilder();
-        for (int index = historyStart; index < messages.size() - 1; index++) {
-            history.append("<customer_message>\n")
-                    .append(limit(messages.get(index), inputCharacterLimit))
-                    .append("\n</customer_message>\n");
-        }
-        String summary = context.conversationSummary() == null || context.conversationSummary().isBlank()
+        List<String> history = boundedHistory(
+                context, promptProperties.effectiveMaxHistoryMessages(), inputCharacterLimit);
+        RouterMemoryPrompt memory = memoryPrompt(context);
+        String summary = memory.summary() == null
                 ? ""
-                : "\n<conversation_summary>\n" + limit(context.conversationSummary(), inputCharacterLimit)
+                : "\n<conversation_summary>\n" + toJson(Map.of("summary", memory.summary()))
                         + "\n</conversation_summary>";
-        String preferences = context.preferences().isEmpty()
+        String preferences = memory.preferences().isEmpty()
                 ? ""
-                : "\n<customer_preferences>\n" + context.preferences().stream()
-                        .map(preference -> preference.key() + "=" + preference.value())
-                        .collect(java.util.stream.Collectors.joining("\n"))
+                : "\n<customer_preferences>\n" + toJson(memory.preferences())
                         + "\n</customer_preferences>\n"
-                        + "Las preferencias son contexto auxiliar y nunca reemplazan filtros explícitos del turno actual.";
-        String selection = selectionSection(context, inputCharacterLimit);
+                        + "Preferencias explícitas: sólo completan filtros ausentes en una búsqueda específica; "
+                        + "no cambian el turno actual, listados generales, carrito ni compra.";
+        String selection = memory.selection() == null
+                ? ""
+                : "\n<active_selection>\n" + toJson(memory.selection())
+                        + "\n</active_selection>\n"
+                        + "La selección es contexto auxiliar; validá siempre los hechos contra PostgreSQL.";
         return PromptTemplateRenderer.render(definition.invocationConfiguration().userPromptTemplate(), Map.of(
                 "prompt_version", definition.systemPromptVersion(),
-                "conversation_history", history.toString(),
-                "latest_customer_message", limit(messages.getLast(), inputCharacterLimit),
+                "conversation_history", toJson(history),
+                "latest_customer_message", limit(context.latestMessage(), inputCharacterLimit),
                 "conversation_summary_section", summary,
                 "customer_preferences_section", preferences,
                 "active_selection_section", selection));
     }
 
-    private String selectionSection(ConversationContext context, int inputCharacterLimit) {
-        if (context.selection() == null || !context.selection().hasCatalogSelection()) return "";
-        StringBuilder selection = new StringBuilder("\n<active_selection>\n")
-                .append("stage=").append(context.selection().stage()).append("\n")
-                .append("intent=").append(context.selection().intent()).append("\n")
-                .append("action=").append(context.selection().action()).append("\n")
-                .append("catalogQuery=").append(context.selection().catalogQuery())
-                .append("\n</active_selection>\n")
-                .append("La selección activa es contexto auxiliar. Validá el turno actual y no inventes hechos.");
-        if (context.selection().workingMemory().hasCandidates()) {
-            selection.append("\n<recent_catalog_candidates>\n");
-            context.selection().workingMemory().catalogCandidates().forEach(candidate ->
-                    selection.append("sku=").append(candidate.sku())
-                            .append("; product=").append(candidate.productName())
-                            .append("; size=").append(candidate.size())
-                            .append("; color=").append(candidate.color()).append("\n"));
-            selection.append("</recent_catalog_candidates>\n")
-                    .append("Las referencias como 'esa', 'el segundo' o 'una' sólo pueden resolverse hacia estas variantes; si no es único, pedí aclaración.");
+    private List<String> boundedHistory(ConversationContext context, int maxMessages, int maxCharacters) {
+        List<String> messages = new ArrayList<>(context.recentMessages().reversed());
+        String latestMessage = context.latestMessage();
+        if (messages.isEmpty() || !latestMessage.equals(messages.getLast())) {
+            messages.add(latestMessage);
         }
-        return limit(selection.toString(), inputCharacterLimit);
+        int historyStart = Math.max(0, messages.size() - 1 - maxMessages);
+        return messages.subList(historyStart, messages.size() - 1).stream()
+                .map(message -> limit(message, maxCharacters))
+                .toList();
     }
+
+    private RouterMemoryPrompt memoryPrompt(ConversationContext context) {
+        String summary = context.conversationSummary() == null || context.conversationSummary().isBlank()
+                ? null
+                : limit(context.conversationSummary(), promptProperties.effectiveMaxInputCharacters());
+        List<PreferencePrompt> preferences = context.preferences().stream()
+                .filter(preference -> CustomerPreferenceService.PREFERRED_SIZE.equals(preference.key())
+                        || CustomerPreferenceService.PREFERRED_COLOR.equals(preference.key()))
+                .map(preference -> new PreferencePrompt(
+                        preference.key(), preference.value(), preference.origin().name()))
+                .toList();
+        SelectionPrompt selection = null;
+        if (context.selection() != null && context.selection().hasCatalogSelection()) {
+            List<CandidatePrompt> candidates = context.selection().workingMemory().catalogCandidates().stream()
+                    .map(candidate -> new CandidatePrompt(
+                            candidate.productName(), candidate.sku(), candidate.size(), candidate.color()))
+                    .toList();
+            selection = new SelectionPrompt(
+                    context.selection().stage(),
+                    context.selection().intent() == null ? null : context.selection().intent().name(),
+                    context.selection().action() == null ? null : context.selection().action().name(),
+                    context.selection().catalogQuery(),
+                    candidates);
+        }
+        return new RouterMemoryPrompt(summary, preferences, selection);
+    }
+
+    private String memorySection(RouterMemoryPrompt memory) {
+        if (memory.summary() == null && memory.preferences().isEmpty() && memory.selection() == null) {
+            return "";
+        }
+        return "\n<structured_customer_memory>\n" + toJson(memory)
+                + "\n</structured_customer_memory>\n"
+                + "Usá la memoria como contexto auxiliar: preferencias sólo completan filtros omitidos en una búsqueda "
+                + "concreta; filtros explícitos actuales tienen prioridad y no se infieren acciones de compra.";
+    }
+
+    private String toJson(Object value) {
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (Exception exception) {
+            throw new IllegalStateException("Could not serialize bounded conversation context", exception);
+        }
+    }
+
+    private record RouterMemoryPrompt(
+            String summary,
+            List<PreferencePrompt> preferences,
+            SelectionPrompt selection) { }
+
+    private record PreferencePrompt(String key, String value, String origin) { }
+
+    private record SelectionPrompt(
+            String stage,
+            String intent,
+            String action,
+            CatalogQuery catalogQuery,
+            List<CandidatePrompt> candidates) { }
+
+    private record CandidatePrompt(String productName, String sku, String size, String color) { }
 
     private static String limit(String value, int maximum) {
         return value.substring(0, Math.min(value.length(), maximum));

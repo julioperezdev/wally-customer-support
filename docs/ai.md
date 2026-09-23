@@ -3,7 +3,7 @@
 Owner: AI/Tech Lead  
 Status: `Accepted`
 Last reviewed: 2026-09-08
-Related Jira: `WCS-11`, `WCS-20`, `WCS-21`, `WCS-30`, `WCS-33`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-82`, `WCS-83`, `WCS-84`, `WCS-130`, `WCS-131`
+Related Jira: `WCS-11`, `WCS-20`, `WCS-21`, `WCS-30`, `WCS-33`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-82`, `WCS-83`, `WCS-84`, `WCS-130`, `WCS-131`, `WCS-141`
 Related repository paths: `src/main/java/com/wally/customersupport/conversation/infrastructure/ai`, `src/main/resources/prompts`, `src/test/resources/fixtures`
 
 ## Registro de modelos
@@ -171,6 +171,12 @@ promoción automática. Con pocas preguntas, es una señal para revisar los caso
 individuales y ampliar la evaluación antes de decidir una activación. Las
 métricas o coberturas ausentes se muestran como no disponibles, nunca como
 cero.
+
+El criterio aplicado para ampliar el corpus, interpretar los resultados
+locales v1–v4 y diseñar futuras comparaciones está en
+[`conversation-routing-evaluation-method.md`](conversation-routing-evaluation-method.md).
+En particular, los runs que usan versiones distintas de dataset no se deben
+interpretar como una comparación causal de prompts.
 
 La versión `1.0.1` del `response-humanization` agrega un bloque estructurado
 `required_facts` al prompt, con nombre, SKU, color, talle, precio, moneda y
@@ -453,6 +459,31 @@ disponible?` o `¿Cuánto cuesta?`, reutilizan el último contexto de catálogo
 cuando existe una única coincidencia; si hay varias, el bot solicita el SKU o
 una identificación más precisa. La disponibilidad y el precio se vuelven a
 consultar en PostgreSQL y nunca se toman de la memoria o del texto generado.
+
+### Memoria estructurada y contexto por agente — WCS-141
+
+La memoria durable sigue siendo tipada y pequeña: preferencias explícitas
+permitidas (`preferred_color`, `preferred_size`) en la tabla PostgreSQL
+existente y selección/filtros de trabajo en el contexto de conversación. No se
+guarda un transcript ni un blob JSON libre. El router recibe una proyección JSON
+acotada de esa memoria para mapear frases coloquiales a la decisión WCS; la
+reconciliación determinística controla precedencia y el catálogo no recibe
+historial completo.
+
+| Componente | Contexto permitido |
+| --- | --- |
+| `conversation-router` | Mensaje actual, ventana/resumen acotados, selección activa y preferencias explícitas permitidas en JSON; sin ID externo del cliente |
+| Reconciliador WCS | Decisión tipada, filtros actuales, selección y preferencias validadas; aplica preferencias sólo a búsquedas específicas incompletas |
+| `catalog-specialist` | `CatalogQuery` normalizado y último turno para aclaración; no transcript completo ni memoria durable |
+| `response-generation` | Mensaje, historial/resumen acotados y conocimiento aprobado; no preferencias ni selección estructurada |
+| `response-humanization` | Hechos estructurados ya validados, nunca memoria ni transcript |
+
+Talle/color expresados explícitamente pueden completar una consulta posterior,
+pero nunca alteran una lista general, una instrucción de carrito/pago ni un
+filtro distinto que el usuario exprese en el turno actual. “No quiero eso” no
+es una orden de borrado porque el referente es ambiguo: el bot pide aclaración.
+El olvido de “mi talle”/“mi color” elimina sólo esa clave. No se persisten
+precio, stock, carrito, pedido, intención inferida ni hechos sensibles.
 
 ## Contrato de aplicación
 

@@ -34,6 +34,19 @@ public class InMemoryCustomerPreferenceStore implements CustomerPreferenceStore 
     }
 
     @Override
+    public int deletePreference(String actorId, UUID conversationId, String key) {
+        if (actorId == null || actorId.isBlank() || key == null || key.isBlank()) {
+            return 0;
+        }
+        int before = preferences.size();
+        preferences.entrySet().removeIf(entry -> entry.getValue().actorId().equals(actorId.strip())
+                && entry.getValue().key().equalsIgnoreCase(key.strip())
+                && (entry.getValue().scope() == PreferenceScope.ACTOR
+                        || conversationId != null && conversationId.equals(entry.getValue().conversationId())));
+        return before - preferences.size();
+    }
+
+    @Override
     public void clearConversation(UUID conversationId, String actorId) {
         if (conversationId == null || actorId == null) {
             return;
