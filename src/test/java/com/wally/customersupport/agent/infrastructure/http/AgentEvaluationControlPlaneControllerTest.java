@@ -15,6 +15,8 @@ import java.util.UUID;
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationControlPlaneAccessDecision;
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationControlPlaneAccessReason;
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationControlPlaneAccessStatus;
+import com.wally.customersupport.agent.application.evaluation.AgentEvaluationDatasetCatalog;
+import com.wally.customersupport.agent.application.evaluation.AgentEvaluationDatasetDescriptor;
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationHistoryPage;
 import com.wally.customersupport.agent.application.service.AgentEvaluationComparisonApplicationService;
 import com.wally.customersupport.agent.application.service.AgentEvaluationControlPlaneAccessService;
@@ -48,12 +50,15 @@ class AgentEvaluationControlPlaneControllerTest {
     @Mock
     private AgentEvaluationEvidenceExportApplicationService evidenceExportService;
 
+    @Mock
+    private AgentEvaluationDatasetCatalog datasetCatalog;
+
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(new AgentEvaluationControlPlaneController(
-                accessService, historyQueryService, comparisonService, evidenceExportService))
+                accessService, historyQueryService, comparisonService, evidenceExportService, datasetCatalog))
                 .setControllerAdvice(new AgentEvaluationControlPlaneExceptionHandler())
                 .build();
     }
@@ -89,6 +94,34 @@ class AgentEvaluationControlPlaneControllerTest {
                 .andExpect(jsonPath("$.pageNumber").value(0));
 
         verify(historyQueryService).search(any(), any());
+    }
+
+    @Test
+    void listsVersionedDatasetsAfterReadAuthorization() throws Exception {
+        when(accessService.authorize(ACTOR)).thenReturn(authorized());
+        when(datasetCatalog.descriptors()).thenReturn(List.of(
+                new AgentEvaluationDatasetDescriptor("conversation-routing-v1", "conversation-router", 31)));
+
+        mockMvc.perform(get("/internal/agent-evaluations/datasets")
+                        .principal(() -> ACTOR))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].datasetVersion").value("conversation-routing-v1"))
+                .andExpect(jsonPath("$[0].agentId").value("conversation-router"))
+                .andExpect(jsonPath("$[0].scenarioCount").value(31));
+
+        verify(datasetCatalog).descriptors();
+    }
+
+    @Test
+    void deniesDatasetListingWithoutReadCapability() throws Exception {
+        when(accessService.authorize(ACTOR)).thenReturn(denied());
+
+        mockMvc.perform(get("/internal/agent-evaluations/datasets")
+                        .principal(() -> ACTOR))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+
+        verifyNoInteractions(datasetCatalog);
     }
 
     @Test

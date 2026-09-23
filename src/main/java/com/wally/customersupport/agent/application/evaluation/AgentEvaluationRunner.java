@@ -72,6 +72,9 @@ public class AgentEvaluationRunner {
         if (execution == null) {
             return evaluator.evaluate(scenario, null);
         }
+        if (execution.routingDecision() != null || scenario.routingContext() != null) {
+            return evaluator.evaluateRoute(scenario, execution.routingDecision(), execution.metadata());
+        }
         return evaluator.evaluate(scenario, execution.response(), execution.metadata());
     }
 

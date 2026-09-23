@@ -21,6 +21,47 @@ describe("control plane client", () => {
     );
   });
 
+  it("loads the versioned dataset catalog from the protected evaluation endpoint", async () => {
+    const datasets = [{ datasetVersion: "conversation-routing-v1", agentId: "conversation-router", scenarioCount: 31 }];
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(datasets), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(createControlPlaneClient("/internal/agent-evaluations", "session-token").listDatasets())
+      .resolves.toEqual(datasets);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/internal/agent-evaluations/datasets",
+      { credentials: "include", headers: { Accept: "application/json", Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("starts a pinned evaluation run with an idempotency key", async () => {
+    const result = { status: "COMPLETED", reason: "EVALUATION_COMPLETED", runId: "run-123" };
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(result), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(createControlPlaneClient("/internal/agent-evaluations", "session-token").startEvaluation({
+      datasetVersion: "conversation-routing-v1",
+      agentId: "conversation-router",
+      agentVersion: "2"
+    }, "once-123")).resolves.toEqual(result);
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/internal/agent-evaluations/runs");
+    expect(init).toMatchObject({ method: "POST", credentials: "include" });
+    expect(init.headers).toEqual({
+      Accept: "application/json",
+      Authorization: "Bearer session-token",
+      "Content-Type": "application/json",
+      "Idempotency-Key": "once-123"
+    });
+    expect(JSON.parse(String(init.body))).toEqual({
+      datasetVersion: "conversation-routing-v1",
+      agentId: "conversation-router",
+      agentVersion: "2"
+    });
+  });
+
   it("maps the sanitized backend error envelope", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ code: "ACCESS_DENIED" }), { status: 403 })));
 

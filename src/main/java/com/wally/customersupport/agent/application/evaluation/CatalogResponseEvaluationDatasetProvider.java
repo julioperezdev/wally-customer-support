@@ -15,6 +15,11 @@ public class CatalogResponseEvaluationDatasetProvider implements AgentEvaluation
     }
 
     @Override
+    public String agentId() {
+        return "response-humanization";
+    }
+
+    @Override
     public List<AgentEvaluationScenario> scenarios() {
         return CatalogResponseEvaluationDataset.scenarios();
     }

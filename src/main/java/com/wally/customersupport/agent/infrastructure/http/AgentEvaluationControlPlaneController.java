@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationControlPlaneAccessDecision;
+import com.wally.customersupport.agent.application.evaluation.AgentEvaluationDatasetCatalog;
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationHistoryFilter;
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationHistoryPage;
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationHistoryPageRequest;
@@ -32,16 +33,27 @@ public class AgentEvaluationControlPlaneController {
     private final AgentEvaluationHistoryQueryService historyQueryService;
     private final AgentEvaluationComparisonApplicationService comparisonService;
     private final AgentEvaluationEvidenceExportApplicationService evidenceExportService;
+    private final AgentEvaluationDatasetCatalog datasetCatalog;
 
     public AgentEvaluationControlPlaneController(
             AgentEvaluationControlPlaneAccessService accessService,
             AgentEvaluationHistoryQueryService historyQueryService,
             AgentEvaluationComparisonApplicationService comparisonService,
-            AgentEvaluationEvidenceExportApplicationService evidenceExportService) {
+            AgentEvaluationEvidenceExportApplicationService evidenceExportService,
+            AgentEvaluationDatasetCatalog datasetCatalog) {
         this.accessService = accessService;
         this.historyQueryService = historyQueryService;
         this.comparisonService = comparisonService;
         this.evidenceExportService = evidenceExportService;
+        this.datasetCatalog = datasetCatalog;
+    }
+
+    @GetMapping("/datasets")
+    public ResponseEntity<?> listDatasets(Principal principal) {
+        if (!isAuthorized(actorId(principal), "list_datasets")) {
+            return forbidden();
+        }
+        return ResponseEntity.ok(datasetCatalog.descriptors());
     }
 
     @GetMapping("/runs")

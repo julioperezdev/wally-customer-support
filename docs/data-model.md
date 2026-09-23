@@ -370,14 +370,19 @@ ejecución completada:
   promedio y razones de fallo agregadas;
 * `wcs.agent_evaluation_scenario_results`: run, `scenario_id`, versión,
   pass/fail, score, razones sanitizadas y metadata opcional de ejecución
-  (latencia, tokens, costo y pricing version).
+  (latencia, tokens, costo, pricing version, intención, acción, cantidad y
+  filtros del router). `execution_routed_action` y
+  `execution_routed_quantity` conservan la decisión estructurada para comparar
+  versiones sin persistir mensajes ni respuestas.
 
 La relación tiene foreign key con borrado en cascada y unicidad de
 `run_id + scenario_id`. Los scores, tiempos, tokens y costos tienen constraints
 de rango; los índices permiten consultar histórico por agente/versión, dataset
 y fecha. No existen columnas para prompts, respuestas, mensajes, teléfonos ni
 PII. La migración `V10__create_agent_evaluation_results.sql` agrega estas
-tablas sin modificar `V1`–`V9`.
+tablas sin modificar `V1`–`V9`. `V31__persist_evaluation_routed_quantity.sql`
+agrega la cantidad decidida por el router a resultados nuevos con un constraint
+de rango entre 1 y 100; no modifica migraciones aplicadas.
 
 El adapter `AgentEvaluationRunRepository` expone sólo `save` y lookup por
 `runId`, y rechaza sobrescribir runs existentes. La retención y el control de

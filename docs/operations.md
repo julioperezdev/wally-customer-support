@@ -941,18 +941,28 @@ executor Bedrock para un dataset sintético. El default es seguro:
 
 ```properties
 wcs.agent-evaluation.executor=deterministic
-wcs.agent-evaluation.max-scenarios=10
+wcs.agent-evaluation.max-scenarios=40
 wcs.agent-evaluation.max-input-tokens-per-scenario=4000
-wcs.agent-evaluation.max-output-tokens=512
-wcs.agent-evaluation.max-estimated-cost-usd=0.0500
+wcs.agent-evaluation.max-output-tokens=1024
+wcs.agent-evaluation.max-estimated-cost-usd=0.5000
 wcs.agent-evaluation.timeout=PT30S
 ```
 
-Para una prueba aprobada, usar `wcs.agent-evaluation.executor=bedrock` junto
-con `wcs.ai.provider=bedrock` y el mismo `wcs.ai.model` en el request. El
-preflight rechaza una suite que exceda escenarios o costo estimado antes de
-invocar al proveedor. Si Bedrock no informa una métrica, se conserva como no
-disponible; no se interpreta como cero. Para rollback volver a
+Para una prueba aprobada, usar `wcs.agent-evaluation.executor=bedrock` y
+habilitar explícitamente el trigger HTTP. El modelo, prompt, parámetros, schemas
+y pricing se leen de la versión inmutable de `wcs.agent_versions`; no se toma
+`wcs.ai.model` del request. En el backoffice, elegir dataset, agente y versión
+(no DRAFT) y presionar **Ejecutar**. Para comparar, repetir con baseline y
+candidata y luego elegir ambos runs en **Comparar**. Los datasets del router son
+`conversation-routing-v1` (31 ejemplos) y `conversation-routing-v2` (34); el de respuesta es
+`catalog-response-v1`. Cada ejecución muestra score por escenario, tokens,
+latencia y costo estimado. El backend limita a 40 escenarios, 1024 tokens de
+salida y USD 0,50 de costo estimado por run antes de llamar a Bedrock. Para
+correr V2, elegir o crear una versión SQL del router cuyo
+`evaluationSuiteVersion` sea exactamente `conversation-routing-v2`; el perfil
+SQL asociado a V1 no puede ejecutarse con V2.
+Si Bedrock no informa una métrica, se conserva como no disponible; no se
+interpreta como cero. Para rollback volver a
 `wcs.agent-evaluation.executor=deterministic`. Esta configuración no habilita
 por sí sola el endpoint HTTP ni requiere Terraform.
 

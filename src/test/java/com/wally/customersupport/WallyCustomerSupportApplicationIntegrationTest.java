@@ -505,6 +505,26 @@ class WallyCustomerSupportApplicationIntegrationTest {
     }
 
     @Test
+    void persistsAndReloadsRouterQuantityWithEvaluationScenarioMetadata() {
+        UUID runId = UUID.randomUUID();
+        Instant completedAt = Instant.now();
+        AgentEvaluationExecutionMetadata metadata = new AgentEvaluationExecutionMetadata(
+                "conversation-router", "2", "bedrock", "synthetic-test-model",
+                100, 80L, 12, 4, 16, new BigDecimal("0.00001"), "synthetic-pricing-v1",
+                "CATALOG_SEARCH", "ADD_TO_CART", List.of("productType=remera"),
+                null, null, null, 2);
+        AgentEvaluationRun run = evaluationRun(
+                runId, "conversation-routing-v2", "conversation-router", completedAt, metadata);
+
+        agentEvaluationRunRepository.save(run);
+        AgentEvaluationRun loaded = agentEvaluationRunRepository.findById(runId).orElseThrow();
+
+        assertEquals(2, loaded.suiteResult().scenarioResults().getFirst()
+                .executionMetadata().routedQuantity());
+        assertEquals("conversation-routing-v2", loaded.datasetVersion());
+    }
+
+    @Test
     void queriesEvaluationHistoryWithFiltersStablePaginationAndSanitizedDetail() {
         String datasetVersion = "history-dataset-" + UUID.randomUUID();
         String agentId = "history-agent-" + UUID.randomUUID();

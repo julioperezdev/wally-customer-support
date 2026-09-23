@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.util.List;
 
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationApplicationService;
+import com.wally.customersupport.agent.application.evaluation.AgentEvaluationDatasetCatalog;
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationHistoryPage;
 import com.wally.customersupport.agent.application.port.out.AgentEvaluationControlPlaneAuthorizer;
 import com.wally.customersupport.agent.application.port.out.AgentEvaluationTriggerAuthorizer;
@@ -334,9 +335,15 @@ class AgentEvaluationControlPlaneSecurityConfigurationTest {
                 AgentEvaluationControlPlaneAccessService accessService,
                 AgentEvaluationHistoryQueryService historyQueryService,
                 AgentEvaluationComparisonApplicationService comparisonService,
-                AgentEvaluationEvidenceExportApplicationService evidenceExportService) {
+                AgentEvaluationEvidenceExportApplicationService evidenceExportService,
+                AgentEvaluationDatasetCatalog datasetCatalog) {
             return new AgentEvaluationControlPlaneController(
-                    accessService, historyQueryService, comparisonService, evidenceExportService);
+                    accessService, historyQueryService, comparisonService, evidenceExportService, datasetCatalog);
+        }
+
+        @Bean
+        AgentEvaluationDatasetCatalog datasetCatalog() {
+            return new AgentEvaluationDatasetCatalog(List.of());
         }
 
         @Bean

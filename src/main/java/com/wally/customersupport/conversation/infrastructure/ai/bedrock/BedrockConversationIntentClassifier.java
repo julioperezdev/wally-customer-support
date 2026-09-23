@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -210,6 +211,56 @@ public class BedrockConversationIntentClassifier implements ConversationIntentCl
             recordFallback("provider", exception, context);
             return ConversationIntentDecision.unknown();
         }
+    }
+
+    /** Executes a selected immutable SQL profile for offline evaluation, bypassing runtime activation. */
+    public ConversationIntentEvaluationExecution classifyForEvaluation(
+            ConversationContext context,
+            AgentRuntimeDefinition profile,
+            Duration maxRequestTimeout) {
+        if (context == null || context.latestMessage() == null || context.latestMessage().isBlank()) {
+            throw new IllegalArgumentException("evaluation routing context must include a latest message");
+        }
+        if (profile == null || !"conversation-router".equals(profile.agentId())) {
+            throw new IllegalArgumentException("evaluation requires a conversation-router SQL profile");
+        }
+        String userMessage = buildUserMessage(context, profile);
+        String baseSystemPrompt = profile.invocationConfiguration().systemPrompt();
+        String promptVersion = profile.semanticVersion();
+        int maxOutputTokens = profile.maxOutputTokens();
+        float temperature = profile.inferenceParameters().temperature().floatValue();
+        var invocation = profile.invocationConfiguration();
+        String output;
+        com.wally.customersupport.conversation.application.port.out.MeasuredLlmClient.LlmCompletion completion;
+        if (invocation.structuredToolCalling()) {
+            String structuredSystemPrompt = baseSystemPrompt + structuredToolSuffix();
+            String structuredPromptHash = sha256(structuredSystemPrompt);
+            BedrockConverseClient.ToolUseCompletion toolCompletion = converseClient.completeWithToolUseForAgent(
+                    "agent-evaluation",
+                    "agent.evaluation.conversation-router",
+                    structuredSystemPrompt,
+                    userMessage,
+                    maxOutputTokens,
+                    temperature,
+                    profile.inferenceParameters().topP().floatValue(),
+                    promptVersion,
+                    structuredPromptHash,
+                    configuredRouteContract(profile),
+                    profile,
+                    maxRequestTimeout);
+            output = toolCompletion.inputJson();
+            completion = toolCompletion.completion();
+        } else {
+            completion = converseClient.completeMeasuredForAgent(
+                    "agent-evaluation",
+                    "agent.evaluation.conversation-router",
+                    userMessage,
+                    profile,
+                    maxRequestTimeout,
+                    null);
+            output = completion.text();
+        }
+        return new ConversationIntentEvaluationExecution(parse(output, context), completion);
     }
 
     private String structuredToolUsePrompt() {
