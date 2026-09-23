@@ -98,8 +98,8 @@ public class ResponsePolicyEvaluator {
             } else {
                 reasons.add("ACTION_MISMATCH");
             }
-            if (scenario.expectedEntityTypes().stream().sorted().toList()
-                    .equals(queryAttributes(actual.catalogQuery()))) {
+            if (sameExtractedEntities(
+                    scenario.expectedEntityTypes(), queryAttributes(actual.catalogQuery()))) {
                 passedChecks++;
             } else {
                 reasons.add("ENTITY_EXTRACTION_MISMATCH");
@@ -201,6 +201,30 @@ public class ResponsePolicyEvaluator {
         addAttribute(attributes, "maxPrice", query.maxPrice() == null
                 ? null : query.maxPrice().stripTrailingZeros().toPlainString());
         return attributes.stream().sorted().toList();
+    }
+
+    private static boolean sameExtractedEntities(List<String> expected, List<String> actual) {
+        return canonicalizeEntityAttributes(expected).equals(canonicalizeEntityAttributes(actual));
+    }
+
+    private static List<String> canonicalizeEntityAttributes(List<String> attributes) {
+        return attributes.stream()
+                .map(attribute -> {
+                    int separator = attribute.indexOf('=');
+                    if (separator < 0) {
+                        return attribute;
+                    }
+                    String field = attribute.substring(0, separator);
+                    String value = attribute.substring(separator + 1);
+                    // PostgreSQL catalog lookup treats SKU identifiers case-insensitively and the
+                    // Bedrock adapter normalizes them before creating the query.
+                    if ("sku".equals(field)) {
+                        value = value.toLowerCase(java.util.Locale.ROOT);
+                    }
+                    return field + "=" + value;
+                })
+                .sorted()
+                .toList();
     }
 
     private static void addAttribute(List<String> target, String name, String value) {

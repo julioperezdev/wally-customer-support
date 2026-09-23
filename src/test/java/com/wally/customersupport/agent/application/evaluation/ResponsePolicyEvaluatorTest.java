@@ -172,6 +172,33 @@ class ResponsePolicyEvaluatorTest {
         assertThat(result.evaluatedDimensions()).contains("quantity_extraction");
     }
 
+    @Test
+    void comparesSkuEntitiesCaseInsensitivelyLikeCatalogLookup() {
+        AgentEvaluationScenario scenario = new AgentEvaluationScenario(
+                "sku-case-normalization", "conversation-routing-v2", "ROUTING", Channel.TELEGRAM,
+                null, ResponseHumanizationResult.Outcome.APPLIED, List.of(), List.of(),
+                "CATALOG_SEARCH", List.of("sku=RP-REM-NP-NEG-M"), null, null,
+                new ConversationContext(null, null, "Hay stock de RP-REM-NP-NEG-M?", List.of(),
+                        List.of(), null, List.of(), Channel.TELEGRAM),
+                "CATALOG_SEARCH");
+        ConversationIntentDecision matchingCaseVariant = new ConversationIntentDecision(
+                ConversationIntent.CATALOG_SEARCH, ConversationAction.CATALOG_SEARCH, 0.98,
+                new com.wally.customersupport.catalog.domain.model.CatalogQuery(
+                        null, "rp-rem-np-neg-m", null, null), null, 1, List.of());
+        ConversationIntentDecision differentSku = new ConversationIntentDecision(
+                ConversationIntent.CATALOG_SEARCH, ConversationAction.CATALOG_SEARCH, 0.98,
+                new com.wally.customersupport.catalog.domain.model.CatalogQuery(
+                        null, "rp-buz-sb-neg-xl", null, null), null, 1, List.of());
+
+        AgentEvaluationResult equivalent = evaluator.evaluateRoute(scenario, matchingCaseVariant, null);
+        AgentEvaluationResult different = evaluator.evaluateRoute(scenario, differentSku, null);
+
+        assertThat(equivalent.passed()).isTrue();
+        assertThat(equivalent.score()).isEqualTo(1.0);
+        assertThat(different.passed()).isFalse();
+        assertThat(different.reasons()).containsExactly("ENTITY_EXTRACTION_MISMATCH");
+    }
+
     private static AgentEvaluationScenario routingScenario() {
         return new AgentEvaluationScenario(
                 "catalog_type_and_size", "conversation-routing-v1", "ROUTING", Channel.TELEGRAM,
