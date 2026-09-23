@@ -1097,6 +1097,7 @@ function ComparisonView({ comparison }: { comparison: Comparison }) {
         <Metric label="Intención" value={quality.intentAccuracyRateDelta == null ? "—" : formatSignedPercent(quality.intentAccuracyRateDelta)} />
         <Metric label="Acción" value={quality.actionAccuracyRateDelta == null ? "—" : formatSignedPercent(quality.actionAccuracyRateDelta)} />
         <Metric label="Filtros extraídos" value={quality.entityExtractionRateDelta == null ? "—" : formatSignedPercent(quality.entityExtractionRateDelta)} />
+        <Metric label="Cantidad" value={quality.quantityExtractionRateDelta == null ? "—" : formatSignedPercent(quality.quantityExtractionRateDelta)} />
       </> : <>
         <Metric label="Utilidad" value={quality.utilityRateDelta == null ? "—" : formatSignedPercent(quality.utilityRateDelta)} />
         <Metric label="Grounding" value={quality.responseGroundingRateDelta == null ? "—" : formatSignedPercent(quality.responseGroundingRateDelta)} />
@@ -1139,6 +1140,7 @@ function formatQualityDimensions(dimensions: string[]) {
     intent_accuracy: "precisión de intención",
     entity_extraction: "extracción de entidades",
     action_accuracy: "precisión de acción",
+    quantity_extraction: "extracción de cantidad",
     tool_success: "éxito de herramientas",
     rag_grounding: "fundamentación RAG"
   };

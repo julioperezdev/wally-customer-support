@@ -359,6 +359,7 @@ export type Comparison = {
     intentAccuracyRateDelta: number | null;
     entityExtractionRateDelta: number | null;
     actionAccuracyRateDelta: number | null;
+    quantityExtractionRateDelta: number | null;
     toolSuccessRateDelta: number | null;
     ragGroundingRateDelta: number | null;
   };

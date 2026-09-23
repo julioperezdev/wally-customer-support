@@ -23,7 +23,29 @@ public record AgentEvaluationScenario(
         String expectedToolName,
         Boolean expectedGrounded,
         ConversationContext routingContext,
-        String expectedAction) {
+        String expectedAction,
+        Integer expectedQuantity) {
+
+    /** Backwards-compatible routing scenario contract without quantity expectations. */
+    public AgentEvaluationScenario(
+            String scenarioId,
+            String datasetVersion,
+            String useCase,
+            Channel channel,
+            ResponseHumanizationRequest request,
+            ResponseHumanizationResult.Outcome expectedOutcome,
+            List<String> requiredTextFragments,
+            List<String> forbiddenTextFragments,
+            String expectedIntent,
+            List<String> expectedEntityTypes,
+            String expectedToolName,
+            Boolean expectedGrounded,
+            ConversationContext routingContext,
+            String expectedAction) {
+        this(scenarioId, datasetVersion, useCase, channel, request, expectedOutcome, requiredTextFragments,
+                forbiddenTextFragments, expectedIntent, expectedEntityTypes, expectedToolName, expectedGrounded,
+                routingContext, expectedAction, null);
+    }
 
     /** Backwards-compatible scenario contract without routing/tool or RAG oracles. */
     public AgentEvaluationScenario(
@@ -70,6 +92,9 @@ public record AgentEvaluationScenario(
         expectedEntityTypes = normalizeOptionalFragments(expectedEntityTypes);
         expectedToolName = normalizeOptional(expectedToolName);
         expectedAction = normalizeOptional(expectedAction);
+        if (expectedQuantity != null && (expectedQuantity < 1 || expectedQuantity > 100)) {
+            throw new IllegalArgumentException("expectedQuantity must be between 1 and 100");
+        }
         if (request == null && routingContext == null
                 && expectedOutcome != ResponseHumanizationResult.Outcome.FALLBACK) {
             throw new IllegalArgumentException("only fallback scenarios may omit the request");

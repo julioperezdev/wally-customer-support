@@ -151,6 +151,27 @@ class ResponsePolicyEvaluatorTest {
         assertThat(result.toString()).doesNotContain("quiero una remera negra talle M");
     }
 
+    @Test
+    void scoresCartQuantitySeparatelyFromActionAndFilterExtraction() {
+        AgentEvaluationScenario scenario = new AgentEvaluationScenario(
+                "add-two", "conversation-routing-v2", "ROUTING", Channel.TELEGRAM,
+                null, ResponseHumanizationResult.Outcome.APPLIED, List.of(), List.of(),
+                "CATALOG_SEARCH", List.of("productType=remera"), null, null,
+                new ConversationContext(null, null, "Agregá dos remeras al carrito", List.of(), List.of(),
+                        null, List.of(), Channel.TELEGRAM), "ADD_TO_CART", 2);
+        ConversationIntentDecision wrongQuantity = new ConversationIntentDecision(
+                ConversationIntent.CATALOG_SEARCH, ConversationAction.ADD_TO_CART, 0.95,
+                new com.wally.customersupport.catalog.domain.model.CatalogQuery(
+                        null, null, null, null, "remera"), null, 1, List.of());
+
+        AgentEvaluationResult result = evaluator.evaluateRoute(scenario, wrongQuantity, null);
+
+        assertThat(result.passed()).isFalse();
+        assertThat(result.score()).isEqualTo(0.75);
+        assertThat(result.reasons()).containsExactly("QUANTITY_MISMATCH");
+        assertThat(result.evaluatedDimensions()).contains("quantity_extraction");
+    }
+
     private static AgentEvaluationScenario routingScenario() {
         return new AgentEvaluationScenario(
                 "catalog_type_and_size", "conversation-routing-v1", "ROUTING", Channel.TELEGRAM,

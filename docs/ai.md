@@ -159,6 +159,12 @@ siguen siendo señales operativas separadas de calidad. Runs incompatibles se
 rechazan con un error específico y una suite con IDs duplicados no se empareja
 de forma ambigua.
 
+La suite `conversation-routing-v1` conserva el corpus histórico de 31 casos.
+`conversation-routing-v2` conserva esas entradas, completa las expectativas de
+filtros, agrega tres casos de cantidad de carrito y expone cantidad como métrica
+separada. Un run V1 no se compara directamente con V2: cada versión SQL evaluada
+debe quedar asociada al mismo dataset exacto que ejecuta.
+
 La etiqueta de resultado (`QUALITY_IMPROVED`, `QUALITY_REGRESSION`, `MIXED` o
 `NO_QUALITY_CHANGE`) no implica significancia estadística, aprobación ni
 promoción automática. Con pocas preguntas, es una señal para revisar los casos

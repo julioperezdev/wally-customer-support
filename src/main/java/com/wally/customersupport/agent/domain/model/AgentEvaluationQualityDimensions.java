@@ -9,6 +9,7 @@ public final class AgentEvaluationQualityDimensions {
             "intent_accuracy",
             "entity_extraction",
             "action_accuracy",
+            "quantity_extraction",
             "tool_success",
             "rag_grounding");
 

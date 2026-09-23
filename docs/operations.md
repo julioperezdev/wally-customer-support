@@ -953,11 +953,14 @@ habilitar explícitamente el trigger HTTP. El modelo, prompt, parámetros, schem
 y pricing se leen de la versión inmutable de `wcs.agent_versions`; no se toma
 `wcs.ai.model` del request. En el backoffice, elegir dataset, agente y versión
 (no DRAFT) y presionar **Ejecutar**. Para comparar, repetir con baseline y
-candidata y luego elegir ambos runs en **Comparar**. El dataset del router es
-`conversation-routing-v1` (31 ejemplos); el de respuesta es
+candidata y luego elegir ambos runs en **Comparar**. Los datasets del router son
+`conversation-routing-v1` (31 ejemplos) y `conversation-routing-v2` (34); el de respuesta es
 `catalog-response-v1`. Cada ejecución muestra score por escenario, tokens,
 latencia y costo estimado. El backend limita a 40 escenarios, 1024 tokens de
-salida y USD 0,50 de costo estimado por run antes de llamar a Bedrock.
+salida y USD 0,50 de costo estimado por run antes de llamar a Bedrock. Para
+correr V2, elegir o crear una versión SQL del router cuyo
+`evaluationSuiteVersion` sea exactamente `conversation-routing-v2`; el perfil
+SQL asociado a V1 no puede ejecutarse con V2.
 Si Bedrock no informa una métrica, se conserva como no disponible; no se
 interpreta como cero. Para rollback volver a
 `wcs.agent-evaluation.executor=deterministic`. Esta configuración no habilita

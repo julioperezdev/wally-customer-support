@@ -152,6 +152,8 @@ public class AgentEvaluationComparisonApplicationService {
                         before.entityExtractionRate(), after.entityExtractionRate()),
                 comparableDimensionDelta(baseline, candidate, "action_accuracy",
                         before.actionAccuracyRate(), after.actionAccuracyRate()),
+                comparableDimensionDelta(baseline, candidate, "quantity_extraction",
+                        before.quantityExtractionRate(), after.quantityExtractionRate()),
                 comparableDimensionDelta(baseline, candidate, "tool_success",
                         before.toolSuccessRate(), after.toolSuccessRate()),
                 comparableDimensionDelta(baseline, candidate, "rag_grounding",

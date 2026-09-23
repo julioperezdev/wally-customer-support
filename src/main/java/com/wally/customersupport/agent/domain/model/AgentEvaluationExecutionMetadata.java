@@ -22,7 +22,8 @@ public record AgentEvaluationExecutionMetadata(
         List<String> resolvedEntityTypes,
         String toolName,
         Boolean toolSucceeded,
-        Boolean grounded) {
+        Boolean grounded,
+        Integer routedQuantity) {
 
     /** Backwards-compatible operational metadata without quality signals. */
     public AgentEvaluationExecutionMetadata(
@@ -40,6 +41,30 @@ public record AgentEvaluationExecutionMetadata(
         this(agentId, agentVersion, provider, modelId, durationMs, providerLatencyMs,
                 inputTokens, outputTokens, totalTokens, estimatedCostUsd, pricingVersion,
                 null, null, null, null, null, null);
+    }
+
+    /** Backwards-compatible quality metadata contract before quantity accuracy was measured. */
+    public AgentEvaluationExecutionMetadata(
+            String agentId,
+            String agentVersion,
+            String provider,
+            String modelId,
+            long durationMs,
+            Long providerLatencyMs,
+            Integer inputTokens,
+            Integer outputTokens,
+            Integer totalTokens,
+            BigDecimal estimatedCostUsd,
+            String pricingVersion,
+            String routedIntent,
+            String routedAction,
+            List<String> resolvedEntityTypes,
+            String toolName,
+            Boolean toolSucceeded,
+            Boolean grounded) {
+        this(agentId, agentVersion, provider, modelId, durationMs, providerLatencyMs,
+                inputTokens, outputTokens, totalTokens, estimatedCostUsd, pricingVersion,
+                routedIntent, routedAction, resolvedEntityTypes, toolName, toolSucceeded, grounded, null);
     }
 
     /** Backwards-compatible quality metadata contract before action accuracy was measured. */
@@ -62,7 +87,7 @@ public record AgentEvaluationExecutionMetadata(
             Boolean grounded) {
         this(agentId, agentVersion, provider, modelId, durationMs, providerLatencyMs,
                 inputTokens, outputTokens, totalTokens, estimatedCostUsd, pricingVersion,
-                routedIntent, null, resolvedEntityTypes, toolName, toolSucceeded, grounded);
+                routedIntent, null, resolvedEntityTypes, toolName, toolSucceeded, grounded, null);
     }
 
     public AgentEvaluationExecutionMetadata {
@@ -94,6 +119,9 @@ public record AgentEvaluationExecutionMetadata(
                         .sorted()
                         .toList();
         toolName = normalize(toolName);
+        if (routedQuantity != null && (routedQuantity < 1 || routedQuantity > 100)) {
+            throw new IllegalArgumentException("routedQuantity must be between 1 and 100");
+        }
     }
 
     private static <T extends Number> T nonNegative(T value, String field) {

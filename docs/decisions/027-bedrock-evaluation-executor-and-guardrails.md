@@ -28,12 +28,21 @@ sintéticos validados por el dataset. `response-humanization` recibe el caso de
 uso, canal y hechos estructurados; `conversation-router` recibe los mensajes e
 historial sintéticos del escenario para reproducir una decisión de routing. El
 modelo no recibe conversaciones de clientes, credenciales, prompts
-configurables desde el request, SQL, tools ni acceso a PostgreSQL. El executor acepta dos contratos cerrados:
-`response-humanization` con `catalog-response-v1`, y `conversation-router` con
-`conversation-routing-v1`. Este segundo dataset contiene 31 casos sintéticos
-contrastivos con historial y expectativas de intención, acción y filtros. Los
-pares agente/dataset se validan antes de invocar el modelo; otros agentes
-continúan fallando cerrado.
+configurables desde el request, SQL, tools ni acceso a PostgreSQL. El executor
+acepta contratos cerrados: `response-humanization` con
+`catalog-response-v1`, y `conversation-router` con
+`conversation-routing-v1` o `conversation-routing-v2`. Los pares
+agente/dataset se validan antes de invocar el modelo; otros agentes continúan
+fallando cerrado.
+
+`conversation-routing-v1` conserva su corpus original de 31 escenarios. La
+versión `conversation-routing-v2` es un snapshot separado de 34 escenarios: los
+31 mensajes e historiales originales conservan sus entradas y corrigen oráculos
+de filtros que estaban incompletos; suma tres casos de cantidad de carrito y
+mide esa extracción como dimensión propia. V1 no se reescribe ni se usa como
+equivalente de V2: para comparar prompts deben ejecutarse baseline y candidata
+contra la misma versión de dataset. La versión SQL del agente también debe
+declarar ese `evaluationSuiteVersion` exacto.
 System prompt, template, model ID, temperatura, `topP`, razonamiento, límites,
 timeout y precio salen del snapshot SQL exacto. El request no puede cambiar
 esos parámetros; `provider` y `modelId` son opcionales por compatibilidad y se

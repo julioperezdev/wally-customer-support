@@ -21,6 +21,7 @@ public record AgentEvaluationQualityScorecard(
         Double intentAccuracyRate,
         Double entityExtractionRate,
         Double actionAccuracyRate,
+        Double quantityExtractionRate,
         Double toolSuccessRate,
         Double ragGroundingRate,
         Map<String, Integer> failureCounts,
@@ -41,7 +42,7 @@ public record AgentEvaluationQualityScorecard(
             Map<String, Integer> failureCounts,
             List<String> unavailableDimensions) {
         this(evaluatedScenarios, responseValidityRate, responseGroundingRate, safetyRate, utilityRate,
-                null, null, null, null, null, failureCounts, unavailableDimensions);
+                null, null, null, null, null, null, failureCounts, unavailableDimensions);
     }
 
     /** Backwards-compatible scorecard before action accuracy was added. */
@@ -58,8 +59,27 @@ public record AgentEvaluationQualityScorecard(
             Map<String, Integer> failureCounts,
             List<String> unavailableDimensions) {
         this(evaluatedScenarios, responseValidityRate, responseGroundingRate, safetyRate, utilityRate,
-                intentAccuracyRate, entityExtractionRate, null, toolSuccessRate, ragGroundingRate,
+                intentAccuracyRate, entityExtractionRate, null, null, toolSuccessRate, ragGroundingRate,
                 failureCounts, unavailableDimensions);
+    }
+
+    /** Backwards-compatible scorecard before quantity extraction was measured. */
+    public AgentEvaluationQualityScorecard(
+            int evaluatedScenarios,
+            Double responseValidityRate,
+            Double responseGroundingRate,
+            Double safetyRate,
+            Double utilityRate,
+            Double intentAccuracyRate,
+            Double entityExtractionRate,
+            Double actionAccuracyRate,
+            Double toolSuccessRate,
+            Double ragGroundingRate,
+            Map<String, Integer> failureCounts,
+            List<String> unavailableDimensions) {
+        this(evaluatedScenarios, responseValidityRate, responseGroundingRate, safetyRate, utilityRate,
+                intentAccuracyRate, entityExtractionRate, actionAccuracyRate, null, toolSuccessRate,
+                ragGroundingRate, failureCounts, unavailableDimensions);
     }
 
     public AgentEvaluationQualityScorecard {
@@ -73,6 +93,7 @@ public record AgentEvaluationQualityScorecard(
         validateOptionalRate(intentAccuracyRate, "intentAccuracyRate");
         validateOptionalRate(entityExtractionRate, "entityExtractionRate");
         validateOptionalRate(actionAccuracyRate, "actionAccuracyRate");
+        validateOptionalRate(quantityExtractionRate, "quantityExtractionRate");
         validateOptionalRate(toolSuccessRate, "toolSuccessRate");
         validateOptionalRate(ragGroundingRate, "ragGroundingRate");
         failureCounts = normalizeCounts(failureCounts);
@@ -109,16 +130,18 @@ public record AgentEvaluationQualityScorecard(
         List<AgentEvaluationResult> intentResults = eligible(safeResults, "intent_accuracy");
         List<AgentEvaluationResult> entityResults = eligible(safeResults, "entity_extraction");
         List<AgentEvaluationResult> actionResults = eligible(safeResults, "action_accuracy");
+        List<AgentEvaluationResult> quantityResults = eligible(safeResults, "quantity_extraction");
         List<AgentEvaluationResult> toolResults = eligible(safeResults, "tool_success");
         List<AgentEvaluationResult> ragResults = eligible(safeResults, "rag_grounding");
         boolean intentAvailable = hasIntentSignal(intentResults);
         boolean entitiesAvailable = hasEntitySignal(entityResults);
         boolean actionsAvailable = hasActionSignal(actionResults);
+        boolean quantityAvailable = hasQuantitySignal(quantityResults);
         boolean toolAvailable = hasToolSignal(toolResults);
         boolean ragAvailable = hasRagSignal(ragResults);
         List<String> unavailable = new java.util.ArrayList<>(QUALITY_DIMENSIONS.stream()
                 .filter(dimension -> !isAvailable(dimension, intentAvailable, entitiesAvailable,
-                        actionsAvailable, toolAvailable, ragAvailable))
+                        actionsAvailable, quantityAvailable, toolAvailable, ragAvailable))
                 .toList());
         if (responseResults.isEmpty()) {
             unavailable.addAll(List.of("response_validity", "response_grounding", "safety", "utility"));
@@ -132,6 +155,7 @@ public record AgentEvaluationQualityScorecard(
                 intentAvailable ? rate(successes(intentResults, "INTENT_MISMATCH"), intentResults.size()) : null,
                 entitiesAvailable ? rate(successes(entityResults, "ENTITY_EXTRACTION_MISMATCH"), entityResults.size()) : null,
                 actionsAvailable ? rate(successes(actionResults, "ACTION_MISMATCH"), actionResults.size()) : null,
+                quantityAvailable ? rate(successes(quantityResults, "QUANTITY_MISMATCH"), quantityResults.size()) : null,
                 toolAvailable ? rate(successes(toolResults, "TOOL_SUCCESS_MISMATCH"), toolResults.size()) : null,
                 ragAvailable ? rate(successes(ragResults, "RAG_GROUNDING_MISMATCH"), ragResults.size()) : null,
                 failureCounts(safeResults),
@@ -184,6 +208,11 @@ public record AgentEvaluationQualityScorecard(
                 && result.executionMetadata().routedAction() != null);
     }
 
+    private static boolean hasQuantitySignal(List<AgentEvaluationResult> results) {
+        return !results.isEmpty() && results.stream().allMatch(result -> result.executionMetadata() != null
+                && result.executionMetadata().routedQuantity() != null);
+    }
+
     private static boolean hasToolSignal(List<AgentEvaluationResult> results) {
         return !results.isEmpty() && results.stream().allMatch(result -> result.executionMetadata() != null
                 && result.executionMetadata().toolName() != null
@@ -200,12 +229,14 @@ public record AgentEvaluationQualityScorecard(
             boolean intentAvailable,
             boolean entitiesAvailable,
             boolean actionsAvailable,
+            boolean quantityAvailable,
             boolean toolAvailable,
             boolean ragAvailable) {
         return switch (dimension) {
             case "intent_accuracy" -> intentAvailable;
             case "entity_extraction" -> entitiesAvailable;
             case "action_accuracy" -> actionsAvailable;
+            case "quantity_extraction" -> quantityAvailable;
             case "tool_success" -> toolAvailable;
             case "rag_grounding" -> ragAvailable;
             default -> false;

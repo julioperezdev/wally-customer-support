@@ -247,6 +247,7 @@ class AgentEvaluationComparisonApplicationServiceTest {
         assertThat(comparison.qualityDelta().intentAccuracyRateDelta()).isEqualTo(-1.0);
         assertThat(comparison.qualityDelta().actionAccuracyRateDelta()).isEqualTo(-1.0);
         assertThat(comparison.qualityDelta().entityExtractionRateDelta()).isEqualTo(-1.0);
+        assertThat(comparison.qualityDelta().quantityExtractionRateDelta()).isNull();
         assertThat(comparison.assessment().unavailableDimensions()).contains(
                 "response_validity", "response_grounding", "safety", "utility");
         assertThat(comparison.assessment().regressedDimensions()).contains(

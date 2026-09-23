@@ -157,6 +157,7 @@ class BedrockAgentEvaluationExecutorTest {
         assertThat(result.metadata().agentId()).isEqualTo("conversation-router");
         assertThat(result.metadata().routedIntent()).isEqualTo("CATALOG_SEARCH");
         assertThat(result.metadata().routedAction()).isEqualTo("CATALOG_SEARCH");
+        assertThat(result.metadata().routedQuantity()).isEqualTo(1);
         assertThat(result.metadata().resolvedEntityTypes()).containsExactly(
                 "color=negro", "productType=remera", "size=M");
         assertThat(result.metadata().totalTokens()).isEqualTo(350);
@@ -164,6 +165,24 @@ class BedrockAgentEvaluationExecutorTest {
         verify(routerClassifier).classifyForEvaluation(
                 any(ConversationContext.class), any(AgentRuntimeDefinition.class), eq(Duration.ofSeconds(30)));
         verifyNoInteractions(client);
+    }
+
+    @Test
+    void acceptsV2OnlyWhenTheImmutableRouterVersionDeclaresThatSuite() {
+        when(versionResolver.resolve(any(AgentEvaluationRunRequest.class))).thenAnswer(invocation ->
+                invocation.<AgentEvaluationRunRequest>getArgument(0)
+                        .withVersionDefinition(routerVersion("conversation-routing-v2")));
+        BedrockAgentEvaluationExecutor routerExecutor = new BedrockAgentEvaluationExecutor(
+                client, versionResolver,
+                new AgentEvaluationProperties("bedrock", 40, 4_000, 1_024,
+                        new BigDecimal("0.5"), Duration.ofSeconds(30)),
+                fallback, routerClassifier);
+
+        AgentEvaluationRunRequest prepared = routerExecutor.prepare(new AgentEvaluationRunRequest(
+                "conversation-routing-v2", "conversation-router", "2"));
+
+        routerExecutor.validate(prepared);
+        assertThat(prepared.versionDefinition().evaluationSuiteVersion()).isEqualTo("conversation-routing-v2");
     }
 
     @Test

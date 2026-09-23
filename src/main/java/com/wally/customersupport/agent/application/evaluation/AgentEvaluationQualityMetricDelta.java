@@ -10,6 +10,7 @@ public record AgentEvaluationQualityMetricDelta(
         Double intentAccuracyRateDelta,
         Double entityExtractionRateDelta,
         Double actionAccuracyRateDelta,
+        Double quantityExtractionRateDelta,
         Double toolSuccessRateDelta,
         Double ragGroundingRateDelta) {
 
@@ -25,7 +26,24 @@ public record AgentEvaluationQualityMetricDelta(
             Double ragGroundingRateDelta) {
         this(passRateDelta, responseValidityRateDelta, responseGroundingRateDelta, safetyRateDelta,
                 utilityRateDelta, intentAccuracyRateDelta, entityExtractionRateDelta, null,
-                toolSuccessRateDelta, ragGroundingRateDelta);
+                null, toolSuccessRateDelta, ragGroundingRateDelta);
+    }
+
+    /** Backwards-compatible quality delta before quantity extraction was measured. */
+    public AgentEvaluationQualityMetricDelta(
+            double passRateDelta,
+            Double responseValidityRateDelta,
+            Double responseGroundingRateDelta,
+            Double safetyRateDelta,
+            Double utilityRateDelta,
+            Double intentAccuracyRateDelta,
+            Double entityExtractionRateDelta,
+            Double actionAccuracyRateDelta,
+            Double toolSuccessRateDelta,
+            Double ragGroundingRateDelta) {
+        this(passRateDelta, responseValidityRateDelta, responseGroundingRateDelta, safetyRateDelta,
+                utilityRateDelta, intentAccuracyRateDelta, entityExtractionRateDelta, actionAccuracyRateDelta,
+                null, toolSuccessRateDelta, ragGroundingRateDelta);
     }
 
     public AgentEvaluationQualityMetricDelta {
@@ -37,6 +55,7 @@ public record AgentEvaluationQualityMetricDelta(
         validateOptionalDelta(intentAccuracyRateDelta, "intentAccuracyRateDelta");
         validateOptionalDelta(entityExtractionRateDelta, "entityExtractionRateDelta");
         validateOptionalDelta(actionAccuracyRateDelta, "actionAccuracyRateDelta");
+        validateOptionalDelta(quantityExtractionRateDelta, "quantityExtractionRateDelta");
         validateOptionalDelta(toolSuccessRateDelta, "toolSuccessRateDelta");
         validateOptionalDelta(ragGroundingRateDelta, "ragGroundingRateDelta");
     }

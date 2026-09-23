@@ -47,7 +47,8 @@ class AgentEvaluationQualityScorecardTest {
         assertThat(scorecard.utilityRate()).isEqualTo(1.0);
         assertThat(scorecard.failureCounts()).isEmpty();
         assertThat(scorecard.unavailableDimensions()).containsExactly(
-                "action_accuracy", "entity_extraction", "intent_accuracy", "rag_grounding", "tool_success");
+                "action_accuracy", "entity_extraction", "intent_accuracy", "quantity_extraction",
+                "rag_grounding", "tool_success");
     }
 
     @Test
@@ -86,7 +87,7 @@ class AgentEvaluationQualityScorecardTest {
         assertThat(scorecard.entityExtractionRate()).isEqualTo(1.0);
         assertThat(scorecard.toolSuccessRate()).isEqualTo(1.0);
         assertThat(scorecard.ragGroundingRate()).isEqualTo(1.0);
-        assertThat(scorecard.unavailableDimensions()).containsExactly("action_accuracy");
+        assertThat(scorecard.unavailableDimensions()).containsExactly("action_accuracy", "quantity_extraction");
     }
 
     @Test
@@ -113,11 +114,37 @@ class AgentEvaluationQualityScorecardTest {
         assertThat(scorecard.intentAccuracyRate()).isEqualTo(1.0);
         assertThat(scorecard.entityExtractionRate()).isEqualTo(1.0);
         assertThat(scorecard.actionAccuracyRate()).isEqualTo(1.0);
+        assertThat(scorecard.quantityExtractionRate()).isNull();
         assertThat(scorecard.responseValidityRate()).isNull();
         assertThat(scorecard.responseGroundingRate()).isNull();
         assertThat(scorecard.safetyRate()).isNull();
         assertThat(scorecard.utilityRate()).isNull();
         assertThat(scorecard.unavailableDimensions()).containsExactly(
-                "rag_grounding", "response_grounding", "response_validity", "safety", "tool_success", "utility");
+                "quantity_extraction", "rag_grounding", "response_grounding", "response_validity",
+                "safety", "tool_success", "utility");
+    }
+
+    @Test
+    void exposesQuantityExtractionRateOnlyForScenariosThatMeasureIt() {
+        var scenario = new AgentEvaluationScenario(
+                "add-two", "conversation-routing-v2", "ROUTING", Channel.TELEGRAM,
+                null, ResponseHumanizationResult.Outcome.APPLIED, List.of(), List.of(),
+                "CATALOG_SEARCH", List.of(), null, null,
+                new ConversationContext(null, null, "Agregá dos remeras", List.of(), List.of(),
+                        null, List.of(), Channel.TELEGRAM), "ADD_TO_CART", 2);
+        var metadata = new AgentEvaluationExecutionMetadata(
+                "conversation-router", "2", "bedrock", "model-v2", 100, 80L,
+                12, 4, 16, new BigDecimal("0.00001"), "pricing-v2",
+                "CATALOG_SEARCH", "ADD_TO_CART", List.of(), null, null, null, 1);
+        var decision = new ConversationIntentDecision(
+                ConversationIntent.CATALOG_SEARCH, ConversationAction.ADD_TO_CART, 0.9,
+                com.wally.customersupport.catalog.domain.model.CatalogQuery.empty(), null, 1, List.of());
+
+        AgentEvaluationResult result = evaluator.evaluateRoute(scenario, decision, metadata);
+        AgentEvaluationQualityScorecard scorecard = AgentEvaluationQualityScorecard.fromResults(
+                List.of(result), result.score());
+
+        assertThat(scorecard.quantityExtractionRate()).isZero();
+        assertThat(scorecard.failureCounts()).containsEntry("QUANTITY_MISMATCH", 1);
     }
 }

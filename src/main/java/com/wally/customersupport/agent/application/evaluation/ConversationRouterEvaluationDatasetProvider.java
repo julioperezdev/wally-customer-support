@@ -11,26 +11,32 @@ import com.wally.customersupport.catalog.domain.model.CatalogQuery;
 import com.wally.customersupport.conversation.domain.model.Channel;
 import com.wally.customersupport.conversation.domain.model.ConversationContext;
 import com.wally.customersupport.conversation.domain.model.ResponseHumanizationResult;
-import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /** Versioned synthetic dataset for comparing immutable conversation-router prompt versions. */
-@Component
 public class ConversationRouterEvaluationDatasetProvider implements AgentEvaluationDataset {
 
     public static final String VERSION = "conversation-routing-v1";
-    private static final String FIXTURE = "/fixtures/conversation-routing-v1.json";
+    public static final String VERSION_2 = "conversation-routing-v2";
+    private static final String V1_FIXTURE = "/fixtures/conversation-routing-v1.json";
+    private static final String V2_FIXTURE = "/fixtures/conversation-routing-v2.json";
 
+    private final String version;
     private final List<AgentEvaluationScenario> scenarios;
 
     public ConversationRouterEvaluationDatasetProvider(ObjectMapper objectMapper) {
-        this.scenarios = load(objectMapper);
+        this(objectMapper, VERSION);
+    }
+
+    public ConversationRouterEvaluationDatasetProvider(ObjectMapper objectMapper, String version) {
+        this.version = requireSupportedVersion(version);
+        this.scenarios = load(objectMapper, this.version, fixtureFor(this.version));
     }
 
     @Override
     public String version() {
-        return VERSION;
+        return version;
     }
 
     @Override
@@ -43,8 +49,8 @@ public class ConversationRouterEvaluationDatasetProvider implements AgentEvaluat
         return scenarios;
     }
 
-    private static List<AgentEvaluationScenario> load(ObjectMapper objectMapper) {
-        try (InputStream input = ConversationRouterEvaluationDatasetProvider.class.getResourceAsStream(FIXTURE)) {
+    private static List<AgentEvaluationScenario> load(ObjectMapper objectMapper, String version, String fixture) {
+        try (InputStream input = ConversationRouterEvaluationDatasetProvider.class.getResourceAsStream(fixture)) {
             if (input == null) {
                 throw new IllegalStateException("conversation-router evaluation fixture is missing");
             }
@@ -54,7 +60,7 @@ public class ConversationRouterEvaluationDatasetProvider implements AgentEvaluat
             }
             List<AgentEvaluationScenario> scenarios = new ArrayList<>();
             for (JsonNode item : root) {
-                scenarios.add(toScenario(item));
+                scenarios.add(toScenario(item, version));
             }
             return List.copyOf(scenarios);
         } catch (IOException exception) {
@@ -62,7 +68,7 @@ public class ConversationRouterEvaluationDatasetProvider implements AgentEvaluat
         }
     }
 
-    private static AgentEvaluationScenario toScenario(JsonNode item) {
+    private static AgentEvaluationScenario toScenario(JsonNode item, String version) {
         String message = requiredText(item, "message");
         List<String> history = textArray(item.path("history"));
         List<String> recentMessages = new ArrayList<>();
@@ -76,7 +82,7 @@ public class ConversationRouterEvaluationDatasetProvider implements AgentEvaluat
                 null, null, message, recentMessages, List.of(), null, List.of(), Channel.TELEGRAM);
         return new AgentEvaluationScenario(
                 requiredText(item, "name"),
-                VERSION,
+                version,
                 "ROUTING",
                 Channel.TELEGRAM,
                 null,
@@ -88,7 +94,8 @@ public class ConversationRouterEvaluationDatasetProvider implements AgentEvaluat
                 null,
                 null,
                 context,
-                requiredText(item, "expectedAction"));
+                requiredText(item, "expectedAction"),
+                VERSION_2.equals(version) ? integerOrNull(item, "expectedQuantity") : null);
     }
 
     private static CatalogQuery expectedQuery(JsonNode item) {
@@ -125,6 +132,23 @@ public class ConversationRouterEvaluationDatasetProvider implements AgentEvaluat
     private static BigDecimal decimalOrNull(JsonNode item, String field) {
         String value = optionalText(item, field);
         return value == null ? null : new BigDecimal(value);
+    }
+
+    private static Integer integerOrNull(JsonNode item, String field) {
+        JsonNode value = item.path(field);
+        if (!value.isIntegralNumber() || !value.canConvertToInt()) return null;
+        return value.intValue();
+    }
+
+    private static String requireSupportedVersion(String version) {
+        if (!VERSION.equals(version) && !VERSION_2.equals(version)) {
+            throw new IllegalArgumentException("unsupported conversation-router dataset version");
+        }
+        return version;
+    }
+
+    private static String fixtureFor(String version) {
+        return VERSION.equals(version) ? V1_FIXTURE : V2_FIXTURE;
     }
 
     private static List<String> textArray(JsonNode node) {

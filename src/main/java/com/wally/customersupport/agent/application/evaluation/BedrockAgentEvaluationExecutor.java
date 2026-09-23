@@ -27,7 +27,9 @@ public class BedrockAgentEvaluationExecutor implements AgentEvaluationExecutor {
     private static final String RESPONSE_AGENT_ID = "response-humanization";
     private static final String ROUTER_AGENT_ID = "conversation-router";
     private static final String RESPONSE_DATASET_VERSION = "catalog-response-v1";
-    private static final String ROUTER_DATASET_VERSION = "conversation-routing-v1";
+    private static final java.util.Set<String> ROUTER_DATASET_VERSIONS = java.util.Set.of(
+            ConversationRouterEvaluationDatasetProvider.VERSION,
+            ConversationRouterEvaluationDatasetProvider.VERSION_2);
     private static final String POLICY_ID = "bedrock-response-humanizer";
 
     private final MeasuredLlmClient measuredLlmClient;
@@ -184,7 +186,8 @@ public class BedrockAgentEvaluationExecutor implements AgentEvaluationExecutor {
                         queryAttributes(decision.catalogQuery()),
                         null,
                         null,
-                        null),
+                        null,
+                        decision.quantity()),
                 decision);
     }
 
@@ -216,10 +219,10 @@ public class BedrockAgentEvaluationExecutor implements AgentEvaluationExecutor {
     }
 
     private static void validateDatasetAgentPair(AgentEvaluationRunRequest request) {
-        String expectedDataset = ROUTER_AGENT_ID.equals(request.agentId())
-                ? ROUTER_DATASET_VERSION
-                : RESPONSE_DATASET_VERSION;
-        if (!expectedDataset.equals(request.datasetVersion())) {
+        boolean supportedDataset = ROUTER_AGENT_ID.equals(request.agentId())
+                ? ROUTER_DATASET_VERSIONS.contains(request.datasetVersion())
+                : RESPONSE_DATASET_VERSION.equals(request.datasetVersion());
+        if (!supportedDataset) {
             throw new IllegalArgumentException("the selected dataset version is not compatible with this agent");
         }
     }

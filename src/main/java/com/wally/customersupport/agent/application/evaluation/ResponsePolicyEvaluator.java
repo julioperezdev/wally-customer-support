@@ -84,6 +84,7 @@ public class ResponsePolicyEvaluator {
         }
         List<String> reasons = new ArrayList<>();
         int passedChecks = 0;
+        int checks = scenario.expectedQuantity() == null ? 3 : 4;
         if (actual == null) {
             reasons.add("ROUTER_DECISION_MISSING");
         } else {
@@ -103,11 +104,16 @@ public class ResponsePolicyEvaluator {
             } else {
                 reasons.add("ENTITY_EXTRACTION_MISMATCH");
             }
+            if (scenario.expectedQuantity() != null) {
+                if (scenario.expectedQuantity() == actual.quantity()) passedChecks++;
+                else reasons.add("QUANTITY_MISMATCH");
+            }
         }
+        List<String> dimensions = new ArrayList<>(List.of("intent_accuracy", "action_accuracy", "entity_extraction"));
+        if (scenario.expectedQuantity() != null) dimensions.add("quantity_extraction");
         return new AgentEvaluationResult(
                 scenario.scenarioId(), scenario.datasetVersion(), actual != null && reasons.isEmpty(),
-                (double) passedChecks / 3, reasons, executionMetadata,
-                List.of("intent_accuracy", "action_accuracy", "entity_extraction"));
+                (double) passedChecks / checks, reasons, executionMetadata, dimensions);
     }
 
     private static List<String> evaluatedDimensions(AgentEvaluationScenario scenario) {
@@ -115,6 +121,7 @@ public class ResponsePolicyEvaluator {
         if (scenario.expectedIntent() != null) dimensions.add("intent_accuracy");
         if (scenario.expectedEntityTypes() != null) dimensions.add("entity_extraction");
         if (scenario.expectedAction() != null) dimensions.add("action_accuracy");
+        if (scenario.expectedQuantity() != null) dimensions.add("quantity_extraction");
         if (scenario.expectedToolName() != null) dimensions.add("tool_success");
         if (scenario.expectedGrounded() != null) dimensions.add("rag_grounding");
         return dimensions;
@@ -125,6 +132,7 @@ public class ResponsePolicyEvaluator {
         if (scenario.expectedIntent() != null) checks++;
         if (scenario.expectedEntityTypes() != null) checks++;
         if (scenario.expectedAction() != null) checks++;
+        if (scenario.expectedQuantity() != null) checks++;
         if (scenario.expectedToolName() != null) checks++;
         if (scenario.expectedGrounded() != null) checks++;
         return checks;
@@ -151,6 +159,11 @@ public class ResponsePolicyEvaluator {
             else if (scenario.expectedAction().equalsIgnoreCase(metadata.routedAction())) passedChecks++;
             else reasons.add("ACTION_MISMATCH");
         }
+        if (scenario.expectedQuantity() != null) {
+            if (metadata.routedQuantity() == null) reasons.add("QUANTITY_METRIC_UNAVAILABLE");
+            else if (scenario.expectedQuantity().equals(metadata.routedQuantity())) passedChecks++;
+            else reasons.add("QUANTITY_MISMATCH");
+        }
         if (scenario.expectedToolName() != null) {
             if (metadata.toolName() == null || metadata.toolSucceeded() == null) reasons.add("TOOL_SUCCESS_METRIC_UNAVAILABLE");
             else if (scenario.expectedToolName().equals(metadata.toolName()) && metadata.toolSucceeded()) passedChecks++;
@@ -170,6 +183,7 @@ public class ResponsePolicyEvaluator {
         if (scenario.expectedIntent() != null) reasons.add("INTENT_METRIC_UNAVAILABLE");
         if (scenario.expectedEntityTypes() != null) reasons.add("ENTITY_EXTRACTION_METRIC_UNAVAILABLE");
         if (scenario.expectedAction() != null) reasons.add("ACTION_METRIC_UNAVAILABLE");
+        if (scenario.expectedQuantity() != null) reasons.add("QUANTITY_METRIC_UNAVAILABLE");
         if (scenario.expectedToolName() != null) reasons.add("TOOL_SUCCESS_METRIC_UNAVAILABLE");
         if (scenario.expectedGrounded() != null) reasons.add("RAG_GROUNDING_METRIC_UNAVAILABLE");
     }
