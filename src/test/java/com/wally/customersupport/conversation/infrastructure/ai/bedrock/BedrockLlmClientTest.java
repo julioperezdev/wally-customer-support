@@ -12,12 +12,22 @@ import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 import com.wally.customersupport.agent.application.service.AgentRuntimeDefinition;
 import com.wally.customersupport.agent.domain.model.AgentInferenceParameters;
+import com.wally.customersupport.catalog.domain.model.CatalogQuery;
+import com.wally.customersupport.conversation.domain.model.ConversationAction;
 import com.wally.customersupport.conversation.domain.model.ConversationContext;
+import com.wally.customersupport.conversation.domain.model.ConversationIntent;
+import com.wally.customersupport.conversation.domain.model.ConversationSelection;
+import com.wally.customersupport.conversation.domain.model.CustomerPreference;
+import com.wally.customersupport.conversation.domain.model.PreferenceOrigin;
+import com.wally.customersupport.conversation.domain.model.PreferenceScope;
+import com.wally.customersupport.conversation.domain.model.Channel;
 import com.wally.customersupport.conversation.infrastructure.ai.prompt.ClasspathPromptRegistry;
 import com.wally.customersupport.conversation.infrastructure.ai.prompt.PromptDefinition;
 import com.wally.customersupport.shared.infrastructure.config.AiResponseProperties;
@@ -121,6 +131,41 @@ class BedrockLlmClientTest {
                 eq("conversation-response-v1"),
                 eq(prompt.sha256()),
                 eq(definition));
+    }
+
+    @Test
+    void responseGenerationDoesNotReceiveTypedCatalogSelectionOrPreferences() {
+        BedrockConverseClient converseClient = mock(BedrockConverseClient.class);
+        when(converseClient.complete(anyString(), anyString(), anyString(), anyString(), anyInt(), anyFloat(),
+                anyString(), anyString(), anyString()))
+                .thenReturn("respuesta grounded");
+        BedrockLlmClient client = new BedrockLlmClient(
+                converseClient,
+                new AiResponseProperties("conversation-response-v1", 512, new BigDecimal("0.1"),
+                        2_000, 2, 120, 100),
+                new ClasspathPromptRegistry());
+        Instant now = Instant.parse("2026-09-23T10:00:00Z");
+        CustomerPreference preference = new CustomerPreference(
+                null, "actor-1", "preferred_size", "M", PreferenceScope.ACTOR, 1.0,
+                PreferenceOrigin.EXPLICIT_USER, true, now, now.plus(Duration.ofHours(24)));
+        ConversationSelection selection = new ConversationSelection(
+                ConversationIntent.CATALOG_SEARCH,
+                ConversationAction.CATALOG_SEARCH,
+                new CatalogQuery("nullpointer", "RP-REM-NP-NEG-M", "M", "negro", "remera"),
+                "RP-REM-NP-NEG-M",
+                "CATALOG_SEARCH");
+        ConversationContext context = new ConversationContext(
+                UUID.randomUUID(), "customer-1", "¿Dónde están ubicados?", List.of(), List.of(),
+                null, List.of(preference), Channel.TELEGRAM, selection);
+
+        client.generateReply(context);
+
+        var userPrompt = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(converseClient).complete(
+                eq("response-generation"), eq("conversation.reply.generate"), anyString(),
+                userPrompt.capture(), anyInt(), anyFloat(), anyString(), anyString(), anyString());
+        assertTrue(!userPrompt.getValue().contains("preferred_size"));
+        assertTrue(!userPrompt.getValue().contains("RP-REM-NP-NEG-M"));
     }
 
     @Test

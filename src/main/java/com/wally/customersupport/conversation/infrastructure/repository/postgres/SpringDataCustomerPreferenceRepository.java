@@ -24,5 +24,10 @@ public interface SpringDataCustomerPreferenceRepository
 
     void deleteByActorIdAndConversationId(String actorId, UUID conversationId);
 
+    long deleteByActorIdAndPreferenceKeyAndPreferenceScope(String actorId, String preferenceKey, String preferenceScope);
+
+    long deleteByActorIdAndConversationIdAndPreferenceKeyAndPreferenceScope(
+            String actorId, UUID conversationId, String preferenceKey, String preferenceScope);
+
     void deleteByActorId(String actorId);
 }

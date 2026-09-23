@@ -109,10 +109,10 @@ public class BedrockLlmClient implements LlmClient {
                                 .collect(Collectors.joining("\n")),
                         "conversation_summary", limit(context.conversationSummary(),
                                 responseProperties.effectiveMaxSummaryCharacters()),
-                        "active_selection", formatSelection(context),
-                        "customer_preferences", limit(context.preferences().stream()
-                                .map(preference -> preference.key() + "=" + preference.value())
-                                .collect(Collectors.joining("\n")), 1_000),
+                        // Typed selection/preferences belong to routing and catalog. Keep legacy
+                        // placeholders renderable, but do not disclose that state to this agent.
+                        "active_selection", "",
+                        "customer_preferences", "",
                         "approved_knowledge", limit(context.knowledge().stream()
                                 .map(chunk -> "[" + chunk.sourceId() + "] " + chunk.content())
                                 .collect(Collectors.joining("\n")),
@@ -150,12 +150,6 @@ public class BedrockLlmClient implements LlmClient {
                 <conversation_summary>
                 %s
                 </conversation_summary>
-                <active_selection>
-                %s
-                </active_selection>
-                <customer_preferences>
-                %s
-                </customer_preferences>
                 <approved_knowledge>
                 %s
                 </approved_knowledge>
@@ -167,10 +161,6 @@ public class BedrockLlmClient implements LlmClient {
                         .map(value -> limit(value, inputCharacterLimit))
                         .collect(Collectors.joining("\n")),
                 limit(context.conversationSummary(), responseProperties.effectiveMaxSummaryCharacters()),
-                formatSelection(context),
-                limit(context.preferences().stream()
-                        .map(preference -> preference.key() + "=" + preference.value())
-                        .collect(Collectors.joining("\n")), 1_000),
                 limit(context.knowledge().stream()
                         .map(chunk -> "[" + chunk.sourceId() + "] " + chunk.content())
                         .collect(Collectors.joining("\n")), responseProperties.effectiveMaxKnowledgeCharacters()));
@@ -226,16 +216,6 @@ public class BedrockLlmClient implements LlmClient {
                         prompt.sha256(),
                         definition,
                         correlationId);
-    }
-
-    private String formatSelection(ConversationContext context) {
-        if (context.selection() == null || !context.selection().hasCatalogSelection()) {
-            return "none";
-        }
-        return "stage=" + context.selection().stage()
-                + "\nintent=" + context.selection().intent()
-                + "\naction=" + context.selection().action()
-                + "\nquery=" + context.selection().catalogQuery();
     }
 
     private int effectiveInputCharacterLimit(AgentRuntimeDefinition definition) {

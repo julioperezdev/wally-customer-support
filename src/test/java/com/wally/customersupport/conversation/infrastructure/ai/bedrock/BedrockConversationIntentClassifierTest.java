@@ -15,8 +15,15 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import com.wally.customersupport.conversation.domain.model.ConversationContext;
+import com.wally.customersupport.conversation.domain.model.ConversationSelection;
+import com.wally.customersupport.conversation.domain.model.ConversationWorkingMemory;
 import com.wally.customersupport.conversation.domain.model.ConversationAction;
 import com.wally.customersupport.conversation.domain.model.ConversationIntent;
+import com.wally.customersupport.conversation.domain.model.CustomerPreference;
+import com.wally.customersupport.conversation.domain.model.PreferenceOrigin;
+import com.wally.customersupport.conversation.domain.model.PreferenceScope;
+import com.wally.customersupport.conversation.domain.model.CatalogCandidateReference;
+import com.wally.customersupport.conversation.application.service.CustomerPreferenceService;
 import com.wally.customersupport.conversation.application.tool.ConversationRouteToolContract;
 import com.wally.customersupport.shared.infrastructure.config.AiProperties;
 import com.wally.customersupport.conversation.application.port.out.MeasuredLlmClient;
@@ -71,6 +78,55 @@ class BedrockConversationIntentClassifierTest {
                 eq("conversation-intent-v4"), anyString());
         assertTrue(prompt.getValue().contains("quiero un buzo"));
         assertTrue(prompt.getValue().contains("que sea negro"));
+    }
+
+    @Test
+    void sendsTypedPreferenceAndSelectionJsonWithoutForwardingCustomerIdentifiers() {
+        BedrockConverseClient converseClient = mock(BedrockConverseClient.class);
+        when(converseClient.completeForRouter(
+                anyString(), anyString(), anyString(), anyString(), anyInt(), anyFloat(), anyString(), anyString()))
+                .thenReturn("{\"intent\":\"CATALOG_SEARCH\",\"confidence\":0.95,\"catalogQuery\":{"
+                        + "\"name\":null,\"sku\":null,\"size\":\"M\",\"color\":null,"
+                        + "\"productType\":\"buzo\",\"minPrice\":null,\"maxPrice\":null},\"policyKey\":null}");
+        var classifier = new BedrockConversationIntentClassifier(converseClient, new ObjectMapper());
+        java.time.Instant updatedAt = java.time.Instant.parse("2026-09-23T10:00:00Z");
+        CustomerPreference preference = new CustomerPreference(
+                null, "actor-do-not-send", CustomerPreferenceService.PREFERRED_SIZE, "M",
+                PreferenceScope.ACTOR, 1.0, PreferenceOrigin.EXPLICIT_USER, true,
+                updatedAt, updatedAt.plusSeconds(3600));
+        ConversationSelection selection = new ConversationSelection(
+                ConversationIntent.CATALOG_SEARCH,
+                ConversationAction.CATALOG_SEARCH,
+                new com.wally.customersupport.catalog.domain.model.CatalogQuery(
+                        null, null, null, null, "buzo"),
+                null,
+                "CATALOG_SEARCH",
+                ConversationWorkingMemory.catalogObservation(
+                        List.of(new CatalogCandidateReference("Buzo Spring Boot", "RP-BUZ-SB-NEG-XL", "XL", "Negro")),
+                        com.wally.customersupport.conversation.domain.model.CatalogObservationStatus.MATCHED,
+                        updatedAt));
+        ConversationContext context = new ConversationContext(
+                null,
+                "private-platform-customer-id",
+                "quiero un buzo",
+                List.of("quiero un buzo"),
+                List.of(),
+                "busca ropa de abrigo",
+                List.of(preference),
+                null,
+                selection);
+
+        classifier.classify(context);
+
+        org.mockito.ArgumentCaptor<String> prompt = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(converseClient).completeForRouter(
+                anyString(), anyString(), anyString(), prompt.capture(), anyInt(), anyFloat(), anyString(), anyString());
+        assertTrue(prompt.getValue().contains("\"key\":\"preferred_size\""));
+        assertTrue(prompt.getValue().contains("\"value\":\"M\""));
+        assertTrue(prompt.getValue().contains("\"sku\":\"RP-BUZ-SB-NEG-XL\""));
+        assertTrue(prompt.getValue().contains("\"summary\":\"busca ropa de abrigo\""));
+        assertTrue(!prompt.getValue().contains("private-platform-customer-id"));
+        assertTrue(!prompt.getValue().contains("actor-do-not-send"));
     }
 
     @Test

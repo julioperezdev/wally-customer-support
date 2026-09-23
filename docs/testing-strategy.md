@@ -193,6 +193,10 @@ mantiene una cadena de preview-token ni un bypass local.
 | `TC-068` | P1 | JWT ausente | Una ruta interna protegida devuelve `401` sin invocar aplicación | MockMvc + Security Test |
 | `TC-069` | P1 | Scope ausente | Un JWT autenticado sin `agent-evaluation.read` devuelve `403` | MockMvc + Security Test |
 | `TC-070` | P1 | JWT inválido | Expiración o audience incorrecta no supera la validación | Unit validator |
+| `TC-071` | P1 | Preferencia de talle explícita y multi-turn | “Estoy buscando ropa; uso M” persiste `M`; “Quiero un buzo” consulta con talle M | Unit de flujo + routing |
+| `TC-072` | P1 | Precedencia de filtros | El talle explícito del turno actual gana a la preferencia y una lista general no se restringe | Unit |
+| `TC-073` | P1 | Olvido dirigido y rechazo ambiguo | “Olvidá mi talle” elimina sólo `preferred_size`; “no quiero eso” no cambia preferencias/carrito | Unit + Testcontainers |
+| `TC-074` | P1 | Proyección de contexto por agente | Router recibe memoria tipada; catálogo no recibe historial completo; soporte/humanizador no reciben estado ajeno | Unit/contract |
 | `TC-071` | P1 | Rutas públicas preservadas | Webhook y health no quedan bloqueados por la cadena interna | MockMvc + Security Test |
 | `TC-041` | P1 | Uso real de Bedrock | Emite `AI_USAGE_RECORDED` con modelo, tokens, latencia, pricing version y costo estimado | Test del adapter + log sanitizado |
 | `TC-042` | P1 | Consultas de observabilidad | CloudWatch agrega consultas, IA, RAG y entregas sin errores de campos | Logs Insights/Grafana |
@@ -381,6 +385,21 @@ No alcanza con que compile. Para aceptar el MVP:
   escalamiento. También se verifica que los límites configurados sean acotados
   por el backend y que `AI_USAGE_RECORDED` registre sólo versión/hash, modelo y
   métricas operativas, nunca prompt, respuesta o PII.
+
+### Smoke manual de memoria estructurada — WCS-141
+
+Después del despliegue, probar en una conversación nueva del canal habilitado:
+
+1. `Soy talle M` → confirma que guardó la preferencia explícita, sin enviar esa frase como una consulta de catálogo.
+2. `Quiero un buzo` → busca primero buzos talle M; si no hay, declara esa falta y ofrece sólo alternativas reales.
+3. `Quiero un buzo talle L` → el filtro L del turno actual prevalece sobre la preferencia M.
+4. `¿Qué productos tienen?` → lista general sin limitarse a M.
+5. `Olvidá mi talle` y luego `Quiero un buzo` → la búsqueda ya no aplica talle guardado.
+6. Con un carrito existente, `No quiero eso` → solicita aclaración y deja carrito/preferencias intactos.
+
+No completar un pago durante esta prueba. Registrar las respuestas observadas,
+el timestamp aproximado y evidencia sanitizada; no copiar el transcript completo
+ni datos del cliente a Jira.
 
 ### Mapa de agentes y simulación
 

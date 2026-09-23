@@ -13,6 +13,8 @@ public interface CustomerPreferenceStore {
 
     CustomerPreference save(CustomerPreference preference);
 
+    int deletePreference(String actorId, java.util.UUID conversationId, String key);
+
     void clearConversation(UUID conversationId, String actorId);
 
     void clearActor(String actorId);

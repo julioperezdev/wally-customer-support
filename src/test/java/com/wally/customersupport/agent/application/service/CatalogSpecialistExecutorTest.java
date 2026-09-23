@@ -34,7 +34,7 @@ class CatalogSpecialistExecutorTest {
         CatalogSpecialistExecutor executor = executor(catalogConversationService);
         CatalogSpecialistExecutionRequest request = request(definition(Set.of("catalog.search")));
         when(catalogConversationService.search(
-                request.catalogQuery(), request.recentMessages(), request.latestMessage()))
+                request.catalogQuery(), List.of(), request.latestMessage()))
                 .thenReturn(java.util.Optional.of(structuredResult()));
 
         CatalogSpecialistExecutionResult result = executor.execute(request);
@@ -42,7 +42,7 @@ class CatalogSpecialistExecutorTest {
         assertThat(result.status()).isEqualTo(CatalogSpecialistExecutionResult.Status.EXECUTED);
         assertThat(result.result().facts().getFirst().sku()).isEqualTo("RP-REM-NP-NEG-M");
         verify(catalogConversationService).search(
-                request.catalogQuery(), request.recentMessages(), request.latestMessage());
+                request.catalogQuery(), List.of(), request.latestMessage());
     }
 
     @Test
@@ -62,7 +62,7 @@ class CatalogSpecialistExecutorTest {
         CatalogSpecialistExecutor executor = executor(catalogConversationService);
         CatalogSpecialistExecutionRequest request = request(definition(Set.of("catalog.search")));
         when(catalogConversationService.search(
-                request.catalogQuery(), request.recentMessages(), request.latestMessage()))
+                request.catalogQuery(), List.of(), request.latestMessage()))
                 .thenReturn(java.util.Optional.empty());
 
         CatalogSpecialistExecutionResult result = executor.execute(request);
@@ -91,7 +91,6 @@ class CatalogSpecialistExecutorTest {
         return new CatalogSpecialistExecutionRequest(
                 definition,
                 new CatalogQuery("nullpointer", null, "M", "negro"),
-                List.of("Busco una remera negra talle M"),
                 "¿Está disponible?");
     }
 

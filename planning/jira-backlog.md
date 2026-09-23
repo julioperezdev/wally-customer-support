@@ -64,6 +64,19 @@ trasladará modelo, prompts y activaciones a su versión persistida. El modelo,
 esfuerzo, precio, tokens, costo y latencia aparecen en `AI_USAGE_RECORDED` para
 comparar la configuración con el baseline.
 
+### WCS-141 — Memoria estructurada y contexto por agente
+
+Jira: [WCS-141](https://julioperezdev.atlassian.net/browse/WCS-141) · Estado:
+`In Progress` · Rama: `feature/WCS-141-structured-memory`.
+
+El desarrollo local amplía preferencias explícitas PostgreSQL con `preferred_size`,
+proyecta memoria tipada JSON sólo para el router, limita el contexto del agente
+de catálogo y evita enviar selección/preferencias tipadas al generador de
+soporte y al humanizador. También aplica precedencia determinística, borrado
+dirigido y aclaración de referencias ambiguas. Reutiliza Flyway V8: sin cambios
+de schema, Terraform o AppConfig en este PR. Para cerrar falta la revisión/PR y
+el smoke posterior al despliegue; no marcar `Done` antes de esa evidencia.
+
 ## Mapeo de keys reales
 
 | Blueprint | Jira |

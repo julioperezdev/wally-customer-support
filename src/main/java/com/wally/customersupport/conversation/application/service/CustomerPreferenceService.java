@@ -27,9 +27,11 @@ import org.springframework.stereotype.Service;
 public class CustomerPreferenceService {
 
     public static final String PREFERRED_COLOR = "preferred_color";
+    public static final String PREFERRED_SIZE = "preferred_size";
 
     private static final List<String> ALLOWED_COLORS = List.of(
             "negro", "blanco", "gris", "azul", "rojo", "verde", "amarillo", "rosa", "violeta");
+    private static final List<String> ALLOWED_SIZES = List.of("XS", "S", "M", "L", "XL", "XXL");
 
     private final CustomerPreferenceStore store;
     private final ConversationPreferenceProperties properties;
@@ -48,20 +50,50 @@ public class CustomerPreferenceService {
             String actorId,
             String color,
             Instant updatedAt) {
+        String normalizedColor = normalizeColor(color);
+        return recordExplicit(actorId, PREFERRED_COLOR, normalizedColor, updatedAt, "unsupported_color");
+    }
+
+    public Optional<CustomerPreference> recordExplicitSize(
+            String actorId,
+            String size,
+            Instant updatedAt) {
+        String normalizedSize = normalizeSize(size);
+        return recordExplicit(actorId, PREFERRED_SIZE, normalizedSize, updatedAt, "unsupported_size");
+    }
+
+    public int forgetExplicitPreference(String actorId, UUID conversationId, String key) {
+        if (!properties.enabled() || actorId == null || actorId.isBlank() || !isSupportedKey(key)) {
+            return 0;
+        }
+        int deleted = store.deletePreference(actorId.strip(), conversationId, key);
+        StructuredEventLog.info(log, "CUSTOMER_PREFERENCE_FORGOTTEN", java.util.Map.of(
+                "operation", "conversation.preference.forget",
+                "result", deleted > 0 ? "DELETED" : "NOT_FOUND",
+                "preferenceKey", key,
+                "deletedCount", deleted));
+        return deleted;
+    }
+
+    private Optional<CustomerPreference> recordExplicit(
+            String actorId,
+            String key,
+            String normalizedValue,
+            Instant updatedAt,
+            String rejectionReason) {
         if (!properties.enabled() || actorId == null || actorId.isBlank()) {
             return Optional.empty();
         }
-        String normalizedColor = normalizeColor(color);
-        if (normalizedColor == null) {
-            record("REJECTED", "unsupported_color");
+        if (normalizedValue == null) {
+            record("REJECTED", rejectionReason);
             return Optional.empty();
         }
         Instant timestamp = updatedAt == null ? clock.instant() : updatedAt;
         CustomerPreference preference = new CustomerPreference(
                 null,
                 actorId,
-                PREFERRED_COLOR,
-                normalizedColor,
+                key,
+                normalizedValue,
                 PreferenceScope.ACTOR,
                 1.0,
                 PreferenceOrigin.EXPLICIT_USER,
@@ -99,6 +131,28 @@ public class CustomerPreferenceService {
             return null;
         }
         return normalized;
+    }
+
+    private String normalizeSize(String size) {
+        if (size == null) {
+            return null;
+        }
+        String normalized = size.strip().toUpperCase(Locale.ROOT);
+        normalized = switch (normalized) {
+            case "EXTRA SMALL", "SMALL", "PEQUENO", "PEQUENA", "CHICO", "CHICA" -> "S";
+            case "MEDIUM", "MEDIANO", "MEDIANA" -> "M";
+            case "LARGE", "GRANDE", "EXTRA GRANDE" -> "L";
+            case "EXTRA LARGE" -> "XL";
+            default -> normalized;
+        };
+        if (normalized.length() > properties.effectiveMaxValueCharacters() || !ALLOWED_SIZES.contains(normalized)) {
+            return null;
+        }
+        return normalized;
+    }
+
+    private static boolean isSupportedKey(String key) {
+        return PREFERRED_COLOR.equals(key) || PREFERRED_SIZE.equals(key);
     }
 
     private void record(String result, String reason) {

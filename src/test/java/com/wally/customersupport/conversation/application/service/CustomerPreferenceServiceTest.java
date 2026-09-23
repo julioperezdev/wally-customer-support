@@ -41,6 +41,36 @@ class CustomerPreferenceServiceTest {
     }
 
     @Test
+    void storesNormalizedSizeAndDeletesOnlyTheRequestedPreference() {
+        service.recordExplicitColor("actor-1", "negro", NOW);
+        service.recordExplicitSize("actor-1", " mediana ", NOW.plusSeconds(1));
+        service.recordExplicitSize("actor-2", "L", NOW);
+
+        assertEquals("M", service.findForContext("actor-1", UUID.randomUUID()).stream()
+                .filter(preference -> CustomerPreferenceService.PREFERRED_SIZE.equals(preference.key()))
+                .findFirst()
+                .orElseThrow()
+                .value());
+        assertEquals(1, service.forgetExplicitPreference(
+                "actor-1", UUID.randomUUID(), CustomerPreferenceService.PREFERRED_SIZE));
+        var remaining = service.findForContext("actor-1", UUID.randomUUID());
+
+        assertEquals(1, remaining.size());
+        assertEquals(CustomerPreferenceService.PREFERRED_COLOR, remaining.getFirst().key());
+        assertEquals("L", service.findForContext("actor-2", UUID.randomUUID()).getFirst().value());
+    }
+
+    @Test
+    void rejectsUnsupportedSizeAndDoesNotMutateAnotherPreferenceKey() {
+        assertTrue(service.recordExplicitSize("actor-1", "XXXL", NOW).isEmpty());
+        service.recordExplicitColor("actor-1", "azul", NOW);
+
+        assertEquals(0, service.forgetExplicitPreference(
+                "actor-1", UUID.randomUUID(), "cart"));
+        assertEquals("azul", service.findForContext("actor-1", UUID.randomUUID()).getFirst().value());
+    }
+
+    @Test
     void rejectsUnsupportedValuesAndExpiresStoredPreferences() {
         assertTrue(service.recordExplicitColor("actor-1", "talle M", NOW).isEmpty());
         assertTrue(service.recordExplicitColor("actor-1", "negro", NOW).isPresent());

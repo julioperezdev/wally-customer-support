@@ -2,8 +2,8 @@
 
 Owner: Tech Lead  
 Status: `Proposed`  
-Last reviewed: 2026-09-13
-Related Jira: `WCS-13`, `WCS-14`, `WCS-15`, `WCS-16`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-37`, `WCS-47`, `WCS-48`, `WCS-51`, `WCS-60`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-122`, `WCS-129`
+Last reviewed: 2026-09-23
+Related Jira: `WCS-13`, `WCS-14`, `WCS-15`, `WCS-16`, `WCS-25`, `WCS-28`, `WCS-29`, `WCS-33`, `WCS-34`, `WCS-35`, `WCS-37`, `WCS-47`, `WCS-48`, `WCS-51`, `WCS-60`, `WCS-61`, `WCS-62`, `WCS-63`, `WCS-64`, `WCS-65`, `WCS-66`, `WCS-67`, `WCS-68`, `WCS-69`, `WCS-70`, `WCS-122`, `WCS-129`, `WCS-141`
 Related repository paths: `src/main/java/com/wally/customersupport/{conversation,catalog,support,agent}/infrastructure/repository/postgres`, `src/main/resources/db/migration`
 
 ## Aislamiento en el RDS compartido
@@ -220,7 +220,7 @@ limpia candidatos previos para impedir que una referencia posterior los use;
 antes de mutar el carrito se vuelve a validar el SKU contra PostgreSQL y el
 stock/precio vigentes. No requiere nueva migración Flyway.
 
-### Preferencias explícitas — contrato en `WCS-37`, persistencia en `V8`
+### Preferencias explícitas — contrato en `WCS-37`/`WCS-141`, persistencia en `V8`
 
 `wcs.customer_preferences` mantiene preferencias de bajo riesgo que el cliente
 expresó o confirmó explícitamente. El modelo está separado de la memoria de
@@ -238,11 +238,27 @@ consulta puntual:
 * la foreign key de `conversation_id` sólo aplica a preferencias de alcance
   `CONVERSATION`.
 
-La primera implementación sólo admite la preferencia explícita de color
-preferido (`preferred_color`) y no hace extracción automática desde texto. La
-migración `V8__create_customer_preferences.sql` es reversible mediante el
-procedimiento documentado en el propio archivo. El feature está desactivado
-por defecto con `wcs.conversation.preferences.enabled=false`.
+El contrato permite `preferred_color` y `preferred_size`, capturados sólo desde
+frases explícitas mediante reglas determinísticas (por ejemplo, “prefiero el
+negro” o “soy talle M”; equivalencias coloquiales como “mediano” se normalizan
+a `M`). Menciones incidentales dentro de una búsqueda no se
+persisten. La migración `V8__create_customer_preferences.sql` ya soporta ambas
+claves; WCS-141 no agrega ni modifica migraciones. El feature está desactivado
+por defecto en el bootstrap de la aplicación con
+`wcs.conversation.preferences.enabled=false`; un ambiente puede habilitarlo en
+AppConfig de forma independiente.
+
+Un olvido explícito borra sólo la clave indicada dentro del ownership del
+actor/conversación. Referencias ambiguas como “no quiero eso” piden aclaración
+y no mutan memoria ni carrito. El estado persistido es una preferencia acotada,
+no el transcript ni un JSON libre.
+
+La memoria tipada se proyecta como JSON efímero y acotado para el router. No se
+envían identificadores del cliente en esa proyección. El especialista de
+catálogo recibe el último mensaje y `CatalogQuery` normalizado, sin historial
+completo; generación de soporte recibe historial/resumen acotados y evidencia
+documental, pero no preferencias ni selección de catálogo tipada; el
+humanizador recibe sólo hechos de catálogo ya validados.
 
 Las preferencias son contexto auxiliar: no pueden sobreescribir filtros
 actuales ni ser autoridad para stock, precio, carrito, pedidos o acciones

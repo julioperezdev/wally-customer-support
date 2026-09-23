@@ -122,7 +122,7 @@ public class InboundMessageProcessingService {
                 now);
         conversationSummaryService.recordContextPrepared(conversationState);
         ExplicitPreferenceCaptureService.CaptureResult preferenceCapture =
-                explicitPreferenceCaptureService.capture(actorId, inboundMessage.body(), now);
+                explicitPreferenceCaptureService.capture(actorId, conversation.id(), inboundMessage.body(), now);
         var preferences = customerPreferenceService.findForContext(conversation.id().toString(), conversation.id());
         ConversationExecutionResult executionResult = null;
         ConversationContext context = conversationContextBuilder.build(
@@ -275,10 +275,20 @@ public class InboundMessageProcessingService {
 
     private static String preferenceReply(ExplicitPreferenceCaptureService.CaptureResult result) {
         if (result.status() == ExplicitPreferenceCaptureService.Status.SAVED) {
-            return "Perfecto, voy a tener en cuenta que preferís el " + result.color() + ".";
+            return CustomerPreferenceService.PREFERRED_SIZE.equals(result.key())
+                    ? "Perfecto, voy a tener en cuenta que tu talle habitual es " + result.value() + "."
+                    : "Perfecto, voy a tener en cuenta que preferís el " + result.value() + ".";
         }
-        return "Puedo recordar como preferencia estos colores: negro, blanco, gris, azul, rojo, "
-                + "verde, amarillo, rosa o violeta.";
+        if (result.status() == ExplicitPreferenceCaptureService.Status.FORGOTTEN) {
+            return "Listo, olvidé esa preferencia. No cambié tu carrito ni ningún pedido.";
+        }
+        if (result.status() == ExplicitPreferenceCaptureService.Status.CLARIFICATION_REQUIRED) {
+            return "¿A qué te referís con «eso»? No cambié tu carrito ni tus preferencias.";
+        }
+        if (CustomerPreferenceService.PREFERRED_SIZE.equals(result.key())) {
+            return "Puedo recordar como talle habitual XS, S, M, L, XL o XXL. Decime, por ejemplo: «mi talle es M».";
+        }
+        return "Puedo recordar como color preferido negro, blanco, gris, azul, rojo, verde, amarillo, rosa o violeta.";
     }
 
     private static String sanitizeError(String error) {

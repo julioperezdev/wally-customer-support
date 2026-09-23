@@ -87,7 +87,6 @@ public class CatalogConversationUseCase {
                     new CatalogSpecialistExecutionRequest(
                             definition.definition(),
                             query,
-                            context.recentMessages(),
                             context.latestMessage()));
             if (specialistResult.executed()) {
                 telemetry.logCatalogSearchOutcome(
@@ -100,7 +99,7 @@ public class CatalogConversationUseCase {
         long searchStartedAt = System.nanoTime();
         Optional<CatalogSearchResult> result = catalogConversationService.search(
                 query,
-                context.recentMessages(),
+                List.of(),
                 context.latestMessage());
         result.ifPresentOrElse(
                 catalogResult -> telemetry.logCatalogSearchOutcome(

@@ -1,6 +1,5 @@
 package com.wally.customersupport.conversation.application.tool;
 
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -63,13 +62,12 @@ public class CatalogSearchTool implements WcsTool<CatalogSearchTool.Input, Optio
     @Override
     public Optional<CatalogSearchResult> execute(Input input) {
         Objects.requireNonNull(input, "input");
-        return catalogConversationService.search(input.query(), input.recentMessages(), input.latestMessage());
+        return catalogConversationService.search(input.query(), java.util.List.of(), input.latestMessage());
     }
 
-    public record Input(CatalogQuery query, List<String> recentMessages, String latestMessage) {
+    public record Input(CatalogQuery query, String latestMessage) {
 
         public Input {
-            recentMessages = recentMessages == null ? List.of() : List.copyOf(recentMessages);
             latestMessage = Objects.requireNonNull(latestMessage, "latestMessage");
         }
     }

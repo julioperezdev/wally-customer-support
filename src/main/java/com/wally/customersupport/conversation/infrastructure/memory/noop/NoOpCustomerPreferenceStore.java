@@ -27,6 +27,11 @@ public class NoOpCustomerPreferenceStore implements CustomerPreferenceStore {
     }
 
     @Override
+    public int deletePreference(String actorId, UUID conversationId, String key) {
+        return 0;
+    }
+
+    @Override
     public void clearConversation(UUID conversationId, String actorId) {
         // Preferences are disabled; there is no state to clear.
     }

@@ -54,6 +54,7 @@
   - [`034-agent-platform-authoring-and-runtime-evidence.md`](decisions/034-agent-platform-authoring-and-runtime-evidence.md): authoring, publicación, auditoría y trazas productivas de WCS-120.
   - [`035-cognito-only-backoffice-security.md`](decisions/035-cognito-only-backoffice-security.md): Cognito/JWT como único acceso del backoffice y eliminación del preview-token.
   - [`043-sql-agent-invocation-versions.md`](decisions/043-sql-agent-invocation-versions.md): system/user prompts, modelo, límites, schemas y pricing inmutables versionados en PostgreSQL.
+  - [`044-structured-memory-agent-context.md`](decisions/044-structured-memory-agent-context.md): preferencias tipadas y proyección contextual mínima por agente.
 
 ## Calidad y operación
 

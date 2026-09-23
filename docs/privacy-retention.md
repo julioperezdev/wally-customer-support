@@ -2,8 +2,8 @@
 
 Owner: Product/Tech Lead  
 Status: `Proposed — pending legal and business approval`  
-Last reviewed: 2026-09-06  
-Related Jira: `WCS-26`, `WCS-34`, `WCS-35`, `WCS-36`, `WCS-37`
+Last reviewed: 2026-09-23
+Related Jira: `WCS-26`, `WCS-34`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-141`
 Related decision: [`003-conversational-memory-boundary.md`](decisions/003-conversational-memory-boundary.md)
 
 ## Propósito y alcance
@@ -39,7 +39,7 @@ política sea aprobada.
 | Mensajes recientes | Contexto acotado para interpretar el siguiente turno | 24 horas desde la última actualización, pendiente de aprobación |
 | Resumen conversacional | Contexto comprimido del prefijo antiguo; no es autoridad transaccional | Igual que la memoria de sesión, pendiente de aprobación |
 | Filtros de búsqueda actuales | Estado temporal; se recalcula o limpia por turno | Igual que la memoria de sesión |
-| Preferencias explícitas | Preferencias de bajo riesgo expresadas o confirmadas por el cliente; contexto auxiliar | 24 horas desde `updated_at`, pendiente de aprobación |
+| Preferencias explícitas (`preferred_color`, `preferred_size`) | Preferencias de bajo riesgo expresadas o confirmadas por el cliente; contexto auxiliar | 24 horas desde `updated_at`, pendiente de aprobación |
 | Stock, precio, carrito y pedidos | Se consulta en PostgreSQL/servicio transaccional | No se convierte en memoria |
 | Respuestas y documentos RAG | Evidencia de la consulta actual | No se guarda como preferencia por esta fase |
 | Secretos y tokens | Nunca se almacenan en memoria | Nunca |
@@ -98,13 +98,22 @@ que los mensajes anteriores no se rehidraten en la nueva conversación. El
 historial persistido no se borra y queda sujeto a la política de retención.
 
 La extracción automática de preferencias queda fuera de esta fase. Sólo se
-persisten preferencias explícitas o confirmadas y, inicialmente, el color
-preferido. No se guardan como preferencias hechos transaccionales, precios,
-stock, carritos, pedidos ni credenciales.
+persisten preferencias explícitas o confirmadas para color y talle mediante
+reglas acotadas; no se infiere una preferencia a partir de un filtro incidental
+de búsqueda. Una preferencia se puede reemplazar con una nueva expresión
+explícita y borrar por clave. No se guardan como preferencias hechos
+transaccionales, precios, stock, carritos, pedidos ni credenciales.
 
 `WCS-38` permite capturar frases explícitas mediante un parser determinístico
 del flujo común de inbound. Una mención incidental de color dentro de una
 consulta de catálogo no se persiste y el LLM no puede autorizar una captura.
+
+`WCS-141` aplica la misma regla explícita al talle (“soy M”, “uso talle M”) y
+separa la proyección de contexto según el agente: el router recibe una vista
+JSON limitada; catálogo recibe consulta estructurada y último turno; el
+humanizador recibe hechos validados. La generación de soporte no recibe las
+preferencias o la selección tipada. Un rechazo ambiguo como “no quiero eso” no
+borra preferencias ni carrito y requiere aclarar el referente.
 
 ## Acceso y aislamiento
 
@@ -132,7 +141,10 @@ Antes de activar memoria persistente en producción se debe aprobar:
 - estrategia de backup y expiración;
 - pruebas de aislamiento, expiración, borrado y recuperación.
 
-Hasta completar ese gate, la memoria persistente permanece desactivada en
-producción. El adapter PostgreSQL se verifica con Testcontainers y el adapter
-no-op conserva los flujos disponibles sin retener estado. AgentCore Memory no
-se incorpora como dependencia obligatoria.
+Hasta completar ese gate, la persistencia de mensajes recientes y resúmenes no
+debe habilitarse en producción. Las preferencias explícitas son una categoría
+separada y su activación depende de `wcs.conversation.preferences.enabled`;
+esta documentación no sustituye una lectura de AppConfig ni constituye
+aprobación legal de los períodos propuestos. El adapter PostgreSQL se verifica
+con Testcontainers y el adapter no-op conserva los flujos disponibles sin
+retener estado. AgentCore Memory no se incorpora como dependencia obligatoria.

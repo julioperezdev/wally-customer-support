@@ -47,6 +47,20 @@ public class JpaCustomerPreferenceStore implements CustomerPreferenceStore {
 
     @Override
     @Transactional
+    public int deletePreference(String actorId, UUID conversationId, String key) {
+        if (actorId == null || actorId.isBlank() || key == null || key.isBlank()) {
+            return 0;
+        }
+        long actorPreferences = repository.deleteByActorIdAndPreferenceKeyAndPreferenceScope(
+                actorId.strip(), key.strip(), PreferenceScope.ACTOR.name());
+        long conversationPreferences = conversationId == null ? 0 :
+                repository.deleteByActorIdAndConversationIdAndPreferenceKeyAndPreferenceScope(
+                        actorId.strip(), conversationId, key.strip(), PreferenceScope.CONVERSATION.name());
+        return Math.toIntExact(actorPreferences + conversationPreferences);
+    }
+
+    @Override
+    @Transactional
     public void clearConversation(UUID conversationId, String actorId) {
         if (conversationId != null && actorId != null && !actorId.isBlank()) {
             repository.deleteByActorIdAndConversationId(actorId.strip(), conversationId);

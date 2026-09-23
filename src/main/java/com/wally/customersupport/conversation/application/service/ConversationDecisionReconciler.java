@@ -12,6 +12,7 @@ import com.wally.customersupport.conversation.domain.model.ConversationContext;
 import com.wally.customersupport.conversation.domain.model.ConversationIntent;
 import com.wally.customersupport.conversation.domain.model.ConversationIntentDecision;
 import com.wally.customersupport.conversation.domain.model.ConversationSelection;
+import com.wally.customersupport.conversation.domain.model.CustomerPreference;
 import org.springframework.stereotype.Service;
 
 /**
@@ -149,6 +150,9 @@ public final class ConversationDecisionReconciler {
         if (query == null) {
             query = CatalogQuery.empty();
         }
+        if (!generalCatalog && query.hasPrimarySelector()) {
+            query = applySearchPreferences(query, context.preferences());
+        }
 
         return new ConversationIntentDecision(
                 ConversationIntent.CATALOG_SEARCH,
@@ -158,6 +162,31 @@ public final class ConversationDecisionReconciler {
                 null,
                 raw.quantity(),
                 raw.missingParameters());
+    }
+
+    private static CatalogQuery applySearchPreferences(
+            CatalogQuery query,
+            List<CustomerPreference> preferences) {
+        if (preferences == null || preferences.isEmpty()) {
+            return query;
+        }
+        String preferredSize = null;
+        String preferredColor = null;
+        for (CustomerPreference preference : preferences) {
+            if (CustomerPreferenceService.PREFERRED_SIZE.equals(preference.key())) {
+                preferredSize = preference.value().toLowerCase(java.util.Locale.ROOT);
+            } else if (CustomerPreferenceService.PREFERRED_COLOR.equals(preference.key())) {
+                preferredColor = preference.value().toLowerCase(java.util.Locale.ROOT);
+            }
+        }
+        return new CatalogQuery(
+                query.name(),
+                query.sku(),
+                query.size() == null ? preferredSize : query.size(),
+                query.color() == null ? preferredColor : query.color(),
+                query.productType(),
+                query.minPrice(),
+                query.maxPrice());
     }
 
     private ConversationIntentDecision normalizeStructuredCatalogQuery(
