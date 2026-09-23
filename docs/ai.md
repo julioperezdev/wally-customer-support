@@ -172,6 +172,12 @@ individuales y ampliar la evaluación antes de decidir una activación. Las
 métricas o coberturas ausentes se muestran como no disponibles, nunca como
 cero.
 
+El criterio aplicado para ampliar el corpus, interpretar los resultados
+locales v1–v4 y diseñar futuras comparaciones está en
+[`conversation-routing-evaluation-method.md`](conversation-routing-evaluation-method.md).
+En particular, los runs que usan versiones distintas de dataset no se deben
+interpretar como una comparación causal de prompts.
+
 La versión `1.0.1` del `response-humanization` agrega un bloque estructurado
 `required_facts` al prompt, con nombre, SKU, color, talle, precio, moneda y
 stock de cada producto. Esto reduce omisiones del modelo al redactar listas
