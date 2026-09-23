@@ -7,7 +7,7 @@ public record AgentEvaluationEvidenceExport(
         String schemaVersion,
         AgentEvaluationComparison comparison) {
 
-    public static final String SCHEMA_VERSION = "wcs.agent-evaluation-evidence.v1";
+    public static final String SCHEMA_VERSION = "wcs.agent-evaluation-evidence.v2";
     public static final int MAX_SCENARIOS = 1_000;
 
     public AgentEvaluationEvidenceExport {

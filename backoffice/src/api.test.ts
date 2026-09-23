@@ -187,6 +187,28 @@ describe("control plane client", () => {
     );
   });
 
+  it("attaches comparable evaluation runs to promotion lifecycle transitions", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      status: "TRANSITIONED", agentId: "support", version: 2, state: "EVALUATED"
+    }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await createControlPlaneClient("/internal/agent-evaluations", "session-token").transitionAgentVersion(
+      "support", 2, {
+        targetState: "EVALUATED",
+        reason: "reviewed comparable evaluation",
+        baselineEvaluationRunId: "00000000-0000-0000-0000-000000000031",
+        candidateEvaluationRunId: "00000000-0000-0000-0000-000000000032"
+      }, "evaluation-transition");
+
+    const [, request] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(String(request.body))).toMatchObject({
+      targetState: "EVALUATED",
+      baselineEvaluationRunId: "00000000-0000-0000-0000-000000000031",
+      candidateEvaluationRunId: "00000000-0000-0000-0000-000000000032"
+    });
+  });
+
   it("keeps blocked preflight details instead of hiding the validation response", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
       status: "BLOCKED",

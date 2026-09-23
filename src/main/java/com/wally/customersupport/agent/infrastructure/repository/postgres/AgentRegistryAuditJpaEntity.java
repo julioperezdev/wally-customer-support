@@ -46,6 +46,18 @@ public class AgentRegistryAuditJpaEntity {
     @Column(nullable = false, length = 500)
     private String reason;
 
+    @Column(name = "baseline_evaluation_run_id")
+    private UUID baselineEvaluationRunId;
+
+    @Column(name = "candidate_evaluation_run_id")
+    private UUID candidateEvaluationRunId;
+
+    @Column(name = "evaluation_dataset_version", length = 80)
+    private String evaluationDatasetVersion;
+
+    @Column(name = "evaluation_assessment_outcome", length = 40)
+    private String evaluationAssessmentOutcome;
+
     @Column(name = "occurred_at", nullable = false)
     private Instant occurredAt;
 
@@ -65,11 +77,17 @@ public class AgentRegistryAuditJpaEntity {
         this.actorId = event.actorId();
         this.reason = event.reason();
         this.occurredAt = event.occurredAt();
+        this.baselineEvaluationRunId = event.baselineEvaluationRunId();
+        this.candidateEvaluationRunId = event.candidateEvaluationRunId();
+        this.evaluationDatasetVersion = event.evaluationDatasetVersion();
+        this.evaluationAssessmentOutcome = event.evaluationAssessmentOutcome();
     }
 
     public AgentRegistryAuditEvent toDomain() {
         return new AgentRegistryAuditEvent(
                 operation, agentId, agentVersion, previousState, resultingState,
-                environment, channel, useCase, actorId, reason, occurredAt);
+                environment, channel, useCase, actorId, reason, occurredAt,
+                baselineEvaluationRunId, candidateEvaluationRunId,
+                evaluationDatasetVersion, evaluationAssessmentOutcome);
     }
 }

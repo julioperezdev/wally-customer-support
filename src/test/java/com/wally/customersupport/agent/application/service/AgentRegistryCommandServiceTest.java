@@ -3,6 +3,8 @@ package com.wally.customersupport.agent.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -11,13 +13,16 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Set;
+import java.util.UUID;
 
+import com.wally.customersupport.agent.application.port.out.AgentRegistryAuditRepository;
 import com.wally.customersupport.agent.application.port.out.AgentRegistryCommandGuard;
 import com.wally.customersupport.agent.application.port.out.AgentRegistryRepository;
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationControlPlaneAccessDecision;
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationControlPlaneAccessReason;
 import com.wally.customersupport.agent.application.evaluation.AgentEvaluationControlPlaneAccessStatus;
 import com.wally.customersupport.agent.application.registry.AgentLifecycleTransitionCommand;
+import com.wally.customersupport.agent.application.registry.AgentPromotionEvaluationEvidence;
 import com.wally.customersupport.agent.application.registry.AgentRegistryMutationReason;
 import com.wally.customersupport.agent.application.registry.AgentRegistryMutationStatus;
 import com.wally.customersupport.agent.application.registry.AgentVersionDraftCommand;
@@ -48,12 +53,19 @@ class AgentRegistryCommandServiceTest {
     @Mock
     private AgentRegistryCommandGuard guard;
 
+    @Mock
+    private AgentRegistryAuditRepository auditRepository;
+
+    @Mock
+    private AgentPromotionEvidenceResolver promotionEvidenceResolver;
+
     private AgentRegistryCommandService service;
 
     @BeforeEach
     void setUp() {
         service = new AgentRegistryCommandService(
-                accessService, registry, guard, new AgentLifecyclePolicy(), true);
+                accessService, registry, guard, new AgentLifecyclePolicy(),
+                auditRepository, promotionEvidenceResolver, true);
     }
 
     @Test
@@ -142,11 +154,16 @@ class AgentRegistryCommandServiceTest {
 
     @Test
     void transitionsLifecycleOnlyWhenTheCurrentStateMatchesTheDomainPolicy() {
+        UUID baselineRunId = UUID.fromString("00000000-0000-0000-0000-000000000021");
+        UUID candidateRunId = UUID.fromString("00000000-0000-0000-0000-000000000022");
         AgentVersion current = draft(AgentLifecycleState.CANDIDATE);
         AgentVersion transitioned = new AgentLifecyclePolicy().transition(
                 current, AgentLifecycleState.EVALUATED, ACTOR, CREATED_AT);
         when(accessService.authorizeRegistryWrite(ACTOR)).thenReturn(authorized());
         when(registry.findVersion("support-specialist", 1)).thenReturn(java.util.Optional.of(current));
+        when(promotionEvidenceResolver.resolve(current, baselineRunId, candidateRunId)).thenReturn(
+                new AgentPromotionEvaluationEvidence(
+                        baselineRunId, candidateRunId, "support-eval-v1", "QUALITY_IMPROVED"));
         when(guard.tryAcquire("transition_lifecycle:1:support-specialist:" + IDEMPOTENCY_KEY)).thenReturn(true);
         when(registry.updateLifecycle(
                 "support-specialist", 1, AgentLifecycleState.CANDIDATE,
@@ -155,7 +172,7 @@ class AgentRegistryCommandServiceTest {
         var result = service.transition(
                 new AgentLifecycleTransitionCommand(
                         "support-specialist", 1, AgentLifecycleState.EVALUATED,
-                        "evaluation passed", null, null),
+                        "evaluation reviewed", null, null, baselineRunId, candidateRunId),
                 ACTOR,
                 IDEMPOTENCY_KEY);
 
@@ -164,6 +181,36 @@ class AgentRegistryCommandServiceTest {
         verify(registry).updateLifecycle(
                 "support-specialist", 1, AgentLifecycleState.CANDIDATE,
                 AgentLifecycleState.EVALUATED, null, null);
+        org.mockito.ArgumentCaptor<com.wally.customersupport.agent.domain.model.AgentRegistryAuditEvent> audit =
+                org.mockito.ArgumentCaptor.forClass(
+                        com.wally.customersupport.agent.domain.model.AgentRegistryAuditEvent.class);
+        verify(auditRepository).save(audit.capture());
+        assertThat(audit.getValue().baselineEvaluationRunId()).isEqualTo(baselineRunId);
+        assertThat(audit.getValue().candidateEvaluationRunId()).isEqualTo(candidateRunId);
+        assertThat(audit.getValue().evaluationDatasetVersion()).isEqualTo("support-eval-v1");
+        assertThat(audit.getValue().evaluationAssessmentOutcome()).isEqualTo("QUALITY_IMPROVED");
+    }
+
+    @Test
+    void refusesToMarkCandidateEvaluatedWithoutComparableRunReferences() {
+        AgentVersion current = draft(AgentLifecycleState.CANDIDATE);
+        when(accessService.authorizeRegistryWrite(ACTOR)).thenReturn(authorized());
+        when(registry.findVersion("support-specialist", 1)).thenReturn(java.util.Optional.of(current));
+        when(promotionEvidenceResolver.resolve(current, null, null)).thenThrow(
+                new AgentPromotionEvidenceException(AgentPromotionEvidenceException.Reason.REQUIRED));
+
+        var result = service.transition(
+                new AgentLifecycleTransitionCommand(
+                        "support-specialist", 1, AgentLifecycleState.EVALUATED,
+                        "evaluation reviewed", null, null),
+                ACTOR,
+                IDEMPOTENCY_KEY);
+
+        assertThat(result.status()).isEqualTo(AgentRegistryMutationStatus.INVALID);
+        assertThat(result.reason()).isEqualTo(AgentRegistryMutationReason.EVALUATION_EVIDENCE_REQUIRED);
+        verify(guard, never()).tryAcquire(any());
+        verify(registry, never()).updateLifecycle(
+                anyString(), anyInt(), any(AgentLifecycleState.class), any(AgentLifecycleState.class), any(), any());
     }
 
     @Test

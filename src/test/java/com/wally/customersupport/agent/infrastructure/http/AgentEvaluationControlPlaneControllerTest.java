@@ -20,7 +20,7 @@ import com.wally.customersupport.agent.application.service.AgentEvaluationCompar
 import com.wally.customersupport.agent.application.service.AgentEvaluationControlPlaneAccessService;
 import com.wally.customersupport.agent.application.service.AgentEvaluationEvidenceExportApplicationService;
 import com.wally.customersupport.agent.application.service.AgentEvaluationHistoryQueryService;
-import com.wally.customersupport.agent.application.service.IncompatibleEvaluationDatasetException;
+import com.wally.customersupport.agent.application.service.IncompatibleEvaluationRunsException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -106,7 +106,8 @@ class AgentEvaluationControlPlaneControllerTest {
     void mapsIncompatibleComparisonToAStableConflict() throws Exception {
         when(accessService.authorize(ACTOR)).thenReturn(authorized());
         when(comparisonService.compare(RUN_ID, UUID.fromString("00000000-0000-0000-0000-000000000012")))
-                .thenThrow(new IncompatibleEvaluationDatasetException());
+                .thenThrow(new IncompatibleEvaluationRunsException(
+                        IncompatibleEvaluationRunsException.Reason.DATASET));
 
         mockMvc.perform(get("/internal/agent-evaluations/comparisons")
                         .principal(() -> ACTOR)

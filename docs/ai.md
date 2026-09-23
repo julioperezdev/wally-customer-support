@@ -147,8 +147,21 @@ en [`ADR-043`](decisions/043-sql-agent-invocation-versions.md); `ADR-032` queda
 como decisión histórica supersedida.
 
 La comparación de versiones reutiliza el runner de evaluaciones existente:
-usar el mismo dataset, revisar calidad/grounding, errores, tokens, costo y
-latencia antes de aprobar y activar una candidata.
+usar el mismo agente lógico, dataset versionado y cobertura exacta de escenarios.
+La comparación entrega deltas de pass rate, validez, grounding, seguridad y
+utilidad, y agrega dimensiones de intención, entidades, tools o RAG sólo cuando
+ambos runs las midieron sobre los mismos escenarios. El backoffice muestra una
+conclusión descriptiva y diferencias por escenario; costo, tokens y latencia
+siguen siendo señales operativas separadas de calidad. Runs incompatibles se
+rechazan con un error específico y una suite con IDs duplicados no se empareja
+de forma ambigua.
+
+La etiqueta de resultado (`QUALITY_IMPROVED`, `QUALITY_REGRESSION`, `MIXED` o
+`NO_QUALITY_CHANGE`) no implica significancia estadística, aprobación ni
+promoción automática. Con pocas preguntas, es una señal para revisar los casos
+individuales y ampliar la evaluación antes de decidir una activación. Las
+métricas o coberturas ausentes se muestran como no disponibles, nunca como
+cero.
 
 La versión `1.0.1` del `response-humanization` agrega un bloque estructurado
 `required_facts` al prompt, con nombre, SKU, color, talle, precio, moneda y

@@ -16,14 +16,21 @@ contenido conversacional.
 ## Decisión
 
 Se define `AgentEvaluationEvidenceExport` como un envelope tipado y
-versionado. Su versión inicial es `wcs.agent-evaluation-evidence.v1` y contiene
-únicamente el resultado sanitizado de `AgentEvaluationComparison`:
+versionado. La forma vigente es `wcs.agent-evaluation-evidence.v2` y contiene
+únicamente el resultado sanitizado de `AgentEvaluationComparison`. La v2 añade
+assessment descriptivo y deltas por dimensión; no cambia la política de
+contenido seguro:
 
 - identidad de baseline y candidate, dataset y agente/versión;
 - proveedor, modelo, timestamps y métricas agregadas;
 - deltas de calidad y métricas operativas disponibles;
 - escenarios identificados por `scenarioId`, estado y score;
-- valores operativos ausentes representados como no disponibles.
+- valores operativos ausentes representados como no disponibles;
+- compatibilidad de comparación, resultado descriptivo y cobertura de calidad
+  ausente/no comparable.
+
+La v1 queda como versión histórica; los consumidores deben leer la etiqueta
+`schemaVersion` antes de interpretar el contenido.
 
 La frontera acepta sólo dos runs mediante WCS-63 y limita el export a 1.000
 escenarios. El resultado es apto para una serialización posterior, pero esta
@@ -50,4 +57,3 @@ decide promociones y no transforma metadata faltante en cero.
 El futuro backoffice puede serializar una representación estable sin consultar
 directamente PostgreSQL. Retención, autorización, almacenamiento, exportación
 descargable y auditoría permanecen como decisiones posteriores.
-
