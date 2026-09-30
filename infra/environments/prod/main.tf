@@ -14,6 +14,12 @@ data "aws_secretsmanager_secret" "shared_rds" {
   arn = var.shared_rds_secret_arn
 }
 
+# Existing secret created outside this stack; Terraform only looks it up so
+# the runtime role can read it. The API key remains in Secrets Manager.
+data "aws_secretsmanager_secret" "typesafe" {
+  name = "wcs/prod/typesafe"
+}
+
 locals {
   common_tags = {
     Project     = var.project_name
@@ -82,6 +88,14 @@ locals {
     "wcs.ai.input-price-usd-per-million-tokens"                   = 0.0721
     "wcs.ai.output-price-usd-per-million-tokens"                  = 0.3090
     "wcs.ai.request-timeout"                                      = "PT30S"
+    "wcs.ai.routing.provider"                                     = "bedrock"
+    "wcs.ai.routing.mode"                                         = "off"
+    "wcs.ai.routing.minimum-confidence"                           = 0.65
+    "wcs.ai.routing.typesafe.endpoint"                            = "https://api.typesafe.ai"
+    "wcs.ai.routing.typesafe.model"                               = "jev-1.13.0"
+    "wcs.ai.routing.typesafe.request-timeout"                     = "PT5S"
+    "wcs.ai.routing.typesafe.max-history-messages"                = 6
+    "wcs.ai.routing.typesafe.max-state-characters"                = 2000
     "wcs.ai.structured-tool-calling.enabled"                      = false
     "wcs.ai.prompt.provider"                                      = "classpath"
     "wcs.ai.prompt.intent-version"                                = "conversation-intent-v2"
@@ -121,6 +135,7 @@ locals {
     "wcs.external-config.secrets-manager.telegram-secret-id"      = module.telegram_secrets.secret_name
     "wcs.external-config.secrets-manager.observability-secret-id" = module.observability_secrets.secret_name
     "wcs.external-config.secrets-manager.mercado-pago-secret-id"  = module.mercado_pago_secrets.secret_name
+    "wcs.external-config.secrets-manager.typesafe-secret-id"      = data.aws_secretsmanager_secret.typesafe.name
     "wcs.agent-evaluation.control-plane.security.enabled"         = var.backoffice_cognito_enabled
     "wcs.agent-evaluation.control-plane.security.issuer-uri"      = module.cognito_backoffice.issuer_uri
     "wcs.agent-evaluation.control-plane.security.audience"        = module.cognito_backoffice.client_id
@@ -165,7 +180,8 @@ locals {
       module.whatsapp_secrets.secret_arn,
       module.telegram_secrets.secret_arn,
       module.observability_secrets.secret_arn,
-      module.mercado_pago_secrets.secret_arn
+      module.mercado_pago_secrets.secret_arn,
+      data.aws_secretsmanager_secret.typesafe.arn
     ]),
     var.shared_rds_secret_arn == null ? toset([]) : toset([var.shared_rds_secret_arn]),
     var.appconfig_secret_arns

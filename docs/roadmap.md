@@ -2,7 +2,7 @@
 
 Owner: Product/Tech Lead  
 Status: `Proposed`  
-Last reviewed: 2026-09-12
+Last reviewed: 2026-09-29
 
 ## Visión
 
@@ -125,6 +125,19 @@ La ejecución será local-first con PostgreSQL/Testcontainers y Bedrock opcional
 antes de abrir PR o tocar AWS. No se incorpora MCP al runtime, no se genera SQL
 desde el LLM y no se eliminan migraciones ni paths legacy hasta contar con
 evidencia de equivalencia y rollback.
+
+### Candidata de provider de routing — WCS-142
+
+Se propone evaluar una integración acotada de TypeSafe como selector del caso
+de uso de WhatsApp, conservando `ConversationIntentDecision`, la resolución de
+entidades y la ejecución de tools en WCS. WCS-136 mantiene el contrato del
+router y WCS-138 aporta el baseline/scorecard. La página canónica es
+[`typesafe-routing-roadmap.md`](typesafe-routing-roadmap.md) y su
+[página de Confluence](https://julioperezdev.atlassian.net/wiki/spaces/SD/pages/19759105/WCS+TypeSafe+como+selector+de+caso+de+uso+por+WhatsApp).
+
+WCS-142 es una tarea única bajo WCS-134 y está `In Progress` tras la aceptación
+del alcance. El modo por defecto conserva Bedrock; shadow/canary con mensajes reales
+requieren revisar privacidad, términos, residencia y retención del proveedor.
 
 ## Programa siguiente — Plataforma de agentes
 

@@ -23,7 +23,22 @@ public record ExternalConfigurationProperties(
             String telegramSecretId,
             String observabilitySecretId,
             String mercadoPagoSecretId,
+            String typesafeSecretId,
             boolean enabled,
             boolean failFast) {
+
+        public SecretsManager(
+                String secretId,
+                String runtimeSecretId,
+                String databaseSecretId,
+                String whatsappSecretId,
+                String telegramSecretId,
+                String observabilitySecretId,
+                String mercadoPagoSecretId,
+                boolean enabled,
+                boolean failFast) {
+            this(secretId, runtimeSecretId, databaseSecretId, whatsappSecretId, telegramSecretId,
+                    observabilitySecretId, mercadoPagoSecretId, null, enabled, failFast);
+        }
     }
 }

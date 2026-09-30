@@ -2,9 +2,36 @@
 
 Owner: Tech Lead  
 Status: `Accepted`
-Last reviewed: 2026-09-08
-Related Jira: `WCS-13`, `WCS-21`, `WCS-22`, `WCS-30`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-38`, `WCS-39`, `WCS-40`, `WCS-41`, `WCS-42`, `WCS-76`, `WCS-77`, `WCS-78`, `WCS-85`, `WCS-86`, `WCS-87`, `WCS-88`, `WCS-89`, `WCS-90`, `WCS-91`, `WCS-92`, `WCS-93`, `WCS-94`, `WCS-95`, `WCS-96`, `WCS-103`, `WCS-104`, `WCS-105`, `WCS-109`, `WCS-110`, `WCS-111`, `WCS-112`, `WCS-113`, `WCS-114`, `WCS-115`, `WCS-116`, `WCS-120`, `WCS-121`, `WCS-128`, `WCS-130`, `WCS-131`
+Last reviewed: 2026-09-29
+Related Jira: `WCS-13`, `WCS-21`, `WCS-22`, `WCS-30`, `WCS-35`, `WCS-36`, `WCS-37`, `WCS-38`, `WCS-39`, `WCS-40`, `WCS-41`, `WCS-42`, `WCS-76`, `WCS-77`, `WCS-78`, `WCS-85`, `WCS-86`, `WCS-87`, `WCS-88`, `WCS-89`, `WCS-90`, `WCS-91`, `WCS-92`, `WCS-93`, `WCS-94`, `WCS-95`, `WCS-96`, `WCS-103`, `WCS-104`, `WCS-105`, `WCS-109`, `WCS-110`, `WCS-111`, `WCS-112`, `WCS-113`, `WCS-114`, `WCS-115`, `WCS-116`, `WCS-120`, `WCS-121`, `WCS-128`, `WCS-130`, `WCS-131`, `WCS-142`
 Related repository paths: `src/main/resources`, `backoffice/`, `.github/workflows`, `infra/`
+
+## Selector TypeSafe de WCS-142
+
+El bootstrap local y la configuración Terraform productiva mantienen
+`wcs.ai.routing.provider=bedrock` y `wcs.ai.routing.mode=off`. Activar `shadow`
+o `active` cambia el proveedor que recibe el contenido de mensajes, por lo que
+no se habilita para tráfico real hasta aprobar los términos, DPA, residencia,
+retención y minimización descritos en
+[`typesafe-routing-roadmap.md`](typesafe-routing-roadmap.md).
+
+El secreto existente `wcs/prod/typesafe` se declara como data source de Terraform
+(no se crea ni actualiza); AppConfig mantiene el nombre del secreto y el role
+runtime recibe `secretsmanager:GetSecretValue` sobre el ARN encontrado. El
+loader sólo traduce el JSON `API_KEY` a
+`wcs.ai.routing.typesafe.api-key`. El valor no va en AppConfig, variables
+versionadas, logs ni configuración de despliegue. Esta configuración Terraform
+queda pendiente de `plan` revisado y `apply`; el código no prueba acceso a AWS.
+
+El request a TypeSafe tiene timeout, versión `jev-1.13.0` y límites de historial
+y caracteres configurables bajo `wcs.ai.routing.typesafe.*`. Los cambios de
+AppConfig/secret se leen al iniciar proceso, por lo que después de una aplicación
+aprobada se requiere el restart controlado del backend documentado abajo.
+
+`ROUTING_SHADOW_EVALUATED` y `ROUTING_PROVIDER_EVALUATED` informan outcome,
+acción, confianza, modelo, tokens, duración y razón de fallback sin mensajes,
+identificadores ni secretos. Se consultan en CloudWatch Logs Insights; aún no
+representan costo monetario ni una evaluación de calidad.
 
 ## Ambientes
 
