@@ -87,6 +87,28 @@ evento no incluye `actorKey`; la consulta continúa funcionando. `correlationId`
 identifica la conversación y se reserva para diagnóstico puntual, no para
 dimensiones agregadas de alta cardinalidad.
 
+## Selector TypeSafe y fallback de routing
+
+Esta consulta permite comparar las acciones candidatas con la decisión Bedrock
+en shadow y observar fallbacks active. No contiene mensajes ni entidades.
+
+```text
+fields @timestamp, @message
+| filter @message like /"eventType":"ROUTING_SHADOW_EVALUATED"/
+    or @message like /"eventType":"ROUTING_PROVIDER_EVALUATED"/
+| parse @message /"eventType":"(?<parsedEventType>[^\"]+)"/
+| parse @message /"outcome":"(?<parsedOutcome>[^\"]+)"/
+| parse @message /"candidateAction":"(?<parsedCandidateAction>[^\"]+)"/
+| parse @message /"baselineAction":"(?<parsedBaselineAction>[^\"]+)"/
+| parse @message /"confidence":(?<parsedConfidence>[0-9.]+)/
+| parse @message /"durationMs":(?<parsedDurationMs>[0-9]+)/
+| parse @message /"fallbackReason":"(?<parsedFallbackReason>[^\"]+)"/
+| sort @timestamp desc
+| limit 100
+| display @timestamp, parsedEventType, parsedOutcome, parsedCandidateAction,
+          parsedBaselineAction, parsedConfidence, parsedDurationMs, parsedFallbackReason
+```
+
 ## Uso de IA por operación, modelo y costo estimado
 
 ```text

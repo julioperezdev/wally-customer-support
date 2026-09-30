@@ -2,8 +2,8 @@
 
 Owner: AI/Tech Lead  
 Status: `Accepted`
-Last reviewed: 2026-09-08
-Related Jira: `WCS-11`, `WCS-20`, `WCS-21`, `WCS-30`, `WCS-33`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-82`, `WCS-83`, `WCS-84`, `WCS-130`, `WCS-131`, `WCS-141`
+Last reviewed: 2026-09-29
+Related Jira: `WCS-11`, `WCS-20`, `WCS-21`, `WCS-30`, `WCS-33`, `WCS-51`, `WCS-52`, `WCS-53`, `WCS-54`, `WCS-82`, `WCS-83`, `WCS-84`, `WCS-130`, `WCS-131`, `WCS-141`, `WCS-142`
 Related repository paths: `src/main/java/com/wally/customersupport/conversation/infrastructure/ai`, `src/main/resources/prompts`, `src/test/resources/fixtures`
 
 ## Registro de modelos
@@ -348,6 +348,41 @@ determinísticos de carrito continúan teniendo prioridad y no dependen del LLM.
 La activación del router natural requiere el proveedor Bedrock y la versión de
 prompt correspondiente; el proveedor `mock` permanece destinado a tests y
 desarrollo.
+
+### TypeSafe como selector de caso de uso — WCS-142 en implementación
+
+WCS-142 agrega un adapter de TypeSafe System One `Choice` para decidir qué caso
+de uso de WCS ejecutar. El request se construye desde el mensaje actual y hasta
+seis mensajes previos, limitado a 2.000 caracteres por defecto; no incluye IDs
+de WCS ni identificadores de canal. La salida se adapta al contrato vigente
+`ConversationIntentDecision`. TypeSafe no invoca tools ni reemplaza
+reconciliación, resolución de `catalogQuery`/entidades, ownership, validación
+del carrito/checkout, políticas o respuesta.
+
+El routing usa configuración independiente:
+`wcs.ai.routing.provider` y modo `off | shadow | active`, default `bedrock/off`.
+`wcs.ai.provider=bedrock` conserva su función de generación/humanización. La
+opción `off` conserva Bedrock para routing; TypeSafe sólo pasa a controlar la
+selección con `active` y confianza mínima `0.65`. `shadow` devuelve siempre la
+decisión Bedrock. En fallos, respuesta inválida o baja confianza se usa Bedrock.
+Las entidades de Bedrock sólo se adjuntan cuando su acción coincide con la
+selección TypeSafe. No se elimina Bedrock en este scope.
+
+El cliente usa `POST https://api.typesafe.ai/v1/systemone`, bearer auth y modelo
+fijo `jev-1.13.0`; request timeout por defecto `PT5S` (tope 30 s). Sólo mapea
+acciones WCS cerradas. La referencia del formato es el [Quick start de
+TypeSafe](https://docs.typesafe.ai/introduction/quickstart), [Choice y
+primitivas](https://docs.typesafe.ai/primitives) y [confidence](https://docs.typesafe.ai/confidence).
+
+El secreto existente `wcs/prod/typesafe` (`API_KEY`) se carga por el loader
+allowlisted de Secrets Manager; Terraform referencia su ARN para dar sólo
+lectura al role runtime. AppConfig guarda la referencia, no el valor. El código
+mantiene `bedrock/off`; no se ejecutaron plan/apply ni deploy. Las pruebas usan
+respuestas sintéticas y no llaman TypeSafe. Shadow/canary con datos reales
+requiere aprobación contractual y de privacidad por la residencia/retención del
+proveedor. El detalle está en
+[`typesafe-routing-roadmap.md`](typesafe-routing-roadmap.md) y en
+[WCS-142](https://julioperezdev.atlassian.net/browse/WCS-142).
 
 WCS-131 agrega ejemplos few-shot contrastivos y un dataset sintético versionado
 en `src/test/resources/fixtures/conversation-intent-v4.json`. El objetivo no es

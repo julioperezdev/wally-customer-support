@@ -28,13 +28,15 @@ final class SecretsManagerConfigurationLoader {
         loadSecret(properties.telegramSecretId(), "telegram", resolved);
         loadSecret(properties.observabilitySecretId(), "observability", resolved);
         loadSecret(properties.mercadoPagoSecretId(), "mercadopago", resolved);
+        loadSecret(properties.typesafeSecretId(), "typesafe", resolved);
         String runtimeSecretId = properties.runtimeSecretId();
         if (runtimeSecretId == null || runtimeSecretId.isBlank()) {
             boolean hasDedicatedReferences = isPresent(properties.databaseSecretId())
                     || isPresent(properties.whatsappSecretId())
                     || isPresent(properties.telegramSecretId())
                     || isPresent(properties.observabilitySecretId())
-                    || isPresent(properties.mercadoPagoSecretId());
+                    || isPresent(properties.mercadoPagoSecretId())
+                    || isPresent(properties.typesafeSecretId());
             runtimeSecretId = hasDedicatedReferences ? null : properties.secretId();
         }
         loadSecret(runtimeSecretId, "runtime", resolved);
@@ -66,6 +68,7 @@ final class SecretsManagerConfigurationLoader {
                 case "telegram" -> mapTelegram(root, target);
                 case "observability" -> mapObservability(root, target);
                 case "mercadopago" -> mapMercadoPago(root, target);
+                case "typesafe" -> mapTypeSafe(root, target);
                 case "runtime" -> mapRuntime(root, target);
                 default -> throw new IllegalArgumentException("Unsupported secret kind: " + kind);
             }
@@ -109,6 +112,10 @@ final class SecretsManagerConfigurationLoader {
                 "accessToken", "MERCADO_PAGO_ACCESS_TOKEN");
         putIfPresent(root, target, "wcs.payment.webhook.secret", "webhook-secret", "webhook_secret",
                 "webhookSecret", "MERCADO_PAGO_WEBHOOK_SECRET");
+    }
+
+    private static void mapTypeSafe(JsonNode root, Map<String, Object> target) {
+        putIfPresent(root, target, "wcs.ai.routing.typesafe.api-key", "API_KEY");
     }
 
     private static void mapRuntime(JsonNode root, Map<String, Object> target) {

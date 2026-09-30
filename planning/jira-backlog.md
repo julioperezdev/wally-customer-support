@@ -35,6 +35,7 @@ promueve a AppConfig, Terraform o App Runner.
 | [WCS-137](https://julioperezdev.atlassian.net/browse/WCS-137) | Agentes especialistas y tools provider-neutral | WCS-120, WCS-121, WCS-122, WCS-129, WCS-133 |
 | [WCS-138](https://julioperezdev.atlassian.net/browse/WCS-138) | Evaluación, observabilidad y scorecard de calidad | WCS-126, WCS-130, WCS-131, WCS-132 |
 | [WCS-139](https://julioperezdev.atlassian.net/browse/WCS-139) | Depuración legacy, activación controlada y cierre | WCS-135–WCS-138 |
+| [WCS-142](https://julioperezdev.atlassian.net/browse/WCS-142) | TypeSafe como selector del caso de uso de WhatsApp, conservando el contrato y fallback WCS | WCS-134, WCS-136, WCS-138 |
 
 No se debe abrir una migración, eliminar una implementación legacy ni cambiar
 AppConfig sólo por avanzar el ticket. Cada tarea necesita tests, evidencia y
@@ -63,6 +64,19 @@ hasta contar con acceso aprobado. La integración futura al Agent Registry
 trasladará modelo, prompts y activaciones a su versión persistida. El modelo,
 esfuerzo, precio, tokens, costo y latencia aparecen en `AI_USAGE_RECORDED` para
 comparar la configuración con el baseline.
+
+### WCS-142 — Selector TypeSafe de caso de uso para WhatsApp
+
+Jira: [WCS-142](https://julioperezdev.atlassian.net/browse/WCS-142) · Estado:
+`In Progress` bajo WCS-134. El alcance aprobado sustituye sólo la decisión semántica
+del caso de uso con TypeSafe `Choice`; conserva `InboundMessageCommand`,
+`ConversationIntentDecision`, resolución de entidades, guards, tools, respuesta
+Bedrock y outbox. Reutiliza el baseline/scorecard de WCS-138 y el router general
+de WCS-136. No se inicia código antes de aceptar la página canónica
+[TypeSafe routing](https://julioperezdev.atlassian.net/wiki/spaces/SD/pages/19759105/WCS+TypeSafe+como+selector+de+caso+de+uso+por+WhatsApp).
+Primero evalúa fixtures sintéticos; cualquier shadow/canary con mensajes reales
+espera revisión de DPA, términos, residencia y retención. El secreto
+`wcs/prod/typesafe` se reutiliza por referencia/ARN y no se copia ni se duplica.
 
 ### WCS-141 — Memoria estructurada y contexto por agente
 

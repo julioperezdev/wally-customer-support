@@ -117,11 +117,17 @@ class AwsExternalConfigurationTest {
                                 {"access-token":"mercado-token","webhook-secret":"mercado-secret",
                                  "ignored":"must-not-become-a-property"}
                                 """)
+                        .build())
+                .thenReturn(GetSecretValueResponse.builder()
+                        .secretString("""
+                                {"API_KEY":"synthetic-typesafe-api-key",
+                                 "other":"must-not-become-a-property"}
+                                """)
                         .build());
 
         var properties = new ExternalConfigurationProperties.SecretsManager(
                 null, null, "database-secret", "whatsapp-secret", "telegram-secret", "observability-secret",
-                "mercado-pago-secret", true, true);
+                "mercado-pago-secret", "typesafe-secret", true, true);
 
         var loaded = new SecretsManagerConfigurationLoader(client, objectMapper).load(properties);
 
@@ -136,6 +142,8 @@ class AwsExternalConfigurationTest {
                 .containsEntry("wcs.observability.actor-key-secret", "actor-hmac-key")
                 .containsEntry("wcs.payment.mercado-pago.access-token", "mercado-token")
                 .containsEntry("wcs.payment.webhook.secret", "mercado-secret")
-                .doesNotContainKey("ignored");
+                .containsEntry("wcs.ai.routing.typesafe.api-key", "synthetic-typesafe-api-key")
+                .doesNotContainKey("ignored")
+                .doesNotContainKey("other");
     }
 }
